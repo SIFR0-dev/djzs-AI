@@ -23,8 +23,53 @@ import { requireEscrowSignature } from "./signature-verifier";
 import { evaluateEscrowGate } from "./escrowGate";
 import { mintProofOfLogicNft, buildNftMintInput } from "./nftMinter";
 
+type TradingSignal = "LONG" | "SHORT" | "WAIT";
+
+type SignalRequest = {
+  symbol?: unknown;
+  venue?: unknown;
+  timeframe?: unknown;
+};
+
+function cleanSignalField(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function computeSignal(input: SignalRequest): {
+  ok: true;
+  symbol: string | null;
+  venue: string | null;
+  timeframe: string | null;
+  signal: TradingSignal;
+  confidence: number;
+  reasonCodes: string[];
+  timestamp: string;
+  engine: "deterministic-signal-v0";
+} {
+  return {
+    ok: true,
+    symbol: cleanSignalField(input.symbol),
+    venue: cleanSignalField(input.venue),
+    timeframe: cleanSignalField(input.timeframe),
+    signal: "WAIT",
+    confidence: 1,
+    reasonCodes: ["SAFE_DEFAULT_NO_MARKET_FEATURES_CONNECTED"],
+    timestamp: new Date().toISOString(),
+    engine: "deterministic-signal-v0",
+  };
+}
+
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  const signalHandler = (req: any, res: any) => {
+    return res.status(200).json(computeSignal(req.body ?? {}));
+  };
+
+  app.post("/api/signal", signalHandler);
+  app.post("/api/audit", signalHandler);
+
   app.get("/sitemap.xml", (_req, res) => {
     res.setHeader("Content-Type", "application/xml");
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
@@ -552,7 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const hasCdpKeys = !!(process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET);
 
-  const AUDIT_ROUTE_PREFIXES = ["/api/audit/micro", "/api/audit/founder", "/api/audit/treasury", "/api/audit"];
+  const AUDIT_ROUTE_PREFIXES = ["/api/audit/micro", "/api/audit/founder", "/api/audit/treasury"];
   const TX_HASH_RE = /^0x[a-fA-F0-9]{64}$/;
   app.use((req: any, _res: any, next: any) => {
     if (
@@ -609,15 +654,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               payTo: TREASURY_WALLET,
             },
             description: "DJZS Treasury Zone: Exhaustive adversarial stress-test for capital deployment",
-          },
-          "POST /api/audit": {
-            accepts: {
-              scheme: "exact",
-              price: "$0.10",
-              network: X402_NETWORK,
-              payTo: TREASURY_WALLET,
-            },
-            description: "DJZS Logic Audit (backward-compatible alias for Micro-Zone)",
           },
         },
         resourceServer,
@@ -858,7 +894,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/audit/micro", createVerifiedPaymentGate("micro"), createTierHandler("micro"));
   app.post("/api/audit/founder", createVerifiedPaymentGate("founder"), createTierHandler("founder"));
   app.post("/api/audit/treasury", createVerifiedPaymentGate("treasury"), createTierHandler("treasury"));
-  app.post("/api/audit", createVerifiedPaymentGate("micro"), createTierHandler("micro"));
 
   // ─── Micro-tier NFT Mint Endpoint ──────────────────────────────────
   // After a Micro PASS, the client calls this to mint the NFT.
