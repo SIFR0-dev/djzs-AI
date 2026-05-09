@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { registerSignalRoutes } from "./signal-routes";
 import { registerStreamRoutes } from "./stream-routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDefaultRooms } from "./storage";
@@ -82,6 +83,7 @@ app.use((req, res, next) => {
     console.warn("[prediction] WARNING: Neither ANTHROPIC_API_KEY nor VENICE_API_KEY is set. Prediction audits will return 503 for all engines.");
   }
 
+  registerSignalRoutes(app);
   const server = await registerRoutes(app);
   registerStreamRoutes(app);
 
@@ -100,11 +102,15 @@ app.use((req, res, next) => {
   }
 
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
+  const listenOptions: { port: number; host: string; reusePort?: boolean } = {
     port,
     host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  };
+  if (process.platform === "linux") {
+    listenOptions.reusePort = true;
+  }
+
+  server.listen(listenOptions, () => {
     log(`serving on port ${port}`);
   });
 })();
