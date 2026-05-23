@@ -1,4 +1,4 @@
-# DJZS — Adversarial Reasoning Auditor for AI Agents
+# DJZS Adversarial Reasoning Auditor for AI Agents
 
 > **No agent acts without audit.**
 > *DJZS Protocol — The Immutable Mind*
