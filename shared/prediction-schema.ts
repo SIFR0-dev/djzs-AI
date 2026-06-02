@@ -96,6 +96,22 @@ export const PredictionAuditRequestSchema = z.object({
 
 export type PredictionAuditRequest = z.infer<typeof PredictionAuditRequestSchema>;
 
+export const VENUES = ["LIMITLESS", "POLYMARKET"] as const;
+export type VenueId = typeof VENUES[number];
+
+// Per-venue connection shape. LIMITLESS is the only wired venue; POLYMARKET is
+// kept for config back-compat but is not a live trade venue (geoblocks US persons).
+export interface VenueConfig {
+  host: string;
+  chain_id: number;
+  enabled: boolean;
+}
+
+export const VENUE_DEFAULTS: Record<VenueId, VenueConfig> = {
+  LIMITLESS: { host: "https://api.limitless.exchange", chain_id: 8453, enabled: true },
+  POLYMARKET: { host: "https://clob.polymarket.com", chain_id: 137, enabled: false },
+};
+
 export interface PredictionProxyConfig {
   djzs_endpoint: string;
   polymarket_host: string;
@@ -106,6 +122,9 @@ export interface PredictionProxyConfig {
     deferred: true;
   };
   risk_ceiling: number;
+  // Generalized venue map. Existing polymarket_* fields above stay for back-compat.
+  venue?: VenueId;
+  venues?: Partial<Record<VenueId, VenueConfig>>;
 }
 
 export interface PredictionAuditResult {

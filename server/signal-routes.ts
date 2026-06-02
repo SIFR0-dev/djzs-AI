@@ -102,6 +102,23 @@ export function registerSignalRoutes(app: Express) {
       return res.status(200).json(safeDefault(req.body ?? {}, "ENGINE_ERROR"));
     }
   });
+
+  // Fused verdict: thesis audit AND trade-mechanics gate. Forward-eligible only if
+  // both PASS. Execution stays stubbed pending creds. Body: { context, modelProb?,
+  // engine?, outcome?, sizeUsd?, accountEquityUsd?, feeBps?, anchor? }.
+  app.post("/api/signal/verify", async (req: any, res: any) => {
+    try {
+      const { fuseVerdict } = await import("./pm-fusion");
+      const body = req.body ?? {};
+      if (!body.context || typeof body.context !== "object") {
+        return res.status(400).json({ ok: false, error: "context (PredictionContext) required" });
+      }
+      return res.status(200).json({ ok: true, ...(await fuseVerdict(body)) });
+    } catch (e: any) {
+      return res.status(200).json({ ok: false, decision: "BLOCK", reason: "ENGINE_ERROR", detail: String(e?.message ?? e) });
+    }
+  });
+
   // NOTE: removed the old `/api/audit` alias here — it shadowed the paid audit
-  // endpoint registered in routes.ts. The signal surface owns /api/signal only.
+  // endpoint registered in routes.ts. The signal surface owns /api/signal* only.
 }
