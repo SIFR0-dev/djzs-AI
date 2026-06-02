@@ -21,6 +21,18 @@ export interface Orderbook {
   maxSpread: string;
   minSize: string;
 }
+// Structured oracle metadata Limitless attaches to each automated market. This is
+// the SOURCE OF TRUTH for how a market resolves — read this, not the prose
+// description. chartSource names the oracle ("pyth", "chainlink", ...) and the
+// *Address / *FeedId fields carry the on-chain feed when present.
+export interface PriceOracleMetadata {
+  ticker?: string;
+  assetType?: string; // CRYPTO | COMMODITIES | ...
+  chartSource?: string; // "pyth" | "chainlink" | etc.
+  pythAddress?: string | null;
+  chainlinkFeedId?: string | null;
+  chainlinkFeedAddress?: string | null;
+}
 export interface MarketDetail {
   slug: string;
   title: string;
@@ -30,6 +42,8 @@ export interface MarketDetail {
   tradeType: string; // "clob" | "amm"
   expirationTimestamp: number; // ms epoch
   description?: string;
+  automationType?: string; // "lumy" => oracle-automated resolution
+  priceOracleMetadata?: PriceOracleMetadata | null;
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -53,6 +67,8 @@ export async function getMarket(slug: string): Promise<MarketDetail> {
     tradeType: d.tradeType,
     expirationTimestamp: d.expirationTimestamp,
     description: d.description,
+    automationType: d.automationType,
+    priceOracleMetadata: d.priceOracleMetadata ?? null,
   };
 }
 
@@ -74,11 +90,21 @@ export function bookDepthUsd(ob: Orderbook, outcome: Outcome, band = 0.15): numb
   return usd;
 }
 
-// Heuristic: is resolution objective? True when the market cites an oracle / data
-// stream / official print. Known gap: prose-based detection false-rejects some
-// Chainlink markets that word it differently — harden by parsing a structured
-// resolution-source field when the API exposes one.
+// Is this market's resolution OBJECTIVE (decided by a trusted price oracle)?
+// Parse the STRUCTURED oracle field first — never rely on the prose description.
+// The old prose regex false-rejected oracle markets whose description does not name
+// the oracle (e.g. a Chainlink/Pyth market that just says "the official settlement
+// price"). A market is objective if it carries a recognised oracle source or a
+// concrete on-chain feed address; prose is kept only as a last-resort fallback.
+const OBJECTIVE_ORACLES = new Set(["pyth", "chainlink", "chainlink data stream", "data stream", "redstone", "uma"]);
 export function resolutionLooksObjective(market: MarketDetail): boolean {
+  const o = market.priceOracleMetadata;
+  if (o) {
+    const source = (o.chartSource ?? "").trim().toLowerCase();
+    if (source && OBJECTIVE_ORACLES.has(source)) return true;
+    if (o.pythAddress || o.chainlinkFeedAddress || o.chainlinkFeedId) return true;
+  }
+  // Fallback: prose hints, for markets the API exposes without structured oracle metadata.
   const text = (market.description ?? "").toLowerCase();
   return /chainlink|data stream|oracle|official|pyth|coingecko|resolution source/.test(text);
 }
@@ -103,7 +129,7 @@ export function toGateInputs(args: {
     intent: { marketSlug: market.slug, outcome, priceProb, modelProb, sizeUsd },
     state: {
       accountEquityUsd: args.accountEquityUsd,
-      resolutionObjective: args.feeBps >= 0 ? resolutionLooksObjective(market) : false,
+      resolutionObjective: resolutionLooksObjective(market),
       hoursToResolution,
       bookDepthUsd: bookDepthUsd(ob, outcome),
       feeBps: args.feeBps,
