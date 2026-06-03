@@ -117,6 +117,13 @@ export const DOMAIN_REGISTRY: Record<string, DomainModule> = {
     codeCount: 5,
     maxScore: UNIVERSAL_MAX_SCORE,
   },
+  agency: {
+    name: "Agency Quality (Predictive Control)",
+    version: "1.0",
+    codePrefix: "A",
+    codeCount: 5,
+    maxScore: 100,
+  },
 };
 
 export function getDomainModule(name: string): DomainModule | undefined {
