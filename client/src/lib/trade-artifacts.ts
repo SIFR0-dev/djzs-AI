@@ -3,6 +3,7 @@ import type { Address, Hex, WalletClient } from "viem";
 /* ----------------------------- ZoneRef ----------------------------- */
 export type ZoneRef =
   | { kind: "journal"; id: string; title?: string }
+  | { kind: "research"; id: string; title?: string }
   | { kind: "url"; url: string; title?: string }
   | { kind: "file"; filename: string; sha256?: string; title?: string };
 
