@@ -1,0 +1,21 @@
+name = "djzs-ai-edge"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Worker shell entrypoint. Hono app exposing /health, /version, /api/status only.
+# Does NOT import from server/ and does NOT migrate any Express route.
+main = "workers/index.ts"
+
+# Cloudflare Pages: serve the existing Vite client build untouched.
+# `npm run build` already emits the client here (vite.config.ts -> build.outDir).
+pages_build_output_dir = "dist/public"
+
+# BINDINGS: TBD
+# No KV / D1 / R2 / Durable Objects / secrets wired yet. Step 1 is a shell only.
+# When real bindings are added (later, approved step), declare them here, e.g.:
+# [[kv_namespaces]]
+# binding = "DJZS_KV"        # BINDINGS: TBD
+# id = "TBD"                 # BINDINGS: TBD
+#
+# [vars]
+# ENVIRONMENT = "production" # BINDINGS: TBD (non-secret vars only; never real secrets)

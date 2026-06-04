@@ -1,0 +1,10 @@
+# .dev.vars.example — template for local Cloudflare Worker vars
+#
+# Copy to `.dev.vars` (which is gitignored) and fill with LOCAL values only.
+# NEVER put real production secrets here or commit a populated .dev.vars.
+# In Step 1 the Worker shell uses NO bindings, so this is a placeholder.
+#
+# BINDINGS: TBD
+# Example shape for later (do not uncomment with real values in source):
+# DJZS_TRUST_TOKEN=replace-with-local-token
+# ENVIRONMENT=development
