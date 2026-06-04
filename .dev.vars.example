@@ -2,9 +2,14 @@
 #
 # Copy to `.dev.vars` (which is gitignored) and fill with LOCAL values only.
 # NEVER put real production secrets here or commit a populated .dev.vars.
-# In Step 1 the Worker shell uses NO bindings, so this is a placeholder.
+#
+# Step 2: the Worker proxies read-only GETs to ORIGIN_URL. The deployed default
+# (https://djzs.ai) lives in wrangler.toml [vars]. Override it here to test the
+# proxy against a LOCAL Express instance instead of hitting production:
+#
+# ORIGIN_URL=http://localhost:5000
 #
 # BINDINGS: TBD
-# Example shape for later (do not uncomment with real values in source):
-# DJZS_TRUST_TOKEN=replace-with-local-token
-# ENVIRONMENT=development
+# No secrets/bindings are used by the Worker yet. When that changes (later, approved
+# step), document the LOCAL placeholder values here, e.g.:
+# DJZS_TRUST_TOKEN=replac...n

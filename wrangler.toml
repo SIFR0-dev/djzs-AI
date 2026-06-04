@@ -10,12 +10,15 @@ main = "workers/index.ts"
 # `npm run build` already emits the client here (vite.config.ts -> build.outDir).
 pages_build_output_dir = "dist/public"
 
+# Public, non-secret origin the Worker proxies read-only GETs to (Step 2).
+# Overridable locally via .dev.vars (e.g. http://localhost:5000).
+[vars]
+ORIGIN_URL = "https://djzs.ai"
+
 # BINDINGS: TBD
-# No KV / D1 / R2 / Durable Objects / secrets wired yet. Step 1 is a shell only.
-# When real bindings are added (later, approved step), declare them here, e.g.:
+# No KV / D1 / R2 / Durable Objects / secrets wired yet. Step 2 adds only ORIGIN_URL (a
+# public URL, not a secret). When real bindings are added (later, approved step), declare
+# them here, e.g.:
 # [[kv_namespaces]]
 # binding = "DJZS_KV"        # BINDINGS: TBD
 # id = "TBD"                 # BINDINGS: TBD
-#
-# [vars]
-# ENVIRONMENT = "production" # BINDINGS: TBD (non-secret vars only; never real secrets)
