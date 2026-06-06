@@ -5,9 +5,11 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
+    "dev:local": "PORT=5050 NODE_ENV=development tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "concurrently \"npm run start:api\" \"npm run start:xmtp\"",
     "check": "tsc",
+    "smoke:local": "node scripts/smoke-local.mjs",
     "db:push": "drizzle-kit push",
     "start:api": "NODE_ENV=production node dist/index.js",
     "start:xmtp": "NODE_ENV=production tsx server/agent.ts"
@@ -145,6 +147,7 @@
     "typescript": "^5.6.3"
   },
   "optionalDependencies": {
+    "@rollup/rollup-darwin-arm64": "^4.59.0",
     "bufferutil": "^4.0.8"
   },
   "overrides": {
