@@ -94,7 +94,7 @@
     "livepeer": "^3.5.0",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
-    "nanoid": "^5.1.6",
+    "nanoid": "^5.1.11",
     "next-themes": "^0.4.6",
     "ora": "^9.3.0",
     "passport": "^0.7.0",
