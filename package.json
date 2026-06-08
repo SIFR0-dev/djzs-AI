@@ -142,7 +142,7 @@
     "drizzle-kit": "^0.31.4",
     "esbuild": "^0.27.2",
     "hardhat": "^2.28.6",
-    "postcss": "^8.5.8",
+    "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.20.5",
