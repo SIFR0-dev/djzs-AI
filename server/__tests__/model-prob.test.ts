@@ -29,13 +29,14 @@ describe("estimateModelProb", () => {
 
   it("throws when no API key is available", async () => {
     // Isolate the env var so the assertion holds regardless of ambient
-    // VENICE_API_KEY (e.g. when CI injects it as a secret).
-    const prev = "placeholder";
-    delete "placeholder";
+    // VENICE_API_KEY (e.g. when CI injects it as a repository secret).
+    const ENV_KEY = "VENICE_API_KEY";
+    const prev = process.env[ENV_KEY];
+    delete process.env[ENV_KEY];
     try {
       await expect(estimateModelProb({ title: "x" })).rejects.toThrow("VENICE_API_KEY not set");
     } finally {
-      if (prev !== undefined) "placeholder" = prev;
+      if (prev !== undefined) process.env[ENV_KEY] = prev;
     }
   });
 });
