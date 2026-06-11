@@ -79,6 +79,8 @@ async function handleAgentMessage(sender: string, text: string): Promise<string>
         user_id: sender,
         content,
         timestamp: new Date().toISOString(),
+        recentEntries: [],
+        pinnedMemories: [],
       };
       const result = await runAgent("JournalInsight", payload) as JournalInsightOutput;
       return formatJournalReply(result);

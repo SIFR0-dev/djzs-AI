@@ -32,10 +32,10 @@ Allow: /
 
 # Agent Discovery Manifests — point AI agents here first
 # Machine-readable service manifest
-Sitemap: https://dj-z-s.replit.app/.well-known/agent.json
+Sitemap: https://djzs.ai/.well-known/agent.json
 
 # OpenAPI specification for programmatic integration
-Sitemap: https://dj-z-s.replit.app/openapi.json
+Sitemap: https://djzs.ai/openapi.json
 
 # Schema discovery endpoint
-Sitemap: https://dj-z-s.replit.app/api/audit/schema
+Sitemap: https://djzs.ai/api/audit/schema
