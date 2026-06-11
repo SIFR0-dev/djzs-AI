@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, Request, Response as ExpressResponse, NextFunction } from "express";
 import crypto from "crypto";
 import { executeAudit } from "./audit-agent";
 import { uploadAuditToIrys } from "./irys";
@@ -26,7 +26,7 @@ type VideoAuditRequest = {
   creator?: string;
 };
 
-function json(res: Response, status: number, body: unknown) {
+function json(res: ExpressResponse, status: number, body: unknown) {
   return res.status(status).json(body);
 }
 
@@ -38,7 +38,7 @@ function getStreamConfig() {
   };
 }
 
-function requireStreamConfig(res: Response) {
+function requireStreamConfig(res: ExpressResponse) {
   const config = getStreamConfig();
   if (!config.accountId || !config.apiToken) {
     json(res, 503, {
@@ -69,7 +69,7 @@ function shouldRequirePayment() {
   return true;
 }
 
-function requirePayment(req: Request, res: Response, next: NextFunction) {
+function requirePayment(req: Request, res: ExpressResponse, next: NextFunction) {
   if (!shouldRequirePayment()) return next();
 
   const proof = req.headers["x-payment-proof"] || req.headers["x-payment"] || req.headers["authorization"];
@@ -84,7 +84,7 @@ function requirePayment(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-async function readCloudflareJson(response: Response) {
+async function readCloudflareJson(response: globalThis.Response) {
   const data = await response.json().catch(() => null);
   if (!response.ok || !data?.success) {
     const message = data?.errors?.[0]?.message || data?.error || response.statusText;
@@ -148,7 +148,7 @@ export function registerStreamRoutes(app: Express) {
     });
   });
 
-  app.post("/api/stream/upload-url", requirePayment, async (req: Request<{}, {}, StreamUploadRequest>, res) => {
+  app.post("/api/stream/upload-url", requirePayment, async (req: Request<{}, {}, StreamUploadRequest>, res: ExpressResponse) => {
     try {
       const config = requireStreamConfig(res);
       if (!config) return;
@@ -232,7 +232,7 @@ export function registerStreamRoutes(app: Express) {
     }
   });
 
-  app.post("/api/stream/playback-token", requirePayment, async (req, res) => {
+  app.post("/api/stream/playback-token", requirePayment, async (req: Request, res: ExpressResponse) => {
     try {
       const config = requireStreamConfig(res);
       if (!config) return;
@@ -270,7 +270,7 @@ export function registerStreamRoutes(app: Express) {
     }
   });
 
-  app.post("/api/dst/video-audit", requirePayment, async (req: Request<{}, {}, VideoAuditRequest>, res) => {
+  app.post("/api/dst/video-audit", requirePayment, async (req: Request<{}, {}, VideoAuditRequest>, res: ExpressResponse) => {
     try {
       const thesis = typeof req.body.thesis === "string" ? req.body.thesis.trim() : "";
       if (thesis.length < 20) {

@@ -6,7 +6,7 @@ import type {
   LFCode,
 } from "./types";
 import { DEFAULT_CONFIG } from "./types";
-import { DJZS_WEIGHTS, UNIVERSAL_WEIGHTS, LF_LABELS } from "./weights";
+import { DJZS_WEIGHTS, UNIVERSAL_WEIGHTS, AGENCY_WEIGHTS, LF_LABELS } from "./weights";
 
 import { detectS01, detectS02, detectS03 } from "./detectors/structural";
 import { detectE01, detectE02 } from "./detectors/execution";
@@ -21,6 +21,14 @@ import {
   detectNoRollbackPath,
   detectChainUnverified,
 } from "./detectors/universal";
+
+import {
+  detectA01,
+  detectA02,
+  detectA03,
+  detectA04,
+  detectA05,
+} from "./detectors/agency";
 
 import { createHash } from "crypto";
 
@@ -64,11 +72,21 @@ export class DJZSEngine {
       );
     }
 
+    if (this.config.codeSets.includes("agency")) {
+      detections.push(
+        detectA01(call),
+        detectA02(call),
+        detectA03(call),
+        detectA04(call),
+        detectA05(call),
+      );
+    }
+
     const firedCodes: LFCode[] = detections
       .filter((d) => d.fired)
       .map((d) => d.code);
 
-    const allWeights = { ...DJZS_WEIGHTS, ...UNIVERSAL_WEIGHTS };
+    const allWeights = { ...DJZS_WEIGHTS, ...UNIVERSAL_WEIGHTS, ...AGENCY_WEIGHTS };
     const totalPenalty = firedCodes.reduce(
       (sum, code) => sum + (allWeights[code] || 0),
       0
@@ -79,6 +97,9 @@ export class DJZSEngine {
       maxPenalty += 200;
     }
     if (this.config.codeSets.includes("universal")) {
+      maxPenalty += 100;
+    }
+    if (this.config.codeSets.includes("agency")) {
       maxPenalty += 100;
     }
 

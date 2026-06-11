@@ -54,7 +54,14 @@ export type UniversalLFCode =
   | "NO_ROLLBACK_PATH"
   | "CHAIN_UNVERIFIED";
 
-export type LFCode = DJZSLFCode | UniversalLFCode;
+export type AgencyLFCode =
+  | "A01"
+  | "A02"
+  | "A03"
+  | "A04"
+  | "A05";
+
+export type LFCode = DJZSLFCode | UniversalLFCode | AgencyLFCode;
 
 export interface Detection {
   code: LFCode;
@@ -78,7 +85,7 @@ export interface DetectionResult {
 export interface EngineConfig {
   failThreshold: number;
   warnThreshold: number;
-  codeSets: ("djzs" | "universal")[];
+  codeSets: ("djzs" | "universal" | "agency")[];
   destructiveOps?: string[];
   privilegedScopes?: string[];
 }

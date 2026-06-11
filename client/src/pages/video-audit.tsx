@@ -105,6 +105,9 @@ export default function VideoAudit() {
 
         const uploadData = await uploadUrlResponse.json();
         uploadedVideoUid = uploadData.videoUid;
+        if (!uploadedVideoUid) {
+          throw new Error("Cloudflare Stream did not return a video UID.");
+        }
         setVideoUid(uploadedVideoUid);
 
         setStatus("uploading");
