@@ -38,6 +38,8 @@ export interface AuditCertificate {
   failure_flags: LFCode[];
   logic_hash: string;
   weights_hash: string;
+  taxonomy_hash: string;
+  taxonomy_version: string;
   audit_schema_version: string;
   threshold_block: number;
   detection_model: string;
@@ -156,7 +158,8 @@ export const ALL_LF_CODES = Object.keys(LOGIC_FAILURE_TAXONOMY) as LFCode[];
 
 export const VALID_FAILURE_CODES = ALL_LF_CODES;
 
-export const SCHEMA_VERSION = "DJZS-LF-v1.0";
+export const DJZS_LF_VERSION = "1.1" as const;
+export const SCHEMA_VERSION = `DJZS-LF-v${DJZS_LF_VERSION}` as const;
 
 if (MAX_RISK_SCORE !== 200) {
   throw new Error(
@@ -229,11 +232,28 @@ function canonicalize(obj: unknown): string {
 }
 
 export const WEIGHTS_HASH: string = sha256(
-  canonicalize(
-    Object.fromEntries(
+  canonicalize({
+    taxonomy_version: DJZS_LF_VERSION,
+    weights: Object.fromEntries(
       Object.entries(LOGIC_FAILURE_TAXONOMY).map(([k, v]) => [k, v.weight])
-    )
-  )
+    ),
+  })
+);
+
+export const TAXONOMY_HASH: string = sha256(
+  canonicalize({
+    taxonomy_version: DJZS_LF_VERSION,
+    taxonomy: Object.fromEntries(
+      Object.entries(LOGIC_FAILURE_TAXONOMY).map(([k, v]) => [k, {
+        code: v.code,
+        name: v.name,
+        category: v.category,
+        weight: v.weight,
+        severity: v.severity,
+        description: v.description,
+      }])
+    ),
+  })
 );
 
 
@@ -294,6 +314,8 @@ export function computeVerdict(input: VerdictInput): AuditCertificate {
     failure_flags: failureFlags,
     logic_hash: logicHash,
     weights_hash: WEIGHTS_HASH,
+    taxonomy_hash: TAXONOMY_HASH,
+    taxonomy_version: DJZS_LF_VERSION,
     audit_schema_version: SCHEMA_VERSION,
     threshold_block: thresholdBlock,
     detection_model: "venice/llama-3.3-70b@temp=0",
@@ -324,6 +346,8 @@ export const auditCertificateSchema = z.object({
   failure_flags: z.array(z.string()),
   logic_hash: z.string(),
   weights_hash: z.string(),
+  taxonomy_hash: z.string(),
+  taxonomy_version: z.literal(DJZS_LF_VERSION),
   audit_schema_version: z.literal(SCHEMA_VERSION),
   threshold_block: z.number(),
   detection_model: z.string(),

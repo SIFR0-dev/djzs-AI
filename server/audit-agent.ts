@@ -4,7 +4,7 @@ import {
   type AdversarialPersona,
   type IntelligenceContext,
 } from "./venice";
-import { type AuditTier, SCHEMA_VERSION, WEIGHTS_HASH, MAX_RISK_SCORE, ALL_LF_CODES, LOGIC_FAILURE_TAXONOMY } from "@shared/audit-schema";
+import { type AuditTier, SCHEMA_VERSION, WEIGHTS_HASH, TAXONOMY_HASH, DJZS_LF_VERSION, MAX_RISK_SCORE, ALL_LF_CODES, LOGIC_FAILURE_TAXONOMY } from "@shared/audit-schema";
 import { shouldUseClaude, getClaudeAuditClient } from "./claude-client";
 
 export interface AuditResult {
@@ -137,6 +137,8 @@ export interface ProofOfLogicCertificate extends AuditResult {
 
   audit_schema_version?: string;
   weights_hash?: string;
+  taxonomy_hash?: string;
+  taxonomy_version?: string;
   logic_hash?: string;
   max_possible?: number;
   pass_threshold?: number;
@@ -348,6 +350,8 @@ export async function executeAudit(
     keccak256_hash,
     audit_schema_version: SCHEMA_VERSION,
     weights_hash: WEIGHTS_HASH,
+    taxonomy_hash: TAXONOMY_HASH,
+    taxonomy_version: DJZS_LF_VERSION,
     logic_hash,
     max_possible: MAX_RISK_SCORE,
     pass_threshold: 60,

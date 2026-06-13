@@ -3,7 +3,7 @@ import type { PredictionContext, LFDetectionResult, DetectionEngine } from "@sha
 import { PredictionContextSchema } from "@shared/prediction-schema";
 import { detectLogicFlaws, type DetectionEngineConfig } from "./engine/claude-detector";
 import { DJZS_WEIGHTS } from "./engine/weights";
-import { SCHEMA_VERSION, WEIGHTS_HASH, MAX_RISK_SCORE, ALL_LF_CODES, LOGIC_FAILURE_TAXONOMY } from "@shared/audit-schema";
+import { SCHEMA_VERSION, WEIGHTS_HASH, TAXONOMY_HASH, DJZS_LF_VERSION, MAX_RISK_SCORE, ALL_LF_CODES, LOGIC_FAILURE_TAXONOMY } from "@shared/audit-schema";
 import type { ProofOfLogicCertificate } from "./audit-agent";
 
 type PredictionLFCode = "S01" | "S02" | "E01" | "E02" | "I01" | "I02" | "I03" | "X01" | "X02" | "T01";
@@ -130,6 +130,8 @@ export async function executePredictionAudit(
       cryptographic_hash,
       audit_schema_version: SCHEMA_VERSION,
       weights_hash: WEIGHTS_HASH,
+      taxonomy_hash: TAXONOMY_HASH,
+      taxonomy_version: DJZS_LF_VERSION,
       max_possible: MAX_RISK_SCORE,
       pass_threshold: 60,
       detection_model: detectionModel,
@@ -223,6 +225,8 @@ export async function executePredictionAudit(
     cryptographic_hash,
     audit_schema_version: SCHEMA_VERSION,
     weights_hash: WEIGHTS_HASH,
+    taxonomy_hash: TAXONOMY_HASH,
+    taxonomy_version: DJZS_LF_VERSION,
     logic_hash,
     max_possible: MAX_RISK_SCORE,
     pass_threshold: 60,
