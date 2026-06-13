@@ -197,7 +197,7 @@ export default function Security() {
               ["Zod Schema Validation", "All request inputs and audit outputs are validated against strict Zod schemas."],
               ["No Data Retention", "Strategy memos are processed in real-time and not stored."],
               ["Structured Output", "Audit responses are machine-readable JSON with typed fields."],
-              ["Phala TEE Hardware Enclave", "The Oracle runs inside a Phala Cloud CVM. Private keys are isolated in hardware."],
+              ["EigenCompute TEE Hardware Enclave", "The Oracle runs inside an EigenCompute Intel TDX CVM. Private keys are isolated in hardware."],
               ["Irys Datachain Provenance", "Every audit certificate is permanently uploaded to Irys Datachain."],
             ].map(([label, desc]) => (
               <div key={label} style={{ display: "flex", gap: 8, fontSize: 13, color: C.text }}>
@@ -211,7 +211,7 @@ export default function Security() {
         <section>
           <TerminalHeading num="07b">Trusted Execution Environment (TEE)</TerminalHeading>
           <p style={{ color: C.text, fontSize: 14, lineHeight: 1.8, marginBottom: 16 }}>
-            The DJZS Oracle is deployed inside a <strong style={{ color: C.white }}>Phala Cloud Confidential Virtual Machine (CVM)</strong> — a hardware-isolated enclave:
+            The DJZS Oracle is deployed inside an <strong style={{ color: C.white }}>EigenCompute Intel TDX Confidential Virtual Machine (CVM)</strong> — a hardware-isolated enclave:
           </p>
           <div style={{ display: "grid", gap: 8 }}>
             <div style={{ padding: "16px 20px", background: C.surface, border: `1px solid ${C.green}33`, borderLeft: `3px solid ${C.green}`, borderRadius: 4 }}>
