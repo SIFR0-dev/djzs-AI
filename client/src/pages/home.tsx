@@ -596,7 +596,7 @@ function CertificateSection() {
             { icon: Shield, label: "Venice AI", sub: "Zero retention" },
             { icon: Zap, label: "Base USDC", sub: "x402 payments" },
             { icon: Database, label: "Irys Datachain", sub: "Permanent storage" },
-            { icon: Lock, label: "Phala TEE", sub: "Hardware enclave" },
+            { icon: Lock, label: "EigenCompute TEE", sub: "Intel TDX Enclave" },
           ].map((item) => (
             <div key={item.label} className="border border-zinc-800 bg-black p-4">
               <item.icon size={16} className="text-green-400 mb-2" />
