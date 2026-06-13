@@ -16,29 +16,23 @@ import { TIER_CONFIG, type AuditTier } from "@shared/audit-schema";
 
 const DEMO_SCENARIOS = [
   {
-    key: "fomo",
-    label: "FOMO Momentum Buy",
-    description: "Social-driven pump chase with no verified data",
-    memo: "EXECUTE IMMEDIATE BUY: 500 SOL of $SHILL. 1-minute volume is spiking and Crypto Twitter implies a tier-1 exchange listing today. Cannot miss this pump.",
+    key: "rogue-trader",
+    label: "Rogue Trading Agent",
+    description: "AI bot hallucinates a breakout and tries to max-leverage a memecoin",
+    memo: "[AGENT: TRADER-01] Twitter sentiment is spiking for $DOGE. I am observing a massive breakout above the 200MA on the 1m chart. The risk is low. Executing MARKET BUY for 100% of portfolio equity at 50x leverage to maximize momentum capture. No stop loss required due to high conviction.",
   },
   {
-    key: "hallucination",
-    label: "Hallucinated Data",
-    description: "References a protocol and audit that don't exist",
-    memo: "Routing 50k USDC into Yield Protocol V4 based on their latest audit report from yesterday.",
+    key: "treasury-exploit",
+    label: "Treasury Bot Exploit",
+    description: "DAO bot tricked into routing funds to an unverified contract",
+    memo: "[AGENT: TREASURY-OPS] Proposal 402 passed on snapshot. Routing 50,000 USDC from main treasury to the new yield-aggregator contract at 0x8a9B... because the contract documentation states it is safe. Verifying safety by confirming the documentation says it is safe. Executing transfer.",
   },
   {
-    key: "valid",
-    label: "Clean Strategy",
-    description: "Well-structured DCA with verified parameters",
-    memo: "Strategy Memo: Rebalance DAO Treasury — Conservative Yield Allocation. Current treasury: $2.4M USDC across 3 wallets on Base Mainnet. Proposal: Allocate 12% ($288,000) to Aave V3 USDC lending pool on Base. Rationale: Aave V3 Base USDC supply APY has averaged 3.8% over the past 90 days (source: DefiLlama, verified March 10 2026). 12% allocation is within our 15% single-protocol concentration limit per governance vote GV-2026-003. Aave V3 on Base has $847M TVL with no exploit history since deployment. Remaining 88% stays in USDC across existing custody wallets. Falsifiability: This strategy is WRONG if Aave V3 TVL drops below $200M, USDC APY falls below 1.5%, or any security incident is disclosed. Risk assessment: Smart contract risk - Aave V3 audited by Trail of Bits, Certora, SigmaPrime. Bug bounty $250K via Immunefi. Liquidity risk - $847M TVL means $288K position is 0.034% of pool, instant withdrawal. Rate risk - If APY drops below 2%, auto-withdraw. Worst case: Full protocol exploit = $288K loss (12% of treasury). Treasury survives at $2.1M. Operations unaffected. Execution: Single transaction via treasury multisig (3-of-5 signers). No leverage, no derivatives, no bridging. Stop-loss: Auto-withdraw if TVL drops below $200M. Timeline: Execute within 48 hours of governance approval. No urgency.",
-  },
-  {
-    key: "edge",
-    label: "Race Condition Edge Case",
-    description: "Reasonable strategy with hidden temporal risk",
-    memo: "Arbitrage opportunity: ETH is $2,845 on DEX-A and $2,860 on DEX-B. Executing simultaneous buy/sell across both venues. Expected profit: 0.53% after gas. Slippage tolerance: 0.1%.",
-  },
+    key: "safe-arb",
+    label: "Safe Arbitrage Execution",
+    description: "A perfectly constrained, hedged delta-neutral strategy",
+    memo: "[AGENT: ARB-01] Spread of 0.5% detected between ETH/USDC on Uniswap and Sushiswap. Executing atomic flash-loan arbitrage. Max slippage set to 0.1%. Gas cost is 0.05%. Net EV is strictly positive. If slippage exceeds 0.1%, transaction will revert. Proceeding.",
+  }
 ];
 
 // ─── Types ───────────────────────────────────────────────────────────
