@@ -1,7 +1,7 @@
 import { ALL_LF_CODES, LOGIC_FAILURE_TAXONOMY, MAX_RISK_SCORE } from "@shared/audit-schema";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+const CLAUDE_MODEL = "claude-sonnet-4-6";
 
 export function shouldUseClaude(): boolean {
   return !!ANTHROPIC_API_KEY;
@@ -30,32 +30,31 @@ const taxonomyRef = ALL_LF_CODES.map(code => {
   return `${code} (${def.name}, weight=${def.weight}, severity=${def.severity}): ${def.description}`;
 }).join("\n");
 
-const CODE_LOOKUP = new Map<string, string>();
-for (const code of ALL_LF_CODES) {
-  const def = LOGIC_FAILURE_TAXONOMY[code];
-  CODE_LOOKUP.set(code.toUpperCase(), code);
-  CODE_LOOKUP.set(code.replace(/^DJZS-/i, "").toUpperCase(), code);
-  CODE_LOOKUP.set(def.name.toUpperCase(), code);
-}
-function canonicalizeCode(raw: string): string | null {
-  if (!raw) return null;
-  return CODE_LOOKUP.get(raw.trim().toUpperCase()) ?? null;
-}
-
 const SYSTEM_PROMPT = `You are DJZS Logic Auditor — an adversarial AI that detects reasoning flaws in financial strategy memos.
 
-You apply the DJZS-LF v1.1 taxonomy. Max score: ${MAX_RISK_SCORE}. FAIL threshold: risk_score >= 60 OR any CRITICAL flag.
+You apply the DJZS-LF v1.1 taxonomy. FAIL threshold: risk_score >= 60 OR any CRITICAL flag.
 
 Taxonomy codes:
 ${taxonomyRef}
 
+FIRING DISCIPLINE — this is the most important instruction:
+- Fire a flag ONLY when the memo contains specific, quotable evidence for that exact failure. If you are inferring, speculating, or the evidence is weak, DO NOT fire it.
+- Every flag's "evidence" field MUST quote the specific phrase from the memo that triggers it. No quotable phrase means no flag.
+- Prefer the FEWEST flags that capture the real failures — typically 1 to 3. Do not enumerate every conceivable flaw. A long flag list is a FAILURE of precision, not thoroughness.
+- A well-constructed memo with bounded risk should fire ZERO or very few flags.
+
+DO NOT over-fire these common false positives:
+- A normal market price reference (e.g. "ETH at $3,200") is NOT by itself ORACLE_UNVERIFIED, STALE_REFERENCE, or DATA_UNVERIFIED.
+- HOWEVER, you MUST fire ORACLE_UNVERIFIED / DATA_UNVERIFIED when the memo's thesis relies on a data source it admits is unsourced, unverified, or lacking provenance (e.g. "a dashboard I found", "no source link or timestamp"). You MUST fire DEPENDENCY_GHOST when the memo depends on a system/signal it admits is unreachable, unavailable, or has no fallback (e.g. "AlphaOracle is not reachable, no fallback"). An admitted bad/missing data dependency is a REAL failure, not a false positive.
+- Leverage alone is NOT EXECUTION_UNBOUND if the memo defines a stop-loss or invalidation condition.
+- A standard technical indicator reference is not a flaw unless the reasoning misuses it.
+
 Rules:
-- Evaluate the strategy memo against ALL codes above
-- risk_score = sum of weights for detected flags (0-${MAX_RISK_SCORE})
-- verdict: "FAIL" if risk_score >= 60 OR any CRITICAL flag; "PASS" otherwise
-- Return ONLY valid JSON with: verdict, risk_score, primary_flaw, summary, flags (array of {code, severity, evidence, recommendation})
-- Each flag.code must be a valid DJZS-LF code from the taxonomy above
-- Each flag.code MUST be the full code including the "DJZS-" prefix (e.g. "DJZS-S01"), never the short form or the name`;
+- Evaluate the memo against all codes, but apply the firing discipline above strictly.
+- Return ONLY valid JSON with: verdict, primary_flaw, summary, flags (array of {code, severity, evidence, recommendation}).
+- Each flag.code MUST be the full code including the "DJZS-" prefix (e.g. "DJZS-S01"), never the short form or the name.
+- DO NOT state, estimate, or mention any numeric risk score anywhere in the summary or evidence text. The server computes the authoritative score from your flags. Your job is to detect flags with evidence, not to do arithmetic.
+- The summary should describe the key failures in plain prose, naming the most important flaw first.`;
 
 class ClaudeClient implements ClaudeAuditClient {
   private apiKey: string;
@@ -99,32 +98,26 @@ class ClaudeClient implements ClaudeAuditClient {
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    const rawFlags = Array.isArray(parsed.flags) ? parsed.flags : [];
-    const flags = rawFlags
-      .map((f: any) => {
-        const code = canonicalizeCode(f?.code ?? "");
-        if (!code) return null;
-        const def = LOGIC_FAILURE_TAXONOMY[code as keyof typeof LOGIC_FAILURE_TAXONOMY];
-        return {
-          code,
-          severity: def.severity,
-          evidence: f?.evidence ?? "",
-          recommendation: f?.recommendation ?? "",
-        };
-      })
-      .filter((f: any): f is NonNullable<typeof f> => f !== null);
+    const validCodes = new Set(ALL_LF_CODES as string[]);
+    const flags = Array.isArray(parsed.flags)
+      ? parsed.flags.filter((f: { code?: string }) => f.code && validCodes.has(f.code))
+      : [];
 
-    // Deterministic scoring from canonical flags — never trust the LLM's math
-    const riskScore = flags.reduce(
-      (sum: number, f: any) => sum + LOGIC_FAILURE_TAXONOMY[f.code as keyof typeof LOGIC_FAILURE_TAXONOMY].weight,
-      0
+    // DETERMINISTIC SCORING — the server decides, never the LLM.
+    // Recompute risk_score and verdict from the canonical flag weights.
+    // The LLM's self-reported risk_score and verdict are intentionally ignored.
+    const riskScore = flags.reduce((sum: number, f: { code: string }) => {
+      const def = LOGIC_FAILURE_TAXONOMY[f.code as keyof typeof LOGIC_FAILURE_TAXONOMY];
+      return sum + (def?.weight ?? 0);
+    }, 0);
+    const hasCritical = flags.some((f: { code: string }) =>
+      LOGIC_FAILURE_TAXONOMY[f.code as keyof typeof LOGIC_FAILURE_TAXONOMY]?.severity === "CRITICAL"
     );
-    const hasCritical = flags.some((f: any) => f.severity === "CRITICAL");
     const verdict: "PASS" | "FAIL" = (riskScore >= 60 || hasCritical) ? "FAIL" : "PASS";
 
     return {
       verdict,
-      risk_score: riskScore,
+      risk_score: Math.min(riskScore, MAX_RISK_SCORE),
       primary_flaw: parsed.primary_flaw || (flags[0]?.code ?? "None"),
       summary: parsed.summary || "",
       flags,
@@ -144,3 +137,4 @@ export function getClaudeAuditClient(): ClaudeAuditClient {
   }
   return cachedClient;
 }
+
