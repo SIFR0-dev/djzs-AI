@@ -30,9 +30,21 @@ const taxonomyRef = ALL_LF_CODES.map(code => {
   return `${code} (${def.name}, weight=${def.weight}, severity=${def.severity}): ${def.description}`;
 }).join("\n");
 
+const CODE_LOOKUP = new Map<string, string>();
+for (const code of ALL_LF_CODES) {
+  const def = LOGIC_FAILURE_TAXONOMY[code];
+  CODE_LOOKUP.set(code.toUpperCase(), code);
+  CODE_LOOKUP.set(code.replace(/^DJZS-/i, "").toUpperCase(), code);
+  CODE_LOOKUP.set(def.name.toUpperCase(), code);
+}
+function canonicalizeCode(raw: string): string | null {
+  if (!raw) return null;
+  return CODE_LOOKUP.get(raw.trim().toUpperCase()) ?? null;
+}
+
 const SYSTEM_PROMPT = `You are DJZS Logic Auditor — an adversarial AI that detects reasoning flaws in financial strategy memos.
 
-You apply the DJZS-LF v1.0 taxonomy. Max score: ${MAX_RISK_SCORE}. FAIL threshold: risk_score >= 60 OR any CRITICAL flag.
+You apply the DJZS-LF v1.1 taxonomy. Max score: ${MAX_RISK_SCORE}. FAIL threshold: risk_score >= 60 OR any CRITICAL flag.
 
 Taxonomy codes:
 ${taxonomyRef}
@@ -42,7 +54,8 @@ Rules:
 - risk_score = sum of weights for detected flags (0-${MAX_RISK_SCORE})
 - verdict: "FAIL" if risk_score >= 60 OR any CRITICAL flag; "PASS" otherwise
 - Return ONLY valid JSON with: verdict, risk_score, primary_flaw, summary, flags (array of {code, severity, evidence, recommendation})
-- Each flag.code must be a valid DJZS-LF code from the taxonomy above`;
+- Each flag.code must be a valid DJZS-LF code from the taxonomy above
+- Each flag.code MUST be the full code including the "DJZS-" prefix (e.g. "DJZS-S01"), never the short form or the name`;
 
 class ClaudeClient implements ClaudeAuditClient {
   private apiKey: string;
@@ -86,15 +99,33 @@ class ClaudeClient implements ClaudeAuditClient {
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    const validCodes = new Set(ALL_LF_CODES as string[]);
-    const flags = Array.isArray(parsed.flags)
-      ? parsed.flags.filter((f: { code?: string }) => f.code && validCodes.has(f.code))
-      : [];
+    const rawFlags = Array.isArray(parsed.flags) ? parsed.flags : [];
+    const flags = rawFlags
+      .map((f: any) => {
+        const code = canonicalizeCode(f?.code ?? "");
+        if (!code) return null;
+        const def = LOGIC_FAILURE_TAXONOMY[code as keyof typeof LOGIC_FAILURE_TAXONOMY];
+        return {
+          code,
+          severity: def.severity,
+          evidence: f?.evidence ?? "",
+          recommendation: f?.recommendation ?? "",
+        };
+      })
+      .filter((f: any): f is NonNullable<typeof f> => f !== null);
+
+    // Deterministic scoring from canonical flags — never trust the LLM's math
+    const riskScore = flags.reduce(
+      (sum: number, f: any) => sum + LOGIC_FAILURE_TAXONOMY[f.code as keyof typeof LOGIC_FAILURE_TAXONOMY].weight,
+      0
+    );
+    const hasCritical = flags.some((f: any) => f.severity === "CRITICAL");
+    const verdict: "PASS" | "FAIL" = (riskScore >= 60 || hasCritical) ? "FAIL" : "PASS";
 
     return {
-      verdict: parsed.verdict === "PASS" ? "PASS" : "FAIL",
-      risk_score: typeof parsed.risk_score === "number" ? Math.min(parsed.risk_score, MAX_RISK_SCORE) : 0,
-      primary_flaw: parsed.primary_flaw || "None",
+      verdict,
+      risk_score: riskScore,
+      primary_flaw: parsed.primary_flaw || (flags[0]?.code ?? "None"),
       summary: parsed.summary || "",
       flags,
       model_used: CLAUDE_MODEL,
