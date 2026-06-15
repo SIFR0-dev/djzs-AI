@@ -30,6 +30,9 @@ export interface AuditResult {
   structural_recommendations?: string[];
   action_items?: string[];
   model_used: string;
+  degraded?: boolean;
+  detection_engine?: string;
+  should_abort?: boolean;
   persona_used: AdversarialPersona;
 }
 
@@ -284,7 +287,10 @@ export async function executeAudit(
         action_items: undefined,
       };
     } catch (claudeError) {
-      console.error(`[Audit ${audit_id}] Claude fallback — ${(claudeError as Error).message}`);
+      // HONEST FAILURE: the paid treasury auditor (Claude) did NOT run.
+      // Keyword fallback surfaces obvious flaws only — it is NOT a full
+      // audit and must never masquerade as one or emit a clean PASS.
+      console.error(`[Audit ${audit_id}] Claude FAILED — DEGRADED to rule-engine — ${(claudeError as Error).message}`);
       const toolCall: ToolCall = {
         name: audit_type || "general",
         params: trade_params || {},
@@ -293,6 +299,18 @@ export async function executeAudit(
       };
       const engineResult = djzsEngine.audit(toolCall);
       result = mapEngineResultToAuditResult(engineResult, selectedPersona);
+
+      result.degraded = true;
+      result.detection_engine = "rule-engine (DEGRADED — Claude unavailable)";
+      if (result.verdict === "PASS") {
+        result.verdict = "FAIL";
+        result.should_abort = true;
+      }
+      result.summary =
+        "DEGRADED AUDIT — the primary adversarial auditor was unavailable, so only " +
+        "keyword-level rule checks ran. This is NOT a full audit and PASS is not implied. " +
+        "Resolve the auditor configuration and re-run before trusting this result. " +
+        (result.summary || "");
     }
   } else {
     const toolCall: ToolCall = {
