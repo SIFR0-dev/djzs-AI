@@ -156,7 +156,17 @@ export const ALL_LF_CODES = Object.keys(LOGIC_FAILURE_TAXONOMY) as LFCode[];
 
 export const VALID_FAILURE_CODES = ALL_LF_CODES;
 
-export const SCHEMA_VERSION = "DJZS-LF-v1.0";
+// ─── Ruleset Versioning ─────────────────────────────────────────────────
+// Each component of the Proof-of-Logic cert is independently versioned.
+// This allows staged, auditable schema evolution without breaking existing proofs.
+//
+// ruleset_version   — severity precedence, weight redistribution
+// extractor_hash    — detection model fingerprint (Claude → Gemma swap)
+// weights_hash      — individual LF code weights or taxonomy changes
+// logic_hash        — on-chain verdict computation
+//
+export const RULESET_VERSION = "1.1";
+export const SCHEMA_VERSION = "DJZS-LF-v1.1";
 
 if (MAX_RISK_SCORE !== 200) {
   throw new Error(
