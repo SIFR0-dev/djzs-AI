@@ -125,8 +125,8 @@ describe("DJZS-LF Taxonomy Invariants", () => {
     expect(hash1).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
-  it("schema version is DJZS-LF-v1.0", () => {
-    expect(SCHEMA_VERSION).toBe("DJZS-LF-v1.0");
+  it("schema version is DJZS-LF-v1.1", () => {
+    expect(SCHEMA_VERSION).toBe("DJZS-LF-v1.1");
   });
 
   it("every code has weight > 0", () => {
@@ -254,7 +254,7 @@ describe("computeVerdict — certificate fields", () => {
   it("includes all provenance fields", () => {
     const cert = computeVerdict(makeInput(["DJZS-S01"]));
 
-    expect(cert.audit_schema_version).toBe("DJZS-LF-v1.0");
+    expect(cert.audit_schema_version).toBe("DJZS-LF-v1.1");
     expect(cert.weights_hash).toMatch(/^0x/);
     expect(cert.logic_hash).toMatch(/^0x/);
     expect(cert.threshold_block).toBe(29847261);
