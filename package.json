@@ -18,7 +18,7 @@
     "cf:worker:dev": "wrangler dev"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.86.1",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@coinbase/x402": "^2.1.0",
     "@hookform/resolvers": "^3.10.0",
     "@irys/upload": "^0.0.15",
