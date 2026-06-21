@@ -138,3 +138,28 @@ export function getClaudeAuditClient(): ClaudeAuditClient {
   return cachedClient;
 }
 
+
+export async function callClaudeText(prompt: string): Promise<string> {
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY not configured");
+  }
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 1024,
+      temperature: 0,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Claude API error ${response.status}: ${await response.text()}`);
+  }
+  const data = await response.json();
+  return data.content?.[0]?.text ?? "";
+}
