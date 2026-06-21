@@ -1,0 +1,30 @@
+{
+  "_protocol": {
+    "purpose": "Test whether a DJZS FAIL verdict predicts a WRONG real-world forecast more than a PASS verdict does.",
+    "integrity_rules": [
+      "thesis must be REAL reasoning from a cited source — never invented, never edited to add or remove flaws",
+      "resolution must be the REAL, verified outcome of the question",
+      "select entries OUTCOME-BLIND: choose for rich reasoning first, attach the outcome second, then INCLUDE ALL — never drop an inconvenient one",
+      "aim for a mix of CORRECT and WRONG outcomes so the matrix has both classes",
+      "keep thesis a faithful, concise representation (~50-300 words); cite source_url; do not reproduce long verbatim passages"
+    ],
+    "scope_caveat": "Forecasting rationales exercise only the epistemic/structural/temporal codes (S/E/T). Execution/incentive codes (X/I) cannot fire without a position. This tests the REASONING half of the taxonomy.",
+    "decision_rule": "lift = P(wrong|FAIL) - P(wrong|PASS). SIGNAL (suggestive) if lift>=15pp & correct direction. n<10 = UNDERPOWERED. ~20 to attempt, ~40 for confidence.",
+    "target_n": 12
+  },
+
+  "_format_example": {
+    "__THIS_IS_A_FORMAT_EXAMPLE_NOT_REAL_DATA__": true,
+    "id": "EX-00",
+    "source": "ExampleSource (NOT REAL)",
+    "source_url": "https://example.com/not-real",
+    "question": "Will <event> happen by <date>? (placeholder)",
+    "thesis": "PLACEHOLDER — replace with a real, cited forecaster rationale. Do not run this entry.",
+    "predicted_direction": "YES",
+    "resolution": "NO",
+    "correct": false,
+    "collection_note": "Shape reference only. The runner ignores _format_example; only entries[] is scored."
+  },
+
+  "entries": []
+}
