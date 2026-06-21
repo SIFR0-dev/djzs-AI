@@ -140,7 +140,7 @@
     "autoprefixer": "^10.4.27",
     "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.4",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.0",
     "hardhat": "^2.28.6",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
