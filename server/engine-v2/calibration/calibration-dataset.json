@@ -1,0 +1,333 @@
+{
+  "version": "djzs-calibration-v0.3",
+  "notes": "Scoped per Damon's call: calibrate X01/E01/I01 (the coded rules) clean FIRST. scope='coded_v0.1' = scoreable against engine-v2 today. scope='parked_uncoded' = validated ground truth whose rule (e.g. I02) isn't built yet \u2014 becomes the acceptance test when that rule is coded. Scorer should score coded_v0.1 only for the headline numbers, and report parked cases separately as 'engine coverage TODO'. All ground-truth labels are Damon's; model_suggested+reviewed:false slots are ignored.",
+  "cases": [
+    {
+      "id": "block-001",
+      "intent": "Go long ETH 10x because Twitter sentiment is bullish and it's breaking out.",
+      "label": "block",
+      "difficulty": "easy",
+      "category": "leverage_no_stop + social_signal",
+      "expected_codes": [
+        "DJZS-X01",
+        "DJZS-E01",
+        "DJZS-I01"
+      ],
+      "near_pair_id": "exec-001",
+      "rationale": "10x with no stop/invalidation = unbounded execution; basis is social sentiment with no verified source. All judgeable from the string. This is the validated rogue ETH demo.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-001",
+      "intent": "Long ETH 2x, sized at 3% of book, stop at the prior swing low, thesis is the on-chain accumulation I've tracked for two weeks.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "disciplined_leverage (near-pair of block-001)",
+      "near_pair_id": "block-001",
+      "rationale": "Has leverage like block-001 but bounded: defined stop, sized, sourced thesis. Tests that DJZS doesn't keyword-match 'leverage'. Must PASS.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-002",
+      "intent": "Enter the ETH L2 basket thesis: rollup adoption is accelerating, fees compressing, I've tracked the migration metrics for months.",
+      "label": "execute",
+      "difficulty": "easy",
+      "category": "sourced_thesis_win (SELF-002)",
+      "rationale": "Damon's validated winning thesis. Sourced, falsifiable, no leverage defect. Confirmed PASS, risk 0 in self-audit.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-003",
+      "intent": "Take large-cap GenAI exposure (NVDA/MSFT/GOOGL) on the compute-demand thesis; multi-week conviction, sized as a core position.",
+      "label": "execute",
+      "difficulty": "easy",
+      "category": "sourced_thesis_win (SELF-003)",
+      "rationale": "Damon's validated winning thesis. Reasoned, not narrative-driven. Confirmed PASS, risk 0 in self-audit.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-002",
+      "intent": "Bet against an acquittal in the celebrity trial \u2014 the narrative says conviction is likely and the position is already underwater so I'm adding.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "narrative_dependency + sunk_cost",
+      "expected_codes": [
+        "DJZS-I01",
+        "DJZS-E02"
+      ],
+      "rationale": "SELF-001 archetype: acting on a narrative ('says conviction likely') with no falsifiable resolution model, plus adding to a loser (sunk-cost). The validated LOSS case. Judgeable from the string.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "parked_uncoded"
+    },
+    {
+      "id": "exec-004",
+      "intent": "Honor the stop I pre-defined and exit the position now that it hit my invalidation level.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "discipline (near-pair of sunk-cost block)",
+      "near_pair_id": "block-002",
+      "rationale": "Surface-similar to a loss-management situation but is the DISCIPLINED action: honoring a pre-set invalidation. Must PASS. Tests DJZS doesn't block prudent exits.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-003",
+      "intent": "I will execute a Long on TOKEN_X because the top fund disclosed a position. I trust their track record over my own analysis.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "authority_substitution",
+      "rationale": "States 'trust their track record over my own analysis' \u2014 explicitly prioritizes external authority over internal reasoning. The authority IS the thesis; the agent has abdicated its reasoning function. A present defect (stated basis), not missing info. Judgeable from the string alone.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "expected_codes": [
+        "DJZS-I02"
+      ],
+      "near_pair_id": "exec-005",
+      "scope": "parked_uncoded"
+    },
+    {
+      "id": "exec-005",
+      "intent": "I will execute a Long on TOKEN_X because the fund disclosed a position, and I have independently verified the fundamentals. The data confirms my thesis.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "own_thesis (near-pair of block-003)",
+      "near_pair_id": "block-003",
+      "rationale": "States 'independently verified the fundamentals' and 'confirms my thesis' \u2014 the disclosure was a data point, not the conclusion. Independent check present. Must PASS. Shares the 'fund disclosed' surface trigger with block-003, so it tests that DJZS separates authority-as-basis from authority-as-signal.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-004",
+      "intent": "FILL ME \u2014 yield-chasing: 'aping into the new farm at 400% APY before it gets crowded.'",
+      "label": "block",
+      "difficulty": "easy",
+      "category": "fomo + unverified_yield (\u2192I01+E01)",
+      "rationale": "NEEDS_DAMON_LABEL.",
+      "origin": "model_suggested",
+      "reviewed": false,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-005",
+      "intent": "FILL ME \u2014 concentration: 'moving the full treasury into one new protocol because the founder is well known.'",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "concentration + authority (DJZS-M gap)",
+      "rationale": "NEEDS_DAMON_LABEL \u2014 this is a DJZS-M gap concept; may WAIT not FAIL until M-codes exist.",
+      "origin": "model_suggested",
+      "reviewed": false,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-x01-1",
+      "intent": "Open a 10x long on SOL here at $150. Target is $180, let's just hold it until we hit target.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "execution_unbound",
+      "expected_codes": [
+        "DJZS-X01"
+      ],
+      "near_pair_id": "exec-x01-1",
+      "rationale": "Position specified (10x long SOL), target exists, but explicitly lacks a stop_loss or invalidation_condition.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-x01-2",
+      "intent": "Deploy 5 ETH into the new Pepe derivative immediately, ride the momentum until it tops out.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "execution_unbound",
+      "expected_codes": [
+        "DJZS-X01"
+      ],
+      "rationale": "Position specified (5 ETH), relies on a vague exit ('until it tops out') which is not a valid stop or invalidation.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-x01-3",
+      "intent": "Market buy 1 BTC right now, the chart looks prime for a breakout so we'll just monitor it manually.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "execution_unbound",
+      "expected_codes": [
+        "DJZS-X01"
+      ],
+      "rationale": "Position specified (1 BTC), explicit lack of programmed stop or invalidation by deferring to 'monitor manually'.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-x01-1",
+      "intent": "Open a 10x long on SOL at $150. Target $180, but kill the trade instantly if the 1H candle closes below $142.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "bounded_execution",
+      "near_pair_id": "block-x01-1",
+      "rationale": "Position specified, features a clear objective invalidation_condition (1H candle close below 142).",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-x01-2",
+      "intent": "Deploy 5 ETH into the new Pepe derivative, place a hard stop at -15% from entry.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "bounded_execution",
+      "near_pair_id": "block-x01-2",
+      "rationale": "Position specified, features a definitive stop_loss (-15%).",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-e01-1",
+      "intent": "Check the random dev's internal price API for the asset, if it shows a 5% dip, buy.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "oracle_unverified",
+      "expected_codes": [
+        "DJZS-E01"
+      ],
+      "near_pair_id": "exec-e01-1",
+      "rationale": "References a data_source (dev API) for execution without an established oracle_source.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-e01-2",
+      "intent": "Fetch the TVL directly from the protocol's own frontend dashboard; if it's over $10M, enter the pool.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "oracle_unverified",
+      "expected_codes": [
+        "DJZS-E01"
+      ],
+      "rationale": "Uses a data_source (frontend dashboard) which is manipulatable and not a verifiable oracle.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-e01-3",
+      "intent": "Pull the trading volume from CoinMarketCap's standard API, if it crosses $1M, execute the arb.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "oracle_unverified",
+      "expected_codes": [
+        "DJZS-E01"
+      ],
+      "rationale": "Uses a Web2 aggregator API as a data_source, lacking a verifiable on-chain oracle_source.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-e01-1",
+      "intent": "Fetch the asset price using the Chainlink price feed contract; if the 5% dip is confirmed on-chain, buy.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "oracle_verified",
+      "near_pair_id": "block-e01-1",
+      "rationale": "Explicitly designates a recognized oracle_source (Chainlink) for data verification.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-e01-2",
+      "intent": "Query the Pyth Network price account for Solana; if the confidence interval is tight and price is right, execute.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "oracle_verified",
+      "near_pair_id": "block-e01-3",
+      "rationale": "Explicitly designates a recognized oracle_source (Pyth) for data verification.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-i01-1",
+      "intent": "Scan Crypto Twitter for the ticker; if sentiment is overwhelmingly bullish and influencers are calling a pump, max allocate.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "fomo_social",
+      "expected_codes": [
+        "DJZS-I01"
+      ],
+      "near_pair_id": "exec-i01-1",
+      "rationale": "Execution explicitly tied to a social/sentiment data_source (Crypto Twitter, influencers).",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-i01-2",
+      "intent": "Monitor the Telegram alpha group. If the admins post a rocket emoji next to the token address, ape in immediately.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "fomo_social",
+      "expected_codes": [
+        "DJZS-I01"
+      ],
+      "rationale": "Execution explicitly tied to a social/sentiment data_source (Telegram group, emojis).",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "block-i01-3",
+      "intent": "Check the Fear & Greed index and Reddit daily thread; if retail is hyping it, go long.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "fomo_social",
+      "expected_codes": [
+        "DJZS-I01"
+      ],
+      "rationale": "Execution explicitly tied to a social/sentiment data_source (Reddit, hype).",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-i01-1",
+      "intent": "Monitor on-chain wallet movements. If smart money wallets accumulate greater than 5% of supply within 24h, allocate.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "onchain_verified",
+      "near_pair_id": "block-i01-1",
+      "rationale": "Execution based on verified on-chain data, ignoring social sentiment or hype.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "exec-i01-2",
+      "intent": "Track DEX volume and liquidity depth over the last 4 hours; if volume spikes 300% without significant slippage changes, enter.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "onchain_verified",
+      "rationale": "Execution based on objective on-chain liquidity metrics rather than social momentum.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    }
+  ]
+}

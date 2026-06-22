@@ -32,6 +32,7 @@ export interface IntentCase {
   rationale: string;                // WHY this label — must be judgeable from `intent`
   origin: "damon_validated" | "model_suggested";  // provenance of the label
   reviewed: boolean;                // true ONLY after Damon confirms. scorer gates on this.
+  scope?: string;                   // dataset version tag, e.g. "coded_v0.1"
 }
 
 export interface CalibrationDataset {

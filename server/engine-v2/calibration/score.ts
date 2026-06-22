@@ -54,7 +54,7 @@ export function score(dataset: CalibrationDataset, preds: Prediction[]) {
 }
 
 if (process.argv[2]) {
-  const ds: CalibrationDataset = JSON.parse(readFileSync(process.argv[3] ?? "server/engine-v2/calibration/dataset.json", "utf8"));
+  const ds: CalibrationDataset = JSON.parse(readFileSync(process.argv[3] ?? "server/engine-v2/calibration/calibration-dataset.json", "utf8"));
   const preds: Prediction[] = JSON.parse(readFileSync(process.argv[2], "utf8"));
   const { report, anyRogueSlipped } = score(ds, preds);
   console.log(JSON.stringify(report, null, 2));

@@ -111,11 +111,18 @@ export function runDeterministicAudit(input: AuditInput): EngineResult {
   const hasCritical = flags.some((f) => f.severity === "CRITICAL");
 
   let verdict: EngineVerdict;
+  const isBounded =
+    input.stop_loss.state === "present" ||
+    input.invalidation_condition.state === "present";
+
   if (hasCritical || risk_score >= FAIL_THRESHOLD) {
     // A real finding on known facts always condemns — even amid open questions.
     verdict = "FAIL";
+  } else if (flags.length === 0 && isBounded) {
+    // Bounded position, no flaw fired: remaining unknowns cannot change a no-flag verdict.
+    verdict = "PASS";
   } else if (unknown_fields.length > 0) {
-    // No finding, but we're missing facts: abstain honestly rather than guess.
+    // No finding, but an unknown could still be decision-critical: abstain rather than guess.
     verdict = "WAIT";
   } else {
     verdict = "PASS";
