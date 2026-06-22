@@ -47,9 +47,16 @@ Return STRICT JSON with exactly these keys. Every scored fact MUST be a tri-stat
   { "state": "unknown" }                           when you cannot tell — DO NOT GUESS
 
 Rules you must obey:
-- "absent" requires an affirmative absence ("no stop loss", "unhedged"). If the text is merely
-  silent or vague ("I'll bail if it tanks"), the fact is "unknown", NOT "absent" and NOT a value.
-- Never invent a number. A vague gesture is "unknown".
+- "absent" = the text affirmatively indicates NO such control exists, INCLUDING a stated plan
+  to act with no exit logic. Treat ALL of these as ABSENT (not unknown): "no stop loss",
+  "unhedged", "all in", "diamond hands", "just hold until target", "hold until we hit target",
+  "ride it until it tops out", "ride the momentum", "just monitor manually", "hold through anything".
+  A stated intention to hold/ride with no protective exit IS an affirmative absence of both
+  stop_loss and invalidation_condition — mark BOTH absent.
+- "unknown" = the text is SILENT (never addresses exit/stop logic) OR genuinely vague about a
+  value ("I'll bail if it tanks" gives no level → unknown). Use unknown only when you truly
+  cannot tell, NOT when a no-exit plan is stated.
+- Never invent a number. A vague gesture toward a VALUE is "unknown"; a stated no-exit PLAN is "absent".
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
