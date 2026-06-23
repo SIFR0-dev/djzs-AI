@@ -111,7 +111,7 @@
     "serialize-javascript": "7.0.3",
     "tailwind-merge": "^2.6.0",
     "tus-js-client": "^4.3.1",
-    "undici": "6.24.0",
+    "undici": "6.27.0",
     "vaul": "^1.1.2",
     "viem": "^2.37.9",
     "vite": "^5.4.21",
@@ -157,7 +157,7 @@
   "overrides": {
     "minimatch": "10.2.3",
     "@xmtp/proto": "3.88.0",
-    "undici": "6.24.0",
+    "undici": "6.27.0",
     "hono": "4.12.23",
     "serialize-javascript": "7.0.3",
     "cross-spawn": ">=7.0.5",
