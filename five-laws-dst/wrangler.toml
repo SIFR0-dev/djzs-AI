@@ -1,0 +1,5 @@
+name = "five-laws-dst"
+compatibility_date = "2025-06-01"
+
+[assets]
+directory = "./public"
