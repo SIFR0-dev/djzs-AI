@@ -22,6 +22,8 @@ import { uploadAuditToIrys } from "./irys";
 import { requireEscrowSignature } from "./signature-verifier";
 import { evaluateEscrowGate } from "./escrowGate";
 import { mintProofOfLogicNft, buildNftMintInput } from "./nftMinter";
+import { extractAuditInput } from "./engine-v2/extraction-layer";
+import { runDeterministicAudit } from "./engine-v2/deterministic-engine";
 
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1297,6 +1299,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trust_score_tx_hash: "string | null - Base Mainnet transaction hash for on-chain trust score update (requires agent_id and TRUST_SCORE_CONTRACT_ADDRESS)",
       },
     });
+  });
+
+  // ─── Architecture C: deterministic audit route ──────────────────────────
+  // POST /api/v2/audit  →  extraction-layer → deterministic-engine → PASS/WAIT/FAIL
+  // This is the canonical Architecture C path. The old /api/audit/* tiers remain
+  // unchanged (backward compat). WAIT is mapped to HALT explicitly — never silent.
+  const v2AuditRequestSchema = z.object({
+    intent: z.string().min(10, "Intent must be at least 10 characters"),
+  });
+
+  app.post("/api/v2/audit", createVerifiedPaymentGate("micro"), async (req: any, res: any) => {
+    const parsed = v2AuditRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "Invalid request",
+        details: parsed.error.errors,
+        expected: { intent: "string (min 10 chars) — free-text agent intent to audit" },
+      });
+    }
+
+    try {
+      const { input, raw, failsafe } = await extractAuditInput(parsed.data.intent);
+      const result = runDeterministicAudit(input);
+
+      // Explicit three-way action mapping — WAIT must never be silent.
+      const action =
+        result.verdict === "PASS" ? "PROCEED" :
+        result.verdict === "FAIL" ? "FAIL" :
+        "HALT";
+
+      const response: Record<string, unknown> = {
+        schema_version: "DJZS-ENGINE-V2",
+        verdict: result.verdict,
+        action,
+        risk_score: result.risk_score,
+        flags: result.flags,
+        unknown_fields: result.unknown_fields,
+        verdict_hash: result.verdict_hash,
+        engine: result.engine,
+        extraction_failsafe: failsafe,
+      };
+
+      // Surface WHY we're halting so the caller can resolve the unknowns.
+      if (action === "HALT") {
+        response.halt_reason =
+          `WAIT: ${result.unknown_fields.length} field(s) unresolvable from intent — ` +
+          `[${result.unknown_fields.join(", ")}]. Clarify intent and re-audit.`;
+      }
+
+      res.json(response);
+    } catch (err) {
+      console.error("[/api/v2/audit] extraction or engine error:", err);
+      res.status(500).json({
+        error: "Audit execution failed",
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
   });
 
   const httpServer = createServer(app);
