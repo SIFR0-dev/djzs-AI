@@ -56,6 +56,19 @@ function flag(code: LFCode, evidence: string): EngineFlag {
 // `unknown` field does not fire — that uncertainty surfaces as a WAIT instead
 // of a guessed verdict. This is the absent-vs-unknown discipline in code.
 
+// v0.1 heuristic: a present oracle whose description signals a self-reported /
+// manipulatable source, not a verifiable feed. String-match for now — replace with a
+// schema trust-tier field under DJZS-M. Acceptance test: block-e01-2.
+const UNVERIFIED_ORACLE_MARKERS = [
+  "self-reported", "self reported", "frontend", "dashboard", "their own",
+  "protocol's own", "protocols own", "the team's", "website", "app shows", "ui shows",
+];
+function oracleIsUnverified(oracle: Field<string>): boolean {
+  if (oracle.state !== "present") return false;
+  const v = String(oracle.value ?? "").toLowerCase();
+  return UNVERIFIED_ORACLE_MARKERS.some(m => v.includes(m));
+}
+
 /** DJZS-X01 EXECUTION_UNBOUND — an active position with no halt condition. */
 function ruleExecutionUnbound(input: AuditInput): EngineFlag | null {
   const hasPosition = is(input.leverage, "present") || is(input.position_size, "present");
@@ -72,7 +85,8 @@ function ruleExecutionUnbound(input: AuditInput): EngineFlag | null {
 
 /** DJZS-E01 ORACLE_UNVERIFIED — data cited without a verifiable oracle source. */
 function ruleOracleUnverified(input: AuditInput): EngineFlag | null {
-  if (is(input.data_sources, "present") && is(input.oracle_source, "absent")) {
+  if (is(input.data_sources, "present") &&
+      (is(input.oracle_source, "absent") || oracleIsUnverified(input.oracle_source))) {
     return flag(
       "DJZS-E01",
       "External data sources cited, but no oracle_source provides provenance.",
