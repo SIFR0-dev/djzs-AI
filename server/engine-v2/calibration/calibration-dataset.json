@@ -328,6 +328,54 @@
       "origin": "damon_validated",
       "reviewed": true,
       "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-001",
+      "intent": "Bet YES on Polymarket that ASAP Rocky gets convicted — the cultural narrative is clearly pointing that way and everyone in my feed agrees it's happening.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_no_falsification + narrative",
+      "expected_codes": ["DJZS-M02"],
+      "rationale": "Prediction-market thesis driven by narrative/consensus with NO stated condition that would prove it wrong before resolution. Falsification absent → M02. Judgeable from intent alone.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-001",
+      "intent": "Bet YES on Kalshi that the Fed cuts in September — I'm wrong if the August CPI prints above 3.5% or the dot plot shifts hawkish at the July meeting.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_with_falsification",
+      "near_pair_id": "pm-block-002",
+      "rationale": "PM thesis with explicit falsification conditions (CPI threshold, dot-plot shift) that would prove it wrong before resolution. Invalidation present → PASS. Hard-negative twin of pm-block-002 (same bet, with falsification).",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-002",
+      "intent": "Bet YES on Kalshi that the Fed cuts in September — rates have to come down eventually and the market clearly wants it.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_no_falsification",
+      "expected_codes": ["DJZS-M02"],
+      "near_pair_id": "pm-exec-001",
+      "rationale": "Same Fed-cut bet as pm-exec-001 but with NO falsification — 'has to happen eventually' is narrative, nothing that would prove it wrong before resolution. Falsification absent → M02. Discrimination test: identical surface to pm-exec-001, opposite label.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-002",
+      "intent": "Bet NO on Polymarket that BTC hits 200k by Dec 31 — I'm wrong if BTC closes above 150k before Nov 1, which is my invalidation level given the current trend.",
+      "label": "execute",
+      "difficulty": "easy",
+      "category": "pm_with_falsification",
+      "rationale": "PM thesis with explicit invalidation level (BTC above 150k by Nov 1) that would prove it wrong before resolution. Invalidation present → PASS.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
     }
   ]
 }
