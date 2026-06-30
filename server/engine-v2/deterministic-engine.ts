@@ -16,13 +16,14 @@
  * canonical table as everything else in the system.
  */
 import { LOGIC_FAILURE_TAXONOMY, type LFCode, type Severity } from "@shared/audit-schema";
+import { PM_TAXONOMY, PM_FAIL_THRESHOLD, type PMCode } from "@shared/pm-taxonomy";
 import { AUDIT_FIELDS, type AuditField, type AuditInput, type Field } from "./audit-input-schema";
 import { canonicalize, sha256Hex } from "./hash";
 
 export type EngineVerdict = "PASS" | "WAIT" | "FAIL";
 
 export interface EngineFlag {
-  code: LFCode;
+  code: LFCode | PMCode;
   name: string;
   severity: Severity;
   weight: number;
@@ -48,6 +49,12 @@ const is = <T>(f: Field<T>, state: Field<T>["state"]) => f.state === state;
 
 function flag(code: LFCode, evidence: string): EngineFlag {
   const def = LOGIC_FAILURE_TAXONOMY[code];
+  return { code, name: def.name, severity: def.severity, weight: def.weight, evidence };
+}
+
+/** PM counterpart of flag() — reads name/severity/weight from the DJZS-M taxonomy. */
+function flagPM(code: PMCode, evidence: string): EngineFlag {
+  const def = PM_TAXONOMY[code];
   return { code, name: def.name, severity: def.severity, weight: def.weight, evidence };
 }
 
@@ -109,8 +116,32 @@ function ruleFomoLoop(input: AuditInput): EngineFlag | null {
 
 const RULES = [ruleExecutionUnbound, ruleOracleUnverified, ruleFomoLoop];
 
+// ─── Prediction-market rules (DJZS-M) ───────────────────────────────────────
+// These fire ONLY when audit_context === "prediction_market" and score against
+// PM_TAXONOMY. They never run on the perp path.
+
+/** DJZS-M02 FALSIFICATION_ABSENT — a PM thesis with no stated falsification condition. */
+function ruleFalsificationAbsent(input: AuditInput): EngineFlag | null {
+  if (input.audit_context === "prediction_market" &&
+      is(input.invalidation_condition, "absent")) {
+    return flagPM(
+      "DJZS-M02",
+      "No falsification condition stated — the thesis cannot be proven wrong before resolution.",
+    );
+  }
+  return null;
+}
+
+const PM_RULES = [ruleFalsificationAbsent];
+
 /** The single, pure entry point. */
 export function runDeterministicAudit(input: AuditInput): EngineResult {
+  // Route prediction-market audits to the parallel PM scoring path. Perp audits
+  // (audit_context unset or "perp") fall through to the unchanged logic below.
+  if (input.audit_context === "prediction_market") {
+    return runPredictionAudit(input);
+  }
+
   const flags: EngineFlag[] = [];
   for (const rule of RULES) {
     const fired = rule(input);
@@ -144,6 +175,60 @@ export function runDeterministicAudit(input: AuditInput): EngineResult {
 
   // Hash is a pure function of the verdict-bearing content, so it is stable
   // across runs by construction — no cache, no nonce, no timestamp.
+  const verdict_hash = sha256Hex(
+    canonicalize({
+      verdict,
+      risk_score,
+      flags: flags.map((f) => f.code).sort(),
+      unknown_fields,
+    }),
+  );
+
+  return {
+    verdict,
+    risk_score,
+    flags,
+    unknown_fields,
+    verdict_hash,
+    engine: "djzs-engine-v2/deterministic",
+  };
+}
+
+/**
+ * Prediction-market scoring path (DJZS-M taxonomy). Mirrors the perp verdict
+ * shape exactly, but runs PM_RULES, sums PM weights, and condemns at
+ * PM_FAIL_THRESHOLD. Reached only via the guard in runDeterministicAudit, so
+ * the perp path is never affected. "Bounded" here means the thesis states a
+ * falsification condition (invalidation_condition present) — the PM analog of a
+ * stop-loss; an `unknown` falsification surfaces as WAIT, not a guessed PASS.
+ */
+function runPredictionAudit(input: AuditInput): EngineResult {
+  const flags: EngineFlag[] = [];
+  for (const rule of PM_RULES) {
+    const fired = rule(input);
+    if (fired) flags.push(fired);
+  }
+
+  const unknown_fields = AUDIT_FIELDS.filter(
+    (name) => (input[name] as Field<unknown>).state === "unknown",
+  );
+
+  const risk_score = flags.reduce((sum, f) => sum + f.weight, 0);
+  const hasCritical = flags.some((f) => f.severity === "CRITICAL");
+
+  let verdict: EngineVerdict;
+  const isBounded = input.invalidation_condition.state === "present";
+
+  if (hasCritical || risk_score >= PM_FAIL_THRESHOLD) {
+    verdict = "FAIL";
+  } else if (flags.length === 0 && isBounded) {
+    verdict = "PASS";
+  } else if (unknown_fields.length > 0) {
+    verdict = "WAIT";
+  } else {
+    verdict = "PASS";
+  }
+
   const verdict_hash = sha256Hex(
     canonicalize({
       verdict,
