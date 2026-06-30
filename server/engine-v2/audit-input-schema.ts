@@ -31,6 +31,15 @@ export interface AuditInput {
   intended_action: string;
   market_type?: string;
 
+  /**
+   * Which taxonomy this audit is scored against. Optional and absence-tolerant:
+   * a missing value is treated as "perp" (the original DJZS-LF behavior), so
+   * every existing input remains valid and unchanged. "prediction_market"
+   * selects the parallel DJZS-M taxonomy. This is descriptive routing context —
+   * it is NOT one of the scored facts.
+   */
+  audit_context?: "perp" | "prediction_market";
+
   /** scored facts — every one is tri-state */
   leverage: Field<number>;
   position_size: Field<number>;
@@ -74,6 +83,7 @@ export const auditInputSchema = z.object({
   agent_type: z.string(),
   intended_action: z.string(),
   market_type: z.string().optional(),
+  audit_context: z.enum(["perp", "prediction_market"]).optional(),
   leverage: fieldSchema,
   position_size: fieldSchema,
   stop_loss: fieldSchema,
