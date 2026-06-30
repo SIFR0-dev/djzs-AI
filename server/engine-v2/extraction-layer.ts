@@ -57,12 +57,37 @@ Rules you must obey:
   value ("I'll bail if it tanks" gives no level → unknown). Use unknown only when you truly
   cannot tell, NOT when a no-exit plan is stated.
 - Never invent a number. A vague gesture toward a VALUE is "unknown"; a stated no-exit PLAN is "absent".
+- An AGGRESSIVE ENTRY with no risk management is an affirmative ABSENT of stop_loss. A position
+  described ONLY by direction + size/leverage + a momentum/sentiment rationale ("go long ETH 10x
+  because Twitter is bullish", "ape into X, it's pumping", "max long, sentiment is hot"), with NO
+  exit, stop, or invalidation mentioned anywhere, is a stated plan to enter with no protective
+  exit — mark stop_loss absent (not unknown). The test: did the trader describe an aggressive/
+  leveraged entry AND conspicuously include no protective exit? → absent. This does NOT override the
+  unknown cases above: a vague gesture at an exit with no level ("I'll bail if it drops") stays
+  unknown, and a neutral factual mention with no leverage/urgency that simply doesn't discuss stops
+  stays unknown. Aggressive entry + conspicuous silence on exits → absent; merely not mentioning
+  stops in passing → unknown.
+- PREDICTION-MARKET theses: invalidation_condition is the FALSIFICATION — a stated observable
+  condition that would prove the thesis WRONG before the market resolves (e.g. "I'm wrong if the
+  poll average drops below 45% by Oct 1", "invalid if the official source reports under 2% growth").
+  A stated falsification → present. A thesis that asserts the outcome with NO falsifiable condition
+  (pure narrative, "it'll definitely happen", "the vibe is clearly YES", "everyone knows this
+  resolves YES") IS an affirmative absence of a falsification → absent. A thesis that is simply
+  SILENT on what would make it wrong → unknown. (This mirrors the no-exit-plan rule above: a stated
+  no-falsification stance is "absent", mere silence is "unknown".)
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
   leverage (number), position_size (number), stop_loss (number|string),
   take_profit (number|string), invalidation_condition (string),
-  data_sources (string[]), oracle_source (string), confidence (number 0-100)`;
+  data_sources (string[]), oracle_source (string), confidence (number 0-100)
+
+Optional key — audit_context:
+  Set "audit_context": "prediction_market" ONLY if the intent is a bet on a market OUTCOME — it
+  mentions a prediction-market venue (Kalshi, Polymarket, Limitless), a YES/NO outcome, a resolution
+  date, or the probability of an event resolving. Otherwise OMIT this key entirely (the default is a
+  perpetual/spot trade). Be conservative: if you are unsure, OMIT it. This is a plain string, NOT a
+  tri-state object.`;
 
 /**
  * Normalize one raw field from the model into a trusted tri-state Field.
@@ -152,6 +177,12 @@ export async function extractAuditInput(
   };
   if (typeof parsed.market_type === "string" && parsed.market_type.trim() !== "") {
     input.market_type = parsed.market_type;
+  }
+  // audit_context is a plain enum, not tri-state. Honor it ONLY when the model
+  // emits exactly "prediction_market"; anything else (absent, "perp", garbage)
+  // leaves it unset → the engine's default perp path. Conservative by design.
+  if (parsed.audit_context === "prediction_market") {
+    input.audit_context = "prediction_market";
   }
 
   return { input, raw, failsafe: false };
