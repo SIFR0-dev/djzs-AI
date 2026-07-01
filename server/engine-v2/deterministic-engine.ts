@@ -17,7 +17,7 @@
  */
 import { LOGIC_FAILURE_TAXONOMY, type LFCode, type Severity } from "@shared/audit-schema";
 import { PM_TAXONOMY, PM_FAIL_THRESHOLD, type PMCode } from "@shared/pm-taxonomy";
-import { AUDIT_FIELDS, type AuditField, type AuditInput, type Field } from "./audit-input-schema";
+import { AUDIT_FIELDS, PM_AUDIT_FIELDS, type AuditField, type AuditInput, type Field, type PMAuditField } from "./audit-input-schema";
 import { canonicalize, sha256Hex } from "./hash";
 
 export type EngineVerdict = "PASS" | "WAIT" | "FAIL";
@@ -34,7 +34,7 @@ export interface EngineResult {
   verdict: EngineVerdict;
   risk_score: number;
   flags: EngineFlag[];
-  unknown_fields: AuditField[];
+  unknown_fields: (AuditField | PMAuditField)[];
   verdict_hash: string;
   engine: "djzs-engine-v2/deterministic";
 }
@@ -132,7 +132,19 @@ function ruleFalsificationAbsent(input: AuditInput): EngineFlag | null {
   return null;
 }
 
-const PM_RULES = [ruleFalsificationAbsent];
+/** DJZS-M01 NARRATIVE_RESOLUTION_GAP — the thesis never engages the market's resolution criteria. */
+function ruleNarrativeResolutionGap(input: AuditInput): EngineFlag | null {
+  if (input.audit_context === "prediction_market" &&
+      is(input.resolution_engagement, "absent")) {
+    return flagPM(
+      "DJZS-M01",
+      "Thesis reasons about a proposition adjacent to the market's actual resolution criteria (source, threshold, definition, or window).",
+    );
+  }
+  return null;
+}
+
+const PM_RULES = [ruleFalsificationAbsent, ruleNarrativeResolutionGap];
 
 /** The single, pure entry point. */
 export function runDeterministicAudit(input: AuditInput): EngineResult {
@@ -209,7 +221,9 @@ function runPredictionAudit(input: AuditInput): EngineResult {
     if (fired) flags.push(fired);
   }
 
-  const unknown_fields = AUDIT_FIELDS.filter(
+  // PM unknowns are computed over PM_AUDIT_FIELDS, not AUDIT_FIELDS — the PM
+  // path only abstains on facts the PM taxonomy actually scores.
+  const unknown_fields = PM_AUDIT_FIELDS.filter(
     (name) => (input[name] as Field<unknown>).state === "unknown",
   );
 

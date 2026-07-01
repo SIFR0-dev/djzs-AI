@@ -171,6 +171,9 @@ export async function extractAuditInput(
     stop_loss: coerceField(parsed.stop_loss) as Field<number | string>,
     take_profit: coerceField(parsed.take_profit) as Field<number | string>,
     invalidation_condition: coerceField(parsed.invalidation_condition) as Field<string>,
+    // Not in the extraction prompt yet — coerceField(undefined) → UNKNOWN, so
+    // this is a type-completeness fill, not an extraction behavior change.
+    resolution_engagement: coerceField(parsed.resolution_engagement) as Field<string>,
     data_sources: coerceField(parsed.data_sources) as Field<string[]>,
     oracle_source: coerceField(parsed.oracle_source) as Field<string>,
     confidence: coerceField(parsed.confidence) as Field<number>,
