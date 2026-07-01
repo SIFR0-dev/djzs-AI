@@ -75,11 +75,44 @@ Rules you must obey:
   resolves YES") IS an affirmative absence of a falsification → absent. A thesis that is simply
   SILENT on what would make it wrong → unknown. (This mirrors the no-exit-plan rule above: a stated
   no-falsification stance is "absent", mere silence is "unknown".)
+- resolution_engagement — ONLY meaningful when audit_context is "prediction_market" (for anything
+  else, always return unknown). It captures whether the thesis engages the market's ACTUAL
+  resolution criteria — the specific source, threshold, definition, and time window the market
+  resolves on — versus arguing an adjacent proposition.
+    PRESENT: the thesis engages the specific resolved question — it names/argues the actual
+    resolution source, the exact threshold/definition, and respects the resolution window.
+    ("Fed cuts at the September FOMC, per the official post-meeting statement" — engages the
+    specific meeting and source.) value = a short quote/paraphrase of how it engages.
+    ABSENT: the thesis argues a proposition ADJACENT to what the market resolves on — the
+    direction, the title, or the vibe — conspicuously not engaging the specific criteria.
+    Four shapes, all ABSENT:
+      (a) title-vs-rules: argues the headline/direction, not the specific resolved question
+          ("the Fed will cut eventually" for a market resolving on the SEPTEMBER meeting)
+      (b) wrong source: relies on an authority other than the market's resolution source
+          (betting on a tweet/social post when the market resolves on consensus reporting or an
+          official source)
+      (c) wrong threshold/definition: argues an adjacent cutoff or definition ("resign" when the
+          market resolves on "leaves office"; an initial data print when it resolves on the revised)
+      (d) wrong window: argues the event happens but ignores whether it happens within the
+          resolution deadline
+    What is NOT adjacency:
+    - A personal invalidation or exit level at a DIFFERENT threshold or EARLIER date than the
+      market's (e.g. "I'm wrong if BTC closes above 150k before Nov 1" on a 200k-by-Dec-31 market)
+      is trade construction, not adjacency. Shapes (c) and (d) apply to what the thesis ARGUES
+      resolves — never to where it places its own exit or falsification.
+    - A thesis that names the market's own threshold and deadline IS engaging the criteria — mark
+      PRESENT (value = how it engages), even if it never cites the resolution source.
+    - Never mark ABSENT merely because the resolution source is uncited. If the thesis engages the
+      threshold/window but the source is unstated, that is PRESENT or unknown — never absent.
+    UNKNOWN: you cannot tell from the intent whether it engages the criteria.
+  Be conservative: mark ABSENT only when the thesis clearly argues adjacent; mark PRESENT only
+  when it clearly engages the specific criteria; otherwise unknown.
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
   leverage (number), position_size (number), stop_loss (number|string),
   take_profit (number|string), invalidation_condition (string),
+  resolution_engagement (string),
   data_sources (string[]), oracle_source (string), confidence (number 0-100)
 
 Optional key — audit_context:
