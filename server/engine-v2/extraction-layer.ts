@@ -100,8 +100,12 @@ Rules you must obey:
       market's (e.g. "I'm wrong if BTC closes above 150k before Nov 1" on a 200k-by-Dec-31 market)
       is trade construction, not adjacency. Shapes (c) and (d) apply to what the thesis ARGUES
       resolves — never to where it places its own exit or falsification.
-    - A thesis that names the market's own threshold and deadline IS engaging the criteria — mark
-      PRESENT (value = how it engages), even if it never cites the resolution source.
+    - ABSENT requires an IDENTIFIABLE adjacent proposition the thesis actually ARGUES — you must be
+      able to name which shape (a)-(d) applies and what adjacent claim the reasoning makes. A thesis
+      that states NO affirmative reasoning at all (just the bet, an exit level, or position
+      mechanics) argues nothing — mark unknown, never absent. Merely naming the market's terms in
+      the bet description is neither engagement nor adjacency; judge the REASONING, not the bet
+      statement.
     - Never mark ABSENT merely because the resolution source is uncited. If the thesis engages the
       threshold/window but the source is unstated, that is PRESENT or unknown — never absent.
     UNKNOWN: you cannot tell from the intent whether it engages the criteria.
