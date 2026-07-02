@@ -752,7 +752,7 @@ export default function Chat() {
             <Link href="/docs" className="font-mono text-[10px] text-zinc-600 hover:text-green-400 transition-colors" data-testid="link-chat-footer-docs">Docs</Link>
           </div>
           <p className="font-mono text-[10px] text-zinc-800" data-testid="text-chat-footer-tagline">
-            djzsx.eth | No agent acts without audit. &copy; 2026
+            djzs.ai | No agent acts without audit. &copy; 2026
           </p>
         </div>
       </footer>

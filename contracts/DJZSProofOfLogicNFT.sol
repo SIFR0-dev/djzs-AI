@@ -223,7 +223,7 @@ contract DJZSProofOfLogicNFT is ERC721, Ownable {
             '<line x1="20" y1="410" x2="380" y2="410" stroke="#27272a" stroke-width="1"/>',
             '<text x="20" y="435" class="d">PROVENANCE: IRYS_DATACHAIN</text>',
             '<text x="20" y="455" class="d">PROTOCOL: DJZS ADVERSARIAL LOGIC FIREWALL</text>',
-            '<text x="20" y="475" class="d">djzsx.eth | No agent acts without audit.</text>',
+            '<text x="20" y="475" class="d">djzs.ai | No agent acts without audit.</text>',
 
             '</svg>'
         );

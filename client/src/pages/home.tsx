@@ -637,7 +637,7 @@ function Footer() {
         </div>
 
         <div className="font-mono text-[10px] text-zinc-800 pt-4 border-t border-zinc-900">
-          djzsx.eth | Base Mainnet | No agent acts without audit. © 2026
+          djzs.ai | Base Mainnet | No agent acts without audit. © 2026
         </div>
       </div>
     </footer>

@@ -34,7 +34,7 @@ The following components existed as part of the DJZS Protocol project prior to T
 - Rate limiting (per-IP/wallet/tier)
 
 **Identity**
-- ENS identity (`djzsx.eth`) and Web3.bio resolution
+- ENS identity (`username.dj-z-s.eth`) and Web3.bio resolution
 - Landing page at djzs.ai
 - GitHub repository (UsernameDAOEth/djzs-AI) — 1,100+ commits pre-hackathon
 

@@ -21,7 +21,7 @@
   - 7 of 11 DJZS-LF failure codes implemented
   - Irys Datachain certificate storage live
   - 4 Solidity contracts written (DJZSLogicTrustScore, DJZSEscrowLock, DJZSStaking, DJZSAgentRegistry)
-  - Landing page at djzs.ai with ENS identity `djzsx.eth`
+  - Landing page at djzs.ai with ENS identity `username.dj-z-s.eth`
   - Public GitHub repo (UsernameDAOEth/djzs-AI)
 
 ---

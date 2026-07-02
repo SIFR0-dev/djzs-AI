@@ -530,7 +530,7 @@ export default function Demo() {
             <Link href="/chat" className="font-mono text-[10px] text-zinc-600 hover:text-green-400 transition-colors" data-testid="link-demo-footer-chat">Live Audit</Link>
           </div>
           <p className="font-mono text-[10px] text-zinc-800" data-testid="text-demo-footer-tagline">
-            djzsx.eth | No agent acts without audit. &copy; 2026
+            djzs.ai | No agent acts without audit. &copy; 2026
           </p>
         </div>
       </footer>
