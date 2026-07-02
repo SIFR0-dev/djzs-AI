@@ -376,6 +376,128 @@
       "origin": "damon_validated",
       "reviewed": true,
       "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-003",
+      "intent": "Bet YES on Kalshi that the Fed cuts at the September meeting — the easing cycle is inevitable and the economy clearly needs relief this year. I'm wrong if unemployment drops below 3.8% before the meeting.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m01_title_vs_rules",
+      "expected_codes": [
+        "DJZS-M01"
+      ],
+      "near_pair_id": "pm-exec-003",
+      "rationale": "Falsification present (unemployment threshold) so M02 is silent; the affirmative reasoning argues cuts-this-year/inevitable — adjacent to the specific September-meeting resolution (shape a). An October cut vindicates the reasoning and loses the bet. M01 only.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-003",
+      "intent": "Bet YES on Kalshi that the Fed cuts at the September meeting — the July dot plot shifted two members toward a September cut and Powell's Jackson Hole language pointed at that specific meeting. I'm wrong if the August jobs report comes in above 250k.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_engaged_falsified",
+      "near_pair_id": "pm-block-003",
+      "rationale": "Engages the specific resolved question — dot-plot shift and Powell language point at the September meeting itself. Falsified. Identical surface to pm-block-003 with engaged reasoning. Must PASS.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-004",
+      "intent": "Bet YES on Polymarket that the SEC approves the ETH staking ETF by March 31 — CryptoOracleFeed already marked it approved on their tracker and that's the feed everyone treats as the source of record for these bets, so it's done. I'm wrong if the issuer withdraws its S-1 before March.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m01_wrong_source",
+      "expected_codes": [
+        "DJZS-M01"
+      ],
+      "near_pair_id": "pm-exec-004",
+      "rationale": "Falsified (S-1 withdrawal) so M02 silent; the reasoning treats a third-party tracker as the source of record while the market resolves on official SEC action — wrong RESOLUTION authority (shape b), arguing what the feed says rather than what the market's source resolves. M01 only. Re-authored from a prior wording that conflated bad evidence with wrong resolution source.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-004",
+      "intent": "Bet YES on Polymarket that the SEC approves the ETH staking ETF by March 31 — the market resolves on the SEC's official docket, and the docket already shows the final amended S-1 with the accelerated-review designation that preceded every prior approval. I'm wrong if the SEC issues another comment letter before March.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_engaged_falsified",
+      "near_pair_id": "pm-block-004",
+      "rationale": "Reasons from the resolution source itself (the SEC's official docket and its accelerated-review designation). Falsified. Twin of pm-block-004. Must PASS.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-005",
+      "intent": "Bet YES on Kalshi that March CPI YoY prints above 3.0% — everyday prices are obviously way hotter than that, my grocery bill is up double digits and rent everywhere is brutal. I'm wrong if gas prices fall 15% before the release.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m01_wrong_threshold",
+      "expected_codes": [
+        "DJZS-M01"
+      ],
+      "near_pair_id": "pm-exec-005",
+      "rationale": "Falsified (gas threshold) so M02 silent; reasoning argues felt/personal-basket inflation while the market resolves on the official CPI index — wrong definition (shape c). M01 only.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-005",
+      "intent": "Bet YES on Kalshi that March CPI YoY prints above 3.0% — the resolved number is the BLS CPI-U YoY figure, February printed 3.2% with shelter (a third of the index weight) still running 5%+, so the index math holds above 3.0 even if energy softens. I'm wrong if the February figure gets revised below 3.0%.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_engaged_falsified",
+      "near_pair_id": "pm-block-005",
+      "rationale": "Engages the exact resolved statistic (BLS CPI-U YoY), its prior print, and index composition. Falsified. Twin of pm-block-005. Must PASS.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-006",
+      "intent": "Bet YES on Polymarket that SpaceX completes a crewed Starship flight by June 30 — the program is clearly on track and a crewed flight is definitely coming, every test keeps improving. I'm wrong if the next test flight ends in a RUD.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m01_wrong_window",
+      "expected_codes": [
+        "DJZS-M01"
+      ],
+      "near_pair_id": "pm-exec-006",
+      "rationale": "Falsified (next-test RUD) so M02 silent; reasoning argues the event happens eventually ('definitely coming') while never engaging the June 30 deadline — wrong window (shape d). M01 only.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-006",
+      "intent": "Bet NO on Polymarket that SpaceX completes a crewed Starship flight by June 30 — the crewed mission requires the life-support demo flight first, which is manifested for May at the earliest, leaving no realistic turnaround inside the June 30 window. I'm wrong if the life-support demo flies before April 15.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_engaged_falsified",
+      "near_pair_id": "pm-block-006",
+      "rationale": "Engages the resolution window directly with schedule math (prerequisite demo manifested for May, no turnaround inside June 30). Falsified, well-reasoned NO. Twin of pm-block-006. Must PASS.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-m03-seed-001",
+      "intent": "Bet YES on Polymarket that the SEC approves the ETH staking ETF by March 31 — a well-connected fund manager tweeted that approval is already done internally, and his last three calls all hit. I'm wrong if the issuer withdraws its S-1 before March.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m03_probability_unsourced_seed",
+      "expected_codes": [
+        "DJZS-M03"
+      ],
+      "rationale": "SEEDED for DJZS-M03 (not yet implemented): rumor-grade evidence (a tweet) for a claim about the resolved event itself. Reclassified out of M01 — the reasoning engages the resolved question; its defect is evidence quality, not adjacency. Formerly the pm-block-004 wording.",
+      "origin": "damon_validated",
+      "reviewed": false,
+      "scope": "m03_pending"
     }
   ]
 }

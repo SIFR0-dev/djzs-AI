@@ -76,45 +76,38 @@ Rules you must obey:
   SILENT on what would make it wrong → unknown. (This mirrors the no-exit-plan rule above: a stated
   no-falsification stance is "absent", mere silence is "unknown".)
 - resolution_engagement — ONLY meaningful when audit_context is "prediction_market" (for anything
-  else, always return unknown). It captures whether the thesis engages the market's ACTUAL
-  resolution criteria — the specific source, threshold, definition, and time window the market
-  resolves on — versus arguing an adjacent proposition.
-    PRESENT: the thesis engages the specific resolved question — it names/argues the actual
-    resolution source, the exact threshold/definition, and respects the resolution window.
-    ("Fed cuts at the September FOMC, per the official post-meeting statement" — engages the
-    specific meeting and source.) value = a short quote/paraphrase of how it engages.
-    ABSENT: the thesis argues a proposition ADJACENT to what the market resolves on — the
-    direction, the title, or the vibe — conspicuously not engaging the specific criteria.
-    For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
-      {"state":"absent","shape":"a"|"b"|"c"|"d","quote":"<verbatim text copied from the intent — the adjacent claim the reasoning makes>"}
-    Four shapes, all ABSENT:
-      (a) title-vs-rules: argues the headline/direction, not the specific resolved question
-          ("the Fed will cut eventually" for a market resolving on the SEPTEMBER meeting)
+  else, always return unknown). It captures whether the REASONING engages the market's OWN
+  resolution criteria — its window/date, its threshold or event definition, its resolution
+  source — versus arguing a proposition adjacent to all of them.
+    PRESENT (engaged): the reasoning engages at least ONE of the market's own resolution
+    criteria specifically — the market's window/date, the market's threshold or event
+    definition, or the market's resolution source — either directly or by deriving the outcome
+    through it. Schedule math against the market's stated deadline counts as engaging the
+    window; component math against the resolved index counts as engaging the definition.
+    value = a short quote/paraphrase of HOW it engages.
+    Engagement means arguing about THE MARKET'S criterion itself. Reasoning about a DIFFERENT
+    date, a DIFFERENT threshold, or a DIFFERENT authority than the market's own is adjacency,
+    not engagement ("this year" does not engage a market resolving on a specific meeting).
+    ABSENT (adjacent): the reasoning makes an identifiable argued claim that engages NONE of the
+    market's criteria — adjacent to all of them. Four shapes, all ABSENT:
+      (a) title/direction only: argues the headline or direction, not the resolved question
       (b) wrong source: relies on an authority other than the market's resolution source
-          (betting on a tweet/social post when the market resolves on consensus reporting or an
-          official source)
-      (c) wrong threshold/definition: argues an adjacent cutoff or definition ("resign" when the
-          market resolves on "leaves office"; an initial data print when it resolves on the revised)
-      (d) wrong window: argues the event happens but ignores whether it happens within the
-          resolution deadline
-    What is NOT adjacency:
-    - A personal invalidation or exit level at a DIFFERENT threshold or EARLIER date than the
-      market's (e.g. "I'm wrong if BTC closes above 150k before Nov 1" on a 200k-by-Dec-31 market)
-      is trade construction, not adjacency. Shapes (c) and (d) apply to what the thesis ARGUES
-      resolves — never to where it places its own exit or falsification.
-    - ABSENT requires an IDENTIFIABLE adjacent proposition the thesis actually ARGUES — you must be
-      able to name which shape (a)-(d) applies and what adjacent claim the reasoning makes. The
-      "shape" tag and verbatim "quote" in the absent emission ARE that naming, machine-checkable:
-      an absent whose quote is not copied verbatim from the intent is discarded. A thesis
-      that states NO affirmative reasoning at all (just the bet, an exit level, or position
-      mechanics) argues nothing — mark unknown, never absent. Merely naming the market's terms in
-      the bet description is neither engagement nor adjacency; judge the REASONING, not the bet
-      statement.
-    - Never mark ABSENT merely because the resolution source is uncited. If the thesis engages the
-      threshold/window but the source is unstated, that is PRESENT or unknown — never absent.
-    UNKNOWN: you cannot tell from the intent whether it engages the criteria.
-  Be conservative: mark ABSENT only when the thesis clearly argues adjacent; mark PRESENT only
-  when it clearly engages the specific criteria; otherwise unknown.
+      (c) wrong threshold/definition: argues an adjacent cutoff or definition
+      (d) wrong window: argues the event happens but not within the market's resolution window
+    For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
+      {"state":"absent","shape":"a"|"b"|"c"|"d","quote":"<verbatim text from the intent — the adjacent claim>"}
+    Never absent — these are NOT adjacency:
+    - A personal invalidation or exit level is trade construction, not adjacency; a
+      falsification clause is never the argued thesis.
+    - Absence of a source citation is never, by itself, evidence of adjacency.
+    - A thesis that argues NOTHING (just the bet, an exit level, or position mechanics) argues
+      no adjacent claim — mark unknown, never absent. Absent requires an identifiable argued
+      adjacent claim.
+    - Judge the REASONING, not the bet statement — the market's terms appearing in the bet
+      description is neither engagement nor adjacency; the criterion must be engaged IN THE
+      REASONING.
+    UNKNOWN: when unclear, unknown. Mark absent only on a clearly argued adjacent claim; mark
+    present only when a market criterion is clearly engaged in the reasoning; otherwise unknown.
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
