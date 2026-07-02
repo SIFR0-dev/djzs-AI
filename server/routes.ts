@@ -22,7 +22,7 @@ import { uploadAuditToIrys } from "./irys";
 import { requireEscrowSignature } from "./signature-verifier";
 import { evaluateEscrowGate } from "./escrowGate";
 import { mintProofOfLogicNft, buildNftMintInput } from "./nftMinter";
-import { extractAuditInput } from "./engine-v2/extraction-layer";
+import { extractAuditInputConsensus } from "./engine-v2/extraction-layer";
 import { runDeterministicAudit } from "./engine-v2/deterministic-engine";
 
 
@@ -1320,7 +1320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { input, raw, failsafe } = await extractAuditInput(parsed.data.intent);
+      const { input, raw, failsafe } = await extractAuditInputConsensus(parsed.data.intent);
       const result = runDeterministicAudit(input);
 
       // Explicit three-way action mapping — WAIT must never be silent.

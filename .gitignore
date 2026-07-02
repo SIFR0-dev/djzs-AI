@@ -39,3 +39,4 @@ subscribe_*.png
 wallet_modal.png
 walletconnect_qr.png
 scripts/self-audit/dataset-self-audit.json
+server/engine-v2/calibration/predictions.json

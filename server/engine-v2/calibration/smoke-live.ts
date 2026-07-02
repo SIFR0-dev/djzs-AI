@@ -1,4 +1,4 @@
-import { extractAuditInput } from "../extraction-layer";
+import { extractAuditInputConsensus } from "../extraction-layer";
 import { runDeterministicAudit } from "../deterministic-engine";
 
 const CASES = [
@@ -20,7 +20,7 @@ async function main() {
     console.log(`\n[${c.id}]  expect: ${c.expect}`);
     console.log(`  intent: ${c.intent}`);
     try {
-      const { input, failsafe } = await extractAuditInput(c.intent);
+      const { input, failsafe } = await extractAuditInputConsensus(c.intent);
       const r = runDeterministicAudit(input);
       const f = (k: string, v: { state?: string; value?: unknown } | null | undefined) => `${k}=${v?.state === "present" ? JSON.stringify(v.value) : v?.state ?? "?"}`;
       console.log(`  extracted: ${f("lev", input.leverage)} ${f("stop", input.stop_loss)} ${f("inval", input.invalidation_condition)} ${f("oracle", input.oracle_source)} ${f("sources", input.data_sources)}`);

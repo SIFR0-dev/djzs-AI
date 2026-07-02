@@ -85,6 +85,8 @@ Rules you must obey:
     specific meeting and source.) value = a short quote/paraphrase of how it engages.
     ABSENT: the thesis argues a proposition ADJACENT to what the market resolves on — the
     direction, the title, or the vibe — conspicuously not engaging the specific criteria.
+    For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
+      {"state":"absent","shape":"a"|"b"|"c"|"d","quote":"<verbatim text copied from the intent — the adjacent claim the reasoning makes>"}
     Four shapes, all ABSENT:
       (a) title-vs-rules: argues the headline/direction, not the specific resolved question
           ("the Fed will cut eventually" for a market resolving on the SEPTEMBER meeting)
@@ -101,7 +103,9 @@ Rules you must obey:
       is trade construction, not adjacency. Shapes (c) and (d) apply to what the thesis ARGUES
       resolves — never to where it places its own exit or falsification.
     - ABSENT requires an IDENTIFIABLE adjacent proposition the thesis actually ARGUES — you must be
-      able to name which shape (a)-(d) applies and what adjacent claim the reasoning makes. A thesis
+      able to name which shape (a)-(d) applies and what adjacent claim the reasoning makes. The
+      "shape" tag and verbatim "quote" in the absent emission ARE that naming, machine-checkable:
+      an absent whose quote is not copied verbatim from the intent is discarded. A thesis
       that states NO affirmative reasoning at all (just the bet, an exit level, or position
       mechanics) argues nothing — mark unknown, never absent. Merely naming the market's terms in
       the bet description is neither engagement nor adjacency; judge the REASONING, not the bet
@@ -165,8 +169,11 @@ function allUnknownInput(): AuditInput {
     agent_type: "unknown",
     intended_action: "unknown",
   } as AuditInput;
-  for (const field of AUDIT_FIELDS) {
-    (base as Record<AuditField, Field<unknown>>)[field] = UNKNOWN;
+  // CONSENSUS_FIELDS, not AUDIT_FIELDS: every tri-state fact in AuditInput must
+  // be set (incl. the PM-only resolution_engagement), or a failsafe sample
+  // carries an undefined field into the consensus merge.
+  for (const field of CONSENSUS_FIELDS) {
+    (base as Record<ConsensusField, Field<unknown>>)[field] = UNKNOWN;
   }
   return base;
 }
@@ -184,7 +191,12 @@ export async function extractAuditInput(
 ): Promise<ExtractionResult> {
   const prompt = `${STRICT_EXTRACTION_PROMPT}\n\nAGENT INTENT:\n${text}`;
   const raw = await model(prompt);
+  const { input, failsafe } = parseOne(raw, text);
+  return { input, raw, failsafe };
+}
 
+/** Parse one raw model output into a trusted AuditInput (the fail-safe pipeline). */
+function parseOne(raw: string, originalText: string): { input: AuditInput; failsafe: boolean } {
   let parsed: Record<string, unknown> | null = null;
   try {
     const candidate = JSON.parse(extractJsonBlock(raw));
@@ -197,9 +209,10 @@ export async function extractAuditInput(
 
   // Fail-safe: unparseable output → all-UNKNOWN → engine will WAIT.
   if (!parsed) {
-    return { input: allUnknownInput(), raw, failsafe: true };
+    return { input: allUnknownInput(), failsafe: true };
   }
 
+  const gated = gateResolutionEngagement(parsed.resolution_engagement, originalText);
   const input: AuditInput = {
     agent_type: asString(parsed.agent_type),
     intended_action: asString(parsed.intended_action),
@@ -208,13 +221,22 @@ export async function extractAuditInput(
     stop_loss: coerceField(parsed.stop_loss) as Field<number | string>,
     take_profit: coerceField(parsed.take_profit) as Field<number | string>,
     invalidation_condition: coerceField(parsed.invalidation_condition) as Field<string>,
-    // Not in the extraction prompt yet — coerceField(undefined) → UNKNOWN, so
-    // this is a type-completeness fill, not an extraction behavior change.
-    resolution_engagement: coerceField(parsed.resolution_engagement) as Field<string>,
+    resolution_engagement: coerceField(gated.field) as Field<string>,
     data_sources: coerceField(parsed.data_sources) as Field<string[]>,
     oracle_source: coerceField(parsed.oracle_source) as Field<string>,
     confidence: coerceField(parsed.confidence) as Field<number>,
   };
+  // A falsification clause cannot serve as evidence that the thesis argues an adjacent proposition.
+  if (gated.quote !== null &&
+      input.resolution_engagement.state === "absent" &&
+      input.invalidation_condition.state === "present" &&
+      typeof input.invalidation_condition.value === "string") {
+    const q = collapseWs(gated.quote);
+    const v = collapseWs(input.invalidation_condition.value);
+    if (v !== "" && (q.includes(v) || v.includes(q))) {
+      input.resolution_engagement = UNKNOWN;
+    }
+  }
   if (typeof parsed.market_type === "string" && parsed.market_type.trim() !== "") {
     input.market_type = parsed.market_type;
   }
@@ -225,7 +247,148 @@ export async function extractAuditInput(
     input.audit_context = "prediction_market";
   }
 
-  return { input, raw, failsafe: false };
+  return { input, failsafe: false };
+}
+
+// ─── Quote-gated absent (resolution_engagement only) ─────────────────────
+
+const ADJACENCY_SHAPES = ["a", "b", "c", "d"];
+
+const collapseWs = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * An ABSENT resolution_engagement is trusted only when it carries its own
+ * evidence: a shape tag (a-d) and a quote copied verbatim from the intent.
+ * Anything less is demoted to UNKNOWN — which can only suppress M01, never
+ * fire it. A surviving absent is stripped to a clean {state:"absent"}; the
+ * shape/quote evidence persists in the retained raw output. The validated
+ * quote is returned alongside so parseOne can run the falsification-overlap
+ * check against the same sample's invalidation_condition.
+ */
+function gateResolutionEngagement(
+  raw: unknown,
+  originalText: string,
+): { field: unknown; quote: string | null } {
+  if (!raw || typeof raw !== "object") return { field: raw, quote: null };
+  const obj = raw as Record<string, unknown>;
+  if (obj.state !== "absent") return { field: raw, quote: null };
+  const shapeOk = typeof obj.shape === "string" && ADJACENCY_SHAPES.includes(obj.shape);
+  const quoteOk =
+    typeof obj.quote === "string" &&
+    obj.quote.trim() !== "" &&
+    collapseWs(originalText).includes(collapseWs(obj.quote));
+  return shapeOk && quoteOk
+    ? { field: { state: "absent" }, quote: obj.quote as string }
+    : { field: UNKNOWN, quote: null };
+}
+
+// ─── Consensus extraction ─────────────────────────────────────────────────
+
+/** All tri-state facts a consensus merge must cover (perp list + PM-only field). */
+const CONSENSUS_FIELDS = [...AUDIT_FIELDS, "resolution_engagement"] as const;
+type ConsensusField = (typeof CONSENSUS_FIELDS)[number];
+
+export interface ConsensusExtractionResult extends ExtractionResult {
+  /** fields demoted to unknown because the n samples disagreed on state */
+  disagreements: string[];
+}
+
+/** Majority value (by strict JSON identity) if one exists, else the first sample's. */
+function majorityElseFirst<T>(values: T[]): T {
+  const counts = new Map<string, { value: T; count: number }>();
+  for (const v of values) {
+    const key = JSON.stringify(v);
+    const entry = counts.get(key);
+    if (entry) entry.count++;
+    else counts.set(key, { value: v, count: 1 });
+  }
+  for (const { value, count } of counts.values()) {
+    if (count > values.length / 2) return value;
+  }
+  return values[0];
+}
+
+/** Union of all sampled arrays, case-insensitive dedupe, original casing kept. */
+function unionCaseInsensitive(arrays: string[][]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const arr of arrays) {
+    for (const item of arr) {
+      const key = String(item).toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(item);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Consensus extraction: n independent samples of the SAME prompt, merged
+ * per field by state unanimity. Any state disagreement → UNKNOWN (the engine
+ * WAITs rather than acting on a fact the model can't report stably). A
+ * failsafe sample contributes all-unknown votes — no special-casing.
+ */
+export async function extractAuditInputConsensus(
+  text: string,
+  model: ModelFn = defaultModel,
+  n = 3,
+): Promise<ConsensusExtractionResult> {
+  const prompt = `${STRICT_EXTRACTION_PROMPT}\n\nAGENT INTENT:\n${text}`;
+  const raws = await Promise.all(Array.from({ length: n }, () => model(prompt)));
+  const samples = raws.map((raw) => parseOne(raw, text));
+  const inputs = samples.map((s) => s.input);
+
+  const input = {
+    agent_type: majorityElseFirst(inputs.map((i) => i.agent_type)),
+    intended_action: majorityElseFirst(inputs.map((i) => i.intended_action)),
+  } as AuditInput;
+
+  const marketTypes = inputs
+    .map((i) => i.market_type)
+    .filter((v): v is string => typeof v === "string");
+  if (marketTypes.length > 0) {
+    input.market_type = majorityElseFirst(marketTypes);
+  }
+
+  const pmVotes = inputs.filter((i) => i.audit_context === "prediction_market").length;
+  if (pmVotes >= 2) {
+    input.audit_context = "prediction_market";
+  }
+
+  const disagreements: string[] = [];
+  const fields = input as unknown as Record<ConsensusField, Field<unknown>>;
+  for (const field of CONSENSUS_FIELDS) {
+    const votes = inputs.map((i) => i[field] as Field<unknown>);
+    const state = votes[0].state;
+    if (!votes.every((v) => v.state === state)) {
+      disagreements.push(field);
+      fields[field] = UNKNOWN;
+      continue;
+    }
+    if (state === "absent") {
+      fields[field] = { state: "absent" };
+      continue;
+    }
+    if (state === "unknown") {
+      fields[field] = UNKNOWN;
+      continue;
+    }
+    const values = votes.map((v) => (v as { state: "present"; value: unknown }).value);
+    const merged =
+      field === "data_sources" ? unionCaseInsensitive(values as string[][]) :
+      field === "oracle_source" ? [...new Set(values.map(String))].join(" | ") :
+      majorityElseFirst(values);
+    fields[field] = { state: "present", value: merged };
+  }
+
+  return {
+    input,
+    raw: JSON.stringify(raws),
+    failsafe: samples.every((s) => s.failsafe),
+    disagreements,
+  };
 }
 
 /**
