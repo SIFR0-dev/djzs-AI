@@ -231,7 +231,12 @@ function runPredictionAudit(input: AuditInput): EngineResult {
   const hasCritical = flags.some((f) => f.severity === "CRITICAL");
 
   let verdict: EngineVerdict;
-  const isBounded = input.invalidation_condition.state === "present";
+  // PM PASS requires an engaged, falsified thesis. Unknown engagement falls
+  // through to the WAIT rung (abstain-on-unknown); absent engagement is M01's
+  // FAIL. A bounded bet with no auditable thesis is not certified.
+  const isBounded =
+    input.invalidation_condition.state === "present" &&
+    input.resolution_engagement.state === "present";
 
   if (hasCritical || risk_score >= PM_FAIL_THRESHOLD) {
     verdict = "FAIL";
