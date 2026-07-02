@@ -5,12 +5,12 @@ This repo is now usable from a Codex-first local workflow. Replit can remain a d
 ## Source Of Truth
 
 - GitHub: `https://github.com/UsernameDAOEth/djzs-AI`
-- Local Codex checkout: `/Users/djzsx/Documents/Codex/2026-06-02/djzs-AI`
+- Local Codex checkout: `~/Documents/Codex/2026-06-02/djzs-AI`
 
 ## Setup
 
 ```bash
-cd /Users/djzsx/Documents/Codex/2026-06-02/djzs-AI
+cd ~/Documents/Codex/2026-06-02/djzs-AI
 npm ci
 cp .env.example .env
 ```
