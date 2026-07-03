@@ -116,13 +116,18 @@ Rules you must obey:
     or a claimed mispricing/edge versus the market's odds.
     A VERIFIABLE basis is checkable data or derivation NAMED IN THE REASONING: a dataset or
     filing, an official source or schedule, the market's own pricing/volume history, or an
-    explicit model/derivation with stated inputs.
+    explicit model/derivation with stated inputs — including the thesis's OWN derivation when
+    it shows its work: schedule or dependency math, component math, or a documented pattern in
+    the market's resolution source (e.g. prior entries on the official docket).
     PRESENT: EITHER the reasoning asserts no probability/edge at all (nothing claimed = nothing
     unsourced — vacuously present), OR every assertion carries a verifiable basis.
     value = a short quote/paraphrase of the basis, or "no probability asserted".
     ABSENT: at least one assertion whose ONLY support is rumor-grade or missing — an unnamed
-    insider, a tweet or "people are saying", a personal or third-party TRACK RECORD ("his last
-    three calls hit"), pure conviction, or no support at all.
+    insider, a tweet or "people are saying", a personal or third-party FORECASTING track record
+    ("his last three calls hit" — someone's history of being RIGHT), pure conviction, or no
+    support at all. A documented pattern in the resolution source itself ("this designation
+    preceded every prior approval on the docket") is NOT a forecasting track record; it is
+    checkable evidence.
     For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
       {"state":"absent","quote":"<verbatim text from the intent — the unsourced assertion>"}
     Never absent — these are NOT unsourced assertions:
@@ -132,6 +137,10 @@ Rules you must obey:
     - Attribution is not verification: naming WHO said it (a tweet, a fund manager, an insider)
       does not make the basis verifiable — checkable data, filings, official sources, market
       pricing history, or an explicit derivation do.
+    - A conclusion the reasoning DERIVES from stated facts, dates, thresholds, or the market's
+      own criteria ("leaving no realistic turnaround inside the window") is not an unsourced
+      assertion — the shown derivation IS its basis. Absent requires support that is MISSING,
+      not support that is the surrounding reasoning itself.
     UNKNOWN: when unclear whether an assertion is made, or whether its basis is verifiable,
     unknown — never guess absent.
 
@@ -214,8 +223,24 @@ export async function extractAuditInput(
   return { input, raw, failsafe };
 }
 
+/** Gate-surviving absent quote for the two CRITICAL-driving PM fields (null unless the field is a surviving absent). */
+type SurvivingQuotes = { resolution_engagement: string | null; probability_basis: string | null };
+
+/** Markers that betray a quote is lifting the falsification clause, never the argued thesis. */
+const FALSIFICATION_MARKERS = ["wrong if", "invalid if", "invalidation"];
+
+/**
+ * Tokens (substring, lowercased intent) that signal an ASSERTED probability/edge.
+ * "likel" covers likely/likelihood; "probabl" covers probable/probably/probability.
+ * M03 (PROBABILITY_UNSOURCED) is definitionally moot without one of these present.
+ */
+const PROBABILITY_TOKENS = ["%", "percent", "odds", "chance", "likel", "probabl"];
+
 /** Parse one raw model output into a trusted AuditInput (the fail-safe pipeline). */
-function parseOne(raw: string, originalText: string): { input: AuditInput; failsafe: boolean } {
+function parseOne(
+  raw: string,
+  originalText: string,
+): { input: AuditInput; failsafe: boolean; quotes: SurvivingQuotes } {
   let parsed: Record<string, unknown> | null = null;
   try {
     const candidate = JSON.parse(extractJsonBlock(raw));
@@ -228,7 +253,11 @@ function parseOne(raw: string, originalText: string): { input: AuditInput; fails
 
   // Fail-safe: unparseable output → all-UNKNOWN → engine will WAIT.
   if (!parsed) {
-    return { input: allUnknownInput(), failsafe: true };
+    return {
+      input: allUnknownInput(),
+      failsafe: true,
+      quotes: { resolution_engagement: null, probability_basis: null },
+    };
   }
 
   const gated = gateResolutionEngagement(parsed.resolution_engagement, originalText);
@@ -242,7 +271,7 @@ function parseOne(raw: string, originalText: string): { input: AuditInput; fails
     take_profit: coerceField(parsed.take_profit) as Field<number | string>,
     invalidation_condition: coerceField(parsed.invalidation_condition) as Field<string>,
     resolution_engagement: coerceField(gated.field) as Field<string>,
-    probability_basis: coerceField(gatedBasis) as Field<string>,
+    probability_basis: coerceField(gatedBasis.field) as Field<string>,
     data_sources: coerceField(parsed.data_sources) as Field<string[]>,
     oracle_source: coerceField(parsed.oracle_source) as Field<string>,
     confidence: coerceField(parsed.confidence) as Field<number>,
@@ -258,6 +287,30 @@ function parseOne(raw: string, originalText: string): { input: AuditInput; fails
       input.resolution_engagement = UNKNOWN;
     }
   }
+  // FIX A — falsification-marker check (resolution_engagement only): a quote
+  // containing a falsification marker is quoting the falsification clause, which
+  // is never the argued thesis. Complements the value-overlap check above — the
+  // model paraphrases its own invalidation value (probe 1: "or the" -> "OR"),
+  // defeating lexical containment; this tests the gate-verified verbatim quote
+  // directly. Scope: engagement only, the observed mechanism.
+  if (gated.quote !== null && input.resolution_engagement.state === "absent") {
+    const q = collapseWs(gated.quote);
+    if (FALSIFICATION_MARKERS.some((m) => q.includes(m))) {
+      input.resolution_engagement = UNKNOWN;
+    }
+  }
+  // M03 DEFINITIONAL PRECONDITION (probability_basis only): an unsourced-probability
+  // flag requires an asserted probability. If the basis survives as absent but the
+  // INTENT contains no explicit probability token anywhere, there is nothing to be
+  // unsourced — certainty prose ("already done") is not a probability claim. Demote
+  // to unknown: absence of an assertion drains to abstention, never to a CRITICAL.
+  // Scope: the whole intent (the assertion may sit anywhere), not the gate quote.
+  if (input.probability_basis.state === "absent") {
+    const intent = originalText.toLowerCase();
+    if (!PROBABILITY_TOKENS.some((t) => intent.includes(t))) {
+      input.probability_basis = UNKNOWN;
+    }
+  }
   if (typeof parsed.market_type === "string" && parsed.market_type.trim() !== "") {
     input.market_type = parsed.market_type;
   }
@@ -268,7 +321,15 @@ function parseOne(raw: string, originalText: string): { input: AuditInput; fails
     input.audit_context = "prediction_market";
   }
 
-  return { input, failsafe: false };
+  // Carry the SURVIVING absent quote for the two evidence-bearing PM fields to the
+  // consensus merge (evidence-unanimity check). Non-null only when the field is
+  // still absent after every per-sample demotion above; the merged AuditInput stays
+  // clean — these quotes live in `raw` and this internal channel, never on the field.
+  const quotes: SurvivingQuotes = {
+    resolution_engagement: input.resolution_engagement.state === "absent" ? gated.quote : null,
+    probability_basis: input.probability_basis.state === "absent" ? gatedBasis.quote : null,
+  };
+  return { input, failsafe: false, quotes };
 }
 
 // ─── Quote-gated absent (resolution_engagement only) ─────────────────────
@@ -310,17 +371,23 @@ function gateResolutionEngagement(
  * the intent, the unsourced assertion itself. No quote, or a quote not found
  * in the intent → UNKNOWN (never a guessed absent). Mirrors the M01 gate;
  * deliberately NO shape taxonomy and NO overlap check for v0 — the verbatim
- * quote is the entire evidence contract.
+ * quote is the entire evidence contract. The validated quote is returned
+ * alongside so the consensus merge can enforce evidence-unanimity across samples.
  */
-function gateProbabilityBasis(raw: unknown, originalText: string): unknown {
-  if (!raw || typeof raw !== "object") return raw;
+function gateProbabilityBasis(
+  raw: unknown,
+  originalText: string,
+): { field: unknown; quote: string | null } {
+  if (!raw || typeof raw !== "object") return { field: raw, quote: null };
   const obj = raw as Record<string, unknown>;
-  if (obj.state !== "absent") return raw;
+  if (obj.state !== "absent") return { field: raw, quote: null };
   const quoteOk =
     typeof obj.quote === "string" &&
     obj.quote.trim() !== "" &&
     collapseWs(originalText).includes(collapseWs(obj.quote));
-  return quoteOk ? { state: "absent" } : UNKNOWN;
+  return quoteOk
+    ? { field: { state: "absent" }, quote: obj.quote as string }
+    : { field: UNKNOWN, quote: null };
 }
 
 // ─── Consensus extraction ─────────────────────────────────────────────────
@@ -329,8 +396,19 @@ function gateProbabilityBasis(raw: unknown, originalText: string): unknown {
 const CONSENSUS_FIELDS = [...AUDIT_FIELDS, "resolution_engagement", "probability_basis"] as const;
 type ConsensusField = (typeof CONSENSUS_FIELDS)[number];
 
+/** The two CRITICAL-driving PM absents that must clear evidence-unanimity, not merely state-unanimity. */
+const EVIDENCE_FIELDS = new Set<ConsensusField>(["resolution_engagement", "probability_basis"]);
+
+/** Normalize an absent's evidence quote for STRICT cross-sample identity: lowercase, collapse whitespace, trim, strip trailing punctuation. */
+const normalizeEvidence = (s: string) => collapseWs(s).replace(/[.,;:!?]+$/, "").trim();
+
 export interface ConsensusExtractionResult extends ExtractionResult {
-  /** fields demoted to unknown because the n samples disagreed on state */
+  /**
+   * Fields demoted to unknown because the n samples disagreed. A bare field name
+   * is a STATE split (samples disagreed present/absent/unknown); a "<field>(evidence)"
+   * entry is an EVIDENCE split (all samples absent, but their quotes differ) — only
+   * the two CRITICAL-driving PM fields can produce the latter.
+   */
   disagreements: string[];
 }
 
@@ -409,6 +487,22 @@ export async function extractAuditInputConsensus(
       continue;
     }
     if (state === "absent") {
+      // FIX B — a CRITICAL-driving absent requires unanimous EVIDENCE, not merely
+      // unanimous state: identical "absent" states whose quotes differ mean the
+      // samples condemned DIFFERENT claims. STRICT identity, not containment —
+      // probe 2's superset quote would unify the exact case this must demote.
+      if (EVIDENCE_FIELDS.has(field)) {
+        const quotes = samples.map(
+          (s) => s.quotes[field as "resolution_engagement" | "probability_basis"],
+        );
+        const norm = quotes.map((q) => (typeof q === "string" ? normalizeEvidence(q) : ""));
+        const unanimousEvidence = norm.every((q) => q !== "" && q === norm[0]);
+        if (!unanimousEvidence) {
+          fields[field] = UNKNOWN;
+          disagreements.push(`${field}(evidence)`);
+          continue;
+        }
+      }
       fields[field] = { state: "absent" };
       continue;
     }

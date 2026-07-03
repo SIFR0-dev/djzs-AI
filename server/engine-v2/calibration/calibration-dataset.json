@@ -496,8 +496,46 @@
       ],
       "rationale": "SEEDED for DJZS-M03 (not yet implemented): rumor-grade evidence (a tweet) for a claim about the resolved event itself. Reclassified out of M01 — the reasoning engages the resolved question; its defect is evidence quality, not adjacency. Formerly the pm-block-004 wording.",
       "origin": "damon_validated",
-      "reviewed": false,
-      "scope": "m03_pending"
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-007",
+      "intent": "Bet YES on Polymarket that the Fed announces a QT taper at the September meeting — call it 80%, that's just my gut from watching this Fed. The market resolves on the official FOMC statement. I'm wrong if the August minutes show no taper discussion.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m03_unsourced_probability",
+      "expected_codes": [
+        "DJZS-M03"
+      ],
+      "near_pair_id": "pm-exec-007",
+      "rationale": "Invalidation present (August-minutes condition) and engagement present (the September meeting + the official FOMC statement, the market's own resolution source) — M02 and M01 silent. The 80% is explicitly disclaimed as gut feel: a stated-no-basis probability → probability_basis absent → M03 only. Judgeable from intent alone.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-007",
+      "intent": "Bet YES on Polymarket that the Fed announces a QT taper at the September meeting — the July minutes already flagged preliminary taper parameters and the SOMA runoff schedule mechanically reaches the reserve floor in October, which puts a September announcement near 80%. The market resolves on the official FOMC statement. I'm wrong if the August minutes show no taper discussion.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_sourced_probability",
+      "near_pair_id": "pm-block-007",
+      "rationale": "Same bet and same falsification as pm-block-007; the 80% now rides on a documented pattern in the resolution source (July minutes flagging taper parameters) plus dependency math (the SOMA runoff schedule) — a verifiable basis per Ruling 3 Clause A → probability_basis present. Discrimination on basis presence alone. Must not FAIL.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-008",
+      "intent": "Bet NO on Polymarket that the EU AI Act's GPAI codes of practice take effect before August 2 — the implementing regulation requires a six-week comment period that has not opened yet, and the calendar math leaves no path to an effective date inside the window. The market resolves on publication in the Official Journal. I'm wrong if the comment period opens before June 20.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_vacuous_present_derivation",
+      "rationale": "Asserts no probability anywhere — vacuous-present: a thesis asserting no probability has nothing unsourced, so M03 must stay silent. The reasoning is a Clause-C derivation (comment-period requirement + calendar math against the window), with engagement (the Official Journal, the market's resolution source, and the August 2 window) and falsification present. Must not FAIL.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
     }
   ]
 }
