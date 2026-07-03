@@ -108,12 +108,38 @@ Rules you must obey:
       REASONING.
     UNKNOWN: when unclear, unknown. Mark absent only on a clearly argued adjacent claim; mark
     present only when a market criterion is clearly engaged in the reasoning; otherwise unknown.
+- probability_basis — ONLY meaningful when audit_context is "prediction_market" (for anything
+  else, always return unknown). It captures whether every probability/edge ASSERTION in the
+  reasoning carries a VERIFIABLE basis.
+    An ASSERTION is a claimed likelihood or edge: a stated probability ("70% likely"), a
+    certainty claim about the outcome ("approval is already done", "guaranteed to resolve YES"),
+    or a claimed mispricing/edge versus the market's odds.
+    A VERIFIABLE basis is checkable data or derivation NAMED IN THE REASONING: a dataset or
+    filing, an official source or schedule, the market's own pricing/volume history, or an
+    explicit model/derivation with stated inputs.
+    PRESENT: EITHER the reasoning asserts no probability/edge at all (nothing claimed = nothing
+    unsourced — vacuously present), OR every assertion carries a verifiable basis.
+    value = a short quote/paraphrase of the basis, or "no probability asserted".
+    ABSENT: at least one assertion whose ONLY support is rumor-grade or missing — an unnamed
+    insider, a tweet or "people are saying", a personal or third-party TRACK RECORD ("his last
+    three calls hit"), pure conviction, or no support at all.
+    For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
+      {"state":"absent","quote":"<verbatim text from the intent — the unsourced assertion>"}
+    Never absent — these are NOT unsourced assertions:
+    - A thesis that asserts no probability, certainty, or edge argues nothing to source — mark
+      present (vacuously), never absent.
+    - A falsification clause or an exit level is trade construction, not a probability assertion.
+    - Attribution is not verification: naming WHO said it (a tweet, a fund manager, an insider)
+      does not make the basis verifiable — checkable data, filings, official sources, market
+      pricing history, or an explicit derivation do.
+    UNKNOWN: when unclear whether an assertion is made, or whether its basis is verifiable,
+    unknown — never guess absent.
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
   leverage (number), position_size (number), stop_loss (number|string),
   take_profit (number|string), invalidation_condition (string),
-  resolution_engagement (string),
+  resolution_engagement (string), probability_basis (string),
   data_sources (string[]), oracle_source (string), confidence (number 0-100)
 
 Optional key — audit_context:
@@ -206,6 +232,7 @@ function parseOne(raw: string, originalText: string): { input: AuditInput; fails
   }
 
   const gated = gateResolutionEngagement(parsed.resolution_engagement, originalText);
+  const gatedBasis = gateProbabilityBasis(parsed.probability_basis, originalText);
   const input: AuditInput = {
     agent_type: asString(parsed.agent_type),
     intended_action: asString(parsed.intended_action),
@@ -215,6 +242,7 @@ function parseOne(raw: string, originalText: string): { input: AuditInput; fails
     take_profit: coerceField(parsed.take_profit) as Field<number | string>,
     invalidation_condition: coerceField(parsed.invalidation_condition) as Field<string>,
     resolution_engagement: coerceField(gated.field) as Field<string>,
+    probability_basis: coerceField(gatedBasis) as Field<string>,
     data_sources: coerceField(parsed.data_sources) as Field<string[]>,
     oracle_source: coerceField(parsed.oracle_source) as Field<string>,
     confidence: coerceField(parsed.confidence) as Field<number>,
@@ -275,10 +303,30 @@ function gateResolutionEngagement(
     : { field: UNKNOWN, quote: null };
 }
 
+// ─── Quote-gated absent (probability_basis) ───────────────────────────────
+
+/**
+ * An ABSENT probability_basis is trusted only when it quotes, verbatim from
+ * the intent, the unsourced assertion itself. No quote, or a quote not found
+ * in the intent → UNKNOWN (never a guessed absent). Mirrors the M01 gate;
+ * deliberately NO shape taxonomy and NO overlap check for v0 — the verbatim
+ * quote is the entire evidence contract.
+ */
+function gateProbabilityBasis(raw: unknown, originalText: string): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const obj = raw as Record<string, unknown>;
+  if (obj.state !== "absent") return raw;
+  const quoteOk =
+    typeof obj.quote === "string" &&
+    obj.quote.trim() !== "" &&
+    collapseWs(originalText).includes(collapseWs(obj.quote));
+  return quoteOk ? { state: "absent" } : UNKNOWN;
+}
+
 // ─── Consensus extraction ─────────────────────────────────────────────────
 
-/** All tri-state facts a consensus merge must cover (perp list + PM-only field). */
-const CONSENSUS_FIELDS = [...AUDIT_FIELDS, "resolution_engagement"] as const;
+/** All tri-state facts a consensus merge must cover (perp list + PM-only fields). */
+const CONSENSUS_FIELDS = [...AUDIT_FIELDS, "resolution_engagement", "probability_basis"] as const;
 type ConsensusField = (typeof CONSENSUS_FIELDS)[number];
 
 export interface ConsensusExtractionResult extends ExtractionResult {

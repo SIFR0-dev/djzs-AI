@@ -48,6 +48,8 @@ export interface AuditInput {
   invalidation_condition: Field<string>;
   /** PM-only scored fact — listed in PM_AUDIT_FIELDS, deliberately NOT in AUDIT_FIELDS. */
   resolution_engagement: Field<string>;
+  /** PM-only scored fact — listed in PM_AUDIT_FIELDS, deliberately NOT in AUDIT_FIELDS. */
+  probability_basis: Field<string>;
   data_sources: Field<string[]>;
   oracle_source: Field<string>;
   confidence: Field<number>;
@@ -76,7 +78,7 @@ export type AuditField = (typeof AUDIT_FIELDS)[number];
  * THIS list, in this order; AUDIT_FIELDS above stays frozen so the perp path
  * (WAIT-report ordering and verdict hashes) is untouched.
  */
-export const PM_AUDIT_FIELDS = ["invalidation_condition", "resolution_engagement"] as const;
+export const PM_AUDIT_FIELDS = ["invalidation_condition", "resolution_engagement", "probability_basis"] as const;
 
 export type PMAuditField = (typeof PM_AUDIT_FIELDS)[number];
 
@@ -101,6 +103,7 @@ export const auditInputSchema = z.object({
   take_profit: fieldSchema,
   invalidation_condition: fieldSchema,
   resolution_engagement: fieldSchema,
+  probability_basis: fieldSchema,
   data_sources: fieldSchema,
   oracle_source: fieldSchema,
   confidence: fieldSchema,

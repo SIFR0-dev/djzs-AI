@@ -144,7 +144,19 @@ function ruleNarrativeResolutionGap(input: AuditInput): EngineFlag | null {
   return null;
 }
 
-const PM_RULES = [ruleFalsificationAbsent, ruleNarrativeResolutionGap];
+/** DJZS-M03 PROBABILITY_UNSOURCED — a probability/edge asserted on rumor-grade or missing basis. */
+function ruleProbabilityUnsourced(input: AuditInput): EngineFlag | null {
+  if (input.audit_context === "prediction_market" &&
+      is(input.probability_basis, "absent")) {
+    return flagPM(
+      "DJZS-M03",
+      "Probability or edge asserted without verifiable basis — rumor, track record, or bare conviction is not a source.",
+    );
+  }
+  return null;
+}
+
+const PM_RULES = [ruleFalsificationAbsent, ruleNarrativeResolutionGap, ruleProbabilityUnsourced];
 
 /** The single, pure entry point. */
 export function runDeterministicAudit(input: AuditInput): EngineResult {
@@ -231,12 +243,15 @@ function runPredictionAudit(input: AuditInput): EngineResult {
   const hasCritical = flags.some((f) => f.severity === "CRITICAL");
 
   let verdict: EngineVerdict;
-  // PM PASS requires an engaged, falsified thesis. Unknown engagement falls
-  // through to the WAIT rung (abstain-on-unknown); absent engagement is M01's
-  // FAIL. A bounded bet with no auditable thesis is not certified.
+  // PM PASS requires an engaged, falsified, sourced thesis. Unknown engagement
+  // or unknown probability basis falls through to the WAIT rung
+  // (abstain-on-unknown); absent engagement is M01's FAIL, absent basis M03's.
+  // A bounded bet the engine could not audit on every scored PM field is not
+  // certified.
   const isBounded =
     input.invalidation_condition.state === "present" &&
-    input.resolution_engagement.state === "present";
+    input.resolution_engagement.state === "present" &&
+    input.probability_basis.state === "present";
 
   if (hasCritical || risk_score >= PM_FAIL_THRESHOLD) {
     verdict = "FAIL";
