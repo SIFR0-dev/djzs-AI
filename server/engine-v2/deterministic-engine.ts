@@ -156,7 +156,22 @@ function ruleProbabilityUnsourced(input: AuditInput): EngineFlag | null {
   return null;
 }
 
-const PM_RULES = [ruleFalsificationAbsent, ruleNarrativeResolutionGap, ruleProbabilityUnsourced];
+/** DJZS-M04 CONSENSUS_NO_EDGE — the thesis's stated edge is the consensus/market position itself. */
+function ruleConsensusNoEdge(input: AuditInput): EngineFlag | null {
+  // `input.edge_claim &&` guard: edge_claim is deliberately NOT in PM_AUDIT_FIELDS,
+  // so legacy/frozen PM inputs omit the key entirely. Treat a missing field as
+  // "not absent" (no fire) so existing PM verdict_hashes stay byte-identical.
+  if (input.audit_context === "prediction_market" &&
+      input.edge_claim && is(input.edge_claim, "absent")) {
+    return flagPM(
+      "DJZS-M04",
+      "The thesis's stated edge is the consensus/market position itself — no independent reason the market is mispriced.",
+    );
+  }
+  return null;
+}
+
+const PM_RULES = [ruleFalsificationAbsent, ruleNarrativeResolutionGap, ruleProbabilityUnsourced, ruleConsensusNoEdge];
 
 /** The single, pure entry point. */
 export function runDeterministicAudit(input: AuditInput): EngineResult {

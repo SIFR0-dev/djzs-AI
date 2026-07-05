@@ -50,6 +50,13 @@ export interface AuditInput {
   resolution_engagement: Field<string>;
   /** PM-only scored fact — listed in PM_AUDIT_FIELDS, deliberately NOT in AUDIT_FIELDS. */
   probability_basis: Field<string>;
+  /**
+   * PM-only ADVISORY signal. Not in PM_AUDIT_FIELDS: advisory uncertainty must not
+   * create WAIT-pressure, and unknown_fields feeds the verdict_hash — existing PM
+   * hashes stay frozen. Not in isBounded: the L3 principle — a field joins the
+   * scored sets iff a solo block depends on it; solo M04 cannot block by frozen weight.
+   */
+  edge_claim: Field<string>;
   data_sources: Field<string[]>;
   oracle_source: Field<string>;
   confidence: Field<number>;
@@ -104,6 +111,7 @@ export const auditInputSchema = z.object({
   invalidation_condition: fieldSchema,
   resolution_engagement: fieldSchema,
   probability_basis: fieldSchema,
+  edge_claim: fieldSchema,
   data_sources: fieldSchema,
   oracle_source: fieldSchema,
   confidence: fieldSchema,

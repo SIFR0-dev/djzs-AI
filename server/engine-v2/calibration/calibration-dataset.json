@@ -536,6 +536,54 @@
       "origin": "damon_validated",
       "reviewed": true,
       "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-008",
+      "intent": "Bet YES on Polymarket that the Fed cuts at the September meeting — it's trading at 92¢ and everyone knows it's happening, I'd say 95% at least. The market resolves on the official FOMC statement. I'm wrong if the August minutes turn hawkish.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m04_consensus_edge_stack_m03",
+      "expected_codes": ["DJZS-M03","DJZS-M04"],
+      "near_pair_id": "pm-exec-009",
+      "rationale": "Engagement (September meeting + official statement) and invalidation (August minutes) present — M01/M02 silent. '95%' token present, attributed to nothing beyond gut above the price → M03. The stated case is the price and 'everyone knows' — consensus-as-edge → M04. 25+15=40 → FAIL, both codes membership-scored.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-009",
+      "intent": "Bet YES on Polymarket that the Fed cuts at the September meeting — it's trading at 92¢, but the market hasn't priced this morning's minutes revision showing two more members shifted dovish; that's cheap given the shift. The market resolves on the official FOMC statement. I'm wrong if the August minutes turn hawkish.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_articulated_edge",
+      "near_pair_id": "pm-block-008",
+      "rationale": "Identical surface to pm-block-008; 'the market hasn't priced X' is an articulated mispricing → edge present → M04 silent. No probability token anywhere → M03 structurally cannot fire (definitional precondition) — immune to the derived-% residual by construction; vacuous-present leaves nothing unsourced. Must never FAIL. Re-authored: the prior wording's incidental '97%' was a drafting artifact beyond the case's M04 near-pair purpose (residual-B false-blocked it 2/2; sourced-% coverage lives in pm-exec-007).",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-block-009",
+      "intent": "Bet YES on Polymarket that the ETH staking ETF gets approved by March 31 — it's at 88¢, the crowd has this one right, easy money. The market resolves on official SEC action.",
+      "label": "block",
+      "difficulty": "hard",
+      "category": "pm_m04_consensus_edge_stack_m02",
+      "expected_codes": ["DJZS-M02","DJZS-M04"],
+      "rationale": "No falsification anywhere → M02 CRITICAL. Consensus-as-edge ('crowd has this right, easy money') → M04. No probability token → M03 structurally silent by the definitional precondition. Engagement present (official SEC action). FAIL, both codes membership-scored.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
+    },
+    {
+      "id": "pm-exec-010",
+      "intent": "Bet YES on Polymarket that the Fed cuts at the September meeting — it's at 92¢ and that consensus is exactly right, I see no reason the market is missing anything. The market resolves on the official FOMC statement. I'm wrong if the August minutes turn hawkish.",
+      "label": "execute",
+      "difficulty": "hard",
+      "category": "pm_m04_solo_advisory",
+      "rationale": "The solo-advisory signature case per the ratified M04 ruling: all three scored fields present; the case for the bet is explicitly that consensus is correct → edge absent → M04 fires alone → residual PASS with DJZS-M04 on the certificate (deterministic target pinned in the offline harness). Live faces: PASS-with-flag / PASS-clean on edge wobble / WAIT on field wobble — never FAIL.",
+      "origin": "damon_validated",
+      "reviewed": true,
+      "scope": "coded_v0.1"
     }
   ]
 }

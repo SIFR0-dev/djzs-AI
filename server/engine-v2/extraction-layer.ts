@@ -143,12 +143,25 @@ Rules you must obey:
       not support that is the surrounding reasoning itself.
     UNKNOWN: when unclear whether an assertion is made, or whether its basis is verifiable,
     unknown — never guess absent.
+- edge_claim — ONLY meaningful when audit_context is "prediction_market" (for anything else,
+  always return unknown). It captures whether the thesis states an INDEPENDENT edge — a reason the
+  market is MISPRICED — versus resting the case on the consensus/market position itself.
+    PRESENT: the reasoning articulates why the market is WRONG or has not priced something —
+    information, analysis, or a derivation the market hasn't absorbed ("the market hasn't priced
+    this morning's minutes revision"). value = a short quote/paraphrase of the edge.
+    ABSENT: the stated case for the bet IS the consensus/market position itself — the price or
+    the crowd's agreement is offered as the reason ("it's at 92¢ and everyone knows", "the crowd
+    has this right, easy money"). Emit:
+      {"state":"absent","quote":"<verbatim text from the intent — the consensus-as-edge claim>"}
+    NOTE: merely CITING the price as data is not absent — absent requires the consensus/price to
+    BE the argued case for the bet.
+    UNKNOWN: when unclear; be conservative.
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
   leverage (number), position_size (number), stop_loss (number|string),
   take_profit (number|string), invalidation_condition (string),
-  resolution_engagement (string), probability_basis (string),
+  resolution_engagement (string), probability_basis (string), edge_claim (string),
   data_sources (string[]), oracle_source (string), confidence (number 0-100)
 
 Optional key — audit_context:
@@ -224,7 +237,7 @@ export async function extractAuditInput(
 }
 
 /** Gate-surviving absent quote for the two CRITICAL-driving PM fields (null unless the field is a surviving absent). */
-type SurvivingQuotes = { resolution_engagement: string | null; probability_basis: string | null };
+type SurvivingQuotes = { resolution_engagement: string | null; probability_basis: string | null; edge_claim: string | null };
 
 /** Markers that betray a quote is lifting the falsification clause, never the argued thesis. */
 const FALSIFICATION_MARKERS = ["wrong if", "invalid if", "invalidation"];
@@ -256,12 +269,13 @@ function parseOne(
     return {
       input: allUnknownInput(),
       failsafe: true,
-      quotes: { resolution_engagement: null, probability_basis: null },
+      quotes: { resolution_engagement: null, probability_basis: null, edge_claim: null },
     };
   }
 
   const gated = gateResolutionEngagement(parsed.resolution_engagement, originalText);
   const gatedBasis = gateProbabilityBasis(parsed.probability_basis, originalText);
+  const gatedEdge = gateEdgeClaim(parsed.edge_claim, originalText);
   const input: AuditInput = {
     agent_type: asString(parsed.agent_type),
     intended_action: asString(parsed.intended_action),
@@ -272,6 +286,7 @@ function parseOne(
     invalidation_condition: coerceField(parsed.invalidation_condition) as Field<string>,
     resolution_engagement: coerceField(gated.field) as Field<string>,
     probability_basis: coerceField(gatedBasis.field) as Field<string>,
+    edge_claim: coerceField(gatedEdge.field) as Field<string>,
     data_sources: coerceField(parsed.data_sources) as Field<string[]>,
     oracle_source: coerceField(parsed.oracle_source) as Field<string>,
     confidence: coerceField(parsed.confidence) as Field<number>,
@@ -321,13 +336,18 @@ function parseOne(
     input.audit_context = "prediction_market";
   }
 
-  // Carry the SURVIVING absent quote for the two evidence-bearing PM fields to the
+  // edge_claim (M04, advisory): gate-only. NO falsification-marker check (that is
+  // engagement-specific) and NO probability-token precondition (that is M03-specific);
+  // an advisory consensus-as-edge absent stands on its verbatim quote alone.
+
+  // Carry the SURVIVING absent quote for the evidence-bearing PM fields to the
   // consensus merge (evidence-unanimity check). Non-null only when the field is
   // still absent after every per-sample demotion above; the merged AuditInput stays
   // clean — these quotes live in `raw` and this internal channel, never on the field.
   const quotes: SurvivingQuotes = {
     resolution_engagement: input.resolution_engagement.state === "absent" ? gated.quote : null,
     probability_basis: input.probability_basis.state === "absent" ? gatedBasis.quote : null,
+    edge_claim: input.edge_claim.state === "absent" ? gatedEdge.quote : null,
   };
   return { input, failsafe: false, quotes };
 }
@@ -390,14 +410,39 @@ function gateProbabilityBasis(
     : { field: UNKNOWN, quote: null };
 }
 
+// ─── Quote-gated absent (edge_claim, M04 advisory) ─────────────────────────
+
+/**
+ * An ABSENT edge_claim (M04 CONSENSUS_NO_EDGE) is trusted only when it quotes,
+ * verbatim from the intent, the consensus-as-edge claim itself. No quote, or a
+ * quote not found in the intent → UNKNOWN. Mirrors gateProbabilityBasis exactly —
+ * the verbatim quote is the whole evidence contract; the validated quote is
+ * returned for the consensus evidence-unanimity check.
+ */
+function gateEdgeClaim(
+  raw: unknown,
+  originalText: string,
+): { field: unknown; quote: string | null } {
+  if (!raw || typeof raw !== "object") return { field: raw, quote: null };
+  const obj = raw as Record<string, unknown>;
+  if (obj.state !== "absent") return { field: raw, quote: null };
+  const quoteOk =
+    typeof obj.quote === "string" &&
+    obj.quote.trim() !== "" &&
+    collapseWs(originalText).includes(collapseWs(obj.quote));
+  return quoteOk
+    ? { field: { state: "absent" }, quote: obj.quote as string }
+    : { field: UNKNOWN, quote: null };
+}
+
 // ─── Consensus extraction ─────────────────────────────────────────────────
 
-/** All tri-state facts a consensus merge must cover (perp list + PM-only fields). */
-const CONSENSUS_FIELDS = [...AUDIT_FIELDS, "resolution_engagement", "probability_basis"] as const;
+/** All tri-state facts a consensus merge must cover (perp list + PM-only fields, incl. advisory edge_claim). */
+const CONSENSUS_FIELDS = [...AUDIT_FIELDS, "resolution_engagement", "probability_basis", "edge_claim"] as const;
 type ConsensusField = (typeof CONSENSUS_FIELDS)[number];
 
-/** The two CRITICAL-driving PM absents that must clear evidence-unanimity, not merely state-unanimity. */
-const EVIDENCE_FIELDS = new Set<ConsensusField>(["resolution_engagement", "probability_basis"]);
+/** PM absents that must clear evidence-unanimity, not merely state-unanimity (the two CRITICAL-driving fields + advisory edge_claim). */
+const EVIDENCE_FIELDS = new Set<ConsensusField>(["resolution_engagement", "probability_basis", "edge_claim"]);
 
 /** Normalize an absent's evidence quote for STRICT cross-sample identity: lowercase, collapse whitespace, trim, strip trailing punctuation. */
 const normalizeEvidence = (s: string) => collapseWs(s).replace(/[.,;:!?]+$/, "").trim();
@@ -493,7 +538,7 @@ export async function extractAuditInputConsensus(
       // probe 2's superset quote would unify the exact case this must demote.
       if (EVIDENCE_FIELDS.has(field)) {
         const quotes = samples.map(
-          (s) => s.quotes[field as "resolution_engagement" | "probability_basis"],
+          (s) => s.quotes[field as "resolution_engagement" | "probability_basis" | "edge_claim"],
         );
         const norm = quotes.map((q) => (typeof q === "string" ? normalizeEvidence(q) : ""));
         const unanimousEvidence = norm.every((q) => q !== "" && q === norm[0]);
