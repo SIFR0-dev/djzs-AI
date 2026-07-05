@@ -1,6 +1,12 @@
 name = "djzs-trust-mcp"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+# Date ≥ 2024-09-23 makes nodejs_compat define a global `process`. That flips the
+# transitively-bundled server/claude-client.ts:3 (`process.env.ANTHROPIC_API_KEY`)
+# from a module-scope THROW (Cloudflare 10021 "process is not defined") to a benign
+# `undefined` read — that module is dead code here; the tool reads its key from the
+# request-scoped c.env, unchanged. See KNOWN ISSUE in CLAUDE.md (server-scoped split
+# is the real fix).
+compatibility_date = "2026-06-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
