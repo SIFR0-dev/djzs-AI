@@ -1,0 +1,4 @@
+# Template for local `wrangler dev`. Copy to `.dev.vars` (gitignored) and fill in a real
+# key locally. NEVER commit .dev.vars or a real key. In production this is a wrangler secret:
+#   wrangler secret put ANTHROPIC_API_KEY
+ANTHROPIC_API_KEY="<your-anthropic-api-key>"

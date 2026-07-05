@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.wrangler/
+# Local dev secrets — NEVER commit real keys. Use .dev.vars.example as the template.
+.dev.vars

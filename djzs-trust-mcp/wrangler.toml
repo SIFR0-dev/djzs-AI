@@ -5,3 +5,15 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
+
+# Module aliasing (wrangler → esbuild): resolve the engine's `@shared/*` imports at
+# bundle time WITHOUT editing any file under shared/. esbuild remaps the "@shared"
+# specifier and its subpaths (e.g. @shared/audit-schema) to ../shared, resolved
+# relative to this wrangler.toml. djzs-trust-mcp/ sits at the repo root next to
+# shared/, so the hop up is a single "../". Minimal wrangler-native mechanism —
+# no custom build step, no copied files.
+#
+# SECRET: ANTHROPIC_API_KEY is set via `wrangler secret put ANTHROPIC_API_KEY` and read
+# from the request-time env binding (see src/index.ts). It is NEVER a [vars] entry.
+[alias]
+"@shared" = "../shared"
