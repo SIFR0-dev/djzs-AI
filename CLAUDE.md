@@ -85,3 +85,10 @@ struct → same verdict + `verdict_hash`, always).
 - v1 CONTRACT: verdict/action/flags/unknowns/disagreements/verdict_hash + taxonomy versions. NO PoL write, NO x402 in v1 — deliberate spec omissions; re-rule both before the Worker URL becomes discoverable. Taxonomy HASHES (4 exported constants) not yet in the response — same re-rule point.
 - DEPLOY PARITY GATE: replay a historically-stable bench intent (e.g. block-008) tsx-vs-live; same extracted input + verdict with different verdict_hash = bundle break, halt. Differing extraction (visible in unknowns/disagreements) = known variance, rerun.
 - KNOWN ISSUE: Worker transitively bundles claude-client.ts as dead code (extraction-layer's defaultModel import). Fix = server-scoped split. Separate task.
+
+## 8. Addenda — 2026-07-05 (evening)
+- DEPLOYED: djzs-trust-mcp version 714ca880-dd53 at djzs-trust-mcp.easy-less-spoil.workers.dev — 3 tools live; 10021 resolved by f546742; module scope proven at edge (51ms startup).
+- FIRST EXTERNAL AUDIT: verify_pm_trade(pm-block-008) by an outside agent → FAIL, M03+M04, risk 40, disagreements [], verdict_hash 0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937. Behavioral parity vs 3/3 tsx batteries: GREEN. Hash parity: PENDING (calibration key 401-dead; re-mint owed; live hash stands as record).
+- IRYS HARDENING — VALIDATED PRE-WRITE: unbounded DJZSCerts query timed out 2x; timestamp:{from,to} (ms) returned ~350ms on two independent clients. Patch = trailing-window bounds, 6 lines, next Worker pass.
+- KNOWN ISSUE upgrade: claude-client dead-code = proven detonator (10021), neutralized by compat date; server-scoped split remains the durable fix.
+- KEY CUSTODY: dedicated keys ruled (Worker secret / calibration .env.test); calibration key died during the console visit.
