@@ -77,3 +77,11 @@ struct → same verdict + `verdict_hash`, always).
   only (`query_pol_certificates` → Irys; `query_agent_trust` → Base placeholder). Manual
   `wrangler deploy`, no CI. Does **not** reach the audit engine.
 - `verify_pm_trade` (MCP tool over the PM engine) = the next build.
+
+## 7. Addenda — 2026-07-05
+- ARCHITECTURE RULING: verify_pm_trade is WORKER-NATIVE — extraction+engine run inside djzs-trust-mcp, importing server/engine-v2 + shared/ FROZEN via build alias. The Express /api/v2/audit route is demoted to dev-reference and must never serve publicly (sole-public-instance rule).
+- SCOPE RULING: PM-only — audit_context !== "prediction_market" (incl. undetermined) → in_scope:false; never a silent perp audit (perp is 3/11 live).
+- ADAPTER: @hono/mcp@0.3.0 (@modelcontextprotocol/hono has no 1.x; only 2.0.0-prereleases).
+- v1 CONTRACT: verdict/action/flags/unknowns/disagreements/verdict_hash + taxonomy versions. NO PoL write, NO x402 in v1 — deliberate spec omissions; re-rule both before the Worker URL becomes discoverable. Taxonomy HASHES (4 exported constants) not yet in the response — same re-rule point.
+- DEPLOY PARITY GATE: replay a historically-stable bench intent (e.g. block-008) tsx-vs-live; same extracted input + verdict with different verdict_hash = bundle break, halt. Differing extraction (visible in unknowns/disagreements) = known variance, rerun.
+- KNOWN ISSUE: Worker transitively bundles claude-client.ts as dead code (extraction-layer's defaultModel import). Fix = server-scoped split. Separate task.
