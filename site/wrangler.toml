@@ -1,0 +1,8 @@
+name = "djzs-site"
+compatibility_date = "2026-06-01"
+
+# Static assets-only Worker — no Worker script. Cloudflare serves this directory directly, so the
+# whole site/ dir is one `wrangler deploy` from live (same deploy pattern as djzs-trust-mcp).
+# `directory = "."` is resolved relative to this wrangler.toml (i.e. site/).
+[assets]
+directory = "."

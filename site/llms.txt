@@ -1,0 +1,39 @@
+# DJZS — deterministic pre-execution audit for agents
+
+> DJZS audits the reasoning behind an autonomous agent's move before capital is committed and
+> returns a tri-state verdict — PASS, WAIT, or FAIL — with the reasoning defects flagged and a
+> reproducible verdict_hash. It answers "should this position be taken?", complementary to
+> transaction-security tools that answer "is this transaction safe to sign?".
+
+## Use it (live MCP gate)
+
+- Endpoint (streamable HTTP): https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp
+- Install: `claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp`
+- Lead tool: `verify_pm_trade` — pass a free-text prediction-market thesis; returns
+  PASS→PROCEED / FAIL / WAIT→HALT, flags, unknown_fields, disagreements, and verdict_hash.
+  Prediction-market only: a non-PM or undetermined intent returns in_scope:false (never a silent
+  perpetuals audit).
+- Other tools: `query_pol_certificates` (Irys certificate history, prior-architecture lineage);
+  `query_agent_trust` (placeholder, pending subgraph deployment).
+
+## How it works
+
+- Architecture C: an LLM extracts observable facts (N=3 consensus, quote gates, evidence-unanimity)
+  and never returns a verdict; a frozen deterministic engine computes the verdict. The verdict rules
+  are model-independent. Same input struct -> same verdict_hash.
+- WAIT is never silent: an unknown decision-critical fact drains to HALT with unknown_fields returned.
+
+## Taxonomies (frozen)
+
+- DJZS-M (prediction market, DJZS-PM-v1.0): M01-M04, weights sum 100, FAIL threshold 25. All live.
+- DJZS-LF (perpetuals, DJZS-LF-v1.1): 11 codes, weights sum 200, 3 wired live (X01, E01, I01).
+
+## v1 deferrals (stated honestly)
+
+- No ProofOfLogic write on the tool yet; no payment gate on the tool; taxonomy hash constants
+  exported but not yet in the response.
+
+## Source of truth
+
+- Repository: https://github.com/SIFR0-dev/djzs-AI
+- Every number here traces to that tree; where docs and tree disagree, the tree wins.

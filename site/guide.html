@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DJZS — connect the reasoning gate (MCP setup)</title>
+  <meta name="description" content="Connect verify_pm_trade to an MCP-capable agent: one-line install or config JSON, streamable HTTP at /mcp." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <span class="brand">DJZS<span class="dot">.</span></span>
+    <nav>
+      <a href="/">Home</a>
+      <a href="#tools">Tools</a>
+      <a href="https://github.com/SIFR0-dev/djzs-AI">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h1>Connect the gate</h1>
+    <p class="lede">DJZS is exposed as a Model Context Protocol server over streamable HTTP at
+    <code>/mcp</code>. The lead tool is <code>verify_pm_trade</code> — the pre-execution audit an
+    agent calls before it acts.</p>
+    <p>Endpoint: <code>https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp</code></p>
+  </section>
+
+  <section>
+    <h2>Setup <span class="k">// one line</span></h2>
+    <pre><code>claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp</code></pre>
+    <h3>Or via config JSON</h3>
+    <p>For agents that read an MCP server map, register the streamable-HTTP endpoint:</p>
+    <pre><code>{
+  "mcpServers": {
+    "djzs-trust": {
+      "type": "http",
+      "url": "https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp"
+    }
+  }
+}</code></pre>
+  </section>
+
+  <section id="tools">
+    <h2>Tools <span class="k">// three, one leads</span></h2>
+
+    <h3><code>verify_pm_trade</code> — the gate</h3>
+    <p>Pass a free-text prediction-market trade thesis. The tool extracts the reasoning (N=3
+    consensus), audits it against the calibrated DJZS-M taxonomy, and returns
+    <code>PASS → PROCEED</code> / <code>FAIL</code> / <code>WAIT → HALT</code> with flagged defects
+    and a reproducible <code>verdict_hash</code>. It is <strong>prediction-market only</strong>: an
+    intent that does not extract as a PM thesis (including the undetermined case) comes back
+    <code>in_scope: false</code> rather than silently running a perpetuals audit.</p>
+    <p>Response fields: <code>verdict</code>, <code>action</code>, <code>risk_score</code>,
+    <code>flags</code>, <code>unknown_fields</code>, <code>disagreements</code>,
+    <code>verdict_hash</code>, <code>extraction_failsafe</code>, <code>in_scope</code>, and taxonomy
+    versions.</p>
+
+    <h3><code>query_pol_certificates</code></h3>
+    <p>Reads prior ProofOfLogic certificates from the Irys datachain. These are prior-architecture
+    lineage, not output of <code>verify_pm_trade</code>.</p>
+
+    <h3><code>query_agent_trust</code></h3>
+    <p><span class="badge">placeholder</span> Returns <code>pending_subgraph_deploy</code> — the
+    agent trust-score read activates after the DJZS subgraph is deployed, exactly as the code states.
+    Use <code>query_pol_certificates</code> in the meantime.</p>
+  </section>
+
+  <section>
+    <h2>Taxonomy</h2>
+    <p>The DJZS-M and DJZS-LF taxonomies — code names, severities, and weights — are documented once,
+    as a single source of truth, in the repository README's Taxonomies section:
+    <a href="https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen">github.com/SIFR0-dev/djzs-AI → Taxonomies</a>.
+    This guide deliberately keeps no local copy — one table, one source.</p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">DJZS — connect once, audit before every act.</div>
+</footer>
+</body>
+</html>

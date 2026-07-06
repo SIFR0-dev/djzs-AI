@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DJZS — the reasoning gate every trading agent calls before it acts</title>
+  <meta name="description" content="DJZS is a deterministic pre-execution audit for autonomous agents: it audits the reasoning behind a move and returns PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as an MCP tool." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <span class="brand">DJZS<span class="dot">.</span></span>
+    <nav>
+      <a href="#architecture">Architecture</a>
+      <a href="#taxonomies">Taxonomies</a>
+      <a href="#proof">Proof</a>
+      <a href="/guide.html">Connect</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 1 — HERO -->
+  <section id="hero">
+    <h1>The reasoning gate every trading agent calls before it acts.</h1>
+    <p class="lede">Transaction-security tools ask <em>"is this transaction safe to sign?"</em>
+    DJZS asks a different question — <em>"should this position be taken at all?"</em> It audits the
+    reasoning behind a move <strong>before</strong> capital is committed and returns one of three
+    verdicts, with the specific defects flagged and a reproducible hash of the decision.</p>
+    <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
+    <pre><code>claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp</code></pre>
+    <p class="muted">Then call <code>verify_pm_trade</code> with a free-text prediction-market thesis.</p>
+  </section>
+
+  <!-- 2 — ARCHITECTURE C -->
+  <section id="architecture">
+    <h2>Architecture C <span class="k">// extraction reports, the engine decides</span></h2>
+    <p>DJZS splits the model-bound step from the trusted step. An LLM <strong>extracts observable
+    facts</strong> from messy intent — it never returns a verdict. It runs as an <strong>N=3
+    consensus</strong>: per-field state must agree across all three samples or the field collapses
+    to <code>unknown</code>; a claimed <em>absent</em> must quote the intent verbatim (quote gates);
+    and a critical-driving absent needs the same quote across every sample (evidence-unanimity).</p>
+    <p>The resulting struct is scored by a <strong>frozen deterministic engine</strong> — pure code,
+    no model, no network, no clock. <strong>The verdict rules are model-independent:</strong> swap the
+    model and the extraction quality changes, but the rules, weights, and hash do not. The same struct
+    always yields the same verdict and the same hash:</p>
+    <pre><code>verdict_hash = sha256(canonicalize({ verdict, risk_score, flags: flags.map(f =&gt; f.code).sort(), unknown_fields }))</code></pre>
+  </section>
+
+  <!-- 3 — THE LADDER -->
+  <section id="ladder">
+    <h2>The ladder <span class="k">// three outcomes, never two</span></h2>
+    <div class="ladder">
+      <div class="rung pass"><span class="verdict">PASS → PROCEED</span><br /><span class="muted">Every scored fact is known and no blocking rule fired.</span></div>
+      <div class="rung wait"><span class="verdict">WAIT → HALT</span><br /><span class="muted">A decision-critical fact is <code>unknown</code>. The caller halts and the response returns <code>unknown_fields</code> so it knows what to clarify.</span></div>
+      <div class="rung fail"><span class="verdict">FAIL</span><br /><span class="muted">A rule fired on facts the engine knows. Stop.</span></div>
+    </div>
+    <p>Under-specified reasoning drains to <strong>WAIT → HALT</strong>, never to a silently guessed
+    PASS or FAIL. Abstention is a first-class outcome.</p>
+  </section>
+
+  <!-- 4 — TAXONOMIES -->
+  <section id="taxonomies">
+    <h2>Taxonomies <span class="k">// frozen</span></h2>
+
+    <h3>DJZS-M — Prediction Market (DJZS-PM-v1.0)</h3>
+    <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated.</p>
+    <table>
+      <thead><tr><th>Code</th><th>Name</th><th>Severity</th><th>Weight</th></tr></thead>
+      <tbody>
+        <tr><td><code>DJZS-M01</code></td><td>NARRATIVE_RESOLUTION_GAP</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
+        <tr><td><code>DJZS-M02</code></td><td>FALSIFICATION_ABSENT</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
+        <tr><td><code>DJZS-M03</code></td><td>PROBABILITY_UNSOURCED</td><td class="sev-HIGH">HIGH</td><td>25</td></tr>
+        <tr><td><code>DJZS-M04</code></td><td>CONSENSUS_NO_EDGE</td><td class="sev-MEDIUM">MEDIUM</td><td>15</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">M04 is advisory-grade: a lone M04 rides a PASS with the flag on the certificate
+    (weight 15 is below the threshold); it blocks only by stacking (e.g. M03 + M04 = 40 → FAIL).</p>
+
+    <h3>DJZS-LF — Perpetuals / general reasoning (DJZS-LF-v1.1)</h3>
+    <p class="muted">Weights sum to <strong>200</strong>. Frozen at <strong>11 codes</strong>;
+    <strong>3 are wired live</strong> today (<span class="live">●</span>). The rest are defined and
+    weighted but not yet firing — stated honestly, not implied.</p>
+    <table>
+      <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Severity</th><th>Weight</th><th>Live</th></tr></thead>
+      <tbody>
+        <tr><td><code>DJZS-S01</code></td><td>CIRCULAR_LOGIC</td><td>Structural</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td><td></td></tr>
+        <tr><td><code>DJZS-S02</code></td><td>LAYER_INVERSION</td><td>Structural</td><td class="sev-HIGH">HIGH</td><td>25</td><td></td></tr>
+        <tr><td><code>DJZS-S03</code></td><td>DEPENDENCY_GHOST</td><td>Structural</td><td class="sev-MEDIUM">MEDIUM</td><td>18</td><td></td></tr>
+        <tr><td><code>DJZS-E01</code></td><td>ORACLE_UNVERIFIED</td><td>Epistemic</td><td class="sev-HIGH">HIGH</td><td>25</td><td class="live">●</td></tr>
+        <tr><td><code>DJZS-E02</code></td><td>CONFIDENCE_INFLATION</td><td>Epistemic</td><td class="sev-MEDIUM">MEDIUM</td><td>18</td><td></td></tr>
+        <tr><td><code>DJZS-I01</code></td><td>FOMO_LOOP</td><td>Incentive</td><td class="sev-MEDIUM">MEDIUM</td><td>16</td><td class="live">●</td></tr>
+        <tr><td><code>DJZS-I02</code></td><td>MISALIGNED_REWARD</td><td>Incentive</td><td class="sev-MEDIUM">MEDIUM</td><td>16</td><td></td></tr>
+        <tr><td><code>DJZS-I03</code></td><td>DATA_UNVERIFIED</td><td>Incentive</td><td class="sev-MEDIUM">MEDIUM</td><td>16</td><td></td></tr>
+        <tr><td><code>DJZS-X01</code></td><td>EXECUTION_UNBOUND</td><td>Execution</td><td class="sev-CRITICAL">CRITICAL</td><td>15</td><td class="live">●</td></tr>
+        <tr><td><code>DJZS-X02</code></td><td>RACE_CONDITION</td><td>Execution</td><td class="sev-HIGH">HIGH</td><td>9</td><td></td></tr>
+        <tr><td><code>DJZS-T01</code></td><td>STALE_REFERENCE</td><td>Temporal</td><td class="sev-LOW">LOW</td><td>12</td><td></td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Both weight tables are hash-locked exported constants; a weight change is a
+    deliberate re-derive, not a hot patch.</p>
+  </section>
+
+  <!-- 5 — PROOF -->
+  <section id="proof">
+    <h2>Proof <span class="k">// first external audit on record</span></h2>
+    <p>An outside agent audited a benchmark thesis (<code>pm-block-008</code>) through the deployed
+    tool and received:</p>
+    <div class="proof">
+      <pre><code>verdict:       FAIL
+flags:         DJZS-M03 (PROBABILITY_UNSOURCED), DJZS-M04 (CONSENSUS_NO_EDGE)
+risk_score:    40
+disagreements: []
+verdict_hash:  <span class="hash">0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937</span></code></pre>
+    </div>
+    <p class="muted">Behavioral parity against the offline batteries (verdict + flags + extracted
+    input) is green. Hash parity is a pending re-mint — the calibration key lapsed during
+    deployment — so the live hash above stands as the record until it is re-run.</p>
+  </section>
+
+  <!-- 6 — HONEST v1 -->
+  <section id="honest">
+    <h2>Honest v1 posture <span class="k">// recorded deferrals</span></h2>
+    <p>What the tool does <strong>not</strong> do yet, stated plainly:</p>
+    <ul class="tight">
+      <li><strong>No ProofOfLogic write on the tool.</strong> <code>verify_pm_trade</code> returns a
+      <code>verdict_hash</code> but does not yet anchor a certificate. Existing Irys certificates are
+      prior-architecture lineage, not output of this tool.</li>
+      <li><strong>No payment gate on the tool.</strong> The MCP tool is not metered; the older paid
+      HTTP tiers are a separate surface.</li>
+      <li><strong>Taxonomy hashes not in the response.</strong> The four hash constants are exported
+      from the frozen tables but are not yet included in the tool's JSON response.</li>
+    </ul>
+    <p>On-chain: four DJZS contracts are attested on Base in the A2A manifest, with source in
+    <code>contracts/</code>. A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source
+    only — it is not in the deployed manifest, and nothing here claims certificate NFTs are live or
+    mintable.</p>
+  </section>
+
+  <!-- 7 — FOR AGENTS -->
+  <section id="agents">
+    <h2>For agents <span class="k">// this page is the API doc</span></h2>
+    <p><strong>curl this page and you get this pitch</strong> — every word is in the HTML, no
+    JavaScript required to read it. A machine-readable summary lives at
+    <a href="/llms.txt">/llms.txt</a> with the MCP endpoint and repository link. The gate is one
+    install command away (see the hero above); the source of truth for every number on this page is
+    the repository at <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a>.</p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">DJZS — deterministic pre-execution audit for agents. Static by design: the page is the record.</div>
+</footer>
+</body>
+</html>
