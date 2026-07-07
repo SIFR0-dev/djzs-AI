@@ -1,6 +1,6 @@
 {
   "name": "DJZS Protocol",
-  "description": "Logic Firewall for AI Agents — audits strategy memos before on-chain execution using adversarial AI analysis, producing verifiable PASS/FAIL verdicts with immutable Proof-of-Logic certificates",
+  "description": "Logic Firewall for AI Agents — audits the reasoning behind an agent's move before on-chain execution, producing verifiable PASS/WAIT/FAIL verdicts with reproducible verdict hashes",
   "version": "1.0.0",
   "agentId": 29515,
   "erc8004": {
@@ -21,6 +21,26 @@
     "on-chain-trust-scoring",
     "failure-taxonomy-classification"
   ],
+  "mcp": {
+    "endpoint": "https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp",
+    "transport": "streamable-http",
+    "install": "claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp",
+    "tools": [
+      {
+        "name": "verify_pm_trade",
+        "description": "Deterministic pre-execution audit of a prediction-market trade thesis — returns PASS to PROCEED, FAIL, or WAIT to HALT with flagged defects and a reproducible verdict_hash. Prediction-market only; audit before act."
+      },
+      {
+        "name": "query_pol_certificates",
+        "description": "Query immutable ProofOfLogic certificates stored on Irys Datachain by DJZS Protocol."
+      },
+      {
+        "name": "query_agent_trust",
+        "description": "Query DJZS agent trust scores on Base Mainnet — returns a placeholder until the DJZS subgraph is deployed to The Graph Network."
+      }
+    ]
+  },
+  "website": "https://djzs.ai",
   "endpoints": {
     "demo": "https://djzs.ai/demo",
     "audit": "https://djzs.ai/api/audit/demo",
@@ -55,24 +75,23 @@
     }
   },
   "failureTaxonomy": {
-    "name": "DJZS-LF",
-    "version": "1.0",
-    "codes": [
-      "DJZS-S01: CIRCULAR_LOGIC",
-      "DJZS-S02: MISSING_FALSIFIABILITY",
-      "DJZS-E01: CONFIRMATION_TUNNEL",
-      "DJZS-E02: AUTHORITY_SUBSTITUTION",
-      "DJZS-I01: MISALIGNED_INCENTIVE",
-      "DJZS-I02: NARRATIVE_DEPENDENCY",
-      "DJZS-X01: UNHEDGED_EXECUTION",
-      "DJZS-X02: LIQUIDITY_RISK",
-      "DJZS-X03: SLIPPAGE_EXPOSURE",
-      "DJZS-T01: STALE_DATA_DEPENDENCY",
-      "DJZS-T02: RACE_CONDITION_RISK"
-    ]
+    "djzs_m": {
+      "version": "DJZS-PM-v1.0",
+      "domain": "prediction-market",
+      "codes": 4,
+      "status": "calibrated-live"
+    },
+    "djzs_lf": {
+      "version": "DJZS-LF-v1.1",
+      "domain": "perpetuals-general",
+      "codes": 11,
+      "live": 3
+    },
+    "source": "https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen"
   },
+  "sourceOfTruth": "https://github.com/SIFR0-dev/djzs-AI",
   "model": "llama-3.3-70b",
   "framework": "custom-express-oracle",
   "created": "2026-02-28T17:00:18Z",
-  "updated": "2026-03-18T03:23:02Z"
+  "updated": "2026-07-06T00:00:00Z"
 }

@@ -1,0 +1,31 @@
+# DJZS — deterministic pre-execution audit for agents
+
+> DJZS audits the reasoning behind an autonomous agent's move before capital is committed and
+> returns a tri-state verdict — PASS, WAIT, or FAIL — with the reasoning defects flagged and a
+> reproducible verdict_hash. It answers "should this position be taken?", complementary to
+> transaction-security tools that answer "is this transaction safe to sign?". WAIT maps to HALT:
+> an under-specified thesis is never silently passed or failed.
+
+## Use it (live MCP gate)
+
+- Endpoint (streamable HTTP): https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp
+- Install: `claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp`
+- Lead tool: `verify_pm_trade` — pass a free-text prediction-market thesis; returns PASS/WAIT/FAIL
+  with flags, unknown_fields, disagreements, and a verdict_hash. Prediction-market only: a non-PM
+  or undetermined intent returns in_scope:false (never a silent perpetuals audit).
+- Other tools: `query_pol_certificates` (Irys certificate history); `query_agent_trust`
+  (placeholder, pending subgraph deployment).
+
+## How it works
+
+- Architecture C: an LLM extracts observable facts (N=3 consensus) and never returns a verdict; a
+  frozen deterministic engine computes it. The verdict rules are model-independent; the same input
+  struct yields the same verdict_hash.
+- Taxonomies (frozen): DJZS-M prediction-market (4 codes, all live) and DJZS-LF perpetuals
+  (11 codes, 3 wired live). Full tables are in the README.
+
+## Links
+
+- Site: https://djzs.ai
+- Repository (source of truth): https://github.com/SIFR0-dev/djzs-AI
+- Where docs and tree disagree, the tree wins.
