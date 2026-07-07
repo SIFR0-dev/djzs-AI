@@ -6,3 +6,5 @@ compatibility_date = "2026-06-01"
 # `directory = "."` is resolved relative to this wrangler.toml (i.e. site/).
 [assets]
 directory = "."
+# Every unknown path serves index.html — old deep links land on the truth surface, not a 404.
+not_found_handling = "single-page-application"
