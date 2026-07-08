@@ -1,11 +1,11 @@
-# DJZS — Deterministic Pre-Execution Audit for Agents
+# DJZS  Deterministic Pre-Execution Audit for Agents
 
 DJZS audits the **reasoning** behind an autonomous agent's move *before* capital is
-committed, and returns one of three verdicts — **PASS**, **WAIT**, or **FAIL** — with the
+committed, and returns one of three verdicts  **PASS**, **WAIT**, or **FAIL** with the
 specific reasoning defects flagged and a reproducible hash of the decision.
 
 The wedge: transaction-security tools answer *"is this transaction safe to sign?"*. DJZS answers
-a different question — *"should this position be taken at all?"*. A perfectly safe transaction can
+a different question  *"should this position be taken at all?"*. A perfectly safe transaction can
 still rest on broken reasoning; DJZS is the layer that catches the bad thesis.
 
 ---
