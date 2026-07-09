@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#0a0a0a" rx="8"/>
-  <text x="8" y="44" font-family="'JetBrains Mono', 'Fira Code', 'Courier New', monospace" font-weight="700" font-size="28" fill="#22c55e" letter-spacing="-1">DJ</text>
-  <rect x="47" y="26" width="3" height="20" fill="#22c55e" opacity="0.9"/>
-  <line x1="6" y1="52" x2="58" y2="52" stroke="#22c55e" stroke-width="1" opacity="0.3"/>
-</svg>

@@ -1,1 +1,0 @@
-export { RevealSection } from "./RevealSection";
