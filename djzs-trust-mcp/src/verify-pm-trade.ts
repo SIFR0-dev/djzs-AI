@@ -15,8 +15,9 @@ import {
   type ModelFn,
 } from "../../server/engine-v2/extraction-layer";
 import { runDeterministicAudit } from "../../server/engine-v2/deterministic-engine";
-import { SCHEMA_VERSION } from "@shared/audit-schema";
-import { PM_SCHEMA_VERSION } from "@shared/pm-taxonomy";
+import { SCHEMA_VERSION, WEIGHTS_HASH, TAXONOMY_HASH } from "@shared/audit-schema";
+import { PM_SCHEMA_VERSION, PM_WEIGHTS_HASH, PM_TAXONOMY_HASH } from "@shared/pm-taxonomy";
+
 import { z } from "zod";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -92,8 +93,15 @@ export async function runVerifyPmTrade(
     schema_version: "DJZS-ENGINE-V2",
     tool: "verify_pm_trade",
     in_scope: true,
-    taxonomy: { perp: SCHEMA_VERSION, pm: PM_SCHEMA_VERSION },
-    verdict: result.verdict,
+    taxonomy: {
+      perp: SCHEMA_VERSION,
+      pm: PM_SCHEMA_VERSION,
+      weights_hash: WEIGHTS_HASH,
+      taxonomy_hash: TAXONOMY_HASH,
+      pm_weights_hash: PM_WEIGHTS_HASH,
+      pm_taxonomy_hash: PM_TAXONOMY_HASH,
+    },
+@shared    verdict: result.verdict,
     action,
     risk_score: result.risk_score,
     flags: result.flags, // full objects — a solo M04 advisory rides a PASS here by design
