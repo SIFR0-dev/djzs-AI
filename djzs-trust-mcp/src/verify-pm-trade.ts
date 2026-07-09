@@ -101,7 +101,7 @@ export async function runVerifyPmTrade(
       pm_weights_hash: PM_WEIGHTS_HASH,
       pm_taxonomy_hash: PM_TAXONOMY_HASH,
     },
-@shared    verdict: result.verdict,
+        verdict: result.verdict,
     action,
     risk_score: result.risk_score,
     flags: result.flags, // full objects — a solo M04 advisory rides a PASS here by design
