@@ -160,3 +160,12 @@ A5. Casualties of 16a2097 at root: scripts/self-audit and
     v1.0-vs-v1.1 ruling. Disposition reserved for DJ: restore viem as a root
     devDependency, or hold the harnesses broken until the schema ruling
     lands and delete v1 with them. Neither blocks Phase 2.
+
+A6. 2026-07-12: A4's open parity status DISCHARGED. anchor-pm-block-008.ts
+    (this commit) reproduced 0x8591...4937 byte-identical from live N=3
+    extraction into the frozen engine, exit 0. Extraction disagreed on
+    stop_loss (record: []); the field is outside the PM hash preimage and
+    the hash held, demonstrating the determinism boundary under live noise.
+    Step 1 precondition met. Residual: the public site still carries the
+    hash-parity-pending honesty line from 246f12e; separate site edit and
+    deploy owed.

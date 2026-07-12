@@ -88,7 +88,7 @@ struct → same verdict + `verdict_hash`, always).
 
 ## 8. Addenda — 2026-07-05 (evening)
 - DEPLOYED: djzs-trust-mcp version 714ca880-dd53 at djzs-trust-mcp.easy-less-spoil.workers.dev — 3 tools live; 10021 resolved by f546742; module scope proven at edge (51ms startup).
-- FIRST EXTERNAL AUDIT: verify_pm_trade(pm-block-008) by an outside agent → FAIL, M03+M04, risk 40, disagreements [], verdict_hash 0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937. Behavioral parity vs 3/3 tsx batteries: GREEN. Hash parity: PENDING (calibration key 401-dead; re-mint owed; live hash stands as record).
+- FIRST EXTERNAL AUDIT: verify_pm_trade(pm-block-008) by an outside agent → FAIL, M03+M04, risk 40, disagreements [], verdict_hash 0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937. Behavioral parity vs 3/3 tsx batteries: GREEN. Hash parity: DISCHARGED 2026-07-12 via anchor-pm-block-008.ts, byte-identical reproduction from live N=3 extraction into the frozen engine (exit 0). This run's extraction disagreed on stop_loss (record: []); the field sits outside the PM hash preimage, so the hash held. The 401-dead note was stale: a working key was present in .env.test since 2026-07-08 (file mtime), unrecorded.
 - IRYS HARDENING — VALIDATED PRE-WRITE: unbounded DJZSCerts query timed out 2x; timestamp:{from,to} (ms) returned ~350ms on two independent clients. Patch = trailing-window bounds, 6 lines, next Worker pass.
 - KNOWN ISSUE upgrade: claude-client dead-code = proven detonator (10021), neutralized by compat date; server-scoped split remains the durable fix.
 - KEY CUSTODY: dedicated keys ruled (Worker secret / calibration .env.test); calibration key died during the console visit.
