@@ -204,3 +204,46 @@ A7. 2026-07-12: Step 1 DISCHARGED at e95bb49. The PoL write lives in
     addenda-7 deploy parity gate is now scripted:
     harness/pol-live-call.ts --url <worker>/mcp replays pm-block-008 and
     expects 0x8591..4937 anchored.
+
+A8. 2026-07-12 (late): STEP 2 ARCHITECTURE DEVIATION, DJ-ruled. Path B
+    ships: withX402 wraps the EXISTING per-request McpServer (@hono/mcp
+    transport unchanged); verify_pm_trade re-registers via paidTool at
+    0.25 USDC; the registry tools stay free. The "Architecture decision"
+    section above (McpAgent, DO binding, SQLite migration) is SUPERSEDED
+    for Step 2. Instrument: the installed agents@0.17.3 artifact;
+    dist/mcp/x402.js imports only @x402/core and the EVM scheme registrars,
+    zero DurableObject/partyserver/McpAgent references; payment rides
+    in-band via MCP _meta. Tool-level gating, the original Path 1 rationale,
+    is delivered without the migration. McpAgent stays available if a later
+    step needs stateful agents; the installed dep set already threads its
+    pins (wrangler 4.107.0 exact, MCP SDK 1.29.0 exact, agents 0.17.3,
+    @x402/core+evm 2.18.0, zod 4.4.3 top-level).
+    Falsifier for Path B, stated before the rehearsal: GATE U (unpaid call
+    refused with the payment-required shape) and GATE P (paid call settles
+    via the facilitator and returns the anchored audit), both in
+    harness/pol-paid-call.ts. Either red: revert to spec Path A, deps
+    already in place, nothing wasted.
+    RULINGS RECORDED: price 0.25 USDC per audit, rehearsal included;
+    recipient is a committed source constant so the compliance grep sees
+    the money path (sepolia burner = the Irys throwaway address,
+    receive-only role; TREASURY replaces the constant in the signed mainnet
+    diff and stays out of source until then). Payer-side note: the client
+    default maxPaymentValue is 0.10 USDC, below this price; payer clients
+    must raise it (the harness pins exactly 250000 atomic).
+    Zod posture, instrumented: two zod copies by path in the wrangler
+    dry-run bundle (worker 4.4.3 for the MCP/x402 layer, root 3.25.x for
+    the engine parser; 88/8 path-comment counts pre-code). NO zod alias or
+    dedupe, ever: forcing one copy would move the frozen engine's parser to
+    v4, which is the hash risk. Instrument coverage splits exactly along
+    the copies: the local anchor covers the root copy, the paid live call
+    covers the worker copy. The zod-4 type-level compat of both tool
+    schemas was discharged pre-code (tsc exit 0 on the old code against the
+    new tree).
+    Rehearsal finding (2026-07-12, GATE U green / GATE P crash): the agents
+    x402 CLIENT wrapper encodes the payment payload with bare btoa
+    (instrument: agents dist/mcp/x402.js, `btoa(JSON.stringify(
+    paymentPayload))`), which throws "Invalid character" on any code point
+    above 0xFF. The paid tool's description rides inside the payment
+    resource; ours carried U+2192 arrows and crashed the payer. RULED as a
+    class: paid-tool descriptions are ASCII-only. @x402/core itself uses a
+    safe TextEncoder path; upstream bug candidate against the agents repo.

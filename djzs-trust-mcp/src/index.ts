@@ -4,6 +4,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
+import { withX402 } from "agents/x402"
 
 const IRYS_GRAPHQL_URL = "https://uploader.irys.xyz/graphql"
 /**
@@ -13,6 +14,28 @@ const IRYS_GRAPHQL_URL = "https://uploader.irys.xyz/graphql"
  * one [vars] flip (IRYS_NODE_URL) plus a funded key, sequenced by DJ.
  */
 const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
+
+/**
+ * x402 payment configuration (Step 2, Path B ruling 2026-07-12: withX402 on
+ * the existing per-request McpServer; transport independence instrumented
+ * from the installed agents artifact, zero DO/McpAgent surface; falsifier is
+ * the sepolia rehearsal gate).
+ * COMPLIANCE (spec hard constraint, non-custodial Model A Scenario 1):
+ * exactly network + recipient + facilitator URL, nothing else. Funds move
+ * payer -> recipient via the payer's EIP-3009 signature; the facilitator
+ * submits and pays gas. The custodial auth-header helper from the x402 SDK
+ * is banned; the spec's first grep gate expects ZERO hits for its name in
+ * this package (this comment deliberately avoids the token). Second gate:
+ * x402.org/facilitator -> >= 1.
+ * PRICE RULING 2026-07-12: 0.25 USDC per audit, rehearsal included.
+ * RECIPIENT RULING 2026-07-12: sepolia burner = the Irys throwaway address,
+ * receive-only role here, zero-value tier. TREASURY replaces this constant
+ * in the signed mainnet diff; treasury stays out of source until then.
+ */
+const X402_NETWORK = "base-sepolia"
+const X402_RECIPIENT: `0x${string}` = "0xbE42eBF5F276205fdC841e489554D01eB3B26b4A"
+const X402_FACILITATOR_URL = "https://x402.org/facilitator"
+const VERIFY_PM_TRADE_PRICE_USD = 0.25
 
 /**
  * Worker bindings. ANTHROPIC_API_KEY and IRYS_UPLOAD_KEY are wrangler SECRETS
@@ -33,7 +56,13 @@ interface Env {
  * and behave identically to before; verify_pm_trade needs env.ANTHROPIC_API_KEY.
  */
 function buildServer(env: Env): McpServer {
-  const server = new McpServer({ name: "djzs-trust-mcp", version: "1.0.0" })
+  // withX402 augments the per-request server with paidTool; free tools are
+  // registered exactly as before and stay free.
+  const server = withX402(new McpServer({ name: "djzs-trust-mcp", version: "1.0.0" }), {
+    network: X402_NETWORK,
+    recipient: X402_RECIPIENT,
+    facilitator: { url: X402_FACILITATOR_URL }
+  })
 
   server.registerTool("query_pol_certificates", {
     title: "Query DJZS ProofOfLogic Certificates",
@@ -111,17 +140,28 @@ function buildServer(env: Env): McpServer {
     }
   })
 
-  server.registerTool("verify_pm_trade", {
-    title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)",
-    description: `Deterministic pre-execution audit of a prediction-market trade thesis. Extracts the reasoning, audits it against the calibrated DJZS-M taxonomy (M01 narrative/resolution gap, M02 falsification absent, M03 probability unsourced, M04 consensus-as-edge advisory), and returns PASS→PROCEED, FAIL, or WAIT→HALT with flagged defects and a reproducible verdict_hash. Audit before act.`,
-    inputSchema: {
+  // Step 2 (Path B ruling 2026-07-12): the ONLY paid tool. The handler body is
+  // the Step 1 handler byte-identical; withX402 owns the 402/verify/settle
+  // cycle in-band, and the free registry tools above are untouched.
+  server.paidTool(
+    "verify_pm_trade",
+    // ASCII ONLY in this description: it travels inside the x402 payment
+    // resource, and the agents client wrapper base64-encodes the payment
+    // payload with bare btoa, which throws "Invalid character" on any code
+    // point above 0xFF (rehearsal finding 2026-07-12; U+2192 arrows crashed
+    // every agents-based payer). Upstream bug candidate; ruled: paid-tool
+    // descriptions stay ASCII.
+    `Deterministic pre-execution audit of a prediction-market trade thesis. Extracts the reasoning, audits it against the calibrated DJZS-M taxonomy (M01 narrative/resolution gap, M02 falsification absent, M03 probability unsourced, M04 consensus-as-edge advisory), and returns PASS->PROCEED, FAIL, or WAIT->HALT with flagged defects and a reproducible verdict_hash. Audit before act. Paid tool: ${VERIFY_PM_TRADE_PRICE_USD} USDC per audit via x402.`,
+    VERIFY_PM_TRADE_PRICE_USD,
+    {
       ...VERIFY_PM_TRADE_INPUT,
       // D4 ruling 2026-07-12: optional; feeds ONLY the Target-System tag on the
       // anchored certificate. Extraction input and hash preimage untouched.
       target_system: z.string().min(1).max(128).optional()
         .describe("Optional agent/project identifier; becomes the Target-System tag on the anchored PoL certificate")
-    }
-  }, async ({ intent, target_system }) => {
+    },
+    { title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)" },
+    async ({ intent, target_system }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -170,7 +210,8 @@ function buildServer(env: Env): McpServer {
 
     const response = pol_certificate ? { ...result, pol_certificate } : result
     return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
-  })
+    }
+  )
 
   return server
 }

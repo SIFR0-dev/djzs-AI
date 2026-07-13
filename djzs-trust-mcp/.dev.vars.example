@@ -5,3 +5,6 @@ ANTHROPIC_API_KEY="<your-anthropic-api-key>"
 # EVM private key hex for PoL DataItem signing (devnet: throwaway, faucet-funded).
 # Production: wrangler secret put IRYS_UPLOAD_KEY
 IRYS_UPLOAD_KEY="<evm-private-key-hex>"
+# Payer-side burner for the x402 rehearsal harness (pol-paid-call.ts) ONLY.
+# Holds base-sepolia USDC; gas is facilitator-paid. NEVER a Worker secret.
+X402_PAYER_KEY="<evm-private-key-hex>"
