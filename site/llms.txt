@@ -30,8 +30,9 @@
 
 ## v1 deferrals (stated honestly)
 
-- No ProofOfLogic write on the tool yet; no payment gate on the tool; taxonomy hash constants
-  exported but not yet in the response.
+- Certificates anchor to Irys devnet (~60-day retention); mainnet permanence arrives with the
+  payment step. No payment gate on the tool yet. (Former deferrals now live: the PoL write and
+  the taxonomy hash block in the tool response.)
 
 ## Source of truth
 
