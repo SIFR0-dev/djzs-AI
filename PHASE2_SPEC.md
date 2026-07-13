@@ -90,7 +90,8 @@ Step 0: base-sepolia spike. DISCHARGED 2026-07-12.
   recipient, block 44061586, facilitator-submitted. Spike deleted, nothing
   deployed, burner key destroyed with the folder.
 
-Step 1: Irys PoL certificate write. Hash-parity gate after.
+Step 1: Irys PoL certificate write. DISCHARGED 2026-07-12 at e95bb49 (A7).
+  Hash-parity gate held byte-identical through the change.
 Step 2: McpAgent migration + `paidTool` on `verify_pm_trade`. Dependency
   constraints above apply HERE.
 Step 3: couple payment to certificate (pay -> audit -> anchored PoL in the
@@ -169,3 +170,37 @@ A6. 2026-07-12: A4's open parity status DISCHARGED. anchor-pm-block-008.ts
     Step 1 precondition met. Residual: the public site still carries the
     hash-parity-pending honesty line from 246f12e; separate site edit and
     deploy owed.
+
+A7. 2026-07-12: Step 1 DISCHARGED at e95bb49. The PoL write lives in
+    djzs-trust-mcp/src/pol-certificate.ts behind an injectable UploadFn seam
+    (the ModelFn pattern): certificate assembled strictly after
+    runDeterministicAudit, in_scope results only, FAIL OPEN in the handler
+    (pol_certificate status disabled/error/anchored annotates the response,
+    never blocks or mutates the verdict). Optional target_system tool input
+    feeds only the Target-System tag; extraction input and hash preimage
+    untouched. Dependency: @irys/bundles exact 0.0.5; the web build signs via
+    pure-JS keccak/secp256k1 browser-field fallbacks under workerd. Worker
+    bundle 656.76 KiB gzipped per wrangler.
+    Milestone instruments, live on devnet: certs
+    2Pcm477mDzZtRzF4PaX2YHkpUgCJ1s9LC54ReCpsKanv
+    (audit_id c2ec3eb1-e691-4c2d-9fcb-88eaec461035) and
+    3mavvyxEQDQYJvh8Dj5mifgnehp8dAzGx3kZpkQXZx71
+    (audit_id f92f0c70-8c5a-48d3-aee8-03171784850a), each retrieved by id
+    (gateway.irys.xyz 200) and by bounded-tag GraphQL on devnet;
+    intent_sha256 verified byte-identical by independent recomputation;
+    anchor gate exit 0 byte-identical throughout, including runs carrying
+    stop_loss and data_sources extraction divergence. NOTE: devnet retains
+    data roughly 60 days; these artifacts are ephemeral by design until the
+    mainnet cutover (Step 3/4).
+    Live findings: devnet accepts small uploads at zero balance (the price
+    endpoint quotes nonzero regardless); gateway.irys.xyz serves devnet
+    items; the deployed query side still times out on unbounded GraphQL
+    (timestamp-bounds patch owed, separate commit).
+    Step 1 reading of the grep gates: createAuthHeaders 0 holds; the
+    "x402.org/facilitator >= 1" expectation activates at Step 2 when x402
+    enters the Worker.
+    Production note: the deployed Worker predates e95bb49; anchoring goes
+    live only after `wrangler secret put IRYS_UPLOAD_KEY` plus deploy. The
+    addenda-7 deploy parity gate is now scripted:
+    harness/pol-live-call.ts --url <worker>/mcp replays pm-block-008 and
+    expects 0x8591..4937 anchored.
