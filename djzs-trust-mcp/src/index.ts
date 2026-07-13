@@ -3,12 +3,27 @@ import { StreamableHTTPTransport } from "@hono/mcp"
 import { Hono } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
+import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 
 const IRYS_GRAPHQL_URL = "https://uploader.irys.xyz/graphql"
+/**
+ * PoL write target (Step 1, D3 ruling 2026-07-12: devnet first). Deliberate
+ * asymmetry: the GraphQL query side above reads the MAINNET uploader index, so
+ * devnet certs are NOT visible to query_pol_certificates. Mainnet cutover is
+ * one [vars] flip (IRYS_NODE_URL) plus a funded key, sequenced by DJ.
+ */
+const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
 
-/** Worker bindings. ANTHROPIC_API_KEY is a wrangler SECRET (never in wrangler.toml). */
+/**
+ * Worker bindings. ANTHROPIC_API_KEY and IRYS_UPLOAD_KEY are wrangler SECRETS
+ * (never in wrangler.toml). IRYS_NODE_URL is a plain [vars] entry.
+ */
 interface Env {
   ANTHROPIC_API_KEY?: string
+  /** EVM private key hex signing PoL DataItems. Absent => anchoring reports "disabled"; audits still run. */
+  IRYS_UPLOAD_KEY?: string
+  /** Irys upload node. Defaults to devnet (D3 ruling); mainnet cutover flips this var. */
+  IRYS_NODE_URL?: string
 }
 
 /**
@@ -99,8 +114,14 @@ function buildServer(env: Env): McpServer {
   server.registerTool("verify_pm_trade", {
     title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)",
     description: `Deterministic pre-execution audit of a prediction-market trade thesis. Extracts the reasoning, audits it against the calibrated DJZS-M taxonomy (M01 narrative/resolution gap, M02 falsification absent, M03 probability unsourced, M04 consensus-as-edge advisory), and returns PASS→PROCEED, FAIL, or WAIT→HALT with flagged defects and a reproducible verdict_hash. Audit before act.`,
-    inputSchema: VERIFY_PM_TRADE_INPUT
-  }, async ({ intent }) => {
+    inputSchema: {
+      ...VERIFY_PM_TRADE_INPUT,
+      // D4 ruling 2026-07-12: optional; feeds ONLY the Target-System tag on the
+      // anchored certificate. Extraction input and hash preimage untouched.
+      target_system: z.string().min(1).max(128).optional()
+        .describe("Optional agent/project identifier; becomes the Target-System tag on the anchored PoL certificate")
+    }
+  }, async ({ intent, target_system }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -112,7 +133,43 @@ function buildServer(env: Env): McpServer {
     }
     const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
     const result = await runVerifyPmTrade(intent, modelFn)
-    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
+
+    // Step 1 PoL anchor: strictly AFTER the audit result exists; nothing here
+    // can reach the verdict_hash preimage. FAIL OPEN: an anchoring failure
+    // annotates the response and never blocks or mutates the verdict.
+    let pol_certificate: Record<string, unknown> | undefined
+    if (result.in_scope === true) {
+      if (!env.IRYS_UPLOAD_KEY) {
+        pol_certificate = {
+          status: "disabled",
+          detail: "IRYS_UPLOAD_KEY secret not configured; result not anchored."
+        }
+      } else {
+        const nodeUrl = env.IRYS_NODE_URL ?? DEFAULT_IRYS_NODE_URL
+        try {
+          const anchored = await anchorPolCertificate(
+            {
+              result,
+              intent,
+              targetSystem: target_system,
+              auditId: crypto.randomUUID(),
+              issuedAtMs: Date.now()
+            },
+            env.IRYS_UPLOAD_KEY,
+            buildIrysUploadFn(nodeUrl)
+          )
+          pol_certificate = { status: "anchored", node: nodeUrl, ...anchored }
+        } catch (e) {
+          pol_certificate = {
+            status: "error",
+            detail: (e instanceof Error ? e.message : String(e)).slice(0, 300)
+          }
+        }
+      }
+    }
+
+    const response = pol_certificate ? { ...result, pol_certificate } : result
+    return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
   })
 
   return server

@@ -2,3 +2,6 @@
 # key locally. NEVER commit .dev.vars or a real key. In production this is a wrangler secret:
 #   wrangler secret put ANTHROPIC_API_KEY
 ANTHROPIC_API_KEY="<your-anthropic-api-key>"
+# EVM private key hex for PoL DataItem signing (devnet: throwaway, faucet-funded).
+# Production: wrangler secret put IRYS_UPLOAD_KEY
+IRYS_UPLOAD_KEY="<evm-private-key-hex>"

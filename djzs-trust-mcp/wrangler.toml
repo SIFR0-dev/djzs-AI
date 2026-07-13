@@ -11,6 +11,10 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
+# PoL write target (Step 1, D3 ruling 2026-07-12: devnet first; faucet-funded,
+# data expires ~60d, invisible to the mainnet query side). Mainnet cutover =
+# flip to https://uploader.irys.xyz plus a funded IRYS_UPLOAD_KEY. DJ sequences.
+IRYS_NODE_URL = "https://devnet.irys.xyz"
 
 # Module aliasing (wrangler → esbuild): resolve the engine's `@shared/*` imports at
 # bundle time WITHOUT editing any file under shared/. esbuild remaps the "@shared"
@@ -21,5 +25,8 @@ ENVIRONMENT = "production"
 #
 # SECRET: ANTHROPIC_API_KEY is set via `wrangler secret put ANTHROPIC_API_KEY` and read
 # from the request-time env binding (see src/index.ts). It is NEVER a [vars] entry.
+# SECRET: IRYS_UPLOAD_KEY (EVM private key hex signing PoL DataItems) likewise via
+# `wrangler secret put IRYS_UPLOAD_KEY`, read request-time. Key choice and funding
+# are DJ's alone (D5). Absent secret => anchoring reports "disabled"; audits run.
 [alias]
 "@shared" = "../shared"
