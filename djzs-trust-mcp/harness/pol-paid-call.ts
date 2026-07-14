@@ -14,7 +14,7 @@
  *     anchored. Then both retrieval legs run as in pol-live-call.
  *
  * Payer key: X402_PAYER_KEY in ../.dev.vars (gitignored; never printed).
- * The payer needs base USDC only; gas is facilitator-paid (Step 0
+ * The payer needs testnet USDC only (base-sepolia default); gas is facilitator-paid (Step 0
  * proved the payer's sent-tx count stays zero).
  *
  * Run from repo root, wrangler dev up with doctrine flags:
@@ -34,7 +34,14 @@ import { sha256Hex } from "../../server/engine-v2/hash"
 
 const DEFAULT_URL = "http://localhost:8787/mcp"
 const DEVNET_NODE = "https://devnet.irys.xyz"
-const NETWORK = "base"
+/**
+ * Payer-side network. DEFAULTS TO TESTNET, deliberately: a hardcoded mainnet
+ * default once aimed this harness at eip155:8453 while the server served
+ * eip155:84532 (2026-07-13). Mainnet is opt-in per run via --network base,
+ * and is only meaningful once a mainnet-capable facilitator is RULED (the
+ * public x402.org facilitator is testnet-only; spec A9).
+ */
+const NETWORK = arg("network") ?? "base-sepolia"
 /** 0.25 USDC in atomic units (6 decimals). Exact, least-privilege cap. */
 const MAX_PAYMENT_ATOMIC = 250000n
 const DATASET_PATH = fileURLToPath(
@@ -114,7 +121,7 @@ async function main(): Promise<void> {
   }
 
   // GATE P: paid call through the x402 client.
-  console.log("GATE P: paid call (0.25 USDC, base-sepolia, facilitator-settled)")
+  console.log(`GATE P: paid call (0.25 USDC, ${NETWORK}, facilitator-settled)`)
   const account = privateKeyToAccount(loadPayerKey())
   console.log(`  payer address: ${account.address}`)
   const inner = new Client({ name: "pol-paid-call", version: "1.0.0" })
