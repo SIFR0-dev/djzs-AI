@@ -11,9 +11,10 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
-# PoL write target. Devnet pilot (D3 ruling 2026-07-12) discharged; mainnet
-# cutover 2026-07-13: uploader.irys.xyz plus a funded IRYS_UPLOAD_KEY.
-IRYS_NODE_URL = "https://uploader.irys.xyz"
+# PoL write target (Step 1, D3 ruling 2026-07-12: devnet first; faucet-funded,
+# data expires ~60d, invisible to the mainnet query side). Mainnet cutover =
+# flip to https://uploader.irys.xyz plus a funded IRYS_UPLOAD_KEY. DJ sequences.
+IRYS_NODE_URL = "https://devnet.irys.xyz"
 
 # Module aliasing (wrangler → esbuild): resolve the engine's `@shared/*` imports at
 # bundle time WITHOUT editing any file under shared/. esbuild remaps the "@shared"

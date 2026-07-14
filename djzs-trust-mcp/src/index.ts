@@ -28,12 +28,12 @@ const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
  * this package (this comment deliberately avoids the token). Second gate:
  * x402.org/facilitator -> >= 1.
  * PRICE RULING 2026-07-12: 0.25 USDC per audit, rehearsal included.
- * RECIPIENT RULING 2026-07-13: mainnet treasury, dedicated receive-only
- * address, EIP-55 checksum verified, distinct from operator wallet.
-*/
-
-const X402_NETWORK = "base"
-const X402_RECIPIENT: `0x${string}` = "0xc1923748669dFC3a79497d0403A90a275161eCCA"
+ * RECIPIENT RULING 2026-07-12: sepolia burner = the Irys throwaway address,
+ * receive-only role here, zero-value tier. TREASURY replaces this constant
+ * in the signed mainnet diff; treasury stays out of source until then.
+ */
+const X402_NETWORK = "base-sepolia"
+const X402_RECIPIENT: `0x${string}` = "0xbE42eBF5F276205fdC841e489554D01eB3B26b4A"
 const X402_FACILITATOR_URL = "https://x402.org/facilitator"
 const VERIFY_PM_TRADE_PRICE_USD = 0.25
 
