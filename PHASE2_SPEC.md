@@ -371,3 +371,37 @@ A10. 2026-07-14: FACILITATOR RULED — CDP. DJ ruled the CDP (Coinbase
     treasury address as a committed constant, the network flip to "base",
     each in a separate signed diff, each behind the /health/x402 probe and a
     named rollback target.
+
+A11. 2026-07-14: MAINNET PATH, staged to make the A9 outage un-repeatable by
+    isolating each real-money variable and proving it before the next.
+    Rulings: dedicated new mainnet Irys key (kept separate from the devnet
+    throwaway as IRYS_MAINNET_KEY, funded with real Base ETH); treasury
+    address DJ-provided at the payment-flip stage.
+
+    STAGE 1 DONE: dedicated mainnet key generated (address
+    0xcF2d8Ef4Dea0Ef8957b0F4D4a6fBFC2AEAf990cD), funded via
+    harness/pol-irys-fund.ts (generalized devnet+mainnet; supersedes
+    pol-devnet-fund.ts). Live mainnet Irys facts: base-eth deposit address
+    0x32Ed3Dc90CD5AE7b875A0ee7A86CA6D2fc72c635, price ~1.25e11 wei / 2 KB
+    (~$0.0004). Harness fix (2026-07-14): mainnet notify returns 200
+    {"confirmed":true}, not devnet's 202; the success check accepts both
+    (an earlier version false-reported "no 202" while the deposit had in
+    fact credited — the anchor upload immediately after proved it).
+
+    STAGE 2 DISCHARGED: mainnet Irys anchoring proven in PURE ISOLATION
+    (harness/pol-mainnet-anchor.ts) — a real PoL cert uploaded to
+    uploader.irys.xyz, NO payment, NO Worker, only the funded key under
+    test. Permanent cert 747n8SZqVcU9RsNxE1mDHdnG2GiyDXAc1SYJpRiLm25i,
+    retrieved by id (gateway 200) AND by the MAINNET GraphQL index that
+    query_pol_certificates reads — the first real DJZS cert that index has
+    ever held. Cost: one sub-cent upload. Mainnet anchoring is no longer a
+    blocker.
+
+    STAGE 3, STILL OWED (the only remaining real-money step): the payment
+    flip. X402_NETWORK "base-sepolia" -> "base"; X402_RECIPIENT -> the
+    DJ-provided treasury constant; the Worker's IRYS_UPLOAD_KEY secret set
+    to the funded mainnet key and IRYS_NODE_URL -> uploader.irys.xyz. One
+    signed diff, deployed behind the /health/x402 probe (which now also
+    checks eip155:8453 support end to end) with 5f021c66 named as the
+    rollback target BEFORE deploy, probed live immediately after. CDP
+    already settles eip155:8453 (A10), so no facilitator work remains.
