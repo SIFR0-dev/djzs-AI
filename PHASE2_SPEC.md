@@ -302,3 +302,72 @@ A9. 2026-07-13: MAINNET CUTOVER FAILED AND WAS ROLLED BACK. Commit 33e6433
     immediate live probe (pol-live-call --url, or pol-paid-call --url once
     payment is live) and a named rollback target BEFORE the deploy, not
     after the outage.
+
+A10. 2026-07-14: FACILITATOR RULED — CDP. DJ ruled the CDP (Coinbase
+    Developer Platform) facilitator after a four-candidate brief
+    (FACILITATOR_RULING_BRIEF.md), each probed against its OWN /supported
+    endpoint. Standings: x402.org testnet-only (no eip155:8453); xpay and
+    0xArchive advertise eip155:8453 with NO auth; CDP advertises Base,
+    Base Sepolia, Polygon, Arbitrum, World, Solana and requires an API key.
+
+    THE COMPLIANCE RE-RULING, explicit: the former "No createAuthHeaders"
+    ban (and the grep gate pinning x402.org/facilitator) are RETIRED. They
+    were written as proxies for CUSTODY, but auth headers do not create
+    custody — an EIP-3009 authorization binds the recipient INSIDE the
+    payer's signature, so no facilitator can redirect, skim, or custody at
+    any point. Flow of funds is IDENTICAL under every candidate (payer ->
+    treasury, facilitator submits + pays gas). What CDP actually adds is a
+    Coinbase ACCOUNT RELATIONSHIP, accepted deliberately in exchange for
+    OFAC/KYT screening and a battle-tested settler. The KYB flow-of-funds
+    diagram (Model A, Scenario 1) is UNCHANGED; Scenario 2 (self-hosted
+    facilitator) remains out of scope.
+
+    BUILDABILITY, instrumented pre-code (not from memory): @coinbase/x402
+    2.1.0 exports createFacilitatorConfig(id, secret) returning the
+    FacilitatorConfig shape @x402/core expects, url
+    https://api.cdp.coinbase.com/platform/v2/x402. It bundles under workerd
+    conditions; the JWT is signed via jose on WebCrypto (no node crypto);
+    axios enters only through cdp-sdk's auth hook and TREE-SHAKES to zero
+    refs in the output (44 KB auth-only bundle). A throwaway Ed25519 key
+    produced a real Bearer JWT with verify/settle/supported/list headers.
+
+    IMPLEMENTATION (this commit): facilitator built via
+    createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET) —
+    keys are wrangler SECRETS read REQUEST-SCOPED from env, never
+    module-scope process.env (same seam as buildAnthropicModelFn; sidesteps
+    the 10021 dead-code detonator class). Absent keys => the paid tool
+    cannot settle and errors BEFORE the handler runs; no free audit is ever
+    served (fail-closed); free registry tools unaffected. New route
+    GET /health/x402 is the deploy-gate boot assertion: it builds the same
+    CDP config, calls getSupported() (signing a real CDP JWT, so a 200 also
+    proves auth end to end), and reports whether the configured network is
+    advertised — the one probe that would have caught the A9 outage.
+
+    NEW COMPLIANCE GATES (replace the retired two), all green pre-commit:
+    - grep process.env in src/ -> 0 CALLS (comments describing its avoidance
+      are allowed; the three hits are all such comments).
+    - CDP keys read only from the env binding (env.CDP_API_KEY_*), never
+      module scope.
+    - recipient is the single committed payee constant; no settlement or
+      intermediary address anywhere (grep 0).
+    - createFacilitatorConfig present as the authorized CDP auth path.
+    Old gates are RETIRED with reason: createAuthHeaders==0 and
+    x402.org/facilitator>=1 both encoded the public-facilitator design A10
+    supersedes.
+
+    NETWORK for this commit stays base-sepolia: CDP settles testnet too, so
+    the ENTIRE CDP path (JWT auth, verify, settle) is provable with faucet
+    USDC and zero financial exposure before any mainnet variable moves. The
+    rehearsal instrument is unchanged (harness/pol-paid-call.ts); the payer
+    side is agnostic to the server's facilitator choice.
+
+    KEY POSTURE (DJ): create a CDP SECRET API key in the djzs.ai project
+    with NO Coinbase App scopes (View/Trade/Transfer/Receive all OFF); it
+    authenticates JWT requests to the x402 platform API and needs none of
+    them. Two Worker secrets: CDP_API_KEY_ID, CDP_API_KEY_SECRET.
+
+    STILL OWED before mainnet (unchanged from A9, do not skip): a FUNDED
+    mainnet Irys upload key (free-at-zero-balance is devnet-only), the
+    treasury address as a committed constant, the network flip to "base",
+    each in a separate signed diff, each behind the /health/x402 probe and a
+    named rollback target.

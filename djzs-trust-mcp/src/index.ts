@@ -4,7 +4,9 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
-import { withX402 } from "agents/x402"
+import { withX402, normalizeNetwork } from "agents/x402"
+import { createFacilitatorConfig } from "@coinbase/x402"
+import { HTTPFacilitatorClient } from "@x402/core/server"
 
 const IRYS_GRAPHQL_URL = "https://uploader.irys.xyz/graphql"
 /**
@@ -16,25 +18,37 @@ const IRYS_GRAPHQL_URL = "https://uploader.irys.xyz/graphql"
 const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
 
 /**
- * x402 payment configuration (Step 2, Path B ruling 2026-07-12: withX402 on
- * the existing per-request McpServer; transport independence instrumented
- * from the installed agents artifact, zero DO/McpAgent surface; falsifier is
- * the sepolia rehearsal gate).
- * COMPLIANCE (spec hard constraint, non-custodial Model A Scenario 1):
- * exactly network + recipient + facilitator URL, nothing else. Funds move
- * payer -> recipient via the payer's EIP-3009 signature; the facilitator
- * submits and pays gas. The custodial auth-header helper from the x402 SDK
- * is banned; the spec's first grep gate expects ZERO hits for its name in
- * this package (this comment deliberately avoids the token). Second gate:
- * x402.org/facilitator -> >= 1.
- * PRICE RULING 2026-07-12: 0.25 USDC per audit, rehearsal included.
- * RECIPIENT RULING 2026-07-12: sepolia burner = the Irys throwaway address,
- * receive-only role here, zero-value tier. TREASURY replaces this constant
- * in the signed mainnet diff; treasury stays out of source until then.
+ * x402 payment configuration.
+ * Step 2 (Path B, 2026-07-12): withX402 on the existing per-request McpServer.
+ * Step 3 facilitator ruling (A10, 2026-07-14): the CDP facilitator, because the
+ * public x402.org facilitator settles TESTNET ONLY (proven live: its /supported
+ * lists no eip155:8453) and mainnet is the destination. DJ ruled the former
+ * createAuthHeaders ban was a proxy for CUSTODY it never actually controlled;
+ * CDP auth authenticates us to the facilitator, it does not custody funds.
+ *
+ * FLOW OF FUNDS UNCHANGED (non-custodial, Model A Scenario 1): payer -> recipient
+ * via the payer's EIP-3009 signature; the facilitator submits transferWithAuth
+ * and pays gas. The recipient is bound INSIDE the payer's signature, so no
+ * facilitator can redirect, skim, or custody. What CDP adds is an account
+ * relationship (accepted, for OFAC/KYT screening and a battle-tested settler),
+ * NOT a custody hop.
+ *
+ * KEY CUSTODY: CDP_API_KEY_ID/SECRET are wrangler SECRETS read request-scoped
+ * from env (never module-scope process.env); createFacilitatorConfig takes them
+ * as explicit args, the same seam as buildAnthropicModelFn. The auth path
+ * bundles under workerd (JWT via jose/WebCrypto; axios tree-shakes out) —
+ * instrumented pre-code, throwaway Ed25519 key produced a real Bearer JWT.
+ *
+ * PRICE 0.25 USDC per audit (2026-07-12, rehearsal included).
+ * RECIPIENT: sepolia burner = the Irys throwaway address, receive-only,
+ * zero-value tier. TREASURY replaces this constant in the signed mainnet diff
+ * and stays out of source until then.
+ * NETWORK: base-sepolia for the CDP rehearsal (CDP settles testnet too, so the
+ * whole auth+verify+settle path is provable with faucet USDC and zero exposure);
+ * the mainnet flip to "base" is a separate signed diff with a funded Irys key.
  */
 const X402_NETWORK = "base-sepolia"
 const X402_RECIPIENT: `0x${string}` = "0xbE42eBF5F276205fdC841e489554D01eB3B26b4A"
-const X402_FACILITATOR_URL = "https://x402.org/facilitator"
 const VERIFY_PM_TRADE_PRICE_USD = 0.25
 
 /**
@@ -47,6 +61,10 @@ interface Env {
   IRYS_UPLOAD_KEY?: string
   /** Irys upload node. Defaults to devnet (D3 ruling); mainnet cutover flips this var. */
   IRYS_NODE_URL?: string
+  /** CDP facilitator API key id (A10). SECRET, request-scoped. Absent => paid tool cannot settle. */
+  CDP_API_KEY_ID?: string
+  /** CDP facilitator API key secret (A10). SECRET, request-scoped. Never module-scope. */
+  CDP_API_KEY_SECRET?: string
 }
 
 /**
@@ -56,12 +74,16 @@ interface Env {
  * and behave identically to before; verify_pm_trade needs env.ANTHROPIC_API_KEY.
  */
 function buildServer(env: Env): McpServer {
-  // withX402 augments the per-request server with paidTool; free tools are
-  // registered exactly as before and stay free.
+  // A10: the facilitator is CDP, its config (url + createAuthHeaders JWT signer)
+  // built from request-scoped secrets. createFacilitatorConfig takes the keys
+  // explicitly, so nothing reads module-scope process.env. Absent keys yield a
+  // config whose auth cannot sign -> the facilitator refuses -> the paid tool
+  // errors BEFORE the handler runs (fail-closed: no free audit is ever served);
+  // free tools are unaffected because withX402 gates only the paid tool.
   const server = withX402(new McpServer({ name: "djzs-trust-mcp", version: "1.0.0" }), {
     network: X402_NETWORK,
     recipient: X402_RECIPIENT,
-    facilitator: { url: X402_FACILITATOR_URL }
+    facilitator: createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)
   })
 
   server.registerTool("query_pol_certificates", {
@@ -227,5 +249,45 @@ app.all("/mcp", async (c) => {
   return (await transport.handleRequest(c)) ?? c.text("Bad Request", 400)
 })
 app.get("/", (c) => c.json({ name: "djzs-trust-mcp", version: "1.0.0", status: "operational" }))
+
+/**
+ * Deploy-gate boot assertion (A10 / spec A9 deploy doctrine). The outage of
+ * 2026-07-13 was a resource server asking a facilitator for a network it did
+ * not settle; this route is the ONE probe that would have caught it. It builds
+ * the same CDP facilitator config the paid tool uses, calls getSupported() (which
+ * signs a real CDP JWT — so a 200 here also proves the auth path works end to
+ * end), and reports whether the configured network is actually advertised.
+ * Reads nothing but env; moves no money. Probe it immediately after every deploy.
+ */
+app.get("/health/x402", async (c) => {
+  const env = c.env
+  const caip2 = normalizeNetwork(X402_NETWORK)
+  if (!env.CDP_API_KEY_ID || !env.CDP_API_KEY_SECRET) {
+    return c.json({
+      network: X402_NETWORK, caip2, facilitator_configured: false,
+      network_supported: false,
+      detail: "CDP_API_KEY_ID/SECRET not set; paid tool cannot settle."
+    }, 503)
+  }
+  try {
+    const client = new HTTPFacilitatorClient(
+      createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)
+    )
+    const supported = await client.getSupported()
+    const kinds = (supported?.kinds ?? []) as Array<{ network?: string }>
+    const networkSupported = kinds.some((k) => k.network === caip2)
+    return c.json({
+      network: X402_NETWORK, caip2, facilitator_configured: true,
+      network_supported: networkSupported,
+      advertised_networks: [...new Set(kinds.map((k) => k.network).filter(Boolean))]
+    }, networkSupported ? 200 : 502)
+  } catch (e) {
+    return c.json({
+      network: X402_NETWORK, caip2, facilitator_configured: true,
+      network_supported: false,
+      detail: (e instanceof Error ? e.message : String(e)).slice(0, 200)
+    }, 502)
+  }
+})
 
 export default app

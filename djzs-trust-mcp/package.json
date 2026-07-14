@@ -9,6 +9,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@coinbase/x402": "2.1.0",
     "@hono/mcp": "^0.3.0",
     "@irys/bundles": "0.0.5",
     "@modelcontextprotocol/sdk": "1.29.0",

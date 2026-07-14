@@ -8,3 +8,9 @@ IRYS_UPLOAD_KEY="<evm-private-key-hex>"
 # Payer-side burner for the x402 rehearsal harness (pol-paid-call.ts) ONLY.
 # Holds base-sepolia USDC; gas is facilitator-paid. NEVER a Worker secret.
 X402_PAYER_KEY="<evm-private-key-hex>"
+# CDP facilitator credentials (A10). Server-side SECRETS, read request-scoped.
+# CDP Secret API key with NO Coinbase App scopes (View/Trade/Transfer/Receive
+# all OFF); it only authenticates JWT requests to the x402 platform API.
+# Production: wrangler secret put CDP_API_KEY_ID / CDP_API_KEY_SECRET
+CDP_API_KEY_ID="<cdp-api-key-id>"
+CDP_API_KEY_SECRET="<cdp-api-key-secret>"
