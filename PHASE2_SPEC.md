@@ -247,3 +247,58 @@ A8. 2026-07-12 (late): STEP 2 ARCHITECTURE DEVIATION, DJ-ruled. Path B
     resource; ours carried U+2192 arrows and crashed the payer. RULED as a
     class: paid-tool descriptions are ASCII-only. @x402/core itself uses a
     safe TextEncoder path; upstream bug candidate against the agents repo.
+
+A9. 2026-07-13: MAINNET CUTOVER FAILED AND WAS ROLLED BACK. Commit 33e6433
+    (network base, recipient treasury 0xc192..eCCA, IRYS_NODE_URL ->
+    uploader.irys.xyz) was deployed (2783f2bc, then 3246e03f) and took the
+    public tool DOWN. Reverted in the deploy plane by rolling back to
+    5f021c66 (100% traffic); production verified alive afterwards by
+    pol-live-call (anchored A1ixD662viuJmh9dPpGaGqiWYEFnYRm1UK4Uwmx8EBku,
+    verdict_hash 0x8591..4937, both retrieval legs green, exit 0).
+    Failure was CLOSED, not open: no audit served free, no signature taken,
+    no funds moved.
+
+    ROOT CAUSE, with the instrument that would have caught it in one call:
+    GET https://x402.org/facilitator/supported lists the facilitator's
+    supported kinds. Every EVM entry is eip155:84532 (base-sepolia) across
+    exact/upto/batch-settlement, plus the v1 "base-sepolia" alias.
+    eip155:8453 (Base MAINNET) is ABSENT. The public facilitator is
+    TESTNET-ONLY. A resource server on network "base" pointed at it cannot
+    even build payment requirements: live production returned
+    {"x402Version":2,"error":"PRICE_COMPUTE_FAILED"} to every caller, paid
+    and unpaid. Mainnet payment is therefore BLOCKED on a facilitator that
+    settles eip155:8453, not on any DJZS code.
+
+    RULING OWED (do not decide by drift; this is the whole compliance
+    posture): the mainnet-capable path is Coinbase's CDP facilitator, whose
+    auth is an API key id + secret — i.e. the custodial auth-header
+    mechanism this spec's acceptance criterion bans, and whose grep gate
+    pins the public facilitator URL. An attempt to satisfy it by quietly
+    putting CDP_API_KEY_ID/SECRET as Worker secrets was aborted before any
+    value was entered (secret store verified: ANTHROPIC_API_KEY and
+    IRYS_UPLOAD_KEY only). Honest framing for the re-ruling: CDP-facilitated
+    settlement keeps flow-of-funds non-custodial (payer -> treasury via
+    EIP-3009, facilitator submits and pays gas), so the ban may be
+    over-broad — but changing it is a spec amendment with evidence, never a
+    secret paste. Alternatives to price first: any other facilitator whose
+    /supported advertises eip155:8453 (verify against ITS endpoint, never
+    from memory); or hold the pilot on base-sepolia.
+
+    SECOND LANDMINE in the same commit, independent of payment: IRYS_NODE_URL
+    -> uploader.irys.xyz while IRYS_UPLOAD_KEY is the zero-balance devnet
+    throwaway. Free-at-zero-balance is a DEVNET property (live-observed, A7);
+    mainnet Irys will refuse. Anchoring would fail-open and paying callers
+    would receive pol_certificate {status:"error"} — precisely the "charging
+    for a bare hash that anchors no certificate" weak offer this spec opens
+    by rejecting. Mainnet anchoring requires a FUNDED mainnet upload key,
+    ruled and funded before any mainnet deploy.
+
+    DEPLOY DOCTRINE (new, ratified): a deploy is not done when wrangler says
+    "Deployed". It is done when the DEPLOYED VERSION is probed live and
+    answers correctly. Green local rehearsal against wrangler dev proves the
+    code, not the deployment: the config that broke production (mainnet
+    network + testnet facilitator) was never exercised locally, because the
+    local rehearsal ran the sepolia config. Every deploy carries an
+    immediate live probe (pol-live-call --url, or pol-paid-call --url once
+    payment is live) and a named rollback target BEFORE the deploy, not
+    after the outage.

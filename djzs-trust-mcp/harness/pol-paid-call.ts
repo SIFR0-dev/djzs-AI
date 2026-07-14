@@ -14,7 +14,7 @@
  *     anchored. Then both retrieval legs run as in pol-live-call.
  *
  * Payer key: X402_PAYER_KEY in ../.dev.vars (gitignored; never printed).
- * The payer needs base-sepolia USDC only; gas is facilitator-paid (Step 0
+ * The payer needs base USDC only; gas is facilitator-paid (Step 0
  * proved the payer's sent-tx count stays zero).
  *
  * Run from repo root, wrangler dev up with doctrine flags:
@@ -34,7 +34,7 @@ import { sha256Hex } from "../../server/engine-v2/hash"
 
 const DEFAULT_URL = "http://localhost:8787/mcp"
 const DEVNET_NODE = "https://devnet.irys.xyz"
-const NETWORK = "base-sepolia"
+const NETWORK = "base"
 /** 0.25 USDC in atomic units (6 decimals). Exact, least-privilege cap. */
 const MAX_PAYMENT_ATOMIC = 250000n
 const DATASET_PATH = fileURLToPath(
