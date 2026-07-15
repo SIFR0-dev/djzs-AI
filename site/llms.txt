@@ -28,11 +28,15 @@
 - DJZS-M (prediction market, DJZS-PM-v1.0): M01-M04, weights sum 100, FAIL threshold 25. All live.
 - DJZS-LF (perpetuals, DJZS-LF-v1.1): 11 codes, weights sum 200, 3 wired live (X01, E01, I01).
 
-## v1 deferrals (stated honestly)
+## Live posture (stated honestly)
 
-- Certificates anchor to Irys devnet (~60-day retention); mainnet permanence arrives with the
-  payment step. No payment gate on the tool yet. (Former deferrals now live: the PoL write and
-  the taxonomy hash block in the tool response.)
+- verify_pm_trade is PAID: 0.25 USDC per audit over x402 (CDP facilitator) on Base mainnet,
+  non-custodial (payer -> treasury via EIP-3009; the facilitator submits the transfer and pays gas).
+  The registry tools (query_pol_certificates, query_agent_trust) are free.
+- Certificates anchor to Irys MAINNET and are permanent; retrievable by id and via
+  query_pol_certificates.
+- Not live yet: query_agent_trust returns a placeholder pending deployment of the DJZS subgraph
+  to The Graph. Use query_pol_certificates for audit history meanwhile.
 
 ## Source of truth
 

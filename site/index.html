@@ -141,17 +141,23 @@
     across every re-run since, including runs with extraction divergence on non-preimage fields.</p>
   </section>
 
-  <!-- 6 — HONEST v1 -->
+  <!-- 6 — HONEST POSTURE -->
   <section id="honest">
-    <h2>Honest v1 posture <span class="k">// recorded deferrals</span></h2>
-    <p>What the tool does <strong>not</strong> do yet, stated plainly:</p>
+    <h2>Honest posture <span class="k">// what's live, what isn't</span></h2>
+    <p>Stated plainly:</p>
     <ul class="tight">
-      <li><strong>Certificates anchor to devnet, not mainnet.</strong> <code>verify_pm_trade</code>
-      now writes a ProofOfLogic certificate to Irys for every in-scope audit and returns the id;
-      the write target is devnet (~60-day retention), so today's certificates are ephemeral by
-      design. Mainnet permanence arrives with the payment step.</li>
-      <li><strong>No payment gate on the tool.</strong> The MCP tool is not metered; the older paid
-      HTTP tiers are a separate surface.</li>
+      <li><strong>The tool is paid.</strong> <code>verify_pm_trade</code> charges 0.25 USDC per audit
+      over x402 (the CDP facilitator) on Base mainnet. Payment is non-custodial: funds move from the
+      payer's wallet to the DJZS treasury directly via an EIP-3009 signature; the facilitator submits
+      the transfer and pays the gas. The two registry tools (<code>query_pol_certificates</code>,
+      <code>query_agent_trust</code>) stay free.</li>
+      <li><strong>Certificates are permanent.</strong> Every in-scope audit anchors a ProofOfLogic
+      certificate to Irys mainnet and returns its id; it is retrievable by id and via
+      <code>query_pol_certificates</code>. The certificate is assembled after the <code>verdict_hash</code>
+      and never alters it.</li>
+      <li><strong>Agent trust scores are not live yet.</strong> <code>query_agent_trust</code> returns
+      a placeholder pending deployment of the DJZS subgraph to The Graph; use
+      <code>query_pol_certificates</code> for audit history in the meantime.</li>
     </ul>
     <p>On-chain: four DJZS contracts are attested on Base in the A2A manifest, with source in
     <code>contracts/</code>. A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source
