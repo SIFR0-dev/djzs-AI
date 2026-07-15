@@ -99,7 +99,7 @@ function buildServer(env: Env): McpServer {
       verdict: z.enum(["PASS", "FAIL"]).optional().describe("Filter by verdict"),
       tier: z.enum(["micro", "founder", "treasury"]).optional().describe("Filter by tier"),
       limit: z.number().min(1).max(100).default(20).describe("Number of results"),
-      from_ms: z.number().int().optional().describe("Window start (epoch ms). Defaults to 180 days ago; widen to reach older certificates."),
+      from_ms: z.number().int().optional().describe("Window start (epoch ms). Default path auto-narrows (14d then 3d) to stay under the mainnet index timeout; pass an explicit value to reach older certificates (used as-is)."),
       to_ms: z.number().int().optional().describe("Window end (epoch ms). Defaults to now + 1h.")
     }
   }, async ({ targetSystem, verdict, tier, limit, from_ms, to_ms }) => {
@@ -111,28 +111,39 @@ function buildServer(env: Env): McpServer {
     if (verdict) tags.push({ name: "verdict", values: [verdict] })
     if (tier) tags.push({ name: "tier", values: [tier] })
 
-    // Irys mainnet GraphQL REQUIRES a timestamp window or it times out (proven
-    // live 2026-07-15 the moment anchoring moved to mainnet; ab9c1d1 hardening,
-    // addenda-8 patch, finally applied). Trailing 180-day default, caller-overridable.
+    // Irys mainnet GraphQL scans by timestamp, so an over-wide window TIMES OUT
+    // (proven live 2026-07-15: 7d ~0.3s, 30d ~1.4s, 60d+ times out; write side
+    // unaffected). The default path AUTO-NARROWS (14d -> 3d) so the tool
+    // self-heals as the mainnet dataset grows instead of erroring; an explicit
+    // from_ms is the caller's choice and is used as-is. addenda-8 / ab9c1d1.
     const now = Date.now()
-    const fromMs = from_ms ?? now - 180 * 24 * 3600 * 1000
     const toMs = to_ms ?? now + 3600 * 1000
-    const query = `query DJZSCerts($tags: [TagFilter!]!, $first: Int!) {
-      transactions(tags: $tags, timestamp: {from: ${fromMs}, to: ${toMs}}, first: $first, order: DESC) {
-        edges { node { id tags { name value } timestamp } }
-      }
-    }`
+    const windows: number[] = from_ms !== undefined ? [from_ms] : [now - 14 * 864e5, now - 3 * 864e5]
 
-    const response = await fetch(IRYS_GRAPHQL_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables: { tags, first: limit } })
-    })
-
-    if (!response.ok) return { content: [{ type: "text" as const, text: `Irys error: ${response.status}` }], isError: true }
-
-    const { data, errors } = await response.json() as any
-    if (errors?.length) return { content: [{ type: "text" as const, text: `GraphQL errors: ${JSON.stringify(errors)}` }], isError: true }
+    let data: any = null
+    let lastErr: any = null
+    let usedFromMs = windows[0]
+    for (const fromMs of windows) {
+      const query = `query DJZSCerts($tags: [TagFilter!]!, $first: Int!) {
+        transactions(tags: $tags, timestamp: {from: ${fromMs}, to: ${toMs}}, first: $first, order: DESC) {
+          edges { node { id tags { name value } timestamp } }
+        }
+      }`
+      const response = await fetch(IRYS_GRAPHQL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, variables: { tags, first: limit } })
+      })
+      if (!response.ok) { lastErr = `Irys HTTP ${response.status}`; continue }
+      const j = await response.json() as any
+      if (j.errors?.length) { lastErr = j.errors; continue }
+      data = j.data
+      usedFromMs = fromMs
+      break
+    }
+    if (!data) {
+      return { content: [{ type: "text" as const, text: `Irys query failed on all windows (pass a narrower from_ms/to_ms): ${JSON.stringify(lastErr)}` }], isError: true }
+    }
 
     const certs = data.transactions.edges.map(({ node }: any) => {
       const t: Record<string, string> = {}
@@ -153,6 +164,7 @@ function buildServer(env: Env): McpServer {
         total_returned: certs.length,
         pass_count: certs.filter((c: any) => c.verdict === "PASS").length,
         fail_count: certs.filter((c: any) => c.verdict === "FAIL").length,
+        window: { from_ms: usedFromMs, to_ms: toMs, note: "certs outside this window need an explicit from_ms" },
         certificates: certs
       }, null, 2) }]
     }

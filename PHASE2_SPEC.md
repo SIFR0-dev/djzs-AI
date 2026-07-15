@@ -432,13 +432,21 @@ A11. 2026-07-14: MAINNET PATH, staged to make the A9 outage un-repeatable by
     The full Phase 2 offer (pay via x402 -> anchored PoL certificate) is LIVE
     on Base mainnet. Reserved items (price, treasury) are discharged.
 
-A12. 2026-07-15: QUERY-SIDE BOUNDS PATCH, forced live by the cutover. With
+A12. 2026-07-15: QUERY-SIDE BOUNDS, forced live by the cutover. With
     anchoring on mainnet, query_pol_certificates (unbounded GraphQL) TIMED
     OUT immediately — the addenda-8 hazard, proven the moment real data
-    landed (instrument: external mcp call -> "Query execution timed out ...
-    use to/from timestamp filters"). Fix: the tool query now carries a
-    timestamp window (trailing 180d default, caller-overridable via from_ms
-    /to_ms). The write side was never affected; this is read-side only. Gate:
-    tsc exit 0, pol-offline 26/26 (anchoring untouched). Deploy + probe: a
-    plain wrangler deploy (secrets persist), then query_pol_certificates must
-    return certs instead of timing out.
+    landed (instrument: external mcp call).
+    FIRST ATTEMPT OVERCLAIMED (59c2121): added a timestamp window but with a
+    trailing 180-DAY default, and the deployed tool STILL timed out — the
+    commit's "must return certs" was not met, corrected here. Root cause,
+    measured live against the mainnet index (single-tag app-id query):
+    7d ~0.3s, 30d ~1.4s, 60d ~10s TIMEOUT, 180d TIMEOUT. The index scans by
+    timestamp, so cost grows with window AND with mainnet's total size over
+    time — a fixed wide default is fragile by construction.
+    ACTUAL FIX: default path AUTO-NARROWS (14d then 3d) so the tool
+    self-heals instead of erroring; an explicit from_ms/to_ms is honored
+    as-is (caller owns that width); the response reports the window used.
+    Write side never touched (pol-offline 26/26, tsc 0). Deploy is a plain
+    wrangler deploy (secrets persist); DISCHARGED only when the DEPLOYED tool
+    returns certs, verified by external mcp call (A9 deploy doctrine: the
+    instrument is the deployed version, not the local edit).
