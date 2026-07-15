@@ -156,9 +156,14 @@ async function main(): Promise<void> {
   const auditId = String(pol.audit_id)
   console.log(`anchored: ${irysId} (audit_id ${auditId})`)
 
-  // Retrieval legs, as in pol-live-call.
+  // Retrieval legs must query the SAME Irys network the cert was anchored to.
+  // The cert reports its own node (devnet vs mainnet); a base-sepolia rehearsal
+  // anchors to devnet, a --network base rehearsal to mainnet. A prior version
+  // hardcoded devnet here and reported by-tags RED for a real mainnet cert that
+  // was in fact anchored and retrievable (2026-07-14).
+  const irysNode = String(pol.node ?? DEVNET_NODE)
   let leg1 = false
-  for (const u of [String(pol.gateway_url), `${DEVNET_NODE}/tx/${irysId}/data`]) {
+  for (const u of [String(pol.gateway_url), `${irysNode}/tx/${irysId}/data`]) {
     const r = await fetchText(u)
     console.log(`GET ${u} -> ${r.status}`)
     if (r.status === 200 && r.text.length > 0) {
@@ -176,7 +181,7 @@ async function main(): Promise<void> {
   const query = `query { transactions(tags: [{name: "Protocol", values: ["ProofOfLogic"]}, {name: "audit-id", values: ["${auditId}"]}], timestamp: {from: ${from}, to: ${to}}, first: 10, order: DESC) { edges { node { id } } } }`
   let leg2 = false
   for (let attempt = 1; attempt <= 6 && !leg2; attempt++) {
-    const r = await fetchText(`${DEVNET_NODE}/graphql`, {
+    const r = await fetchText(`${irysNode}/graphql`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query }),

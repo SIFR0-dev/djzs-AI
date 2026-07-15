@@ -39,16 +39,21 @@ const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
  * bundles under workerd (JWT via jose/WebCrypto; axios tree-shakes out) —
  * instrumented pre-code, throwaway Ed25519 key produced a real Bearer JWT.
  *
- * PRICE 0.25 USDC per audit (2026-07-12, rehearsal included).
- * RECIPIENT: sepolia burner = the Irys throwaway address, receive-only,
- * zero-value tier. TREASURY replaces this constant in the signed mainnet diff
- * and stays out of source until then.
- * NETWORK: base-sepolia for the CDP rehearsal (CDP settles testnet too, so the
- * whole auth+verify+settle path is provable with faucet USDC and zero exposure);
- * the mainnet flip to "base" is a separate signed diff with a funded Irys key.
+ * PRICE 0.25 USDC per audit (2026-07-12).
+ * NETWORK: "base" = Base MAINNET, eip155:8453 (A11 Stage 3, 2026-07-14). CDP
+ * settles it (proven via /supported); mainnet Irys anchoring proven in
+ * isolation (cert 747n8SZq..., A11 Stage 2). Rehearse locally with one real
+ * 0.25 USDC payment (pol-paid-call --network base) BEFORE any production
+ * deploy; deploy behind /health/x402 with 5f021c66 named as rollback.
+ * RECIPIENT: the dedicated treasury (EIP-55 verified 2026-07-14, matches the
+ * one vetted in the reverted 33e6433; distinct from the operator wallet).
+ * Committed as a SOURCE CONSTANT on purpose so the compliance grep sees the
+ * money path; an env var would blind it.
+ * FLOW OF FUNDS still non-custodial (Model A Scenario 1): the recipient is
+ * bound inside the payer's EIP-3009 signature; CDP submits and pays gas.
  */
-const X402_NETWORK = "base-sepolia"
-const X402_RECIPIENT: `0x${string}` = "0xbE42eBF5F276205fdC841e489554D01eB3B26b4A"
+const X402_NETWORK = "base"
+const X402_RECIPIENT: `0x${string}` = "0xc1923748669dFC3a79497d0403A90a275161eCCA"
 const VERIFY_PM_TRADE_PRICE_USD = 0.25
 
 /**

@@ -397,11 +397,34 @@ A11. 2026-07-14: MAINNET PATH, staged to make the A9 outage un-repeatable by
     ever held. Cost: one sub-cent upload. Mainnet anchoring is no longer a
     blocker.
 
-    STAGE 3, STILL OWED (the only remaining real-money step): the payment
-    flip. X402_NETWORK "base-sepolia" -> "base"; X402_RECIPIENT -> the
-    DJ-provided treasury constant; the Worker's IRYS_UPLOAD_KEY secret set
-    to the funded mainnet key and IRYS_NODE_URL -> uploader.irys.xyz. One
-    signed diff, deployed behind the /health/x402 probe (which now also
-    checks eip155:8453 support end to end) with 5f021c66 named as the
-    rollback target BEFORE deploy, probed live immediately after. CDP
-    already settles eip155:8453 (A10), so no facilitator work remains.
+    STAGE 3A DISCHARGED 2026-07-14 (local full-mainnet rehearsal, in source
+    uncommitted->committed this diff): X402_NETWORK "base", X402_RECIPIENT
+    the treasury 0xc1923748669dFC3a79497d0403A90a275161eCCA (EIP-55 verified
+    live), IRYS_NODE_URL -> uploader.irys.xyz. Against local wrangler with
+    the funded mainnet key as IRYS_UPLOAD_KEY, pol-paid-call --network base
+    proved the WHOLE mainnet path with ONE real payment: /health/x402
+    network base / eip155:8453 / supported true; unpaid refused; a REAL
+    0.25 USDC settled through CDP payer 0xA060..3B91 -> treasury on Base
+    mainnet; audit verdict_hash 0x8591..4937; permanent mainnet cert
+    5J411hkUP8Y6RRcan82stZE9J8EYD6gUsvw6QZBG7G8o retrievable by id (gateway
+    200) AND by the mainnet GraphQL index query_pol_certificates reads.
+    Two harness truths surfaced and handled: pol-paid-call hardcoded
+    DEVNET_NODE for retrieval (fixed to read pol.node, so it follows the
+    cert's actual network); and MAINNET INDEXING LAGS past the 60s leg-2
+    window (the by-tags check may transiently read RED on a fresh mainnet
+    cert, then succeed minutes later — confirmed live via a bounded query).
+    Corollary for the query side: mainnet Irys GraphQL REQUIRES timestamp
+    bounds or it times out (ab9c1d1 note, re-confirmed 2026-07-14).
+
+    STAGE 3B STILL OWED (production cutover, the step that broke A9 — do it
+    deliberately): set the production secrets FIRST (wrangler secret put
+    CDP_API_KEY_ID, CDP_API_KEY_SECRET, and IRYS_UPLOAD_KEY = the funded
+    mainnet key — production currently has none of these; it runs 5f021c66,
+    the free build), name the rollback target (5f021c66) BEFORE deploy,
+    deploy this committed mainnet HEAD, then probe the DEPLOYED version:
+    GET /health/x402 must show network base + supported true, and one paid
+    call must settle + anchor (by-id immediate; by-tags eventual per the
+    indexing lag above). A deploy is done only when the deployed version
+    answers correctly (A9 deploy doctrine). NOT DEPLOYED YET: HEAD carries
+    the mainnet config but fails CLOSED without the secrets (health 503,
+    paid tool errors, no free audit), so HEAD is safe though not yet live.
