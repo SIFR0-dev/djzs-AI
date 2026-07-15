@@ -19,3 +19,14 @@ X402_PAYER_KEY="<evm-private-key-hex>"
 # Production: wrangler secret put CDP_API_KEY_ID / CDP_API_KEY_SECRET
 CDP_API_KEY_ID="<cdp-api-key-id>"
 CDP_API_KEY_SECRET="<cdp-api-key-secret>"
+# Dedicated on-chain trust-score writer (Phase 3). A NEW key, authorized via
+# authorizeWriter() from the contract owner, funded with a little Base ETH for
+# gas. NOT the owner key. Absent => on-chain scoring is skipped (audits/certs
+# unaffected). Production: wrangler secret put DJZS_WRITER_KEY
+DJZS_WRITER_KEY="<evm-private-key-hex>"
+# Optional Base RPC for the score write; defaults to https://mainnet.base.org.
+# BASE_RPC_URL="https://..."
+# DJZS subgraph GraphQL query URL (Phase 3) for query_agent_trust. The Graph
+# Studio dev URL carries an API key, so treat it as a SECRET. Absent =>
+# query_agent_trust reports "unavailable". Production: wrangler secret put SUBGRAPH_URL
+SUBGRAPH_URL="<graph-studio-query-url>"

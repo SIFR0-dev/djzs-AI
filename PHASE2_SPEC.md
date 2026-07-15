@@ -450,3 +450,39 @@ A12. 2026-07-15: QUERY-SIDE BOUNDS, forced live by the cutover. With
     wrangler deploy (secrets persist); DISCHARGED only when the DEPLOYED tool
     returns certs, verified by external mcp call (A9 deploy doctrine: the
     instrument is the deployed version, not the local edit).
+
+A13. 2026-07-16: PHASE 3 — CLOSE THE TRUST LOOP (query_agent_trust). Finding
+    that shaped it: the 4 DJZS contracts are DEPLOYED on Base (eth_getCode true)
+    and the subgraph is scaffolded, BUT verify_pm_trade only wrote to Irys and
+    never called updateScore -> zero ScoreUpdated events -> a deployed subgraph
+    would index nothing. So the work was to WIRE the on-chain write, not just
+    deploy the subgraph. Rulings: D1 optional agent_address input (0x); absent
+    => Irys cert only. D2 dedicated writer key 0x7010B0E6...6756, authorized by
+    owner 0xc2ecfe..3a98 (DJ controls it) via authorizeWriter, funded 0.001 ETH;
+    NOT the owner key (least privilege). D3 synchronous fail-open write after the
+    Irys anchor (nonce = viem "pending"; pilot volume; batch/DO at scale). D4
+    subgraph not yet deployed. D5 HALT if failRate > 0.3 or DJZS-S01/X01 > 1.
+    SUPERSEDES A3 ("no direct viem"): that held for Step 2's signer-less resource
+    server; Phase 3's score-writer IS the signer. viem 2.55.1 pinned direct;
+    sign+encode+send bundles clean under workerd (instrumented: no node: builtins,
+    updateScore selector 0x62d6d4b6, exit 0; full-entry closure includes viem +
+    trust-writer, exit 0).
+    verdict_hash INVARIANT HELD across the change: anchor exit 0 byte-identical
+    0x8591..4937; the on-chain write is strictly downstream of the verdict and
+    feeds nothing into the hash. pol-offline 26/26. grep gates: createAuthHeaders
+    calls 0, process.env calls 0.
+    LIVE WRITE REHEARSAL DISCHARGED (on-chain, isolated, gas-only): tx
+    0xc2b51397..6c82 status 0x1, 1 log (first ScoreUpdated ever), auditCount(test
+    agent 0xA060..3B91) = 1 (block 48684934). harness/trust-write-rehearsal.ts;
+    its read-back was hardened to poll past public-RPC replica lag (a stale read
+    after a valid receipt was a false negative, not a revert).
+    query_agent_trust: stub replaced -> queries env.SUBGRAPH_URL for
+    agent(id=lowercased addr){totalAudits,passCount,failCount,latestVerdict,
+    latestRiskScore,flags}, computes failRate + S01/X01 counts, returns
+    PROCEED/HALT. No history => honest NO_HISTORY (never a silent PASS).
+    STILL OWED (task 23): deploy the subgraph to Graph Studio (base mainnet,
+    startBlock 43246651), set prod secrets DJZS_WRITER_KEY + SUBGRAPH_URL, deploy
+    the Worker behind /health with a named rollback, probe the DEPLOYED
+    query_agent_trust returns the test agent's real failRate. NOT DEPLOYED yet;
+    both new features fail-open/unavailable without their secrets, so HEAD is
+    safe though not live.

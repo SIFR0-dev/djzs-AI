@@ -4,6 +4,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
+import { buildTrustWriter } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig } from "@coinbase/x402"
 import { HTTPFacilitatorClient } from "@x402/core/server"
@@ -70,6 +71,12 @@ interface Env {
   CDP_API_KEY_ID?: string
   /** CDP facilitator API key secret (A10). SECRET, request-scoped. Never module-scope. */
   CDP_API_KEY_SECRET?: string
+  /** Dedicated authorized-writer key for on-chain trust scores (Phase 3). SECRET. Absent => scoring skipped. */
+  DJZS_WRITER_KEY?: string
+  /** Base RPC for the score write (Phase 3). Plain var; defaults to https://mainnet.base.org. */
+  BASE_RPC_URL?: string
+  /** DJZS subgraph GraphQL query URL (Phase 3). SECRET (Studio URL carries an API key). Absent => query_agent_trust reports unavailable. */
+  SUBGRAPH_URL?: string
 }
 
 /**
@@ -172,19 +179,61 @@ function buildServer(env: Env): McpServer {
 
   server.registerTool("query_agent_trust", {
     title: "Query DJZS Agent Trust Score",
-    description: `Query DJZS agent trust scores on Base Mainnet. USE BEFORE delegating work, releasing escrow, or executing agent transactions. HALT if failRate > 0.3 or DJZS-S01/DJZS-X01 triggered more than once. NOTE: Returns placeholder until DJZS subgraph is deployed to The Graph Network.`,
+    description: `Query an agent's DJZS trust score, aggregated on-chain (Base mainnet) from its audit history and indexed via the DJZS subgraph. USE BEFORE delegating work, releasing escrow, or executing agent transactions. Returns totalAudits, pass/fail counts, failRate, latest verdict/risk, and DJZS-S01/DJZS-X01 flag counts. HALT if failRate > 0.3 or DJZS-S01/DJZS-X01 fired more than once.`,
     inputSchema: {
-      agentAddress: z.string().describe("Agent wallet address (0x-prefixed)")
+      agentAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").describe("Agent wallet address (0x-prefixed)")
     }
   }, async ({ agentAddress }) => {
-    return {
-      content: [{ type: "text" as const, text: JSON.stringify({
-        status: "pending_subgraph_deploy",
-        agent: agentAddress,
-        message: "query_agent_trust activates after DJZS subgraph deployment to The Graph Network",
-        action: "Use query_pol_certificates to check Irys audit history in the meantime"
-      }, null, 2) }]
+    const jsonText = (o: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(o, null, 2) }] })
+    if (!env.SUBGRAPH_URL) {
+      return { ...jsonText({ status: "unavailable", detail: "SUBGRAPH_URL not configured on this Worker; trust index not wired." }), isError: true }
     }
+    const id = agentAddress.toLowerCase()
+    const query = `query($id: ID!) {
+      agent(id: $id) {
+        id totalAudits passCount failCount latestVerdict latestRiskScore
+        flags(first: 1000) { code }
+      }
+    }`
+    let agent: Record<string, unknown> | null
+    try {
+      const resp = await fetch(env.SUBGRAPH_URL, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, variables: { id } })
+      })
+      if (!resp.ok) return { ...jsonText({ status: "error", detail: `subgraph HTTP ${resp.status}` }), isError: true }
+      const j = await resp.json() as { data?: { agent: Record<string, unknown> | null }, errors?: unknown[] }
+      if (j.errors?.length) return { ...jsonText({ status: "error", detail: `subgraph GraphQL errors: ${JSON.stringify(j.errors).slice(0, 200)}` }), isError: true }
+      agent = j.data?.agent ?? null
+    } catch (e) {
+      return { ...jsonText({ status: "error", detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) }), isError: true }
+    }
+
+    if (!agent) {
+      // No history is NOT a silent PASS: the caller has no basis to trust yet.
+      return jsonText({ agent: id, status: "no_history", trust: "unknown", action: "NO_HISTORY",
+        message: "No DJZS audit history for this agent; nothing to trust or distrust yet." })
+    }
+
+    const totalAudits = Number(agent.totalAudits ?? 0)
+    const passCount = Number(agent.passCount ?? 0)
+    const failCount = Number(agent.failCount ?? 0)
+    const failRate = totalAudits > 0 ? failCount / totalAudits : 0
+    const codes = Array.isArray(agent.flags) ? (agent.flags as Array<{ code: string }>).map((f) => f.code) : []
+    const s01 = codes.filter((c) => c === "DJZS-S01").length
+    const x01 = codes.filter((c) => c === "DJZS-X01").length
+    const halt = failRate > 0.3 || s01 > 1 || x01 > 1
+    return jsonText({
+      agent: id,
+      totalAudits, passCount, failCount,
+      failRate: Number(failRate.toFixed(4)),
+      latestVerdict: agent.latestVerdict ?? "unknown",
+      latestRiskScore: Number(agent.latestRiskScore ?? 0),
+      flag_counts: { "DJZS-S01": s01, "DJZS-X01": x01 },
+      action: halt ? "HALT" : "PROCEED",
+      halt_rule: "HALT if failRate > 0.3 or DJZS-S01/DJZS-X01 fired more than once",
+      ...(halt ? { halt_reason: `failRate ${failRate.toFixed(2)}${s01 > 1 ? `, S01 x${s01}` : ""}${x01 > 1 ? `, X01 x${x01}` : ""}` } : {})
+    })
   })
 
   // Step 2 (Path B ruling 2026-07-12): the ONLY paid tool. The handler body is
@@ -205,10 +254,16 @@ function buildServer(env: Env): McpServer {
       // D4 ruling 2026-07-12: optional; feeds ONLY the Target-System tag on the
       // anchored certificate. Extraction input and hash preimage untouched.
       target_system: z.string().min(1).max(128).optional()
-        .describe("Optional agent/project identifier; becomes the Target-System tag on the anchored PoL certificate")
+        .describe("Optional agent/project identifier; becomes the Target-System tag on the anchored PoL certificate"),
+      // D1 ruling 2026-07-16: optional 0x agent wallet. Present => this audit's
+      // verdict is written on-chain to that agent's DJZS trust score (fail-open,
+      // after the cert anchors). Absent => Irys cert only, no on-chain score.
+      // Never touches the verdict_hash preimage.
+      agent_address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").optional()
+        .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
     { title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)" },
-    async ({ intent, target_system }) => {
+    async ({ intent, target_system, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -255,7 +310,35 @@ function buildServer(env: Env): McpServer {
       }
     }
 
-    const response = pol_certificate ? { ...result, pol_certificate } : result
+    // Phase 3 on-chain trust score (D1-D3): strictly AFTER the verdict and the
+    // Irys anchor. FAIL-OPEN and downstream of verdict_hash — nothing here feeds
+    // the hash preimage. Written only when in_scope, an agent_address was given,
+    // and a certificate actually anchored (so the on-chain record links to a
+    // real cert via irysTxId). Any failure annotates; it never blocks the audit.
+    let trust_score: Record<string, unknown> | undefined
+    if (result.in_scope === true && agent_address) {
+      const anchoredId =
+        pol_certificate && pol_certificate.status === "anchored" ? String(pol_certificate.irys_id) : undefined
+      if (!anchoredId) {
+        trust_score = { status: "skipped", reason: "no anchored certificate to link the on-chain score to" }
+      } else {
+        const writeScore = buildTrustWriter(env.DJZS_WRITER_KEY, env.BASE_RPC_URL)
+        const flagCodes = Array.isArray(result.flags)
+          ? (result.flags as Array<Record<string, unknown>>).map((f) => String(f.code ?? f))
+          : []
+        trust_score = await writeScore({
+          agentAddress: agent_address,
+          riskScore: Number(result.risk_score ?? 0),
+          verdict: String(result.verdict ?? ""),
+          flags: flagCodes,
+          irysTxId: anchoredId,
+        })
+      }
+    }
+
+    let response: Record<string, unknown> = result
+    if (pol_certificate) response = { ...response, pol_certificate }
+    if (trust_score) response = { ...response, trust_score }
     return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
     }
   )
