@@ -71,6 +71,16 @@ section:first-of-type::before { display: none; }   /* no divider above the hero 
 pre { background: var(--panel); border: 1px solid var(--rule); border-radius: 0; padding: 0.9rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; color: var(--text); }
 code { font-family: var(--mono); font-size: 0.88em; color: var(--text); }
 
+/* copy-to-clipboard button (progressive enhancement via copy.js; the wrapper,
+   not the scrolling pre, is positioned so the button stays pinned top-right) */
+.code-wrap { position: relative; }
+.copy-btn { position: absolute; top: 0.45rem; right: 0.45rem; font-family: var(--mono);
+  font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  background: var(--canvas); border: 1px solid var(--rule); border-radius: 0;
+  padding: 0.16rem 0.5rem; cursor: pointer; line-height: 1; }
+.copy-btn:hover { color: var(--text); border-color: var(--muted); }
+.copy-btn.copied { color: var(--pass); border-color: var(--pass); }
+
 /* doctrine lines — terse, structural, mono */
 .doctrine { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text); font-weight: 700; border-left: 2px solid var(--rule); padding-left: 0.75rem; margin: 1.3rem 0 0; }
 
