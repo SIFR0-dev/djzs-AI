@@ -416,15 +416,29 @@ A11. 2026-07-14: MAINNET PATH, staged to make the A9 outage un-repeatable by
     Corollary for the query side: mainnet Irys GraphQL REQUIRES timestamp
     bounds or it times out (ab9c1d1 note, re-confirmed 2026-07-14).
 
-    STAGE 3B STILL OWED (production cutover, the step that broke A9 — do it
-    deliberately): set the production secrets FIRST (wrangler secret put
-    CDP_API_KEY_ID, CDP_API_KEY_SECRET, and IRYS_UPLOAD_KEY = the funded
-    mainnet key — production currently has none of these; it runs 5f021c66,
-    the free build), name the rollback target (5f021c66) BEFORE deploy,
-    deploy this committed mainnet HEAD, then probe the DEPLOYED version:
-    GET /health/x402 must show network base + supported true, and one paid
-    call must settle + anchor (by-id immediate; by-tags eventual per the
-    indexing lag above). A deploy is done only when the deployed version
-    answers correctly (A9 deploy doctrine). NOT DEPLOYED YET: HEAD carries
-    the mainnet config but fails CLOSED without the secrets (health 503,
-    paid tool errors, no free audit), so HEAD is safe though not yet live.
+    STAGE 3B DISCHARGED 2026-07-15: PRODUCTION IS LIVE ON MAINNET, and it
+    did NOT repeat A9 because the deployed version was probed before trust.
+    Sequence that worked: deploy the mainnet HEAD (version 1afad40e), THEN
+    set the three secrets (the first attempt failed with "latest version not
+    deployed" because production was rollback-pinned to 5f021c66; a plain
+    deploy cleared that, then the puts succeeded), THEN probe the DEPLOYED
+    version. Live probes green: /health/x402 network base / eip155:8453 /
+    supported true; unpaid refused (PAYMENT_REQUIRED); a REAL 0.25 USDC
+    settled through CDP payer 0xA060..3B91 -> treasury on Base mainnet (asset
+    0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 = canonical Base USDC);
+    verdict_hash 0x8591..4937; permanent cert
+    EybaSQYzSfHqZKEjxSnojB6nsKsofCD3rpda8hFqrhfm anchored, by-id AND by-tags
+    green. Rollback target 5f021c66 named before deploy, unused.
+    The full Phase 2 offer (pay via x402 -> anchored PoL certificate) is LIVE
+    on Base mainnet. Reserved items (price, treasury) are discharged.
+
+A12. 2026-07-15: QUERY-SIDE BOUNDS PATCH, forced live by the cutover. With
+    anchoring on mainnet, query_pol_certificates (unbounded GraphQL) TIMED
+    OUT immediately — the addenda-8 hazard, proven the moment real data
+    landed (instrument: external mcp call -> "Query execution timed out ...
+    use to/from timestamp filters"). Fix: the tool query now carries a
+    timestamp window (trailing 180d default, caller-overridable via from_ms
+    /to_ms). The write side was never affected; this is read-side only. Gate:
+    tsc exit 0, pol-offline 26/26 (anchoring untouched). Deploy + probe: a
+    plain wrangler deploy (secrets persist), then query_pol_certificates must
+    return certs instead of timing out.

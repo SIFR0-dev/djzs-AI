@@ -98,9 +98,11 @@ function buildServer(env: Env): McpServer {
       targetSystem: z.string().optional().describe("Project name or wallet address"),
       verdict: z.enum(["PASS", "FAIL"]).optional().describe("Filter by verdict"),
       tier: z.enum(["micro", "founder", "treasury"]).optional().describe("Filter by tier"),
-      limit: z.number().min(1).max(100).default(20).describe("Number of results")
+      limit: z.number().min(1).max(100).default(20).describe("Number of results"),
+      from_ms: z.number().int().optional().describe("Window start (epoch ms). Defaults to 180 days ago; widen to reach older certificates."),
+      to_ms: z.number().int().optional().describe("Window end (epoch ms). Defaults to now + 1h.")
     }
-  }, async ({ targetSystem, verdict, tier, limit }) => {
+  }, async ({ targetSystem, verdict, tier, limit, from_ms, to_ms }) => {
     const tags: Array<{ name: string; values: string[] }> = [
       { name: "Protocol", values: ["ProofOfLogic"] },
       { name: "application-id", values: ["DJZS-Oracle"] }
@@ -109,8 +111,14 @@ function buildServer(env: Env): McpServer {
     if (verdict) tags.push({ name: "verdict", values: [verdict] })
     if (tier) tags.push({ name: "tier", values: [tier] })
 
+    // Irys mainnet GraphQL REQUIRES a timestamp window or it times out (proven
+    // live 2026-07-15 the moment anchoring moved to mainnet; ab9c1d1 hardening,
+    // addenda-8 patch, finally applied). Trailing 180-day default, caller-overridable.
+    const now = Date.now()
+    const fromMs = from_ms ?? now - 180 * 24 * 3600 * 1000
+    const toMs = to_ms ?? now + 3600 * 1000
     const query = `query DJZSCerts($tags: [TagFilter!]!, $first: Int!) {
-      transactions(tags: $tags, first: $first, order: DESC) {
+      transactions(tags: $tags, timestamp: {from: ${fromMs}, to: ${toMs}}, first: $first, order: DESC) {
         edges { node { id tags { name value } timestamp } }
       }
     }`
