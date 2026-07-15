@@ -13,7 +13,8 @@
   PASS→PROCEED / FAIL / WAIT→HALT, flags, unknown_fields, disagreements, and verdict_hash.
   Prediction-market only: a non-PM or undetermined intent returns in_scope:false (never a silent
   perpetuals audit).
-- Other tools: `query_pol_certificates` (Irys certificate history, prior-architecture lineage);
+- Other tools: `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
+  including every certificate verify_pm_trade anchors; free);
   `query_agent_trust` (placeholder, pending subgraph deployment).
 
 ## How it works

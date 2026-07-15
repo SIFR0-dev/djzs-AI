@@ -2,7 +2,8 @@
    Neutrals for canvas/panel/rule; the PASS/WAIT/FAIL trio are the ONLY saturated colors on the
    page (used semantically: OK/live=pass, wait, critical/fail); Base blue is reserved for links and
    "on Base" tags only. JetBrains Mono for ALL structural type (headers, labels, numbers, buttons,
-   status rows); Inter for long body paragraphs only. Flat: sharp corners (0–2px), 1px rules,
+   status rows) AND long body paragraphs — uniform monospace matching the DST reference surface.
+   Flat: sharp corners (0–2px), 1px rules,
    no shadows, no gradients, no glass. */
 :root {
   --canvas: #0A0A0A;
@@ -14,8 +15,8 @@
   --wait:   #F59E0B;
   --fail:   #EF4444;
   --base:   #0052FF;
-  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --body: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -24,15 +25,15 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--text);
-  font-family: var(--mono);            /* structural default */
+  font-family: var(--mono);            /* uniform monospace, whole page */
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
 }
 
 .wrap { max-width: 860px; margin: 0 auto; padding: 0 1.25rem; }
 
-/* long body paragraphs → Inter; everything else stays mono */
+/* whole page is monospace (JetBrains Mono) to match the DST reference surface */
 p, li { font-family: var(--body); }
 .muted { color: var(--muted); }
 a { color: var(--base); text-decoration: none; }

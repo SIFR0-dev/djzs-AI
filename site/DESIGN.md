@@ -13,9 +13,10 @@ COLOR — semantic only; nothing decorative gets color
   are the ONLY saturated colors in any composition.
 - Chain accent: Base blue #0052FF, sparingly (links, "on Base" tags, one rule).
 TYPE
-- Monospace-primary: JetBrains Mono or IBM Plex Mono for EVERYTHING structural —
-  headers, labels, numbers, buttons. ALL-CAPS micro-labels with wide tracking.
-- Optional grotesk (Inter) for long body paragraphs only. No serifs, no display fonts.
+- Monospace-only: JetBrains Mono for EVERYTHING — headers, labels, numbers, buttons,
+  AND long body paragraphs. ALL-CAPS micro-labels with wide tracking. Uniform mono
+  surface matching the DST reference (deterministic-simulation.com). No serifs, no
+  sans body, no display fonts.
 STRUCTURE & TEXTURE
 - Grid-strict, dense but ordered. Sharp corners (0–2px radius). Flat: no gradients,
   no glass, no shadows deeper than a 1px border.
