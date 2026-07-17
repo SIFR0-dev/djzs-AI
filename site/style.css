@@ -6,16 +6,18 @@
    Flat: sharp corners (0–2px), 1px rules,
    no shadows, no gradients, no glass. */
 :root {
+  /* brand tokens (patch 2026-07-17): phosphor trio, links = phosphor green (AAA ~13:1),
+     Base blue demoted to logomark-only. Supersedes the C3 "blue for links" rule. */
   --canvas: #0A0A0A;
-  --panel:  #111113;
-  --rule:   #26262B;
-  --text:   #E7E7EA;
-  --muted:  #8A8A93;
-  --pass:   #22C55E;
-  --wait:   #F59E0B;
-  --fail:   #EF4444;
+  --panel:  #0D0D0D;
+  --rule:   #1C1C1C;
+  --text:   #E6E6E6;
+  --muted:  #8A8A8A;
+  --pass:   #3DFF88;
+  --wait:   #FFB000;
+  --fail:   #FF4D4D;
   --base:   #0052FF;
-  --link:   #4D7FFF;   /* AA-passing link blue on the dark canvas (--base fails 4.5:1 as text) */
+  --link:   #3DFF88;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --body: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
@@ -150,6 +152,12 @@ footer.site .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-
 footer.site a { color: var(--muted); margin-left: 1rem; }
 footer.site a:first-child { margin-left: 0; }
 footer.site a:hover { color: var(--text); }
+footer.site .ok { color: var(--pass); font-weight: 700; }
+footer.site .transmission { justify-content: flex-start; gap: 0.6rem; margin-top: 0.5rem; }
+
+/* brand layer: static scanline overlay — canonical 3.5% green, 4px pitch, non-interactive */
+body::after { content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(61, 255, 136, 0.035) 0 1px, transparent 1px 4px); }
 
 /* narrow screens: stack status rows, tighten nav, shrink tables */
 @media (max-width: 640px) {

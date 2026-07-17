@@ -9,9 +9,13 @@ IDENTITY
 COLOR — semantic only; nothing decorative gets color
 - Canvas: #0A0A0A near-black. Panels: #111113. Rules/borders: 1px #26262B.
 - Text: #E7E7EA primary, #8A8A93 secondary, monospace throughout.
-- PASS green #22C55E · WAIT amber #F59E0B · FAIL red #EF4444 — verdict states
+- PASS green #3DFF88 · WAIT amber #FFB000 · FAIL red #FF4D4D — verdict states (phosphor trio, brand patch 2026-07-17)
   are the ONLY saturated colors in any composition.
-- Chain accent: Base blue #0052FF, sparingly (links, "on Base" tags, one rule).
+- Chain accent: Base blue #0052FF, LOGOMARK-ONLY (brand patch 2026-07-17; supersedes the
+  earlier links ruling). Links are phosphor green (--link #3DFF88, ~13:1 AAA on canvas).
+- Brand layer: static scanline overlay, canonical 3.5% green at 4px pitch, non-interactive;
+  footer transmission row ("END_TRANSMISSION. // djzs.ai" — product surfaces carry djzs.ai,
+  not ENS, per the opsec convention).
 TYPE
 - Monospace-only: JetBrains Mono for EVERYTHING — headers, labels, numbers, buttons,
   AND long body paragraphs. ALL-CAPS micro-labels with wide tracking. Uniform mono

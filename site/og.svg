@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- DJZS OG master (brand patch 2026-07-17). Raster og.png is the shipped artifact;
+       this file is the editable source. Fonts: JetBrains Mono with mono fallback. -->
+  <defs>
+    <style>
+      text { font-family: 'JetBrains Mono', 'DejaVu Sans Mono', ui-monospace, monospace; }
+      .b { font-weight: 700; }
+      .text  { fill: #E6E6E6; }
+      .muted { fill: #8A8A8A; }
+      .pass  { fill: #3DFF88; }
+      .wait  { fill: #FFB000; }
+      .fail  { fill: #FF4D4D; }
+    </style>
+    <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="1" fill="#3DFF88" opacity="0.035"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+
+  <!-- boot header -->
+  <text x="70" y="80" font-size="26" class="b text">&gt;_ DJZS.</text>
+  <text x="1130" y="80" font-size="26" text-anchor="end"><tspan class="muted">STATUS: </tspan><tspan class="b pass">OPERATIONAL</tspan></text>
+  <line x1="70" y1="106" x2="1130" y2="106" stroke="#1C1C1C" stroke-width="2"/>
+
+  <!-- doctrine -->
+  <text x="70" y="158" font-size="24" class="muted">// AUDIT BEFORE ACT</text>
+
+  <!-- hero wordmark + cursor block -->
+  <text x="62" y="330" font-size="170" class="b text">DJZS</text>
+  <rect x="500" y="218" width="56" height="130" class="pass" fill="#3DFF88"/>
+
+  <!-- hero line -->
+  <text x="70" y="422" font-size="28" class="text">The reasoning gate every trading agent calls before it acts.</text>
+
+  <!-- verdict trio -->
+  <g font-size="44" class="b">
+    <rect x="70"  y="446" width="160" height="58" fill="none" stroke="#3DFF88" stroke-width="3"/>
+    <text x="150" y="489" text-anchor="middle" class="pass">PASS</text>
+    <text x="252" y="489" class="muted" font-weight="400">-</text>
+    <rect x="300" y="446" width="160" height="58" fill="none" stroke="#FFB000" stroke-width="3"/>
+    <text x="380" y="489" text-anchor="middle" class="wait">WAIT</text>
+    <text x="482" y="489" class="muted" font-weight="400">-</text>
+    <rect x="530" y="446" width="160" height="58" fill="none" stroke="#FF4D4D" stroke-width="3"/>
+    <text x="610" y="489" text-anchor="middle" class="fail">FAIL</text>
+  </g>
+
+  <!-- price line -->
+  <text x="70" y="556" font-size="27"><tspan class="b text">verify_pm_trade</tspan><tspan class="muted"> - 2.00 USDC - </tspan><tspan class="text">x402</tspan></text>
+
+  <!-- transmission footer -->
+  <line x1="70" y1="580" x2="1130" y2="580" stroke="#1C1C1C" stroke-width="2"/>
+  <text x="70" y="612" font-size="21" class="muted">END_TRANSMISSION. //</text>
+  <text x="1130" y="612" font-size="21" text-anchor="end" class="b pass">djzs.ai</text>
+
+  <!-- scanline overlay -->
+  <rect width="1200" height="630" fill="url(#scan)"/>
+</svg>
