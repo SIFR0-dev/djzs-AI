@@ -32,16 +32,23 @@
 
 <main class="wrap" id="main">
 
+  <p class="path"><span class="p">~/djzs/guide</span> $<span class="cursor"></span></p>
+
   <section>
     <h1>Connect the gate</h1>
     <p class="lede">DJZS is exposed as a Model Context Protocol server over streamable HTTP at
     <code>/mcp</code>. The lead tool is <code>verify_pm_trade</code> — the pre-execution audit an
     agent calls before it acts.</p>
+    <div class="status">
+      <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">MODE</span><span class="val">CONNECT — streamable HTTP at /mcp</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">PRICE</span><span class="val">verify_pm_trade 2.00 USDC via x402 · registry tools free</span></div>
+    </div>
     <p>Endpoint: <code>https://mcp.djzs.ai/mcp</code></p>
   </section>
 
   <section>
-    <h2>Setup <span class="k">// one line</span></h2>
+    <h2>Setup <span class="k">// step 01 · one line</span></h2>
     <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
     <h3>Or via config JSON</h3>
     <p>For agents that read an MCP server map, register the streamable-HTTP endpoint:</p>
@@ -56,15 +63,31 @@
   </section>
 
   <section id="tools">
-    <h2>Tools <span class="k">// three, one leads</span></h2>
+    <h2>Tools <span class="k">// step 02 · three, one leads</span></h2>
 
-    <h3><code>verify_pm_trade</code> — the gate</h3>
+    <div class="table-wrap">
+    <table aria-label="Tool quick reference: cost and returns">
+      <thead><tr><th scope="col">Tool</th><th scope="col">Cost</th><th scope="col">Returns</th></tr></thead>
+      <tbody>
+        <tr><td><code>verify_pm_trade</code></td><td>2.00 USDC</td><td>verdict + flags + verdict_hash + anchored certificate</td></tr>
+        <tr><td><code>query_pol_certificates</code></td><td>free</td><td>permanent ProofOfLogic certificates from Irys mainnet</td></tr>
+        <tr><td><code>query_agent_trust</code></td><td>free</td><td>on-chain trust: totalAudits, failRate, PROCEED / HALT / NO_HISTORY</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3><code>verify_pm_trade</code> — the gate <span class="h3-tag t-paid">Paid</span></h3>
     <p>Pass a free-text prediction-market trade thesis. The tool extracts the reasoning (N=3
-    consensus), audits it against the calibrated DJZS-M taxonomy, and returns
-    <code>PASS → PROCEED</code> / <code>FAIL</code> / <code>WAIT → HALT</code> with flagged defects
-    and a reproducible <code>verdict_hash</code>. It is <strong>prediction-market only</strong>: an
-    intent that does not extract as a PM thesis (including the undetermined case) comes back
-    <code>in_scope: false</code> rather than silently running a perpetuals audit.</p>
+    consensus), audits it against the calibrated DJZS-M taxonomy, and returns one of three verdicts
+    with flagged defects and a reproducible <code>verdict_hash</code>. It is
+    <strong>prediction-market only</strong>: an intent that does not extract as a PM thesis (including
+    the undetermined case) comes back <code>in_scope: false</code> rather than silently running a
+    perpetuals audit.</p>
+    <div class="ladder">
+      <div class="rung pass"><span class="verdict">PASS → PROCEED</span><br /><span class="muted">Every scored fact is known and no blocking rule fired.</span></div>
+      <div class="rung wait"><span class="verdict">WAIT → HALT</span><br /><span class="muted">A decision-critical fact is <code>unknown</code>; the response returns <code>unknown_fields</code> so the caller knows what to clarify.</span></div>
+      <div class="rung fail"><span class="verdict">FAIL</span><br /><span class="muted">A rule fired on facts the engine knows. Stop.</span></div>
+    </div>
     <p>Response fields: <code>verdict</code>, <code>action</code>, <code>risk_score</code>,
     <code>flags</code>, <code>unknown_fields</code>, <code>disagreements</code>,
     <code>verdict_hash</code>, <code>extraction_failsafe</code>, <code>in_scope</code>, taxonomy
@@ -74,12 +97,12 @@
     altering the audit. The tool is <a href="#pay">paid: 2.00 USDC per audit</a>; the two registry
     tools below are free.</p>
 
-    <h3><code>query_pol_certificates</code></h3>
+    <h3><code>query_pol_certificates</code> <span class="h3-tag t-free">Free</span></h3>
     <p>Reads ProofOfLogic certificates from the Irys datachain (mainnet, permanent) — including the
     certificate every in-scope <code>verify_pm_trade</code> audit anchors, plus prior-architecture
     lineage. Free.</p>
 
-    <h3><code>query_agent_trust</code></h3>
+    <h3><code>query_agent_trust</code> <span class="h3-tag t-free">Free</span></h3>
     <p>LIVE — reads an agent's on-chain trust record from the DJZS subgraph on The Graph. Pass
     <code>agentAddress</code> (0x wallet); returns <code>totalAudits</code>, pass/fail counts,
     <code>failRate</code>, latest verdict and risk score, DJZS-S01/X01 flag counts, and an
@@ -89,7 +112,7 @@
   </section>
 
   <section id="pay">
-    <h2>Pay for the audit <span class="k">// x402, 2.00 USDC, non-custodial</span></h2>
+    <h2>Pay for the audit <span class="k">// step 03 · x402, 2.00 USDC, non-custodial</span></h2>
     <p><code>verify_pm_trade</code> is paid: 2.00 USDC per audit on Base mainnet over x402. An unpaid
     call is refused with a payment-required error — no free tier, no API key. Payment is
     non-custodial: your EIP-3009 signature moves USDC from your wallet directly to the DJZS treasury;
@@ -125,12 +148,41 @@ const res = await paid.callTool(
     until proven against this endpoint.</p>
   </section>
 
+  <section id="verify">
+    <h2>What comes back <span class="k">// step 04 · a real paid response</span></h2>
+    <p>An actual production response — the deploy-parity replay of benchmark thesis
+    <code>pm-block-008</code> (2026-07-17), abridged to the decision fields. Nothing staged: the
+    certificate below is permanently retrievable and the hash reproduces byte-identical on every
+    replay of the same extracted struct.</p>
+    <div class="proof">
+      <span class="stamp">FAIL</span>
+      <pre class="cert">{
+  <span class="key">"verdict"</span>: <span class="fail-val">"FAIL"</span>,
+  <span class="key">"action"</span>: <span class="fail-val">"FAIL"</span>,
+  <span class="key">"risk_score"</span>: 40,
+  <span class="key">"flags"</span>: [<span class="str">"DJZS-M03 PROBABILITY_UNSOURCED"</span>, <span class="str">"DJZS-M04 CONSENSUS_NO_EDGE"</span>],
+  <span class="key">"unknown_fields"</span>: [],
+  <span class="key">"disagreements"</span>: [<span class="str">"stop_loss"</span>],
+  <span class="key">"verdict_hash"</span>: <span class="hash">"0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937"</span>,
+  <span class="key">"pol_certificate"</span>: {
+    <span class="key">"irys_id"</span>: <span class="str">"EuJ1evB3PWiNwvcMkixyRreaXEhfKGrzGwS6e4o1pyzp"</span>,
+    <span class="key">"gateway_url"</span>: <span class="str">"https://gateway.irys.xyz/EuJ1evB3PWiNwvcMkixyRreaXEhfKGrzGwS6e4o1pyzp"</span>
+  }
+}</pre>
+    </div>
+    <p class="muted"><code>disagreements</code> lists fields where the N=3 extraction diverged —
+    <code>stop_loss</code> sits outside the hash preimage, so the verdict_hash held anyway. Pull the
+    certificate yourself: <a href="https://gateway.irys.xyz/EuJ1evB3PWiNwvcMkixyRreaXEhfKGrzGwS6e4o1pyzp">gateway.irys.xyz/EuJ1evB3…</a>
+    — same thesis, same struct, same hash, forever.</p>
+  </section>
+
   <section>
     <h2>Taxonomy</h2>
     <p>The DJZS-M and DJZS-LF taxonomies — code names, severities, and weights — are documented once,
     as a single source of truth, in the repository README's Taxonomies section:
     <a href="https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen">github.com/SIFR0-dev/djzs-AI → Taxonomies</a>.
     This guide deliberately keeps no local copy — one table, one source.</p>
+    <p class="doctrine">Connect once. Audit before every act.</p>
   </section>
 
 </main>
