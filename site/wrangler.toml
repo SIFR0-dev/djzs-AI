@@ -6,5 +6,8 @@ compatibility_date = "2026-06-01"
 # `directory = "."` is resolved relative to this wrangler.toml (i.e. site/).
 [assets]
 directory = "."
-# Every unknown path serves index.html — old deep links land on the truth surface, not a 404.
-not_found_handling = "single-page-application"
+# Unknown paths serve 404.html with a REAL 404 status. The old SPA fallback soft-200'd the
+# homepage for every route (/robots.txt, /docs, /demo...), which misled crawlers and an external
+# UX audit alike (2026-07-17). The 404 page links home — old deep links still find the truth
+# surface, now honestly.
+not_found_handling = "404-page"

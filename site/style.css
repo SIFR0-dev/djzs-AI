@@ -15,6 +15,7 @@
   --wait:   #F59E0B;
   --fail:   #EF4444;
   --base:   #0052FF;
+  --link:   #4D7FFF;   /* AA-passing link blue on the dark canvas (--base fails 4.5:1 as text) */
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --body: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
@@ -36,8 +37,14 @@ body {
 /* whole page is monospace (JetBrains Mono) to match the DST reference surface */
 p, li { font-family: var(--body); }
 .muted { color: var(--muted); }
-a { color: var(--base); text-decoration: none; }
+a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* a11y: visible keyboard focus everywhere; skip link for keyboard/screen-reader users */
+:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
+.skip-link { position: absolute; left: -9999px; top: 0; z-index: 20; background: var(--panel);
+  color: var(--text); border: 1px solid var(--rule); padding: 0.5rem 1rem; font-family: var(--mono); }
+.skip-link:focus { left: 0.5rem; top: 0.5rem; }
 strong { color: var(--text); }
 em { color: var(--muted); font-style: normal; }
 
@@ -45,6 +52,8 @@ em { color: var(--muted); font-style: normal; }
 header.site { border-bottom: 1px solid var(--rule); padding: 0.9rem 0; position: sticky; top: 0; background: var(--canvas); }
 header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .brand { font-family: var(--mono); font-weight: 800; letter-spacing: 0.04em; color: var(--text); }
+a.brand { color: var(--text); }                            /* brand mark is a home link */
+a.brand:hover { text-decoration: none; color: var(--text); }
 .brand::before { content: ">_ "; color: var(--muted); }   /* prompt mark */
 .brand .dot { color: var(--text); }
 nav a { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--muted); margin-left: 1.1rem; }
@@ -101,7 +110,14 @@ code { font-family: var(--mono); font-size: 0.88em; color: var(--text); }
 .rung.wait .verdict { color: var(--wait); }
 .rung.fail .verdict { color: var(--fail); }
 
-/* tables */
+/* primary CTA — terminal button; pass-green = "go", semantically coherent with the trio rule */
+.btn { display: inline-block; font-family: var(--mono); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; font-size: 0.8rem; color: var(--pass); border: 1px solid var(--pass);
+  border-radius: 0; padding: 0.5rem 0.95rem; }
+.btn:hover { background: var(--pass); color: var(--canvas); text-decoration: none; }
+
+/* tables (wrapped in .table-wrap so 6-column taxonomies scroll instead of clipping on mobile) */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.82rem; font-family: var(--mono); }
 th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
 th { color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.72rem; font-weight: 700; }
@@ -130,3 +146,16 @@ ul.tight li { margin: 0.35rem 0; }
 
 /* footer */
 footer.site { border-top: 1px solid var(--rule); padding: 1.6rem 0; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; }
+footer.site .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; align-items: baseline; }
+footer.site a { color: var(--muted); margin-left: 1rem; }
+footer.site a:first-child { margin-left: 0; }
+footer.site a:hover { color: var(--text); }
+
+/* narrow screens: stack status rows, tighten nav, shrink tables */
+@media (max-width: 640px) {
+  .status .row { grid-template-columns: 2.2rem 1fr; }
+  .status .row .val { grid-column: 1 / -1; padding-left: 0; }
+  nav a { margin-left: 0.7rem; font-size: 0.68rem; letter-spacing: 0.08em; }
+  table { font-size: 0.76rem; }
+  th, td { padding: 0.4rem 0.45rem; }
+}

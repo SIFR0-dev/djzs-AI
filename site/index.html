@@ -5,25 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DJZS — the reasoning gate every trading agent calls before it acts</title>
   <meta name="description" content="DJZS is a deterministic pre-execution audit for autonomous agents: it audits the reasoning behind a move and returns PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as an MCP tool." />
+  <link rel="canonical" href="https://djzs.ai/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="DJZS — the reasoning gate every trading agent calls before it acts" />
+  <meta property="og:description" content="Deterministic pre-execution audit: PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as a paid MCP tool on Base." />
+  <meta property="og:url" content="https://djzs.ai/" />
+  <meta name="twitter:card" content="summary" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 <header class="site">
   <div class="wrap">
-    <span class="brand">DJZS<span class="dot">.</span></span>
-    <nav>
+    <a class="brand" href="/">DJZS<span class="dot">.</span></a>
+    <nav aria-label="Main">
       <a href="#architecture">Architecture</a>
       <a href="#taxonomies">Taxonomies</a>
       <a href="#proof">Proof</a>
-      <a href="/guide.html">Connect</a>
+      <a href="/guide.html" aria-current="false">Connect -&gt;</a>
     </nav>
   </div>
 </header>
 
-<main class="wrap">
+<main class="wrap" id="main">
 
   <!-- 1 — HERO -->
   <section id="hero">
@@ -42,6 +49,7 @@
     <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
     <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
     <p class="muted">Then call <code>verify_pm_trade</code> with a free-text prediction-market thesis.</p>
+    <p><a class="btn" href="/guide.html">Connect the gate -&gt;</a></p>
     <p class="doctrine">Audit before act.</p>
   </section>
 
@@ -80,8 +88,9 @@
 
     <h3>DJZS-M — Prediction Market (DJZS-PM-v1.0)</h3>
     <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated.</p>
-    <table>
-      <thead><tr><th>Code</th><th>Name</th><th>Severity</th><th>Weight</th></tr></thead>
+    <div class="table-wrap">
+    <table aria-label="DJZS-PM-v1.0 codes, severities, and weights">
+      <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Severity</th><th scope="col">Weight</th></tr></thead>
       <tbody>
         <tr><td><code>DJZS-M01</code></td><td>NARRATIVE_RESOLUTION_GAP</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
         <tr><td><code>DJZS-M02</code></td><td>FALSIFICATION_ABSENT</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
@@ -89,6 +98,7 @@
         <tr><td><code>DJZS-M04</code></td><td>CONSENSUS_NO_EDGE</td><td class="sev-MEDIUM">MEDIUM</td><td>15</td></tr>
       </tbody>
     </table>
+    </div>
     <p class="muted">M04 is advisory-grade: a lone M04 rides a PASS with the flag on the certificate
     (weight 15 is below the threshold); it blocks only by stacking (e.g. M03 + M04 = 40 → FAIL).</p>
 
@@ -96,8 +106,9 @@
     <p class="muted">Weights sum to <strong>200</strong>. Frozen at <strong>11 codes</strong>;
     <strong>3 are wired live</strong> today (<span class="live">●</span>). The rest are defined and
     weighted but not yet firing — stated honestly, not implied.</p>
-    <table>
-      <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Severity</th><th>Weight</th><th>Live</th></tr></thead>
+    <div class="table-wrap">
+    <table aria-label="DJZS-LF-v1.1 codes, categories, severities, weights, and live status">
+      <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Severity</th><th scope="col">Weight</th><th scope="col">Live</th></tr></thead>
       <tbody>
         <tr><td><code>DJZS-S01</code></td><td>CIRCULAR_LOGIC</td><td>Structural</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td><td></td></tr>
         <tr><td><code>DJZS-S02</code></td><td>LAYER_INVERSION</td><td>Structural</td><td class="sev-HIGH">HIGH</td><td>25</td><td></td></tr>
@@ -112,6 +123,7 @@
         <tr><td><code>DJZS-T01</code></td><td>STALE_REFERENCE</td><td>Temporal</td><td class="sev-LOW">LOW</td><td>12</td><td></td></tr>
       </tbody>
     </table>
+    </div>
     <p class="muted">Both weight tables are hash-locked exported constants; a weight change is a
     deliberate re-derive, not a hot patch.</p>
   </section>
@@ -163,7 +175,12 @@
       audit or its certificate.</li>
     </ul>
     <p>On-chain: four DJZS contracts are attested on Base in the A2A manifest, with source in
-    <code>contracts/</code>. A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source
+    <code>contracts/</code> — verify them yourself on Basescan:
+    <a href="https://basescan.org/address/0xB3324D07A8713b354435FF0e2A982A504e81b137">TrustScore</a> ·
+    <a href="https://basescan.org/address/0xA362947D23D52C05a431E378F30C8A962De91e8A">Staking</a> ·
+    <a href="https://basescan.org/address/0xB041760147a60F63Ca701da9e431412bCc25Cfb7">EscrowLock</a> ·
+    <a href="https://basescan.org/address/0xe40d5669Ce8e06A91188B82Ce7292175E2013E41">AgentRegistry</a>.
+    A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source
     only — it is not in the deployed manifest, and nothing here claims certificate NFTs are live or
     mintable.</p>
   </section>
@@ -182,7 +199,14 @@
 </main>
 
 <footer class="site">
-  <div class="wrap">No agent acts without audit.</div>
+  <div class="wrap">
+    <span>No agent acts without audit.</span>
+    <span>
+      <a href="https://x.com/DJZSX">X @DJZSX</a>
+      <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a>
+      <a href="/legal.html">Legal</a>
+    </span>
+  </div>
 </footer>
 <script src="/copy.js" defer></script>
 </body>
