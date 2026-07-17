@@ -16,6 +16,11 @@ COLOR — semantic only; nothing decorative gets color
 - Brand layer: static scanline overlay, canonical 3.5% green at 4px pitch, non-interactive;
   footer transmission row ("END_TRANSMISSION. // djzs.ai" — product surfaces carry djzs.ai,
   not ENS, per the opsec convention).
+- Brutalism layer (2026-07-17): prompt-path row on every page (~/djzs/<page> $ + cursor);
+  per-page boot-status boards (guide MODE/PRICE, legal DISCLOSURE/SCOPE, 404 red ERR row);
+  phosphor ::selection and scrollbars; link hover flips green-on-black (no underlines);
+  guide steps numbered (// step 01..03), legal sections numbered (// 01..06); em-scaled
+  blinking cursor honoring prefers-reduced-motion; thead blocks on panel.
 TYPE
 - Monospace-only: JetBrains Mono for EVERYTHING — headers, labels, numbers, buttons,
   AND long body paragraphs. ALL-CAPS micro-labels with wide tracking. Uniform mono
