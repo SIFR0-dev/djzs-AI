@@ -7,8 +7,8 @@
  *     refused with the payment-required shape (isError, PAYMENT_REQUIRED /
  *     402 marker). If the tool answers without payment, that is a compliance
  *     failure and this exits 3, loudly.
- *   GATE P (paid): withX402Client signs EIP-3009 for the 0.25 USDC price
- *     (maxPaymentValue raised to exactly 250000 atomic; the library default
+ *   GATE P (paid): withX402Client signs EIP-3009 for the 2.00 USDC price
+ *     (maxPaymentValue raised to exactly 2000000 atomic; the library default
  *     of 0.10 USDC would refuse our price), the facilitator verifies and
  *     settles, and the tool returns the full audit WITH pol_certificate
  *     anchored. Then both retrieval legs run as in pol-live-call.
@@ -42,8 +42,8 @@ const DEVNET_NODE = "https://devnet.irys.xyz"
  * public x402.org facilitator is testnet-only; spec A9).
  */
 const NETWORK = arg("network") ?? "base-sepolia"
-/** 0.25 USDC in atomic units (6 decimals). Exact, least-privilege cap. */
-const MAX_PAYMENT_ATOMIC = 250000n
+/** 2.00 USDC in atomic units (6 decimals). Exact, least-privilege cap (repriced 2026-07-16 from 0.25). */
+const MAX_PAYMENT_ATOMIC = 2000000n
 const DATASET_PATH = fileURLToPath(
   new URL("../../server/engine-v2/calibration/calibration-dataset.json", import.meta.url),
 )
@@ -121,7 +121,7 @@ async function main(): Promise<void> {
   }
 
   // GATE P: paid call through the x402 client.
-  console.log(`GATE P: paid call (0.25 USDC, ${NETWORK}, facilitator-settled)`)
+  console.log(`GATE P: paid call (2.00 USDC, ${NETWORK}, facilitator-settled)`)
   const account = privateKeyToAccount(loadPayerKey())
   console.log(`  payer address: ${account.address}`)
   const inner = new Client({ name: "pol-paid-call", version: "1.0.0" })

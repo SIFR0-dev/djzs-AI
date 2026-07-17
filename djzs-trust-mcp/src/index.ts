@@ -40,11 +40,11 @@ const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
  * bundles under workerd (JWT via jose/WebCrypto; axios tree-shakes out) —
  * instrumented pre-code, throwaway Ed25519 key produced a real Bearer JWT.
  *
- * PRICE 0.25 USDC per audit (2026-07-12).
+ * PRICE 2.00 USDC per audit (repriced 2026-07-16 from 0.25; payer cap moves 250000n -> 2000000n).
  * NETWORK: "base" = Base MAINNET, eip155:8453 (A11 Stage 3, 2026-07-14). CDP
  * settles it (proven via /supported); mainnet Irys anchoring proven in
  * isolation (cert 747n8SZq..., A11 Stage 2). Rehearse locally with one real
- * 0.25 USDC payment (pol-paid-call --network base) BEFORE any production
+ * 2.00 USDC payment (pol-paid-call --network base) BEFORE any production
  * deploy; deploy behind /health/x402 with 5f021c66 named as rollback.
  * RECIPIENT: the dedicated treasury (EIP-55 verified 2026-07-14, matches the
  * one vetted in the reverted 33e6433; distinct from the operator wallet).
@@ -55,7 +55,7 @@ const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
  */
 const X402_NETWORK = "base"
 const X402_RECIPIENT: `0x${string}` = "0xc1923748669dFC3a79497d0403A90a275161eCCA"
-const VERIFY_PM_TRADE_PRICE_USD = 0.25
+const VERIFY_PM_TRADE_PRICE_USD = 2.00
 
 /**
  * Worker bindings. ANTHROPIC_API_KEY and IRYS_UPLOAD_KEY are wrangler SECRETS

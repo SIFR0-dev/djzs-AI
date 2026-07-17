@@ -64,7 +64,7 @@
     versions, and <code>pol_certificate</code> (the anchored Irys certificate).</p>
     <p>Optional input <code>agent_address</code> (a 0x wallet): when present, the verdict is also
     written to that agent's on-chain trust record after the certificate anchors — fail-open, never
-    altering the audit. The tool is <a href="#pay">paid: 0.25 USDC per audit</a>; the two registry
+    altering the audit. The tool is <a href="#pay">paid: 2.00 USDC per audit</a>; the two registry
     tools below are free.</p>
 
     <h3><code>query_pol_certificates</code></h3>
@@ -82,8 +82,8 @@
   </section>
 
   <section id="pay">
-    <h2>Pay for the audit <span class="k">// x402, 0.25 USDC, non-custodial</span></h2>
-    <p><code>verify_pm_trade</code> is paid: 0.25 USDC per audit on Base mainnet over x402. An unpaid
+    <h2>Pay for the audit <span class="k">// x402, 2.00 USDC, non-custodial</span></h2>
+    <p><code>verify_pm_trade</code> is paid: 2.00 USDC per audit on Base mainnet over x402. An unpaid
     call is refused with a payment-required error — no free tier, no API key. Payment is
     non-custodial: your EIP-3009 signature moves USDC from your wallet directly to the DJZS treasury;
     the facilitator submits the transfer and pays the gas, so your wallet needs USDC only, no ETH.</p>
@@ -99,7 +99,7 @@ await client.connect(new StreamableHTTPClientTransport(new URL("https://mcp.djzs
 const paid = withX402Client(client, {
   account: privateKeyToAccount(PAYER_KEY), // wallet holding USDC on Base; gas is facilitator-paid
   network: "base",
-  maxPaymentValue: 250000n, // 0.25 USDC atomic - REQUIRED; the library default caps at 0.10 USDC
+  maxPaymentValue: 2000000n, // 2.00 USDC atomic - REQUIRED; the library default caps at 0.10 USDC
 })
 
 const res = await paid.callTool(
@@ -110,7 +110,7 @@ const res = await paid.callTool(
   } },
 )</code></pre>
     <p>Two payer pitfalls, both hit and proven live: <code>maxPaymentValue</code> must be raised to
-    <code>250000n</code> (the default 0.10 USDC cap refuses the price before signing anything), and the
+    <code>2000000n</code> (the default 0.10 USDC cap refuses the price before signing anything), and the
     wrapped client's <code>callTool</code> is callback-first — the confirmation callback is the first
     argument, the tool call the second.</p>
     <p class="muted">Verified path only: this recipe is the one the deploy-parity gate replays against

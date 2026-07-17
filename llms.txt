@@ -19,9 +19,9 @@
   `query_agent_trust` (LIVE — on-chain trust score read from the DJZS subgraph: totalAudits,
   pass/fail counts, failRate, latest verdict/risk, DJZS-S01/X01 flag counts, and an action of
   PROCEED, HALT, or NO_HISTORY; HALT if failRate > 0.3 or S01/X01 fired more than once).
-- Paying: verify_pm_trade costs 0.25 USDC per audit on Base mainnet over x402. MCP-native payer:
+- Paying: verify_pm_trade costs 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
-  network "base", and maxPaymentValue 250000n — the library's default cap is 0.10 USDC and
+  network "base", and maxPaymentValue 2000000n — the library's default cap is 0.10 USDC and
   refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
 
 ## How it works
@@ -38,7 +38,7 @@
 
 ## Live posture (stated honestly)
 
-- verify_pm_trade is PAID: 0.25 USDC per audit over x402 (CDP facilitator) on Base mainnet,
+- verify_pm_trade is PAID: 2.00 USDC per audit over x402 (CDP facilitator) on Base mainnet,
   non-custodial (payer -> treasury via EIP-3009; the facilitator submits the transfer and pays gas).
   The registry tools (query_pol_certificates, query_agent_trust) are free.
 - Certificates anchor to Irys MAINNET and are permanent; retrievable by id and via
