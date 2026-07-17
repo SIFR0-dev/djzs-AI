@@ -16,6 +16,10 @@ COLOR — semantic only; nothing decorative gets color
 - Brand layer: static scanline overlay, canonical 3.5% green at 4px pitch, non-interactive;
   footer transmission row ("END_TRANSMISSION. // djzs.ai" — product surfaces carry djzs.ai,
   not ENS, per the opsec convention).
+- Logo (2026-07-17): phosphor `>_` prompt mark in a green-ringed black disk. Vector master
+  favicon.svg is the single source; favicon-32/180/512.png + favicon.ico rasterized from the
+  same geometry. Serves as favicon AND the header corner mark (replaces the old CSS `>_ `
+  ::before prompt — the logo now carries it). Header = [logo] DJZS.
 - Brutalism layer (2026-07-17): prompt-path row on every page (~/djzs/<page> $ + cursor);
   per-page boot-status boards (guide MODE/PRICE, legal DISCLOSURE/SCOPE, 404 red ERR row);
   phosphor ::selection and scrollbars; link hover flips green-on-black (no underlines);

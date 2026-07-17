@@ -61,14 +61,14 @@ em { color: var(--muted); font-style: normal; }
 /* header / identity */
 header.site { border-bottom: 1px solid var(--rule); padding: 0.9rem 0; position: sticky; top: 0; background: var(--canvas); }
 header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.brand { font-family: var(--mono); font-weight: 800; letter-spacing: 0.04em; color: var(--text); }
+.brand { font-family: var(--mono); font-weight: 800; letter-spacing: 0.04em; color: var(--text); display: inline-flex; align-items: center; gap: 0.5rem; }
+.brandmark { width: 1.55em; height: 1.55em; display: block; }   /* phosphor >_ logo; carries the prompt the CSS ::before used to draw */
 a.brand { color: var(--text); }                            /* brand mark is a home link */
 a.brand:hover { text-decoration: none; color: var(--text); background: transparent; }
 
 /* prompt-path row — wayfinding as a shell prompt, one per page */
 .path { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); margin: 1rem 0 0; }
 .path .p { color: var(--pass); font-weight: 700; }
-.brand::before { content: ">_ "; color: var(--muted); }   /* prompt mark */
 .brand .dot { color: var(--text); }
 nav a { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--muted); margin-left: 1.1rem; }
 nav a:hover { color: var(--text); text-decoration: none; }
