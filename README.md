@@ -16,7 +16,7 @@ still rest on broken reasoning; DJZS is the layer that catches the bad thesis.
 Cloudflare Worker. Add it to an MCP-capable agent in one line:
 
 ```
-claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp
+claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp
 ```
 
 Then call `verify_pm_trade` with a free-text prediction-market trade thesis. It extracts the
@@ -136,7 +136,7 @@ The deployed Worker exposes three tools over streamable HTTP at `/mcp`:
 |------|--------------|
 | `verify_pm_trade` | Pre-execution audit of a prediction-market thesis (the gate described above). |
 | `query_pol_certificates` | Read prior ProofOfLogic certificates from the Irys datachain. |
-| `query_agent_trust` | Agent trust score on Base (placeholder pending subgraph deployment). |
+| `query_agent_trust` | LIVE on-chain trust score (subgraph-indexed): totalAudits, failRate, latest verdict, action PROCEED/HALT/NO_HISTORY. |
 
 ---
 

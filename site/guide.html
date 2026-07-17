@@ -17,6 +17,7 @@
     <nav>
       <a href="/">Home</a>
       <a href="#tools">Tools</a>
+      <a href="#pay">Pay</a>
       <a href="https://github.com/SIFR0-dev/djzs-AI">Source</a>
     </nav>
   </div>
@@ -29,19 +30,19 @@
     <p class="lede">DJZS is exposed as a Model Context Protocol server over streamable HTTP at
     <code>/mcp</code>. The lead tool is <code>verify_pm_trade</code> — the pre-execution audit an
     agent calls before it acts.</p>
-    <p>Endpoint: <code>https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp</code></p>
+    <p>Endpoint: <code>https://mcp.djzs.ai/mcp</code></p>
   </section>
 
   <section>
     <h2>Setup <span class="k">// one line</span></h2>
-    <pre><code>claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp</code></pre>
+    <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
     <h3>Or via config JSON</h3>
     <p>For agents that read an MCP server map, register the streamable-HTTP endpoint:</p>
     <pre><code>{
   "mcpServers": {
     "djzs-trust": {
       "type": "http",
-      "url": "https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp"
+      "url": "https://mcp.djzs.ai/mcp"
     }
   }
 }</code></pre>
@@ -59,17 +60,62 @@
     <code>in_scope: false</code> rather than silently running a perpetuals audit.</p>
     <p>Response fields: <code>verdict</code>, <code>action</code>, <code>risk_score</code>,
     <code>flags</code>, <code>unknown_fields</code>, <code>disagreements</code>,
-    <code>verdict_hash</code>, <code>extraction_failsafe</code>, <code>in_scope</code>, and taxonomy
-    versions.</p>
+    <code>verdict_hash</code>, <code>extraction_failsafe</code>, <code>in_scope</code>, taxonomy
+    versions, and <code>pol_certificate</code> (the anchored Irys certificate).</p>
+    <p>Optional input <code>agent_address</code> (a 0x wallet): when present, the verdict is also
+    written to that agent's on-chain trust record after the certificate anchors — fail-open, never
+    altering the audit. The tool is <a href="#pay">paid: 0.25 USDC per audit</a>; the two registry
+    tools below are free.</p>
 
     <h3><code>query_pol_certificates</code></h3>
-    <p>Reads prior ProofOfLogic certificates from the Irys datachain. These are prior-architecture
-    lineage, not output of <code>verify_pm_trade</code>.</p>
+    <p>Reads ProofOfLogic certificates from the Irys datachain (mainnet, permanent) — including the
+    certificate every in-scope <code>verify_pm_trade</code> audit anchors, plus prior-architecture
+    lineage. Free.</p>
 
     <h3><code>query_agent_trust</code></h3>
-    <p><span class="badge">placeholder</span> Returns <code>pending_subgraph_deploy</code> — the
-    agent trust-score read activates after the DJZS subgraph is deployed, exactly as the code states.
-    Use <code>query_pol_certificates</code> in the meantime.</p>
+    <p>LIVE — reads an agent's on-chain trust record from the DJZS subgraph on The Graph. Pass
+    <code>agentAddress</code> (0x wallet); returns <code>totalAudits</code>, pass/fail counts,
+    <code>failRate</code>, latest verdict and risk score, DJZS-S01/X01 flag counts, and an
+    <code>action</code> of <code>PROCEED</code>, <code>HALT</code> (failRate &gt; 0.3 or S01/X01 fired
+    more than once), or <code>NO_HISTORY</code> (no audits on record — never a silent pass). Free.
+    Records enter this index when audits are called with <code>agent_address</code>.</p>
+  </section>
+
+  <section id="pay">
+    <h2>Pay for the audit <span class="k">// x402, 0.25 USDC, non-custodial</span></h2>
+    <p><code>verify_pm_trade</code> is paid: 0.25 USDC per audit on Base mainnet over x402. An unpaid
+    call is refused with a payment-required error — no free tier, no API key. Payment is
+    non-custodial: your EIP-3009 signature moves USDC from your wallet directly to the DJZS treasury;
+    the facilitator submits the transfer and pays the gas, so your wallet needs USDC only, no ETH.</p>
+    <p>The MCP-native payer path, exactly as the production parity instrument runs it:</p>
+    <pre><code>import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
+import { withX402Client } from "agents/x402"
+import { privateKeyToAccount } from "viem/accounts"
+
+const client = new Client({ name: "my-agent", version: "1.0.0" })
+await client.connect(new StreamableHTTPClientTransport(new URL("https://mcp.djzs.ai/mcp")))
+
+const paid = withX402Client(client, {
+  account: privateKeyToAccount(PAYER_KEY), // wallet holding USDC on Base; gas is facilitator-paid
+  network: "base",
+  maxPaymentValue: 250000n, // 0.25 USDC atomic - REQUIRED; the library default caps at 0.10 USDC
+})
+
+const res = await paid.callTool(
+  async (offer) => true, // payment confirmation: inspect the 402 offer, return true to sign and pay
+  { name: "verify_pm_trade", arguments: {
+    intent: "YES on the March market; my calibrated model says 72% vs market 58%, invalidation if X...",
+    agent_address: "0xYourAgentWallet", // optional: writes the verdict to your on-chain trust record
+  } },
+)</code></pre>
+    <p>Two payer pitfalls, both hit and proven live: <code>maxPaymentValue</code> must be raised to
+    <code>250000n</code> (the default 0.10 USDC cap refuses the price before signing anything), and the
+    wrapped client's <code>callTool</code> is callback-first — the confirmation callback is the first
+    argument, the tool call the second.</p>
+    <p class="muted">Verified path only: this recipe is the one the deploy-parity gate replays against
+    production. Other x402 clients (HTTP-framed wrappers, AgentKit) are deliberately undocumented here
+    until proven against this endpoint.</p>
   </section>
 
   <section>

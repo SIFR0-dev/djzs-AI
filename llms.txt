@@ -3,29 +3,54 @@
 > DJZS audits the reasoning behind an autonomous agent's move before capital is committed and
 > returns a tri-state verdict — PASS, WAIT, or FAIL — with the reasoning defects flagged and a
 > reproducible verdict_hash. It answers "should this position be taken?", complementary to
-> transaction-security tools that answer "is this transaction safe to sign?". WAIT maps to HALT:
-> an under-specified thesis is never silently passed or failed.
+> transaction-security tools that answer "is this transaction safe to sign?".
 
 ## Use it (live MCP gate)
 
-- Endpoint (streamable HTTP): https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp
-- Install: `claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp`
-- Lead tool: `verify_pm_trade` — pass a free-text prediction-market thesis; returns PASS/WAIT/FAIL
-  with flags, unknown_fields, disagreements, and a verdict_hash. Prediction-market only: a non-PM
-  or undetermined intent returns in_scope:false (never a silent perpetuals audit).
-- Other tools: `query_pol_certificates` (Irys certificate history); `query_agent_trust`
-  (placeholder, pending subgraph deployment).
+- Endpoint (streamable HTTP): https://mcp.djzs.ai/mcp
+- Install: `claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp`
+- Lead tool: `verify_pm_trade` — pass a free-text prediction-market thesis; returns
+  PASS→PROCEED / FAIL / WAIT→HALT, flags, unknown_fields, disagreements, and verdict_hash.
+  Optional `agent_address` (0x wallet) links the verdict to that agent's on-chain trust record.
+  Prediction-market only: a non-PM or undetermined intent returns in_scope:false (never a silent
+  perpetuals audit).
+- Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
+  including every certificate verify_pm_trade anchors);
+  `query_agent_trust` (LIVE — on-chain trust score read from the DJZS subgraph: totalAudits,
+  pass/fail counts, failRate, latest verdict/risk, DJZS-S01/X01 flag counts, and an action of
+  PROCEED, HALT, or NO_HISTORY; HALT if failRate > 0.3 or S01/X01 fired more than once).
+- Paying: verify_pm_trade costs 0.25 USDC per audit on Base mainnet over x402. MCP-native payer:
+  wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
+  network "base", and maxPaymentValue 250000n — the library's default cap is 0.10 USDC and
+  refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
 
 ## How it works
 
-- Architecture C: an LLM extracts observable facts (N=3 consensus) and never returns a verdict; a
-  frozen deterministic engine computes it. The verdict rules are model-independent; the same input
-  struct yields the same verdict_hash.
-- Taxonomies (frozen): DJZS-M prediction-market (4 codes, all live) and DJZS-LF perpetuals
-  (11 codes, 3 wired live). Full tables are in the README.
+- Architecture C: an LLM extracts observable facts (N=3 consensus, quote gates, evidence-unanimity)
+  and never returns a verdict; a frozen deterministic engine computes the verdict. The verdict rules
+  are model-independent. Same input struct -> same verdict_hash.
+- WAIT is never silent: an unknown decision-critical fact drains to HALT with unknown_fields returned.
 
-## Links
+## Taxonomies (frozen)
 
-- Site: https://djzs.ai
-- Repository (source of truth): https://github.com/SIFR0-dev/djzs-AI
-- Where docs and tree disagree, the tree wins.
+- DJZS-M (prediction market, DJZS-PM-v1.0): M01-M04, weights sum 100, FAIL threshold 25. All live.
+- DJZS-LF (perpetuals, DJZS-LF-v1.1): 11 codes, weights sum 200, 3 wired live (X01, E01, I01).
+
+## Live posture (stated honestly)
+
+- verify_pm_trade is PAID: 0.25 USDC per audit over x402 (CDP facilitator) on Base mainnet,
+  non-custodial (payer -> treasury via EIP-3009; the facilitator submits the transfer and pays gas).
+  The registry tools (query_pol_certificates, query_agent_trust) are free.
+- Certificates anchor to Irys MAINNET and are permanent; retrievable by id and via
+  query_pol_certificates.
+- The trust loop is CLOSED and live: pass agent_address to verify_pm_trade and the verdict is
+  written on-chain (DJZSLogicTrustScore on Base) by a dedicated authorized writer, indexed by the
+  DJZS subgraph on The Graph, and readable by anyone via query_agent_trust. The write is fail-open:
+  a write fault never blocks or alters the audit or its certificate.
+- Endpoint history: the gate previously served at djzs-trust-mcp.easy-less-spoil.workers.dev/mcp.
+  That URL still works for existing clients; https://mcp.djzs.ai/mcp is canonical.
+
+## Source of truth
+
+- Repository: https://github.com/SIFR0-dev/djzs-AI
+- Every number here traces to that tree; where docs and tree disagree, the tree wins.

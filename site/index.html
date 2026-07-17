@@ -40,7 +40,7 @@
     reasoning behind a move <strong>before</strong> capital is committed and returns one of three
     verdicts, with the specific defects flagged and a reproducible hash of the decision.</p>
     <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
-    <pre><code>claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp</code></pre>
+    <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
     <p class="muted">Then call <code>verify_pm_trade</code> with a free-text prediction-market thesis.</p>
     <p class="doctrine">Audit before act.</p>
   </section>
@@ -155,9 +155,12 @@
       certificate to Irys mainnet and returns its id; it is retrievable by id and via
       <code>query_pol_certificates</code>. The certificate is assembled after the <code>verdict_hash</code>
       and never alters it.</li>
-      <li><strong>Agent trust scores are not live yet.</strong> <code>query_agent_trust</code> returns
-      a placeholder pending deployment of the DJZS subgraph to The Graph; use
-      <code>query_pol_certificates</code> for audit history in the meantime.</li>
+      <li><strong>The trust loop is closed and live.</strong> Pass an optional <code>agent_address</code>
+      to <code>verify_pm_trade</code> and the verdict is written on-chain (<code>DJZSLogicTrustScore</code>
+      on Base) by a dedicated authorized writer, indexed by the DJZS subgraph on The Graph, and readable
+      by anyone via <code>query_agent_trust</code> — totalAudits, failRate, latest verdict, and an action
+      of PROCEED, HALT, or NO_HISTORY. The write is fail-open: a write fault never blocks or alters the
+      audit or its certificate.</li>
     </ul>
     <p>On-chain: four DJZS contracts are attested on Base in the A2A manifest, with source in
     <code>contracts/</code>. A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source

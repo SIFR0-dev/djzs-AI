@@ -22,9 +22,9 @@
     "failure-taxonomy-classification"
   ],
   "mcp": {
-    "endpoint": "https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp",
+    "endpoint": "https://mcp.djzs.ai/mcp",
     "transport": "streamable-http",
-    "install": "claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp",
+    "install": "claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp",
     "tools": [
       {
         "name": "verify_pm_trade",
@@ -36,21 +36,19 @@
       },
       {
         "name": "query_agent_trust",
-        "description": "Query DJZS agent trust scores on Base Mainnet — returns a placeholder until the DJZS subgraph is deployed to The Graph Network."
+        "description": "Query an agent's live on-chain DJZS trust score (Base mainnet, indexed by the DJZS subgraph on The Graph): totalAudits, pass/fail counts, failRate, latest verdict and risk, and an action of PROCEED, HALT, or NO_HISTORY."
       }
     ]
   },
   "website": "https://djzs.ai",
   "endpoints": {
-    "demo": "https://djzs.ai/demo",
-    "audit": "https://djzs.ai/api/audit/demo",
-    "health": "https://djzs.ai/api/health"
+    "health": "https://mcp.djzs.ai/health/x402"
   },
   "infrastructure": {
-    "runtime": "Phala Cloud TEE (dstack-0.5.3, Intel TDX)",
-    "inference": "Venice AI API (llama-3.3-70b)",
-    "storage": "Irys Datachain",
-    "settlement": "Base Mainnet"
+    "runtime": "Cloudflare Workers (djzs-trust-mcp)",
+    "inference": "Anthropic API — N=3 consensus extraction only; the verdict is computed by a frozen deterministic engine, never by a model",
+    "storage": "Irys Datachain (mainnet, permanent ProofOfLogic certificates)",
+    "settlement": "Base Mainnet — x402/USDC payment to treasury; on-chain trust scores via DJZSLogicTrustScore"
   },
   "contracts": {
     "trustScore": {

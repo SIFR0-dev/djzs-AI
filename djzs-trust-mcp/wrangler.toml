@@ -9,6 +9,17 @@ main = "src/index.ts"
 compatibility_date = "2026-06-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Canonical public hostname (distribution ruling, 2026-07-16): registries, docs, and
+# llms.txt cite https://mcp.djzs.ai/mcp so published URLs survive any Worker rename.
+# custom_domain = true has Cloudflare create/own the DNS record on deploy (zone must
+# be on this account). workers_dev MUST stay true: adding `routes` silently disables
+# the workers.dev URL otherwise (probed live 2026-07-16, error 1042), stranding every
+# client that connected pre-domain. New surfaces cite ONLY the custom domain.
+workers_dev = true
+routes = [
+  { pattern = "mcp.djzs.ai", custom_domain = true }
+]
+
 [vars]
 ENVIRONMENT = "production"
 # PoL write target. MAINNET (A11 Stage 3, 2026-07-14): certs are permanent and

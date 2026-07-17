@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ai.djzs/trust-mcp",
+  "description": "Deterministic pre-execution logic audit for trading agents. verify_pm_trade audits a prediction-market thesis and returns PASS to PROCEED, FAIL, or WAIT to HALT with flagged defects and a reproducible verdict_hash (paid: 0.25 USDC via x402 on Base). Free registry tools: query_pol_certificates (permanent Irys ProofOfLogic certificates) and query_agent_trust (live on-chain trust scores). Audit before act.",
+  "title": "DJZS Trust MCP",
+  "websiteUrl": "https://djzs.ai",
+  "repository": {
+    "url": "https://github.com/SIFR0-dev/djzs-AI",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.djzs.ai/mcp"
+    }
+  ]
+}

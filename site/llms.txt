@@ -7,15 +7,22 @@
 
 ## Use it (live MCP gate)
 
-- Endpoint (streamable HTTP): https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp
-- Install: `claude mcp add --transport http djzs-trust https://djzs-trust-mcp.easy-less-spoil.workers.dev/mcp`
+- Endpoint (streamable HTTP): https://mcp.djzs.ai/mcp
+- Install: `claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp`
 - Lead tool: `verify_pm_trade` — pass a free-text prediction-market thesis; returns
   PASS→PROCEED / FAIL / WAIT→HALT, flags, unknown_fields, disagreements, and verdict_hash.
+  Optional `agent_address` (0x wallet) links the verdict to that agent's on-chain trust record.
   Prediction-market only: a non-PM or undetermined intent returns in_scope:false (never a silent
   perpetuals audit).
-- Other tools: `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
-  including every certificate verify_pm_trade anchors; free);
-  `query_agent_trust` (placeholder, pending subgraph deployment).
+- Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
+  including every certificate verify_pm_trade anchors);
+  `query_agent_trust` (LIVE — on-chain trust score read from the DJZS subgraph: totalAudits,
+  pass/fail counts, failRate, latest verdict/risk, DJZS-S01/X01 flag counts, and an action of
+  PROCEED, HALT, or NO_HISTORY; HALT if failRate > 0.3 or S01/X01 fired more than once).
+- Paying: verify_pm_trade costs 0.25 USDC per audit on Base mainnet over x402. MCP-native payer:
+  wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
+  network "base", and maxPaymentValue 250000n — the library's default cap is 0.10 USDC and
+  refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
 
 ## How it works
 
@@ -36,8 +43,12 @@
   The registry tools (query_pol_certificates, query_agent_trust) are free.
 - Certificates anchor to Irys MAINNET and are permanent; retrievable by id and via
   query_pol_certificates.
-- Not live yet: query_agent_trust returns a placeholder pending deployment of the DJZS subgraph
-  to The Graph. Use query_pol_certificates for audit history meanwhile.
+- The trust loop is CLOSED and live: pass agent_address to verify_pm_trade and the verdict is
+  written on-chain (DJZSLogicTrustScore on Base) by a dedicated authorized writer, indexed by the
+  DJZS subgraph on The Graph, and readable by anyone via query_agent_trust. The write is fail-open:
+  a write fault never blocks or alters the audit or its certificate.
+- Endpoint history: the gate previously served at djzs-trust-mcp.easy-less-spoil.workers.dev/mcp.
+  That URL still works for existing clients; https://mcp.djzs.ai/mcp is canonical.
 
 ## Source of truth
 
