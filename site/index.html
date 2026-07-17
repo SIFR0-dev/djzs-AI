@@ -94,7 +94,7 @@
 
   <!-- 4 — TAXONOMIES -->
   <section id="taxonomies">
-    <h2>Taxonomies <span class="k">// frozen</span></h2>
+    <h2>Taxonomies <span class="k">// prediction market, live</span></h2>
 
     <h3>DJZS-M — Prediction Market (DJZS-PM-v1.0)</h3>
     <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated.</p>
@@ -112,30 +112,16 @@
     <p class="muted">M04 is advisory-grade: a lone M04 rides a PASS with the flag on the certificate
     (weight 15 is below the threshold); it blocks only by stacking (e.g. M03 + M04 = 40 → FAIL).</p>
 
-    <h3>DJZS-LF — Perpetuals / general reasoning (DJZS-LF-v1.1)</h3>
-    <p class="muted">Weights sum to <strong>200</strong>. Frozen at <strong>11 codes</strong>;
-    <strong>3 are wired live</strong> today (<span class="live">●</span>). The rest are defined and
-    weighted but not yet firing — stated honestly, not implied.</p>
-    <div class="table-wrap">
-    <table aria-label="DJZS-LF-v1.1 codes, categories, severities, weights, and live status">
-      <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Severity</th><th scope="col">Weight</th><th scope="col">Live</th></tr></thead>
-      <tbody>
-        <tr><td><code>DJZS-S01</code></td><td>CIRCULAR_LOGIC</td><td>Structural</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td><td></td></tr>
-        <tr><td><code>DJZS-S02</code></td><td>LAYER_INVERSION</td><td>Structural</td><td class="sev-HIGH">HIGH</td><td>25</td><td></td></tr>
-        <tr><td><code>DJZS-S03</code></td><td>DEPENDENCY_GHOST</td><td>Structural</td><td class="sev-MEDIUM">MEDIUM</td><td>18</td><td></td></tr>
-        <tr><td><code>DJZS-E01</code></td><td>ORACLE_UNVERIFIED</td><td>Epistemic</td><td class="sev-HIGH">HIGH</td><td>25</td><td class="live">●</td></tr>
-        <tr><td><code>DJZS-E02</code></td><td>CONFIDENCE_INFLATION</td><td>Epistemic</td><td class="sev-MEDIUM">MEDIUM</td><td>18</td><td></td></tr>
-        <tr><td><code>DJZS-I01</code></td><td>FOMO_LOOP</td><td>Incentive</td><td class="sev-MEDIUM">MEDIUM</td><td>16</td><td class="live">●</td></tr>
-        <tr><td><code>DJZS-I02</code></td><td>MISALIGNED_REWARD</td><td>Incentive</td><td class="sev-MEDIUM">MEDIUM</td><td>16</td><td></td></tr>
-        <tr><td><code>DJZS-I03</code></td><td>DATA_UNVERIFIED</td><td>Incentive</td><td class="sev-MEDIUM">MEDIUM</td><td>16</td><td></td></tr>
-        <tr><td><code>DJZS-X01</code></td><td>EXECUTION_UNBOUND</td><td>Execution</td><td class="sev-CRITICAL">CRITICAL</td><td>15</td><td class="live">●</td></tr>
-        <tr><td><code>DJZS-X02</code></td><td>RACE_CONDITION</td><td>Execution</td><td class="sev-HIGH">HIGH</td><td>9</td><td></td></tr>
-        <tr><td><code>DJZS-T01</code></td><td>STALE_REFERENCE</td><td>Temporal</td><td class="sev-LOW">LOW</td><td>12</td><td></td></tr>
-      </tbody>
-    </table>
-    </div>
-    <p class="muted">Both weight tables are hash-locked exported constants; a weight change is a
-    deliberate re-derive, not a hot patch.</p>
+    <p class="muted">The weight table is a hash-locked exported constant; a weight change is a
+    deliberate re-derive that bumps the version, not a hot patch — that immutability is what makes
+    every <code>verdict_hash</code> reproducible.</p>
+
+    <h3>DJZS-LF — perpetuals / general reasoning <span class="k">// roadmap, reserved in the open</span></h3>
+    <p class="muted">Beyond prediction markets, an 11-code perpetuals and general-reasoning taxonomy
+    (DJZS-LF-v1.1, weights sum 200) is frozen — 3 codes wired live
+    (<code>E01</code>, <code>I01</code>, <code>X01</code>), the other 8 reserved with their weights
+    but not yet firing, and no served surface today. Disclosed as roadmap, not sold as done. The full
+    table lives in the <a href="https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen">repository</a>.</p>
   </section>
 
   <!-- 5 — PROOF -->
