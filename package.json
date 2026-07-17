@@ -109,7 +109,7 @@
     "undici": "6.24.0",
     "vaul": "^1.1.2",
     "vite": "^5.4.21",
-    "vitest": "^4.0.18",
+    "vitest": "^4.1.10",
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "x402-axios": "^1.1.0",
@@ -149,6 +149,8 @@
   "overrides": {
     "minimatch": "10.2.3",
     "@xmtp/proto": "3.88.0",
+    "protobufjs": ">=7.6.3",
+    "shell-quote": ">=1.8.4",
     "undici": "6.24.0",
     "hono": "4.12.4",
     "serialize-javascript": "7.0.3",
