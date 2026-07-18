@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Docs & install
+    url: https://djzs.ai/guide.html
+    about: Connect the gate — one-line MCP install, tool reference, and the x402 payer quickstart.
+  - name: DJZS on X
+    url: https://x.com/Djzs_ai
+    about: Questions, updates, and the fastest way to reach the operator.

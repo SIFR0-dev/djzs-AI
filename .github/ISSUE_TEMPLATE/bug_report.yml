@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in the DJZS audit tool, certificates, or trust scores behaved wrong.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. DJZS is a deterministic auditor — the more precisely you can point at the reasoning-vs-verdict gap, the faster it's fixable.
+
+        **Do not paste private keys, seed phrases, or wallet secrets.** In-scope audit intents anchor a public on-chain certificate; treat anything you submit as public.
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Which tool?
+      options:
+        - verify_pm_trade
+        - query_pol_certificates
+        - query_agent_trust
+        - other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you called, what came back, and what you expected instead.
+    validations:
+      required: true
+  - type: input
+    id: verdict_hash
+    attributes:
+      label: verdict_hash (if any)
+      description: The reproducible hash from the response, so the result can be replayed byte-for-byte.
+  - type: input
+    id: client
+    attributes:
+      label: MCP client / environment
+      description: e.g. Claude Code, a custom MCP client, the x402 payer harness.
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: The intent text (redact as needed) or steps to reproduce. The engine is deterministic, so a good repro usually nails it.
