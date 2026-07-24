@@ -117,7 +117,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
     "@openzeppelin/contracts": "^5.6.1",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
@@ -134,7 +134,7 @@
     "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.4",
     "esbuild": "^0.27.2",
-    "hardhat": "^2.28.6",
+    "hardhat": "^3.11.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
