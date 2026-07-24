@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "DJZS audit gate — stdio bridge to the remote MCP server at https://mcp.djzs.ai/mcp. Audit before act.",
   "bin": {
-    "djzs-ai": "./bin.js"
+    "djzs-ai": "bin.js"
   },
   "files": [
     "bin.js",
