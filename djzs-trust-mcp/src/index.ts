@@ -276,6 +276,18 @@ function buildServer(env: Env): McpServer {
     const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
     const result = await runVerifyPmTrade(intent, modelFn)
 
+    // OUT-OF-SCOPE = NOT CHARGED. The agents/x402 middleware settles payment
+    // only when the tool result carries no isError flag (settlePayment guard
+    // in agents dist/mcp/x402.js). Surfacing in_scope:false as an error makes
+    // the middleware skip settlement, so a refused audit is a free refusal.
+    // The reason string still travels in content.
+    if (result.in_scope === false) {
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+        isError: true
+      }
+    }
+
     // Step 1 PoL anchor: strictly AFTER the audit result exists; nothing here
     // can reach the verdict_hash preimage. FAIL OPEN: an anchoring failure
     // annotates the response and never blocks or mutates the verdict.
