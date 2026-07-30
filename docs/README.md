@@ -40,7 +40,7 @@ same hash, always (`server/engine-v2/deterministic-engine.ts:1-16`, `:215-216`).
   (`server/engine-v2/calibration/anchor-pm-block-008.ts`; `CLAUDE.md:91`). The repo-root
   `README.md` and `PHASE2_SPEC.md` still read "hash-parity pending" — they are stale and
   are **not** sources of truth.
-- **No Bazaar listing, none pending.** The published registry entry
+- **No Bazaar listing, none pending.** The registry manifest
   (`djzs-trust-mcp/server.json` → `ai.djzs/trust-mcp`) declares no x402 Bazaar discovery
   metadata, so CDP does not index it (`CLAUDE.md` §12). Discovery runs through the MCP
   Registry and npm (`@sifr0-dev/djzs-ai`).

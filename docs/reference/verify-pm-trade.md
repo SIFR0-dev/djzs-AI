@@ -51,7 +51,7 @@ Tri-state, computed by the frozen engine. The action map is the entirety of the 
 
 | verdict | action | meaning |
 |---|---|---|
-| `PASS` | `PROCEED` | Every scored fact is known and no rule fired. |
+| `PASS` | `PROCEED` | No blocking rule fired on known facts. A sub-threshold, non-critical advisory can ride a PASS (see M04 below). |
 | `WAIT` | `HALT` | A decision-critical fact is unknown — first-class abstention, not a guess. The `halt_reason` names the unresolvable fields (`:114-118`). |
 | `FAIL` | `FAIL` | A rule fired on facts the engine knows. |
 
