@@ -52,15 +52,33 @@
       <div class="row"><span class="ok">OK</span><span class="label">LEDGER</span><span class="val">Irys mainnet — every in-scope audit anchors a permanent ProofOfLogic certificate; readable via query_pol_certificates</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">OPERATIONAL<span class="cursor"></span></span></div>
     </div>
-    <p class="lede">Transaction-security tools ask <em>"is this transaction safe to sign?"</em>
-    DJZS asks a different question — <em>"should this position be taken at all?"</em> It audits the
-    reasoning behind a move <strong>before</strong> capital is committed and returns one of three
-    verdicts, with the specific defects flagged and a reproducible hash of the decision.</p>
+    <p class="lede">It checks the claim before the money moves.
+    It produces a receipt anyone can recompute.
+    It never guesses — unknown means <strong>WAIT</strong>, and WAIT means <strong>HALT</strong>.</p>
     <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
     <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
     <p class="muted">Then call <code>verify_pm_trade</code> with a free-text prediction-market thesis.</p>
     <p><a class="btn" href="/guide.html">Connect the gate -&gt;</a></p>
     <p class="doctrine">Audit before act.</p>
+  </section>
+
+  <!-- 1.5 — THE LOOP, LIVE -->
+  <section id="loop">
+    <h2>The loop, run for real <span class="k">// a wallet paid, an engine decided</span></h2>
+    <video controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
+      <source src="/assets/djzs-demo-pass.mp4" type="video/mp4" />
+    </video>
+    <p class="muted">One command to add. The agent pays 2.00 USDC over x402 on Base and the verdict
+    returns with a hash that reproduces on any machine. The payment and the certificate are public —
+    <a href="https://djzs.link" rel="noopener">the launch record</a> archives every receipt.</p>
+    <h3>How payment works</h3>
+    <p>Every verdict is paid for by the wallet that asks for it. The server answers with a price:
+    <strong>2.00 USDC</strong>. Your agent pays it on Base over x402 and the verdict comes back in the
+    same breath. No account, no API key, no subscription — the caller's wallet is the identity and the
+    bill. Out-of-scope requests are refused <em>free</em>: an auditor that stretches past its taxonomy
+    to take your money is not an auditor.</p>
+    <p class="muted">Humans without an x402 setup: watch the loop above — that is the whole product,
+    end to end. Agents replicate it natively.</p>
   </section>
 
   <!-- 2 — ARCHITECTURE C -->
@@ -209,5 +227,5 @@
   </div>
 </footer>
 <script src="/copy.js" defer></script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a248d0a79e4a2964',t:'MTc4NTYyODk1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
