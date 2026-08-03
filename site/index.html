@@ -1,299 +1,239 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIFR-0 — Business-to-Agent Discovery Protocol</title>
-<meta name="description" content="The open protocol that makes any business discoverable to AI agents. Registry API, MCP server, x402 payments.">
-<meta property="og:title" content="SIFR-0 Protocol">
-<meta property="og:description" content="Make any business discoverable to AI agents. 19 businesses indexed. Free API.">
-<meta property="og:url" content="https://sifr0.dev">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-::selection{background:#4ade80;color:#000}
-html{scroll-behavior:smooth}
-body{background:#000;color:#a3a3a3;font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.7;overflow-x:hidden}
-a{color:#4ade80;text-decoration:none;border-bottom:1px solid transparent;transition:border-color .2s}
-a:hover{border-bottom-color:#4ade80}
-.container{max-width:740px;margin:0 auto;padding:0 24px}
-header{padding:80px 0 0;position:relative}
-header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#4ade8030,transparent)}
-.boot{color:#525252;font-size:12px;margin-bottom:32px}
-.boot span{color:#4ade80}
-.logo{font-size:clamp(48px,10vw,72px);font-weight:700;color:#fff;letter-spacing:-3px;line-height:1;margin-bottom:8px}
-.logo span{color:#4ade80}
-.tagline{font-size:clamp(14px,2.5vw,18px);color:#737373;font-weight:300;margin-bottom:48px;max-width:560px}
-.tagline em{color:#d4d4d4;font-style:normal;font-weight:500}
-.headline{font-size:clamp(16px,3vw,22px);color:#e5e5e5;font-weight:400;line-height:1.5;margin-bottom:48px}
-.headline strong{color:#4ade80;font-weight:600}
-.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:80px}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
-.btn-primary{background:#4ade80;color:#000;border:1px solid #4ade80}
-.btn-primary:hover{background:#22c55e;border-color:#22c55e;border-bottom-color:#22c55e}
-.btn-ghost{background:transparent;color:#a3a3a3;border:1px solid #333}
-.btn-ghost:hover{border-color:#4ade80;color:#4ade80;border-bottom-color:#4ade80}
-section{padding:64px 0;border-top:1px solid #1a1a1a}
-h2{font-size:12px;font-weight:600;color:#4ade80;text-transform:uppercase;letter-spacing:3px;margin-bottom:32px}
-h2::before{content:'// ';color:#525252}
-.code-block{background:#0a0a0a;border:1px solid #1a1a1a;border-left:3px solid #4ade8040;padding:24px;overflow-x:auto;margin-bottom:24px;position:relative;font-size:13px;line-height:1.8}
-.code-block::before{content:attr(data-label);position:absolute;top:0;right:0;background:#1a1a1a;color:#525252;font-size:10px;padding:4px 12px;letter-spacing:1px;text-transform:uppercase}
-.code-block .comment{color:#525252}
-.code-block .key{color:#4ade80}
-.code-block .str{color:#facc15}
-.code-block .num{color:#38bdf8}
-.code-block .kw{color:#c084fc}
-.response-block{background:#0a0a0a;border:1px solid #1a1a1a;border-left:3px solid #38bdf840;padding:24px;overflow-x:auto;margin-bottom:24px;position:relative;font-size:13px;line-height:1.8}
-.response-block::before{content:'RESPONSE 200';position:absolute;top:0;right:0;background:#1a1a1a;color:#525252;font-size:10px;padding:4px 12px;letter-spacing:1px}
-.use-cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;background:#1a1a1a;border:1px solid #1a1a1a;margin-bottom:24px}
-.use-case{background:#000;padding:24px}
-.use-case-dept{font-size:11px;color:#4ade80;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
-.use-case-title{color:#e5e5e5;font-size:14px;font-weight:500;margin-bottom:8px}
-.use-case p{font-size:12px;color:#525252}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#1a1a1a;border:1px solid #1a1a1a;margin-bottom:24px}
-.stat{background:#000;padding:20px;text-align:center}
-.stat-num{font-size:28px;font-weight:700;color:#fff;line-height:1}
-.stat-label{font-size:10px;color:#525252;margin-top:8px;text-transform:uppercase;letter-spacing:1px}
-@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
-.protocols{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:#1a1a1a;border:1px solid #1a1a1a;margin-bottom:24px}
-.protocol{background:#000;padding:20px}
-.protocol-name{color:#e5e5e5;font-weight:600;font-size:13px;margin-bottom:4px}
-.protocol-role{color:#525252;font-size:12px}
-.protocol-sifr{color:#4ade80;font-size:11px;margin-top:8px}
-.ecosystem{display:grid;grid-template-columns:1fr 40px 1fr;gap:0;margin-bottom:24px;align-items:center}
-.eco-box{background:#0a0a0a;border:1px solid #1a1a1a;padding:24px;text-align:center}
-.eco-box h3{color:#e5e5e5;font-size:14px;font-weight:600;margin-bottom:4px}
-.eco-box p{font-size:12px;color:#525252}
-.eco-arrow{text-align:center;color:#333;font-size:20px}
-.eco-green{border-color:#4ade8030}
-.eco-amber{border-color:#fbbf2430}
-.form-section{max-width:480px}
-.form-section p{margin-bottom:24px;color:#737373}
-.input-row{display:flex;gap:0;margin-bottom:12px}
-.input-row input{flex:1;background:#0a0a0a;border:1px solid #1a1a1a;color:#e5e5e5;font-family:'JetBrains Mono',monospace;font-size:13px;padding:12px 16px;outline:none;transition:border-color .2s}
-.input-row input:focus{border-color:#4ade80}
-.input-row input::placeholder{color:#333}
-.input-row button{background:#4ade80;color:#000;border:1px solid #4ade80;border-left:0;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;padding:12px 20px;cursor:pointer;white-space:nowrap;transition:background .15s}
-.input-row button:hover{background:#22c55e}
-.form-note{font-size:11px;color:#333}
-footer{padding:48px 0;border-top:1px solid #1a1a1a;text-align:center}
-footer p{color:#333;font-size:12px}
-footer a{color:#525252}
-footer a:hover{color:#4ade80}
-.footer-links{display:flex;justify-content:center;gap:24px;margin-bottom:16px;flex-wrap:wrap}
-@media(max-width:600px){.cta-row{flex-direction:column}.btn{justify-content:center}.input-row{flex-direction:column}.input-row button{border-left:1px solid #4ade80;border-top:0}.ecosystem{grid-template-columns:1fr;gap:0}.eco-arrow{transform:rotate(90deg);padding:8px 0}}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DJZS — the reasoning gate every trading agent calls before it acts</title>
+  <meta name="description" content="DJZS is a deterministic pre-execution audit for autonomous agents: it audits the reasoning behind a move and returns PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as an MCP tool." />
+  <link rel="canonical" href="https://djzs.ai/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="DJZS — the reasoning gate every trading agent calls before it acts" />
+  <meta property="og:description" content="Deterministic pre-execution audit: PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as a paid MCP tool on Base." />
+  <meta property="og:url" content="https://djzs.ai/" />
+  <meta property="og:image" content="https://djzs.ai/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://djzs.ai/og.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="/favicon-180.png" />
 </head>
 <body>
-
-<div class="container">
-
-<header>
-<div class="boot">
-<span>$</span> sifr0 --version<br>
-<span>SIFR-0 Protocol</span> v0.2.0<br>
-<span>STATUS:</span> ACTIVE &nbsp; <span>REGISTRY:</span> 19 BUSINESSES &nbsp; <span>API:</span> api.sifr0.dev<br>
-<span>MCP:</span> @sifr0/mcp &nbsp; <span>TRUST:</span> DJZS Protocol &nbsp; <span>PAYMENTS:</span> x402 Base
-</div>
-
-<div class="logo">SIFR<span>-0</span></div>
-<div class="tagline">The open protocol that makes any business <em>discoverable to AI agents</em>.</div>
-
-<div class="headline">
-You build the agent.<br>
-<strong>SIFR-0 gives it eyes.</strong>
-</div>
-
-<div class="cta-row">
-<a href="#get-started" class="btn btn-primary">Get started</a>
-<a href="https://github.com/SIFR0-dev/sifr-0" class="btn btn-ghost" target="_blank">GitHub</a>
-<a href="https://www.npmjs.com/package/@sifr0/mcp" class="btn btn-ghost" target="_blank">npm</a>
-</div>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/"><img class="brandmark" src="/favicon.svg" alt="" width="26" height="26" />DJZS<span class="dot">.</span></a>
+    <nav aria-label="Main">
+      <a href="#architecture">Architecture</a>
+      <a href="#taxonomies">Taxonomies</a>
+      <a href="#proof">Proof</a>
+      <a href="/guide.html" aria-current="false">Connect -&gt;</a>
+    </nav>
+  </div>
 </header>
 
-<!-- LIVE STATS -->
-<section>
-<h2>Live registry</h2>
-<div class="stats">
-<div class="stat"><div class="stat-num">19</div><div class="stat-label">Businesses</div></div>
-<div class="stat"><div class="stat-num">63</div><div class="stat-label">Services</div></div>
-<div class="stat"><div class="stat-num">11</div><div class="stat-label">Verticals</div></div>
-<div class="stat"><div class="stat-num">$0</div><div class="stat-label">Free tier</div></div>
-</div>
-<p style="color:#525252;font-size:12px">Dentistry · Law · Restaurants · SaaS · Government · IT MSPs · Staffing · Catering · Outside Counsel · HVAC · Memory Providers · Agent Verification</p>
-</section>
+<main class="wrap" id="main">
 
-<!-- HOW IT WORKS -->
-<section id="how">
-<h2>How it works</h2>
-<p style="margin-bottom:32px;color:#737373">Businesses publish a JSON manifest. Agents query the SIFR-0 registry to find them.</p>
+  <p class="path"><span class="p">~/djzs</span> $<span class="cursor"></span></p>
 
-<div class="code-block" data-label="search">
-<span class="comment"># Find a SOC2-certified IT provider near Austin</span><br>
-<span class="kw">curl</span> <span class="str">"https://api.sifr0.dev/v1/search<br>&nbsp;&nbsp;?category=managed-services<br>&nbsp;&nbsp;&near=30.27,-97.74&radius_km=50<br>&nbsp;&nbsp;&policy.insurance=SOC2-Type-II"</span>
-</div>
+  <!-- 1 — HERO -->
+  <section id="hero">
+    <h1>The reasoning gate every trading agent calls before it acts.</h1>
+    <div class="status">
+      <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">ENGINE</span><span class="val">deterministic v2 — verdict is computed, not improvised.</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">GATE</span><span class="val">verify_pm_trade — LIVE · PAID 2.00 USDC via x402 [MCP] [streamable-HTTP]</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">TAXONOMY</span><span class="val">DJZS-PM-v1.0 4/4 calibrated · DJZS-LF-v1.1 11 frozen / 3 live</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">LEDGER</span><span class="val">Irys mainnet — every in-scope audit anchors a permanent ProofOfLogic certificate; readable via query_pol_certificates</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">OPERATIONAL<span class="cursor"></span></span></div>
+    </div>
+    <p class="lede">It checks the claim before the money moves.
+    It produces a receipt anyone can recompute.
+    It never guesses — unknown means <strong>WAIT</strong>, and WAIT means <strong>HALT</strong>.</p>
+    <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
+    <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
+    <p class="muted">Then call <code>verify_pm_trade</code> with a free-text prediction-market thesis.</p>
+    <p><a class="btn" href="/guide.html">Connect the gate -&gt;</a></p>
+    <p class="doctrine">Audit before act.</p>
+  </section>
 
-<div class="response-block">
-{<br>
-&nbsp;&nbsp;<span class="key">"results"</span>: [{<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"name"</span>: <span class="str">"NexGen Managed IT"</span>,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"verified"</span>: <span class="kw">true</span>,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"distance_km"</span>: <span class="num">12.4</span>,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"services_count"</span>: <span class="num">3</span><br>
-&nbsp;&nbsp;}],<br>
-&nbsp;&nbsp;<span class="key">"total"</span>: <span class="num">1</span><br>
-}
-</div>
-</section>
+  <!-- 1.5 — THE LOOP, LIVE -->
+  <section id="loop">
+    <h2>The loop, run for real <span class="k">// a wallet paid, an engine decided</span></h2>
+    <video controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
+      <source src="/assets/djzs-demo-pass.mp4" type="video/mp4" />
+    </video>
+    <p class="muted">One command to add. The agent pays 2.00 USDC over x402 on Base and the verdict
+    returns with a hash that reproduces on any machine. The payment and the certificate are public —
+    <a href="https://djzs.link" rel="noopener">the launch record</a> archives every receipt.</p>
+    <h3>How payment works</h3>
+    <p>Every verdict is paid for by the wallet that asks for it. The server answers with a price:
+    <strong>2.00 USDC</strong>. Your agent pays it on Base over x402 and the verdict comes back in the
+    same breath. No account, no API key, no subscription — the caller's wallet is the identity and the
+    bill. Out-of-scope requests are refused <em>free</em>: an auditor that stretches past its taxonomy
+    to take your money is not an auditor.</p>
+    <p class="muted">Humans without an x402 setup: watch the loop above — that is the whole product,
+    end to end. Agents replicate it natively.</p>
+  
+    <h3>The gate, doing its job <span class="k">// this one says no</span></h3>
+    <video controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
+      <source src="/assets/djzs-demo-fail.mp4" type="video/mp4" />
+    </video>
+    <p class="muted">Fed it a consensus thesis — no invalidation, no source, "everyone knows." <strong>FAIL,
+    risk 75</strong>, and it charged two dollars to say no. An auditor that only ever says yes is not an
+    auditor. The refusal is the product.</p>
+  </section>
 
-<!-- ECOSYSTEM -->
-<section>
-<h2>Two protocols. One ecosystem.</h2>
-<div class="ecosystem">
-<div class="eco-box eco-green">
-<h3 style="color:#4ade80">SIFR-0</h3>
-<p>Can I find this business?</p>
-<p style="margin-top:8px;color:#4ade80;font-size:11px">Discovery · Registry · MCP</p>
-<p style="margin-top:4px"><a href="https://sifr0.dev" style="font-size:11px">sifr0.dev</a></p>
-</div>
-<div class="eco-arrow">→</div>
-<div class="eco-box eco-amber">
-<h3 style="color:#fbbf24">DJZS Protocol</h3>
-<p>Can I trust this business?</p>
-<p style="margin-top:8px;color:#fbbf24;font-size:11px">Audit · Verify · Proof of Logic</p>
-<p style="margin-top:4px"><a href="https://djzs.ai" style="color:#fbbf24;font-size:11px">djzs.ai</a></p>
-</div>
-</div>
-<p style="color:#525252;font-size:12px">SIFR-0 discovers. DJZS verifies. x402 settles. All on Base Mainnet.</p>
-</section>
+  <!-- 2 — ARCHITECTURE C -->
+  <section id="architecture">
+    <h2>Architecture C <span class="k">// extraction reports, the engine decides</span></h2>
+    <p>DJZS splits the model-bound step from the trusted step. An LLM <strong>extracts observable
+    facts</strong> from messy intent — it never returns a verdict. It runs as an <strong>N=3
+    consensus</strong>: per-field state must agree across all three samples or the field collapses
+    to <code>unknown</code>; a claimed <em>absent</em> must quote the intent verbatim (quote gates);
+    and a critical-driving absent needs the same quote across every sample (evidence-unanimity).</p>
+    <p>The resulting struct is scored by a <strong>frozen deterministic engine</strong> — pure code,
+    no model, no network, no clock. <strong>The verdict rules are model-independent:</strong> swap the
+    model and the extraction quality changes, but the rules, weights, and hash do not. The same struct
+    always yields the same verdict and the same hash:</p>
+    <pre><code>verdict_hash = sha256(canonicalize({ verdict, risk_score, flags: flags.map(f =&gt; f.code).sort(), unknown_fields }))</code></pre>
+    <p class="doctrine">Verdict is computed, not improvised.</p>
+  </section>
 
-<!-- USE CASES -->
-<section>
-<h2>Who uses this</h2>
-<div class="use-cases">
-<div class="use-case">
-<div class="use-case-dept">Agent builders</div>
-<div class="use-case-title">Your agent needs to find a business</div>
-<p>Lead-response bot needs a mortgage broker to refer to. Booking agent needs a caterer for 50 people. Your agent calls one API.</p>
-</div>
-<div class="use-case">
-<div class="use-case-dept">Enterprise</div>
-<div class="use-case-title">Internal agents, external discovery</div>
-<p>HR agents find staffing agencies. IT agents evaluate MSPs. Legal agents find outside counsel. Facilities agents dispatch HVAC repair.</p>
-</div>
-<div class="use-case">
-<div class="use-case-dept">Memory providers</div>
-<div class="use-case-title">Agent infrastructure discovery</div>
-<p>8 memory providers indexed with capability filtering. Deploy local? Air-gapped? Graph retrieval? Agents find the right one programmatically.</p>
-</div>
-<div class="use-case">
-<div class="use-case-dept">Businesses</div>
-<div class="use-case-title">Get found by AI agents</div>
-<p>Publish a SIFR-0 manifest. Agents find you. The businesses that list get found. The ones that don't get skipped.</p>
-</div>
-</div>
-</section>
+  <!-- 3 — THE LADDER -->
+  <section id="ladder">
+    <h2>The ladder <span class="k">// three outcomes, never two</span></h2>
+    <div class="ladder">
+      <div class="rung pass"><span class="verdict">PASS → PROCEED</span><br /><span class="muted">Every scored fact is known and no blocking rule fired.</span></div>
+      <div class="rung wait"><span class="verdict">WAIT → HALT</span><br /><span class="muted">A decision-critical fact is <code>unknown</code>. The caller halts and the response returns <code>unknown_fields</code> so it knows what to clarify.</span></div>
+      <div class="rung fail"><span class="verdict">FAIL</span><br /><span class="muted">A rule fired on facts the engine knows. Stop.</span></div>
+    </div>
+    <p>Under-specified reasoning drains to <strong>WAIT → HALT</strong>, never to a silently guessed
+    PASS or FAIL. Abstention is a first-class outcome.</p>
+    <p class="doctrine">Abstain over guess.</p>
+  </section>
 
-<!-- PROTOCOL LANDSCAPE -->
-<section>
-<h2>Complementary. Not competing.</h2>
-<div class="protocols">
-<div class="protocol">
-<div class="protocol-name">UCP</div>
-<div class="protocol-role">Shopping checkout</div>
-<div class="protocol-sifr">SIFR-0 covers the 80% that aren't retail</div>
-</div>
-<div class="protocol">
-<div class="protocol-name">A2A</div>
-<div class="protocol-role">Agent-to-agent comms</div>
-<div class="protocol-sifr">SIFR-0 discovers what agents talk to</div>
-</div>
-<div class="protocol">
-<div class="protocol-name">MCP</div>
-<div class="protocol-role">Agent-to-tool connections</div>
-<div class="protocol-sifr">SIFR-0 registry exposed as MCP tools</div>
-</div>
-<div class="protocol">
-<div class="protocol-name">DJZS</div>
-<div class="protocol-role">Agent trust verification</div>
-<div class="protocol-sifr">Audit-Before-Act on every transaction</div>
-</div>
-</div>
-</section>
+  <!-- 4 — TAXONOMIES -->
+  <section id="taxonomies">
+    <h2>Taxonomies <span class="k">// prediction market, live</span></h2>
 
-<!-- ENDPOINTS -->
-<section>
-<h2>API</h2>
-<div class="code-block" data-label="endpoints">
-<span class="kw">GET</span>&nbsp; <span class="str">/v1/search</span><span class="comment">&nbsp;&nbsp;&nbsp;Search by category, geo, policy, text</span><br>
-<span class="kw">GET</span>&nbsp; <span class="str">/v1/manifest/:id</span><span class="comment">&nbsp;&nbsp;&nbsp;Full business manifest</span><br>
-<span class="kw">POST</span> <span class="str">/v1/register</span><span class="comment">&nbsp;&nbsp;&nbsp;Register a business</span><br>
-<span class="kw">POST</span> <span class="str">/v1/validate</span><span class="comment">&nbsp;&nbsp;&nbsp;Validate a manifest</span><br>
-<span class="kw">GET</span>&nbsp; <span class="str">/v1/stats</span><span class="comment">&nbsp;&nbsp;&nbsp;Registry statistics</span>
-</div>
-<p style="color:#525252;font-size:12px;margin-top:16px">Base URL: <span style="color:#4ade80">api.sifr0.dev</span> · Free tier: 10,000 queries/month · Infrastructure: Cloudflare Workers + D1</p>
-</section>
+    <h3>DJZS-M — Prediction Market (DJZS-PM-v1.0)</h3>
+    <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated.</p>
+    <div class="table-wrap">
+    <table aria-label="DJZS-PM-v1.0 codes, severities, and weights">
+      <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Severity</th><th scope="col">Weight</th></tr></thead>
+      <tbody>
+        <tr><td><code>DJZS-M01</code></td><td>NARRATIVE_RESOLUTION_GAP</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
+        <tr><td><code>DJZS-M02</code></td><td>FALSIFICATION_ABSENT</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
+        <tr><td><code>DJZS-M03</code></td><td>PROBABILITY_UNSOURCED</td><td class="sev-HIGH">HIGH</td><td>25</td></tr>
+        <tr><td><code>DJZS-M04</code></td><td>CONSENSUS_NO_EDGE</td><td class="sev-MEDIUM">MEDIUM</td><td>15</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="muted">M04 is advisory-grade: a lone M04 rides a PASS with the flag on the certificate
+    (weight 15 is below the threshold); it blocks only by stacking (e.g. M03 + M04 = 40 → FAIL).</p>
 
-<!-- GET STARTED -->
-<section id="get-started">
-<h2>Get started</h2>
-<div class="form-section">
-<p>The registry is live. Try it now:</p>
-<div class="code-block" data-label="try it">
-<span class="comment"># Search the registry</span><br>
-<span class="kw">curl</span> <span class="str">"https://api.sifr0.dev/v1/search?category=audit"</span><br><br>
-<span class="comment"># Find memory providers that run locally</span><br>
-<span class="kw">curl</span> <span class="str">"https://api.sifr0.dev/v1/search?category=memory-provider&policy.deploy_local=true"</span><br><br>
-<span class="comment"># Use via MCP (Claude Desktop / Claude Code)</span><br>
-<span class="kw">npx</span> <span class="str">-y @sifr0/mcp</span>
-</div>
+    <p class="muted">The weight table is a hash-locked exported constant; a weight change is a
+    deliberate re-derive that bumps the version, not a hot patch — that immutability is what makes
+    every <code>verdict_hash</code> reproducible.</p>
 
-<p style="margin-top:32px">Want an API key for production? Free tier: 10,000 queries/month.</p>
-<div class="input-row">
-<input type="email" id="email" placeholder="you@company.com" autocomplete="email">
-<button onclick="handleSubmit()">Request key</button>
-</div>
-<div id="form-msg" class="form-note"></div>
-</div>
-</section>
+    <h3>DJZS-LF — perpetuals / general reasoning <span class="k">// roadmap, reserved in the open</span></h3>
+    <p class="muted">Beyond prediction markets, an 11-code perpetuals and general-reasoning taxonomy
+    (DJZS-LF-v1.1, weights sum 200) is frozen — 3 codes wired live
+    (<code>E01</code>, <code>I01</code>, <code>X01</code>), the other 8 reserved with their weights
+    but not yet firing, and no served surface today. Disclosed as roadmap, not sold as done. The full
+    table lives in the <a href="https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen">repository</a>.</p>
+  </section>
 
-<!-- PAYMENT -->
-<section>
-<h2>x402 payments</h2>
-<p style="margin-bottom:24px;color:#737373">Skills and audits settle in USDC on Base Mainnet via the x402 protocol. No subscriptions. No API keys for paid services. Your wallet is your identity.</p>
-<div class="code-block" data-label="x402 flow">
-<span class="comment"># Request a paid audit</span><br>
-<span class="kw">POST</span> <span class="str">api.sifr0.dev/v1/audit/action</span><br><br>
-<span class="comment"># Response: 402 Payment Required</span><br>
-{<br>
-&nbsp;&nbsp;<span class="key">"x402"</span>: {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"amount"</span>: <span class="str">"5.00"</span>,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"currency"</span>: <span class="str">"USDC"</span>,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"network"</span>: <span class="str">"base"</span>,<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"recipient"</span>: <span class="str">"0x3E79...aFB"</span><br>
-&nbsp;&nbsp;}<br>
-}<br><br>
-<span class="comment"># Pay on Base → resend with X-Payment header → receive audit + DJZS receipt</span>
-</div>
-</section>
+  <!-- 5 — PROOF -->
+  <section id="proof">
+    <h2>Proof <span class="k">// first external audit on record</span></h2>
+    <p>An outside agent audited a benchmark thesis (<code>pm-block-008</code>) through the deployed
+    tool and received:</p>
+    <div class="proof">
+      <span class="stamp">FAIL</span>
+      <pre class="cert">{
+  <span class="key">"tool"</span>: <span class="str">"verify_pm_trade"</span>,
+  <span class="key">"case"</span>: <span class="str">"pm-block-008"</span>,
+  <span class="key">"verdict"</span>: <span class="fail-val">"FAIL"</span>,
+  <span class="key">"action"</span>: <span class="fail-val">"FAIL"</span>,
+  <span class="key">"risk_score"</span>: 40,
+  <span class="key">"flags"</span>: [<span class="str">"DJZS-M03"</span>, <span class="str">"DJZS-M04"</span>],
+  <span class="key">"unknown_fields"</span>: [],
+  <span class="key">"disagreements"</span>: [],
+  <span class="key">"verdict_hash"</span>: <span class="hash">"0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937"</span>
+}</pre>
+    </div>
+    <p class="muted">Behavioral parity against the offline batteries (verdict + flags + extracted
+    input) is green. Hash parity is discharged: the anchor instrument reproduced this exact hash
+    byte-identical from live extraction into the frozen engine (exit 0, 2026-07-12) and it has held
+    across every re-run since, including runs with extraction divergence on non-preimage fields.</p>
+  </section>
 
-<footer>
-<div class="footer-links">
-<a href="https://github.com/SIFR0-dev/sifr-0">GitHub</a>
-<a href="https://www.npmjs.com/package/@sifr0/mcp">npm</a>
-<a href="https://github.com/SIFR0-dev/djzs-AI">DJZS Protocol</a>
-<a href="https://djzs.ai">djzs.ai</a>
-<a href="https://x.com/djzs_ai">@djzs_ai</a>
-<a href="/privacy">Privacy</a>
-</div>
-<p>Built by <a href="https://djzs.ai">DJ-Z-S</a> · <a href="https://app.ens.domains/username.dj-z-s.eth">username.dj-z-s.eth</a> · Apache 2.0</p>
+  <!-- 6 — HONEST POSTURE -->
+  <section id="honest">
+    <h2>Honest posture <span class="k">// what's live, what isn't</span></h2>
+    <p>Stated plainly:</p>
+    <ul class="tight">
+      <li><strong>The tool is paid.</strong> <code>verify_pm_trade</code> charges 2.00 USDC per audit
+      over x402 (the CDP facilitator) on Base mainnet. Payment is non-custodial: funds move from the
+      payer's wallet to the DJZS treasury directly via an EIP-3009 signature; the facilitator submits
+      the transfer and pays the gas. The two registry tools (<code>query_pol_certificates</code>,
+      <code>query_agent_trust</code>) stay free.</li>
+      <li><strong>Certificates are permanent.</strong> Every in-scope audit anchors a ProofOfLogic
+      certificate to Irys mainnet and returns its id; it is retrievable by id and via
+      <code>query_pol_certificates</code>. The certificate is assembled after the <code>verdict_hash</code>
+      and never alters it.</li>
+      <li><strong>The trust loop is closed and live.</strong> Pass an optional <code>agent_address</code>
+      to <code>verify_pm_trade</code> and the verdict is written on-chain (<code>DJZSLogicTrustScore</code>
+      on Base) by a dedicated authorized writer, indexed by the DJZS subgraph on The Graph, and readable
+      by anyone via <code>query_agent_trust</code> — totalAudits, failRate, latest verdict, and an action
+      of PROCEED, HALT, or NO_HISTORY. The write is fail-open: a write fault never blocks or alters the
+      audit or its certificate.</li>
+    </ul>
+    <p>On-chain: four DJZS contracts are attested on Base in the A2A manifest, with source in
+    <code>contracts/</code> — verify them yourself on Basescan:
+    <a href="https://basescan.org/address/0xB3324D07A8713b354435FF0e2A982A504e81b137">TrustScore</a> ·
+    <a href="https://basescan.org/address/0xA362947D23D52C05a431E378F30C8A962De91e8A">Staking</a> ·
+    <a href="https://basescan.org/address/0xB041760147a60F63Ca701da9e431412bCc25Cfb7">EscrowLock</a> ·
+    <a href="https://basescan.org/address/0xe40d5669Ce8e06A91188B82Ce7292175E2013E41">AgentRegistry</a>.
+    A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source
+    only — it is not in the deployed manifest, and nothing here claims certificate NFTs are live or
+    mintable.</p>
+  </section>
+
+  <!-- 7 — FOR AGENTS -->
+  <section id="agents">
+    <h2>For agents <span class="k">// this page is the API doc</span></h2>
+    <p><strong>curl this page and you get this pitch</strong> — every word is in the HTML, no
+    JavaScript required to read it. A machine-readable summary lives at
+    <a href="/llms.txt">/llms.txt</a> with the MCP endpoint and repository link. The gate is one
+    install command away (see the hero above); the source of truth for every number on this page is
+    the repository at <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a>.</p>
+    <p class="doctrine">Evidence before record.</p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>No agent acts without audit.</span>
+    <span>
+      <a href="https://x.com/Djzs_ai">X @Djzs_ai</a>
+      <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a>
+      <a href="/legal.html">Legal</a>
+    </span>
+  </div>
+  <div class="wrap transmission">
+    <span class="muted">END_TRANSMISSION. //</span>
+    <span class="ok">djzs.ai</span>
+  </div>
 </footer>
-
-</div>
-
-<script>
-function handleSubmit(){const e=document.getElementById('email').value,m=document.getElementById('form-msg');if(!e||!e.includes('@')){m.textContent='Enter a valid email.';m.style.color='#ef4444';return}m.textContent='Received. Key will be sent to '+e+' within 24 hours.';m.style.color='#4ade80';document.getElementById('email').value=''}
-</script>
-</body>
+<script src="/copy.js" defer></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a248d0a79e4a2964',t:'MTc4NTYyODk1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
