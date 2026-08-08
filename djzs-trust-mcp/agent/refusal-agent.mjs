@@ -437,6 +437,21 @@ async function runAudit(wire, account, agentAddress) {
       (reqs) => {
         console.log(`// 402 -> payment required: ${JSON.stringify(reqs).slice(0, 400)}`);
         console.log(`// approving ${usd(PRICE_ATOMIC)} USDC, signing EIP-3009, retrying with X-PAYMENT ...`);
+        // PAYTO ASSERT (fail-closed): the challenge's destination must equal the repo
+        // constant (X402_RECIPIENT, src/index.ts). History is poisoned; the live
+        // challenge is canon only when it matches the constant. No match = no signature.
+        const EXPECTED_PAYTO = "0xc1923748669dfc3a79497d0403a90a275161ecca";
+        const seen = new Set();
+        (function walk(o) {
+          if (!o || typeof o !== "object") return;
+          if (typeof o.payTo === "string") seen.add(o.payTo.toLowerCase());
+          for (const v of Array.isArray(o) ? o : Object.values(o)) walk(v);
+        })(reqs);
+        if (seen.size === 0 || [...seen].some((x) => x !== EXPECTED_PAYTO)) {
+          const got = [...seen].join(",") || "(none quoted)";
+          console.log(`// PAYTO_DRIFT: expected ${EXPECTED_PAYTO}, challenge quoted ${got} -> refusing before signature`);
+          throw new Error(`PAYTO_DRIFT: expected ${EXPECTED_PAYTO}, got ${got}`);
+        }
         return true;
       },
       { name: "verify_pm_trade", arguments: { intent: wire, agent_address: agentAddress } },

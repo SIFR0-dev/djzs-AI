@@ -4,7 +4,7 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
-import { buildTrustWriter } from "./trust-writer"
+import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig } from "@coinbase/x402"
 import { HTTPFacilitatorClient } from "@x402/core/server"
@@ -408,6 +408,64 @@ app.get("/health/x402", async (c) => {
       detail: (e instanceof Error ? e.message : String(e)).slice(0, 200)
     }, 502)
   }
+})
+
+/**
+ * Writer-key diagnostic (2026-08-04). Answers, in ONE free GET, the question the
+ * skip reason used to blur: is DJZS_WRITER_KEY absent, malformed, or fine — and
+ * if fine, is its derived address actually authorized on the contract?
+ *
+ * Deliberately NOT routed through verify_pm_trade: the writer is constructed only
+ * inside `in_scope === true && agent_address`, so an out-of-scope call returns
+ * before construction and would log nothing. This route needs no MCP call, no
+ * payment negotiation, and no key material to leave the Worker.
+ *
+ * Reads env + one eth_call. Moves no money, signs nothing, echoes no secret.
+ */
+// Public error hygiene: /health/writer must never echo raw transport errors.
+// Known classes map to fixed strings; unknowns get URLs stripped to host and
+// user@host tokens removed, hard-capped. Raw messages can carry the RPC URL
+// (which embeds the API key) or pasted terminal content - both have happened.
+const classifyRpcError = (s: unknown): string => {
+  const t = String(s ?? "")
+  if (!t) return "ok"
+  if (/rate limit|429/i.test(t)) return "rpc error: over rate limit"
+  if (/invalid url/i.test(t)) return "config error: BASE_RPC_URL malformed"
+  if (/timeout|timed out/i.test(t)) return "rpc error: timeout"
+  if (/401|403|unauthorized|authenticated/i.test(t)) return "rpc error: auth rejected by provider"
+  if (/nonce/i.test(t)) return "rpc error: nonce conflict"
+  const scrubbed = t
+    .replace(/(https?:\/\/[^\/\s"']+)[^\s"']*/g, "$1/[redacted]")
+    .replace(/\S+@\S+/g, "[redacted]")
+    .slice(0, 80)
+  return "rpc error: " + scrubbed
+}
+
+app.get("/health/writer", async (c) => {
+  const diag = describeWriterKey(c.env.DJZS_WRITER_KEY)
+  const base = { contract: DJZS_TRUST_CONTRACT, expected_writer_prefix: "0x41c2304b", key_state: diag.state }
+
+  if (diag.state === "absent") {
+    return c.json({ ...base, detail: diag.detail, remedy: "secret never deployed; re-deploy it from settings" }, 503)
+  }
+  if (diag.state === "malformed") {
+    return c.json({
+      ...base, detail: diag.detail,
+      hex_length: diag.hex_length, has_0x_prefix: diag.has_0x_prefix,
+      remedy: "stored value is damaged; re-enter it (expect 64 hex chars, no whitespace)"
+    }, 503)
+  }
+
+  const auth = await checkWriterAuthorization(diag.address, c.env.BASE_RPC_URL)
+  return c.json({
+    ...base,
+    derived_writer_address: diag.address,
+    hex_length: diag.hex_length,
+    has_0x_prefix: diag.has_0x_prefix,
+    authorized_on_contract: auth.authorized,
+    authorization_detail: classifyRpcError(auth.detail),
+    matches_expected_prefix: diag.address.toLowerCase().startsWith(base.expected_writer_prefix.toLowerCase())
+  }, auth.authorized === true ? 200 : 502)
 })
 
 export default app
