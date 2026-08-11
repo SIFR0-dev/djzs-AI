@@ -40,3 +40,8 @@ wallet_modal.png
 walletconnect_qr.png
 scripts/self-audit/dataset-self-audit.json
 server/engine-v2/calibration/predictions.json
+
+# Editor/session backups. NEVER committable: they shadow live files and are
+# trivially swept in by a careless `git add .` (2026-08-10 cleanup).
+*.bak-pre-*
+*.bak-pre-upstream
