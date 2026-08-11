@@ -7,7 +7,13 @@ import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig } from "@coinbase/x402"
-import { HTTPFacilitatorClient } from "@x402/core/server"
+import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
+import { registerExactEvmScheme } from "@x402/evm/exact/server"
+import {
+  encodePaymentRequiredHeader,
+  encodePaymentResponseHeader,
+  decodePaymentSignatureHeader,
+} from "@x402/core/http"
 
 const IRYS_GRAPHQL_URL = "https://uploader.irys.xyz/graphql"
 /**
@@ -77,6 +83,13 @@ interface Env {
   BASE_RPC_URL?: string
   /** DJZS subgraph GraphQL query URL (Phase 3). SECRET (Studio URL carries an API key). Absent => query_agent_trust reports unavailable. */
   SUBGRAPH_URL?: string
+  /**
+   * HTTP x402 route network override, CAIP-2 or legacy name. Plain var, TEST ONLY.
+   * Absent => the route uses X402_NETWORK (mainnet), identical to /mcp. Set to
+   * "base-sepolia" / "eip155:84532" to exercise the route without touching mainnet.
+   * The /mcp transport never reads this.
+   */
+  X402_HTTP_NETWORK?: string
 }
 
 /**
@@ -466,6 +479,217 @@ app.get("/health/writer", async (c) => {
     authorization_detail: classifyRpcError(auth.detail),
     matches_expected_prefix: diag.address.toLowerCase().startsWith(base.expected_writer_prefix.toLowerCase())
   }, auth.authorized === true ? 200 : 502)
+})
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * HTTP x402 transport (2026-08-09). Makes the SAME gate payable by HTTP x402
+ * clients (Base MCP, MetaMask Agent Wallet, x402-axios) alongside /mcp.
+ *
+ * WHY THE LOW-LEVEL x402ResourceServer AND NOT x402HTTPResourceServer:
+ * agents/x402 exposes no HTTP wrapper (its exports are normalizeNetwork,
+ * withX402, withX402Client only). Of the two remaining options,
+ * x402HTTPResourceServer.processHTTPRequest/processSettlement does support a
+ * verify-then-settle split, but it wraps route matching and paywall concerns we
+ * do not need. The low-level buildPaymentRequirements -> findMatchingRequirements
+ * -> verifyPayment -> [handler] -> settlePayment sequence is EXACTLY what
+ * agents/dist/mcp/x402.js:44-137 already does, so this route and /mcp share one
+ * settlement discipline rather than two implementations that can drift apart.
+ *
+ * FREE REFUSAL IS THE LOAD-BEARING PROPERTY (regression guard):
+ * settlePayment runs only after the audit returns AND only when
+ * result.in_scope === true. An out-of-scope intent is answered 402 and NEVER
+ * settled. This mirrors the MCP path's isError guard, which is what makes a
+ * refused audit free. Any charge-on-access middleware that settles before the
+ * handler would reintroduce the prior incident and must not be used here.
+ *
+ * Constants are shared with /mcp verbatim: X402_RECIPIENT, the 2.00 USDC price,
+ * and createFacilitatorConfig(CDP keys). Only the NETWORK may be overridden, via
+ * the X402_HTTP_NETWORK var, so the route can be exercised on Base Sepolia.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const X402_HTTP_RESOURCE = "https://mcp.djzs.ai/x402/verify"
+
+/**
+ * PoL anchor + on-chain trust write, identical in behaviour to the block inside
+ * the verify_pm_trade MCP handler. Duplicated rather than extracted because the
+ * /mcp route is explicitly not to be modified in this change; the two copies
+ * should be collapsed into one helper in a follow-up (see the note in the diff
+ * summary) — divergence here is the same failure mode that produced the
+ * PASS/PROCEED vocabulary bug.
+ */
+async function anchorAndScore(
+  env: Env,
+  result: Record<string, unknown>,
+  intent: string,
+  target_system: string | undefined,
+  agent_address: string | undefined,
+): Promise<{ pol_certificate?: Record<string, unknown>; trust_score?: Record<string, unknown> }> {
+  // INTRINSIC SCOPE PRECONDITION (ruling 2026-08-10). The /mcp copy guards each
+  // block inline with `result.in_scope === true`; hoisting that guard to the call
+  // site would have left this helper looking general-purpose while carrying an
+  // implicit precondition — a future caller could anchor a permanent certificate
+  // for an audit that was never in scope. Enforced here, not assumed from
+  // ordering. Full consolidation with /mcp is deliberately deferred to its own
+  // isolated change after the mainnet push.
+  if (result.in_scope !== true) return {}
+
+  let pol_certificate: Record<string, unknown> | undefined
+  if (!env.IRYS_UPLOAD_KEY) {
+    pol_certificate = { status: "disabled", detail: "IRYS_UPLOAD_KEY secret not configured; result not anchored." }
+  } else {
+    const nodeUrl = env.IRYS_NODE_URL ?? DEFAULT_IRYS_NODE_URL
+    try {
+      const anchored = await anchorPolCertificate(
+        { result, intent, targetSystem: target_system, auditId: crypto.randomUUID(), issuedAtMs: Date.now() },
+        env.IRYS_UPLOAD_KEY,
+        buildIrysUploadFn(nodeUrl),
+      )
+      pol_certificate = { status: "anchored", node: nodeUrl, ...anchored }
+    } catch (e) {
+      pol_certificate = { status: "error", detail: (e instanceof Error ? e.message : String(e)).slice(0, 300) }
+    }
+  }
+
+  let trust_score: Record<string, unknown> | undefined
+  if (agent_address) {
+    const anchoredId =
+      pol_certificate && pol_certificate.status === "anchored" ? String(pol_certificate.irys_id) : undefined
+    if (!anchoredId) {
+      trust_score = { status: "skipped", reason: "no anchored certificate to link the on-chain score to" }
+    } else {
+      const writeScore = buildTrustWriter(env.DJZS_WRITER_KEY, env.BASE_RPC_URL)
+      const flagCodes = Array.isArray(result.flags)
+        ? (result.flags as Array<Record<string, unknown>>).map((f) => String(f.code ?? f))
+        : []
+      trust_score = await writeScore({
+        agentAddress: agent_address,
+        riskScore: Number(result.risk_score ?? 0),
+        verdict: String(result.verdict ?? ""),
+        flags: flagCodes,
+        irysTxId: anchoredId,
+      })
+    }
+  }
+  return { pol_certificate, trust_score }
+}
+
+app.post("/x402/verify", async (c) => {
+  const env = c.env
+  const network = normalizeNetwork(env.X402_HTTP_NETWORK ?? X402_NETWORK)
+
+  let body: { intent?: unknown; agent_address?: unknown; target_system?: unknown }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: "BAD_REQUEST", detail: "body must be JSON" }, 400)
+  }
+  const intent = typeof body.intent === "string" ? body.intent : ""
+  if (intent.length < 10) {
+    return c.json({ error: "BAD_REQUEST", detail: "intent must be a string of at least 10 characters" }, 400)
+  }
+  const agent_address = typeof body.agent_address === "string" ? body.agent_address : undefined
+  const target_system = typeof body.target_system === "string" ? body.target_system : undefined
+
+  // Same facilitator config object the MCP transport builds, from the same secrets.
+  const resourceServer = new x402ResourceServer(
+    new HTTPFacilitatorClient(createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)),
+  )
+  registerExactEvmScheme(resourceServer)
+  try {
+    await resourceServer.initialize()
+  } catch (e) {
+    return c.json({ error: "FACILITATOR_UNAVAILABLE", detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) }, 503)
+  }
+
+  let requirements
+  try {
+    requirements = await resourceServer.buildPaymentRequirements({
+      scheme: "exact",
+      payTo: X402_RECIPIENT,
+      price: VERIFY_PM_TRADE_PRICE_USD,
+      network,
+      maxTimeoutSeconds: 300,
+    })
+  } catch {
+    return c.json({ x402Version: 2, error: "PRICE_COMPUTE_FAILED" }, 503)
+  }
+
+  const resourceInfo = {
+    url: X402_HTTP_RESOURCE,
+    description: `Deterministic pre-execution audit of a prediction-market trade thesis. ${VERIFY_PM_TRADE_PRICE_USD} USDC per audit.`,
+    mimeType: "application/json",
+  }
+  /** 402 + PAYMENT-REQUIRED header (v2 wire) and the same JSON body older clients read. */
+  const paymentRequired = (reason: string, extraFields: Record<string, unknown> = {}) => {
+    const payload = { x402Version: 2, error: reason, resource: resourceInfo, accepts: requirements, ...extraFields }
+    let headers: Record<string, string> = {}
+    try {
+      headers = { "PAYMENT-REQUIRED": encodePaymentRequiredHeader(payload as never) }
+    } catch {
+      /* body alone still satisfies clients that read accepts from JSON */
+    }
+    return c.json(payload, 402, headers)
+  }
+
+  const token = c.req.header("PAYMENT-SIGNATURE") ?? c.req.header("X-PAYMENT")
+  if (!token) return paymentRequired("PAYMENT_REQUIRED")
+
+  let paymentPayload
+  try {
+    paymentPayload = decodePaymentSignatureHeader(token)
+  } catch {
+    return paymentRequired("INVALID_PAYMENT")
+  }
+  const matchingReq = resourceServer.findMatchingRequirements(requirements, paymentPayload)
+  if (!matchingReq) return paymentRequired("INVALID_PAYMENT")
+
+  try {
+    const vr = await resourceServer.verifyPayment(paymentPayload, matchingReq)
+    if (!vr.isValid) return paymentRequired(vr.invalidReason ?? "INVALID_PAYMENT", { payer: vr.payer })
+  } catch {
+    return paymentRequired("INVALID_PAYMENT")
+  }
+
+  // ── payment VERIFIED but NOT settled. The audit runs first. ───────────────
+  if (!env.ANTHROPIC_API_KEY) {
+    return c.json({ error: "EXTRACTION_UNAVAILABLE", detail: "ANTHROPIC_API_KEY not configured" }, 503)
+  }
+  let result: Record<string, unknown>
+  try {
+    result = (await runVerifyPmTrade(intent, buildAnthropicModelFn(env.ANTHROPIC_API_KEY))) as unknown as Record<string, unknown>
+  } catch (e) {
+    // Handler failure is NOT the payer's fault: refuse and do not settle.
+    return paymentRequired("AUDIT_FAILED", { detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) })
+  }
+
+  // OUT-OF-SCOPE = NOT CHARGED. Same rule as /mcp, enforced by returning before
+  // settlePayment is ever reached. Do not move this below the settle call.
+  if (result.in_scope === false) {
+    return c.json({ x402Version: 2, error: "OUT_OF_SCOPE", settled: false, ...result }, 402)
+  }
+
+  // ── in scope: settle now ──────────────────────────────────────────────────
+  let settle
+  try {
+    settle = await resourceServer.settlePayment(paymentPayload, matchingReq)
+  } catch (e) {
+    return paymentRequired("SETTLEMENT_FAILED", { detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) })
+  }
+  if (!settle.success) return paymentRequired(settle.errorReason ?? "SETTLEMENT_FAILED")
+
+  const { pol_certificate, trust_score } = await anchorAndScore(env, result, intent, target_system, agent_address)
+
+  let response: Record<string, unknown> = result
+  if (pol_certificate) response = { ...response, pol_certificate }
+  if (trust_score) response = { ...response, trust_score }
+
+  let headers: Record<string, string> = {}
+  try {
+    headers = { "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle) }
+  } catch {
+    /* verdict still returns; the tx is also echoed in the body below */
+  }
+  return c.json({ ...response, settlement: { transaction: settle.transaction, network: settle.network } }, 200, headers)
 })
 
 export default app

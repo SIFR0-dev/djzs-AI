@@ -30,3 +30,20 @@ DJZS_WRITER_KEY="<evm-private-key-hex>"
 # Studio dev URL carries an API key, so treat it as a SECRET. Absent =>
 # query_agent_trust reports "unavailable". Production: wrangler secret put SUBGRAPH_URL
 SUBGRAPH_URL="<graph-studio-query-url>"
+
+# ── BASE SEPOLIA ROUND-TRIP SCOPE (2026-08-10, test/x402-roundtrip.mjs) ──────
+# For the HTTP x402 round trip, .dev.vars holds EXACTLY three concerns
+# (four keys): X402_HTTP_NETWORK; CDP_API_KEY_ID + CDP_API_KEY_SECRET
+# (facilitator auth); ANTHROPIC_API_KEY (the audit leg).
+# Everything else above stays ABSENT — that absence is the blast radius, and the
+# harness asserts the degraded behaviour rather than working around it:
+#   IRYS_UPLOAD_KEY absent => pol_certificate.status "disabled" (fail-open by
+#     design; no test junk anchored to permanent storage). T2 asserts this.
+#   DJZS_WRITER_KEY absent => HARD RAIL. The trust writer targets the MAINNET
+#     contract over the mainnet RPC and has no Sepolia mode; a testnet run must
+#     never write into real totalAudits. The harness also never sends
+#     agent_address, so the write block is unreachable twice over.
+#
+# Routes ONLY the new HTTP x402 transport to Base Sepolia. The /mcp route never
+# reads this var and stays on mainnet. Absent => the route uses X402_NETWORK.
+X402_HTTP_NETWORK="base-sepolia"
