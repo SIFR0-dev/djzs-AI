@@ -40,6 +40,24 @@ hash above stands as the record until it is re-run.
 
 ---
 
+## Pay it over HTTP x402 - the ecosystem rail
+
+Beyond the MCP transport above, `verify_pm_trade` is now payable over the **HTTP x402**
+transport, live on Base mainnet:
+
+```
+POST https://mcp.djzs.ai/x402/verify
+```
+
+An unpaid request returns an HTTP 402 challenge (`exact` scheme, `eip155:8453`, USDC, 2.00
+USDC to the treasury); the client signs an EIP-3009 authorization and retries. This is the
+same rail **Base MCP**, **MetaMask Agent Wallet**, and `x402-axios` speak, so any HTTP x402
+client can pay the gate directly - no MCP integration required.
+
+Free-refusal is preserved on both transports: an out-of-scope intent is answered 402 and
+never settled, so a refused audit costs nothing. Verified end to end on Base Sepolia
+(paid settlement plus an on-chain zero-delta refusal) before the mainnet deploy.
+
 ## Architecture C — extraction reports, the engine decides
 
 DJZS separates the model-bound step from the trusted step:
@@ -148,8 +166,6 @@ broadly promoted:
 - **No ProofOfLogic write on the tool.** `verify_pm_trade` returns a `verdict_hash` but does not yet
   anchor a certificate. Existing Irys certificates are prior-architecture lineage, not output of
   this tool.
-- **No payment gate on the tool.** The MCP tool is not metered; the older paid HTTP tiers are a
-  separate surface.
 - **Taxonomy hashes not in the response.** The four hash constants are exported from the frozen
   tables but are not yet included in the tool's JSON response.
 
