@@ -35,7 +35,7 @@ verdict_hash:  0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df1493
 ```
 
 Behavioral parity against the offline batteries (verdict + flags + extracted input) is green.
-Hash parity is a pending re-mint — the calibration key lapsed during deployment — so the live
+Hash parity is a pending re-mint the calibration key lapsed during deployment so the live
 hash above stands as the record until it is re-run.
 
 ---
@@ -84,7 +84,7 @@ PASS · WAIT · FAIL   +   verdict_hash
 
 **Why this shape:** the verdict rules are model-independent. The LLM only turns messy text into a
 structured struct; the audit *rules* that decide the verdict are frozen code. Swap the model and
-the extraction quality changes — the rules, weights, and hash do not.
+the extraction quality changes the rules, weights, and hash do not.
 
 **Determinism by construction.** The same `AuditInput` always yields the same verdict and the same
 hash:
@@ -102,7 +102,7 @@ PASS or FAIL.
 
 ## Taxonomies (frozen)
 
-### DJZS-M — Prediction Market (`DJZS-PM-v1.0`) — the calibrated, live path
+### DJZS-M — Prediction Market (`DJZS-PM-v1.0`) the calibrated, live path
 
 Weights sum to **100**; FAIL threshold **25**. All four codes are implemented and calibrated.
 
@@ -113,7 +113,7 @@ Weights sum to **100**; FAIL threshold **25**. All four codes are implemented an
 | DJZS-M03 | PROBABILITY_UNSOURCED | HIGH | 25 | Market or model probability asserted without verifiable basis. |
 | DJZS-M04 | CONSENSUS_NO_EDGE | MEDIUM | 15 | Thesis restates consensus at an extreme price with no differentiated edge. |
 
-**M04 is advisory-grade.** On its own it does not block — a lone M04 rides a PASS with the flag on
+**M04 is advisory-grade.** On its own it does not block a lone M04 rides a PASS with the flag on
 the certificate (weight 15 is below the FAIL threshold). It contributes to a block only by stacking
 with another finding (e.g. M03 + M04 = 40 → FAIL, as in the first audit above).
 
@@ -178,7 +178,7 @@ The response contract today is: `verdict`, `action`, `risk_score`, `flags`, `unk
 ## Legacy HTTP API (backward-compatible)
 
 Before the MCP gate, DJZS ran as a paid HTTP audit service. Those endpoints remain for
-backward compatibility — the MCP gate above is the current surface. The tiers are metered in
+backward compatibility the MCP gate above is the current surface. The tiers are metered in
 USDC on Base Mainnet via an `x-payment-proof` header:
 
 | Tier | Endpoint | Price | Memo limit |
@@ -220,7 +220,7 @@ Prior ProofOfLogic certificates live on the Irys datachain and are readable via 
 
 The commit history is the product's own audit trail: each verdict-bearing change ships with a
 `PENDING` note naming what is still unproven, and the next commit that closes it discharges that
-note explicitly. Every claim — a recall number, a parity result, a live verdict hash — is cited to
+note explicitly. Every claim a recall number, a parity result, a live verdict hash — is cited to
 a specific run at the moment it is pushed, not asserted after the fact. If you want to know what is
 proven versus deferred, `git log` is the source of truth and this file is downstream of it.
 
