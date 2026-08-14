@@ -35,6 +35,13 @@ npx mcp-remote https://mcp.djzs.ai/mcp
 before the call** — the facilitator's verify simulates the transfer, so an underfunded
 wallet fails with `INVALID_PAYMENT` (`CLAUDE.md:124`).
 
+One more client-side trap, hit before any payment is signed: `withX402Client`
+from `agents/x402` ships with a default payment cap of 0.10 USDC. A 2.00 USDC audit
+exceeds it, and the client refuses locally with `Payment exceeds client cap: 2000000 >
+100000` before signing or settling anything. The fix is one line in the client config:
+`maxPaymentValue: 2000000n` (or higher). Pair it with `confirmationCallback` if the
+agent should ask a human before paying.
+
 The two registry tools — `query_pol_certificates` and `query_agent_trust` — are **free**;
 `withX402` gates only the paid tool (`index.ts:94-95`). And a **refused** audit is free: an
 out-of-scope intent returns before settlement and is never charged (see the reference).
