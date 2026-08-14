@@ -53,4 +53,8 @@
 ## Source of truth
 
 - Repository: https://github.com/SIFR0-dev/djzs-AI
+- Reference integration (Polymarket CLOB): https://github.com/SIFR0-dev/djzs-polymarket-gate
+  Audits the thesis, places the order only on a clean in-scope PASS. Uses withX402Client from
+  agents/x402 (the client this gate speaks; other x402 clients complete the handshake but do
+  not settle here). Out-of-scope refusal verified free on-chain; paid path not yet exercised.
 - Every number here traces to that tree; where docs and tree disagree, the tree wins.

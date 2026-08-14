@@ -175,6 +175,45 @@
     across every re-run since, including runs with extraction divergence on non-preimage fields.</p>
   </section>
 
+  <!-- 7b — UPSTREAM GATE (MetaMask Agent Wallet) -->
+  <section id="upstream">
+    <h2>Two gates, two axes <span class="k">// upstream of MetaMask Agent Wallet</span></h2>
+    <p class="lede">Your MetaMask agent already checks whether a transaction is safe to
+    sign. DJZS checks what it can't: whether the position is worth taking at all.</p>
+    <p>MetaMask Agent Wallet runs a mandatory pipeline on every transaction:
+    <strong>simulation</strong>, <strong>Blockaid</strong> threat scanning,
+    <strong>Smart Transactions</strong>. It answers one question with production rigor:
+    is this transaction safe? It does not answer another: is the reasoning behind the
+    trade sound? A transaction can clear every check and still act on a thesis that is
+    unfalsifiable, unsourced, or pure narrative.</p>
+    <p>DJZS sits <strong>upstream</strong>. Before a capital-deploying command runs, it
+    audits the thesis against a deterministic taxonomy and returns <code>PASS</code>,
+    <code>WAIT</code>, or <code>FAIL</code>. On <code>EXECUTE</code>, the intent hands to
+    MetaMask and its pipeline runs as always. On <code>HALT</code>, nothing executes.</p>
+    <pre><code>capital action
+   │
+   ▼
+GATE 1 · DJZS        audits the THESIS   (why)
+   │                returns PASS / WAIT / FAIL
+   ├─ WAIT / FAIL ─▶ HALT · nothing executes
+   │
+ EXECUTE
+   │
+   ▼
+GATE 2 · METAMASK    audits the TRANSACTION   (what)
+   │                simulation · Blockaid · Smart Transactions
+   ▼
+on-chain</code></pre>
+    <p>Two independent gates, two axes. <strong>DJZS audits WHY. MetaMask audits WHAT.</strong>
+    A DJZS PASS certifies well-formed reasoning at a moment, never that the narrative is
+    true or the trade wins.</p>
+    <p class="doctrine">The gate clears the logic; the position is yours.</p>
+    <p><span class="k">// status</span> Live on Base mainnet, payable over HTTP x402 at
+    <code>mcp.djzs.ai/x402/verify</code>. Base MCP, MetaMask Agent Wallet, and x402-axios
+    all speak this rail. The gate audits its own operation on the public record; the
+    end-to-end wallet compositions remain the <strong>reference design</strong>.</p>
+  </section>
+
   <!-- 6 — HONEST POSTURE -->
   <section id="honest">
     <h2>Honest posture <span class="k">// what's live, what isn't</span></h2>
@@ -215,6 +254,11 @@
     <a href="/llms.txt">/llms.txt</a> with the MCP endpoint and repository link. The gate is one
     install command away (see the hero above); the source of truth for every number on this page is
     the repository at <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a>.</p>
+    <p><span class="k">// reference integration</span> A working client is published at
+    <a href="https://github.com/SIFR0-dev/djzs-polymarket-gate">djzs-polymarket-gate</a>: it audits a
+    Polymarket CLOB trade thesis and creates the order only on a clean in-scope PASS. It uses
+    <code>withX402Client</code> from <code>agents/x402</code>, the client this gate speaks. The
+    out-of-scope refusal is verified free on-chain; the paid execution path is not yet exercised.</p>
     <p class="doctrine">Evidence before record.</p>
   </section>
 
