@@ -246,6 +246,31 @@ on-chain</code></pre>
     mintable.</p>
   </section>
 
+  <!-- 7 — CALL IT -->
+  <section id="call">
+    <h2>Call it <span class="k">// two transports, one gate</span></h2>
+    <p><strong>Probe it free.</strong> An unpaid request returns the payment challenge and settles
+    nothing. This is the whole handshake, and it costs zero:</p>
+    <pre class="cert">curl -s -X POST https://mcp.djzs.ai/x402/verify \
+  -H 'content-type: application/json' \
+  -d '{"intent":"probe the payment challenge"}'</pre>
+    <p>You get back <code>402</code> with the price, the network, and the address to pay:
+    <code>exact</code> scheme, <code>eip155:8453</code>, 2.00 USDC, paid to the treasury. Sign the
+    authorization, retry, and the verdict comes back.</p>
+    <p><span class="k">// http x402</span> <code>POST mcp.djzs.ai/x402/verify</code> — any HTTP x402
+    client pays this: Base MCP, MetaMask Agent Wallet, x402-axios.<br>
+    <span class="k">// mcp</span> <code>mcp.djzs.ai/mcp</code> — streamable HTTP. Wrap your MCP client
+    with <code>withX402Client</code> from <code>agents/x402</code>; other x402 clients complete the
+    handshake against this server without settling.</p>
+    <p><span class="k">// free</span> <code>GET /openapi.json</code> is the discovery contract —
+    schema, price, and response shape. <code>GET /health/x402</code> reports payment configuration.
+    Through MCP, <code>query_pol_certificates</code> and <code>query_agent_trust</code> read the
+    certificate ledger and an agent's on-chain record. None of these cost anything.</p>
+    <p><span class="k">// refusals are free</span> If the engine returns <code>in_scope: false</code>,
+    no payment settles and your balance is unchanged. You are charged for an audit that ran, whatever
+    the verdict.</p>
+  </section>
+
   <!-- 7 — WHAT A THESIS NEEDS -->
   <section id="thesis">
     <h2>What a thesis needs <span class="k">// before you spend $2</span></h2>
