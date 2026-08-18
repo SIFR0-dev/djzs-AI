@@ -246,7 +246,38 @@ on-chain</code></pre>
     mintable.</p>
   </section>
 
-  <!-- 7 — FOR AGENTS -->
+  <!-- 7 — WHAT A THESIS NEEDS -->
+  <section id="thesis">
+    <h2>What a thesis needs <span class="k">// before you spend $2</span></h2>
+    <p>The gate audits reasoning, so the reasoning has to be there. A thesis missing any of these
+    returns FAIL with the code that fired, and no order should be placed. Abstention is a
+    first-class outcome.</p>
+    <ul>
+      <li><strong>The claim and its resolution.</strong> What settles, on which market, by when,
+      on whose price.</li>
+      <li><strong>A sourced probability.</strong> A number and where it came from. Someone else has
+      to be able to check it: a modelling firm, a dataset, a study. Your own estimate is not a
+      source, and neither is a social post.</li>
+      <li><strong>The falsification condition.</strong> The specific event that would prove you
+      wrong.</li>
+      <li><strong>The executable price.</strong> The ask on the side you are buying, read off the
+      book. Not inferred from the other side: a market quoting YES at 93 does not mean NO costs 7.</li>
+      <li><strong>Why the edge exists.</strong> The reason the market is mispriced.
+      &ldquo;Consensus disagrees&rdquo; is not a reason.</li>
+    </ul>
+    <p><span class="k">// shape only</span> The bracketed fields below are placeholders, not text to
+    submit. Replace every one with a real value; a thesis submitted with the brackets intact fails
+    on <code>DJZS-M03</code>, and it still costs $2.</p>
+    <p><code>[MARKET] resolves YES above [STRIKE] by [DATE], settled on [SOURCE].
+    Sourced probability [P]% per [CITATION, retrieved DATE]. Falsified if [SPECIFIC EVENT] before
+    settlement. The ask on [SIDE] is [N]c, so the edge is [P MINUS MARKET] points, because
+    [WHY THE MARKET IS WRONG].</code></p>
+    <p>The gate reads reasoning only. It does not check that your quoted price is still live, that
+    the instrument has not already settled, or that your source is right. Those are yours. See
+    <a href="/legal.html">legal</a>.</p>
+  </section>
+
+  <!-- 8 — FOR AGENTS -->
   <section id="agents">
     <h2>For agents <span class="k">// this page is the API doc</span></h2>
     <p><strong>curl this page and you get this pitch</strong> — every word is in the HTML, no
@@ -255,8 +286,8 @@ on-chain</code></pre>
     install command away (see the hero above); the source of truth for every number on this page is
     the repository at <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a>.</p>
     <p><span class="k">// reference integration</span> A working client is published at
-    <a href="https://github.com/SIFR0-dev/djzs-polymarket-gate">djzs-polymarket-gate</a>: it audits a
-    Polymarket CLOB trade thesis and creates the order only on a clean in-scope PASS. It uses
+    <a href="https://github.com/SIFR0-dev/djzs-pm-gate">djzs-pm-gate</a>: it audits a
+    Polymarket or Kalshi trade thesis and creates the order only on a clean in-scope PASS. It uses
     <code>withX402Client</code> from <code>agents/x402</code>, the client this gate speaks. The
     out-of-scope refusal is verified free on-chain; the paid execution path is not yet exercised.</p>
     <p class="doctrine">Evidence before record.</p>
@@ -279,5 +310,5 @@ on-chain</code></pre>
   </div>
 </footer>
 <script src="/copy.js" defer></script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a248d0a79e4a2964',t:'MTc4NTYyODk1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a248d0a79e4a2964',t:'MTc4NTYyODk1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2d354b13d1deaca',t:'MTc4NzA4MTQwMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
