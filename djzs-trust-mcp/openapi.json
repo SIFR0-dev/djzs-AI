@@ -1,0 +1,201 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DJZS Protocol — verify_pm_trade",
+    "version": "1.0.0",
+    "summary": "Deterministic pre-execution audit of a prediction-market trade thesis.",
+    "description": "DJZS audits the thesis, not the transaction. Wallet-layer tooling checks whether a transfer is safe; nothing checks whether the reasoning behind it holds. verify_pm_trade extracts the claims from a free-text trade thesis and scores them against a frozen taxonomy (narrative/resolution gap, falsification absent, probability unsourced, consensus-as-edge), returning a verdict, the codes that fired, a risk score, and a hash anyone can recompute from the submitted text. Out-of-scope requests are refused free: no payment settles.",
+    "contact": {
+      "name": "DJZS AI, LLC",
+      "email": "username@djzs.ai",
+      "url": "https://djzs.ai"
+    },
+    "license": { "name": "MIT" },
+    "x-guidance": "Submit the reasoning behind a prospective prediction-market position as free text in the `intent` field. A well-formed thesis states the claim and its outcome, a SOURCED probability with a citation, the falsification condition, and the edge versus the market price. A consensus-only thesis with no source returns FAIL (DJZS-M03 PROBABILITY_UNSOURCED) and no order should be placed. Abstention is a first-class outcome. The audit reads reasoning only: it does not read markets, verify quoted prices, or check whether an instrument has already settled. Informational only, not financial advice — see https://djzs.ai/legal."
+  },
+  "servers": [
+    { "url": "https://mcp.djzs.ai", "description": "Production (Base mainnet)" }
+  ],
+  "paths": {
+    "/x402/verify": {
+      "post": {
+        "operationId": "verifyPmTrade",
+        "summary": "Audit a prediction-market trade thesis",
+        "description": "Returns PASS, WAIT, or FAIL with the taxonomy codes that fired and a reproducible verdict_hash. Paid: 2.00 USDC on Base mainnet over x402 (exact scheme). An unpaid request returns HTTP 402 with the payment challenge. Out-of-scope submissions are refused without settling payment.",
+        "tags": ["audit"],
+        "x-payment-info": {
+          "price": { "mode": "fixed", "currency": "USD", "amount": "2.00" },
+          "protocols": [{ "x402": {} }]
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["intent"],
+                "properties": {
+                  "intent": {
+                    "type": "string",
+                    "minLength": 10,
+                    "description": "The prediction-market trade thesis, in free text. State the claim, a sourced probability with citation, the falsification condition, and the edge versus the market price.",
+                    "examples": [
+                      "Market X resolves YES. Falsified if event Y occurs by date Z. Sourced probability 0.62 per [source]; the market prices 0.55, so the edge is +7pts."
+                    ]
+                  },
+                  "target_system": {
+                    "type": "string",
+                    "description": "Optional label for the venue or system the thesis targets. Recorded on the certificate."
+                  },
+                  "agent_address": {
+                    "type": "string",
+                    "pattern": "^0x[a-fA-F0-9]{40}$",
+                    "description": "Optional EVM address. When supplied, the verdict is written to a public on-chain trust record on Base. This record is permanent and cannot be deleted."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Audit complete. Payment settled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schema_version": { "type": "string", "const": "DJZS-ENGINE-V2" },
+                    "tool": { "type": "string", "const": "verify_pm_trade" },
+                    "in_scope": { "type": "boolean" },
+                    "taxonomy": {
+                      "type": "object",
+                      "description": "Frozen taxonomy and weight hashes the verdict was computed under. Pin these to reproduce verdict_hash.",
+                      "properties": {
+                        "perp": { "type": "string" },
+                        "pm": { "type": "string" },
+                        "weights_hash": { "type": "string" },
+                        "taxonomy_hash": { "type": "string" },
+                        "pm_weights_hash": { "type": "string" },
+                        "pm_taxonomy_hash": { "type": "string" }
+                      }
+                    },
+                    "verdict": { "type": ["string", "null"], "enum": ["PASS", "WAIT", "FAIL", null] },
+                    "action": { "type": "string", "enum": ["PROCEED", "HALT", "FAIL"] },
+                    "risk_score": { "type": "number", "description": "0-100 aggregate risk weight." },
+                    "flags": {
+                      "type": "array",
+                      "description": "Fired taxonomy findings as full objects; `code` carries the taxonomy id, e.g. DJZS-M03.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": { "type": "string", "description": "Taxonomy id, e.g. DJZS-M03." },
+                          "name": { "type": "string" },
+                          "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
+                          "weight": { "type": "number" },
+                          "evidence": { "type": "string", "description": "Verbatim quote from the submitted intent that fired this code." }
+                        }
+                      }
+                    },
+                    "unknown_fields": { "type": "array", "items": { "type": "string" } },
+                    "disagreements": { "type": "array", "items": { "type": "string" } },
+                    "verdict_hash": { "type": "string", "description": "Reproducible sha256 of the canonicalized verdict." },
+                    "extraction_failsafe": { "type": "boolean" },
+                    "halt_reason": { "type": "string", "description": "Optional. Emitted only when action is HALT: which fields were unresolvable from the intent, and what to clarify before re-auditing." },
+                    "pol_certificate": {
+                      "description": "ProofOfLogic anchoring outcome. Fails open by design — an anchoring failure annotates the response and never blocks or mutates the verdict, so handle all three variants.",
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": ["status", "irys_id", "gateway_url"],
+                          "properties": {
+                            "status": { "const": "anchored" },
+                            "node": { "type": "string" },
+                            "irys_id": { "type": "string" },
+                            "gateway_url": { "type": "string", "description": "Public gateway URL of the permanent certificate." }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["status", "detail"],
+                          "properties": {
+                            "status": { "const": "disabled" },
+                            "detail": { "type": "string", "description": "Anchoring not configured on this deployment; the verdict is unaffected." }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["status", "detail"],
+                          "properties": {
+                            "status": { "const": "error" },
+                            "detail": { "type": "string" }
+                          }
+                        }
+                      ]
+                    },
+                    "trust_score": {
+                      "description": "On-chain trust-record write outcome. Present only when agent_address was supplied. Fails open like pol_certificate — skipped is the common case, so handle all three variants.",
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "required": ["status", "tx_hash", "contract"],
+                          "properties": {
+                            "status": { "const": "written" },
+                            "tx_hash": { "type": "string" },
+                            "contract": { "type": "string" }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["status", "reason"],
+                          "properties": {
+                            "status": { "const": "skipped" },
+                            "reason": { "type": "string", "description": "Why no write was attempted, e.g. no anchored certificate to link the score to." }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": ["status", "error_class", "detail"],
+                          "properties": {
+                            "status": { "const": "error" },
+                            "error_class": { "type": "string" },
+                            "detail": { "type": "string" }
+                          }
+                        }
+                      ]
+                    },
+                    "settlement": {
+                      "type": "object",
+                      "description": "The settled x402 payment for this audit.",
+                      "properties": {
+                        "transaction": { "type": "string" },
+                        "network": { "type": "string", "description": "CAIP-2 network id, e.g. eip155:8453." }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": { "description": "Payment Required" },
+          "400": { "description": "Malformed request body." },
+          "503": { "description": "Payment facilitator or extraction backend unavailable." }
+        }
+      }
+    },
+    "/health/x402": {
+      "get": {
+        "operationId": "healthX402",
+        "summary": "Payment configuration health",
+        "description": "Free. Reports the configured network, facilitator status, and whether the network is supported.",
+        "tags": ["health"],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  },
+  "tags": [
+    { "name": "audit", "description": "Paid reasoning audits." },
+    { "name": "health", "description": "Free status endpoints." }
+  ]
+}
