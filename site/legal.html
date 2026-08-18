@@ -58,7 +58,8 @@
     <strong>as is, without warranty of any kind</strong> — express or implied, including fitness for a
     particular purpose. No guarantee of availability, accuracy, or continuity. To the maximum extent
     permitted by law, the operator is not liable for any loss arising from use of, reliance on, or
-    inability to use the service.</p>
+    inability to use the service. Where liability cannot be excluded, it is <strong>limited to the
+    amount you paid for the specific audit</strong> giving rise to the claim.</p>
   </section>
 
   <section>
@@ -66,9 +67,11 @@
     <p>The audit costs <strong>2.00 USDC per call</strong> on Base mainnet over x402. Payment is
     non-custodial: your EIP-3009 signature authorizes a transfer from your wallet directly to the
     DJZS treasury; the facilitator submits it and pays the gas. You sign the exact amount — nothing
-    more can be taken. <strong>Every paid call is charged and payments are final</strong>, including
-    calls that return <code>in_scope: false</code>, WAIT, FAIL, or an extraction failsafe: the charge
-    pays for running the audit, not for a particular verdict. The free tools
+    more can be taken. <strong>Payments are final</strong>: they settle on-chain and cannot be
+    reversed or refunded. An in-scope audit is charged whatever the verdict — WAIT, FAIL, or an
+    extraction failsafe — because the charge pays for running the audit, not for a particular
+    verdict. <strong>Out-of-scope requests are refused free</strong>: when the engine returns
+    <code>in_scope: false</code>, no payment is settled and your balance is unchanged. The free tools
     (<code>query_pol_certificates</code>, <code>query_agent_trust</code>) cost nothing.</p>
   </section>
 
@@ -90,7 +93,20 @@
   </section>
 
   <section>
-    <h2>Changes + contact <span class="k">// 06</span></h2>
+    <h2>Your responsibility <span class="k">// 06 · use, indemnity, jurisdiction</span></h2>
+    <p>You confirm that you may lawfully use this service and trade in your jurisdiction, and that
+    the venue you are trading on is available to you. The audit reads the reasoning you submit — it
+    does <strong>not</strong> check venue eligibility, quoted prices, or whether an instrument has
+    already settled. Those are yours to verify.</p>
+    <p>You agree to hold the operator harmless from any claim arising from your use of the service,
+    your trading decisions, or the content you submit.</p>
+    <p>These terms are governed by the laws of the <strong>State of California</strong>, without
+    regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal courts
+    located in California. If any provision is held unenforceable, the rest remains in force.</p>
+  </section>
+
+  <section>
+    <h2>Changes + contact <span class="k">// 07</span></h2>
     <p>These terms may change as the protocol evolves; the current page is the current terms, and the
     <a href="https://github.com/SIFR0-dev/djzs-AI">repository</a> is the source of truth for what the
     system actually does. Questions or problems:
