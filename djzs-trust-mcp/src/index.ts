@@ -798,19 +798,13 @@ app.post("/x402/verify", async (c) => {
   const env = c.env
   const network = normalizeNetwork(env.X402_HTTP_NETWORK ?? X402_NETWORK)
 
-  let body: { intent?: unknown; agent_address?: unknown; target_system?: unknown }
-  try {
-    body = await c.req.json()
-  } catch {
-    return c.json({ error: "BAD_REQUEST", detail: "body must be JSON" }, 400)
-  }
-  const intent = typeof body.intent === "string" ? body.intent : ""
-  if (intent.length < 10) {
-    return c.json({ error: "BAD_REQUEST", detail: "intent must be a string of at least 10 characters" }, 400)
-  }
-  const agent_address = typeof body.agent_address === "string" ? body.agent_address : undefined
-  const target_system = typeof body.target_system === "string" ? body.target_system : undefined
-
+  // DISCOVERY ORDERING (x402scan registration probes, 2026-08-18). The 402
+  // challenge MUST be reachable regardless of body shape: a prober posts an
+  // empty or minimal body, and if schema validation runs first the endpoint
+  // answers 400 and is classified UNPAID. Body parsing therefore happens AFTER
+  // payment verification (below), never before the challenge is issued.
+  // Nothing here reads the body, so the challenge cannot depend on it.
+  //
   // Same facilitator config object the MCP transport builds, from the same secrets.
   const resourceServer = new x402ResourceServer(
     new HTTPFacilitatorClient(createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)),
@@ -871,7 +865,27 @@ app.post("/x402/verify", async (c) => {
     return paymentRequired("INVALID_PAYMENT")
   }
 
-  // ── payment VERIFIED but NOT settled. The audit runs first. ───────────────
+  // ── payment VERIFIED but NOT settled. ─────────────────────────────────────
+  // The body is validated HERE, after the challenge is reachable but before any
+  // engine work. A paying client with a malformed body is still refused, and
+  // refused with NOTHING SETTLED — settlePayment is unreachable from this branch,
+  // so a bad request never costs the payer and never reaches runVerifyPmTrade.
+  // This is the only ordering that satisfies both the discovery probe (challenge
+  // before validation) and the money path (no engine work on an unvalidated body).
+  let body: { intent?: unknown; agent_address?: unknown; target_system?: unknown }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: "BAD_REQUEST", detail: "body must be JSON" }, 400)
+  }
+  const intent = typeof body.intent === "string" ? body.intent : ""
+  if (intent.length < 10) {
+    return c.json({ error: "BAD_REQUEST", detail: "intent must be a string of at least 10 characters" }, 400)
+  }
+  const agent_address = typeof body.agent_address === "string" ? body.agent_address : undefined
+  const target_system = typeof body.target_system === "string" ? body.target_system : undefined
+
+  // ── the audit runs first. ─────────────────────────────────────────────────
   if (!env.ANTHROPIC_API_KEY) {
     return c.json({ error: "EXTRACTION_UNAVAILABLE", detail: "ANTHROPIC_API_KEY not configured" }, 503)
   }
