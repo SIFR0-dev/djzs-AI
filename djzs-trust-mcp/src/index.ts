@@ -6,7 +6,9 @@ import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
-import { createFacilitatorConfig } from "@coinbase/x402"
+import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
+import { handleX402VerifyPmTrade, type X402Env } from "./http-x402-bazaar.v2"
+import { createEngineAdapter } from "./engine-adapter"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
 import { registerExactEvmScheme } from "@x402/evm/exact/server"
 import {
@@ -90,6 +92,13 @@ interface Env {
    * The /mcp transport never reads this.
    */
   X402_HTTP_NETWORK?: string
+  /**
+   * Facilitator base URL for the Bazaar route (/x402/verify_pm_trade). Plain var,
+   * OPTIONAL: absent => CDP_FACILITATOR_URL below, the same facilitator the /mcp
+   * transport and /x402/verify already use. Present only so a rehearsal can point
+   * the route at a different facilitator without a code change.
+   */
+  FACILITATOR_URL?: string
 }
 
 /**
@@ -925,6 +934,50 @@ app.post("/x402/verify", async (c) => {
     /* verdict still returns; the tx is also echoed in the body below */
   }
   return c.json({ ...response, settlement: { transaction: settle.transaction, network: settle.network } }, 200, headers)
+})
+
+/**
+ * CDP facilitator base URL. Committed as a SOURCE CONSTANT for the same reason
+ * X402_RECIPIENT is: the compliance grep must be able to see where payment
+ * verification and settlement are sent. Identical to the url @coinbase/x402's
+ * createFacilitatorConfig() builds, which is what /mcp and /x402/verify use.
+ */
+const CDP_FACILITATOR_URL = "https://api.cdp.coinbase.com/platform/v2/x402"
+
+/**
+ * POST /x402/verify_pm_trade — the Bazaar-indexable plain-HTTP surface
+ * (DEPLOY_RUNBOOK Step 1). Same gate, same price, same treasury as /mcp and
+ * /x402/verify; what is new is the discovery extension on the 402 challenge and
+ * the object-shaped intent.
+ *
+ * The handler owns the payment invariants (challenge -> verify -> SCOPE GATE ->
+ * settle -> engine); this mount owns only the two seams it needs:
+ *
+ *   FACILITATOR_AUTH — CDP's own auth-header helper, given the request-scoped
+ *     secrets by NAME (CDP_API_KEY_ID / CDP_API_KEY_SECRET). Values are never read,
+ *     logged, or copied here; the helper signs a CDP JWT per facilitator path.
+ *     Absent secrets => unauthenticated facilitator calls => the facilitator
+ *     refuses => no audit is served free.
+ *
+ *   engineAdapter — built PER REQUEST so the extraction key comes off c.env and the
+ *     adapter's one-extraction memo cannot outlive the request.
+ *
+ * The try/catch is the uncharged-failure net: the adapter throws from scopeCheck
+ * (misconfigured key, extraction outage) strictly BEFORE settlePayment is reachable,
+ * so a 503 here has always cost the caller nothing.
+ */
+app.post("/x402/verify_pm_trade", async (c) => {
+  const env = c.env
+  const x402Env: X402Env = {
+    FACILITATOR_URL: env.FACILITATOR_URL ?? CDP_FACILITATOR_URL,
+    FACILITATOR_AUTH: createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
+  }
+  try {
+    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env))
+  } catch (e) {
+    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
+    return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)
+  }
 })
 
 export default app

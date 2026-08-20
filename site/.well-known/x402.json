@@ -1,0 +1,97 @@
+{
+  "x402Version": 2,
+  "publisher": "DJZS AI, LLC",
+  "canonical": "https://djzs.ai/.well-known/x402.json",
+  "termsOfService": "https://djzs.ai/terms",
+  "lastUpdated": "2026-08-19",
+  "resources": [
+    {
+      "type": "http",
+      "resource": "https://mcp.djzs.ai/x402/verify_pm_trade",
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0xc1923748669dFC3a79497d0403A90a275161eCCA",
+          "maxAmountRequired": "2000000",
+          "maxTimeoutSeconds": 120,
+          "mimeType": "application/json",
+          "resource": "https://mcp.djzs.ai/x402/verify_pm_trade",
+          "description": "DJZS adversarial logic audit of a prediction-market trade intent. Deterministic verdict (PASS/WAIT/FAIL) with risk score, defect flags, verdict_hash, intent_sha256, and on-chain Proof-of-Logic receipt. Out-of-scope requests are refused WITHOUT CHARGE. Audit, not advice.",
+          "outputSchema": {
+            "input": {
+              "method": "POST",
+              "type": "http",
+              "bodySchema": {
+                "type": "object",
+                "required": [
+                  "intent"
+                ],
+                "properties": {
+                  "intent": {
+                    "type": "object",
+                    "required": [
+                      "market",
+                      "side",
+                      "thesis"
+                    ],
+                    "properties": {
+                      "market": {
+                        "type": "string",
+                        "description": "Venue ticker for the target market."
+                      },
+                      "side": {
+                        "type": "string",
+                        "description": "Position side under audit."
+                      },
+                      "thesis": {
+                        "type": "string",
+                        "description": "The claim being audited, stated plainly."
+                      },
+                      "probability_basis": {
+                        "type": "string",
+                        "description": "Named venue, instrument, and timestamp the probability came from."
+                      },
+                      "size_usd": {
+                        "type": "number",
+                        "description": "Intended position size in USD."
+                      },
+                      "bounds": {
+                        "type": "object",
+                        "description": "Loss bound and exit condition. Unbounded intents cannot PASS."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "output": {
+              "example": {
+                "verdict": "FAIL",
+                "risk_score": 75,
+                "flags": [
+                  "DJZS-M02",
+                  "DJZS-M01",
+                  "DJZS-M04",
+                  "unknown:probability_basis"
+                ],
+                "verdict_hash": "0x\u2026",
+                "intent_sha256": "\u2026",
+                "charged": true
+              }
+            }
+          },
+          "extra": {
+            "name": "USD Coin",
+            "version": "2",
+            "termsOfService": "https://djzs.ai/terms",
+            "unchargedScopeRefusal": true
+          },
+          "amount": "2000000"
+        }
+      ]
+    }
+  ],
+  "notes": "Well-known manifest convention is emerging and not ratified in x402 v2; this file tracks the discovery-resource shape used by live indexers and may be revised as the convention settles."
+}
