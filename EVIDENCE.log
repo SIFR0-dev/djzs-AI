@@ -2,3 +2,8 @@
 2026-08-20T21:41:33Z CDP_LINKAGE=NO treasury=0xc1923748669dFC3a79497d0403A90a275161eCCA
 2026-08-20T21:53:15Z CDP_LINKAGE_CORRECTED=yes treasury=0xc1923748669dFC3a79497d0403A90a275161eCCA note=supersedes_contradictory_2141Z_lines
 2026-08-20T22:23:17Z BAZAAR_SCAN_0H total=15157 pages=16 coverage=full djzs=0 treasury=0 settle_tx=0x792ec25081910a6a4cb236705fa38e5349bcfbeb7149fc37bd2b1249c9676724 payee_cdp_linked=yes verdict=ABSENT_AT_0H next=reprobe_24h
+2026-08-20T22:42:47Z DEPENDABOT_TRIAGE critical=1 high=67 moderate=108 low=16 critical_pkg=cd djzs-trust-mcp status=triage_pending
+2026-08-20T22:47:37Z DEPENDABOT_TRIAGE_P1 trust_mcp=0critical_100vulns_walletconnect_reown_cluster_nonruntime_suspected critical_location=pending_sibling_trees
+2026-08-20T23:02:39Z DEPENDABOT_TRIAGE_P1_CORRECTED root=101_walletconnect_reown trust_mcp=24_sharp_libvips_toolside subgraph=17_1critical note=supersedes_2247Z_attribution
+2026-08-20T23:02:39Z DEPENDABOT_TRIAGE_FINAL critical_pkg=axios advisory=GHSA-wf5p-g6vw-rhxx location=djzs-subgraph context=build_tooling_cli class_inapplicable=no_browser_credential_model payment_path=UNINDICTED queue=hygiene_batch_post_probe
+2026-08-20T23:20:38Z BAZAAR_SCAN total=15156 listing_found=0
