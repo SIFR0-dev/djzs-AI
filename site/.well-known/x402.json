@@ -3,7 +3,7 @@
   "publisher": "DJZS AI, LLC",
   "canonical": "https://djzs.ai/.well-known/x402.json",
   "termsOfService": "https://djzs.ai/terms",
-  "lastUpdated": "2026-08-19",
+  "lastUpdated": "2026-08-20",
   "resources": [
     {
       "type": "http",
