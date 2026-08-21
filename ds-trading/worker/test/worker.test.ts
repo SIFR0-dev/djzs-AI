@@ -5,11 +5,17 @@ import assert from "node:assert/strict";
 
 import { createApp, type Env, type D1Like } from "../src/index.ts";
 
-const okLedger: D1Like = {
-  prepare: () => ({ first: async <T,>() => ({ ok: 1 }) as T }),
-};
+function stmt(first: () => Promise<unknown>) {
+  const s = {
+    bind: () => s,
+    first: first as <T>() => Promise<T | null>,
+    run: async () => ({}),
+  };
+  return s;
+}
+const okLedger: D1Like = { prepare: () => stmt(async () => ({ ok: 1 })) };
 const deadLedger: D1Like = {
-  prepare: () => ({ first: async () => { throw new Error("no such table"); } }),
+  prepare: () => stmt(async () => { throw new Error("no such table"); }),
 };
 
 function kalshiStub(): typeof fetch {
@@ -87,10 +93,14 @@ test("upstream failure surfaces as 502, not our error", async () => {
   assert.equal(j.status, 503);
 });
 
-test("no order route exists on this surface", async () => {
+test("order surface refuses by default: gate on /v1/orders, nothing else exists", async () => {
   const app = createApp({ fetchImpl: kalshiStub() });
-  for (const path of ["/v1/orders", "/v1/order"]) {
-    const res = await app.request(path, { method: "POST" }, env(okLedger));
-    assert.equal(res.status, 404, `${path} must not exist in increment 1`);
-  }
+  const res = await app.request(
+    "/v1/orders",
+    { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+    env(okLedger),
+  );
+  assert.equal(res.status, 400, "orders without verdict_id must be refused");
+  const other = await app.request("/v1/order", { method: "POST" }, env(okLedger));
+  assert.equal(other.status, 404);
 });
