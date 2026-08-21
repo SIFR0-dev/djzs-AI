@@ -174,6 +174,30 @@ test("rest client surfaces non-200 as KalshiApiError", async () => {
 
 // ---------- signing (throwaway key, self-verify) ----------
 
+test("PKCS#1 PEM (BEGIN RSA PRIVATE KEY) imports via the pkcs8 wrap and signs", async () => {
+  const { generateKeyPairSync } = await import("node:crypto");
+  const pair = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const pkcs1Pem = pair.privateKey.export({ type: "pkcs1", format: "pem" }) as string;
+  assert.match(pkcs1Pem, /BEGIN RSA PRIVATE KEY/);
+
+  const key = await importKalshiPrivateKey(pkcs1Pem);
+  const ts = 1755740001000;
+  const h = await signKalshiRequest(key, "ak_test", "GET", "/trade-api/ws/v2", ts);
+
+  const spkiDer = pair.publicKey.export({ type: "spki", format: "der" }) as Buffer;
+  const pub = await crypto.subtle.importKey(
+    "spki", new Uint8Array(spkiDer).buffer as ArrayBuffer,
+    { name: "RSA-PSS", hash: "SHA-256" }, false, ["verify"],
+  );
+  const ok = await crypto.subtle.verify(
+    { name: "RSA-PSS", saltLength: 32 },
+    pub,
+    Uint8Array.from(atob(h["KALSHI-ACCESS-SIGNATURE"]), (c) => c.charCodeAt(0)),
+    new TextEncoder().encode(`${ts}GET/trade-api/ws/v2`),
+  );
+  assert.equal(ok, true);
+});
+
 test("RSA-PSS signature verifies and binds ts+method+path", async () => {
   const pair = await crypto.subtle.generateKey(
     { name: "RSA-PSS", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
