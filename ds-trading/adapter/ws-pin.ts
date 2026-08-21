@@ -4,14 +4,14 @@
 // safe to paste back to the build seat.
 //
 // Setup (once, inside ds-trading/adapter):
-//   npm install ws
-// Env (never inline, never chat):
-//   KALSHI_KEY_ID           — API key id (uuid from the Kalshi console)
-//   KALSHI_PRIVATE_KEY_PATH — path to the unencrypted PKCS#8 PEM
-// Run:
+//   npm install
+// Credentials: NO key arguments, NO env vars. Two files at fixed paths,
+// written via clipboard so the values never touch the shell line:
+//   copy the PRIVATE KEY in the demo console, then:  pbpaste > ~/kalshi-demo-key.pem
+//   copy the KEY ID in the demo console, then:       pbpaste > ~/kalshi-demo-key.id
+// Run (no variable parts):
 //   npx tsx ws-pin.ts
 //   npx tsx ws-pin.ts --ticker KXBTC-26AUG2023-T73299.99
-//   npx tsx ws-pin.ts --host prod   (elections host; read-only, still no orders)
 // Stops after 20 deltas or 60s, whichever first (--max-deltas / --seconds).
 
 import { readFileSync } from "node:fs";
@@ -31,18 +31,42 @@ const WS_PATH = "/trade-api/ws/v2";
 const MAX_DELTAS = Number(arg("max-deltas") ?? 20);
 const MAX_SECONDS = Number(arg("seconds") ?? 60);
 
-// Custody guard: if key MATERIAL ever appears on the command line, refuse —
-// argv lands in shell history and process listings.
-if (process.argv.some((a) => a.includes("PRIVATE KEY") || a.includes("MIIE"))) {
-  console.error("refuse: that is key MATERIAL on the command line. Save the key to a FILE and pass its path via --key-file. Then rotate this key — it is now in your shell history.");
+// Custody guard: if anything that smells like key MATERIAL appears on the
+// command line, refuse — argv lands in shell history and process listings.
+// (Shells split pasted PEMs into fragments, so match fragments too.)
+if (process.argv.some((a) => a.includes("-----") || a.includes("BEGIN") || a.includes("MIIE") || a.includes("PRIVATE"))) {
+  console.error("refuse: that looks like key MATERIAL on the command line. ROTATE this key now — it is in your shell history.");
+  console.error("This tool takes no key arguments at all. Put two files in place and run it bare:");
+  console.error("  ~/kalshi-demo-key.pem  (the private key, via: pbpaste > ~/kalshi-demo-key.pem)");
+  console.error("  ~/kalshi-demo-key.id   (the key id,      via: pbpaste > ~/kalshi-demo-key.id)");
   process.exit(2);
 }
-const keyId = arg("key-id") ?? process.env.KALSHI_KEY_ID;
-const pemPath = arg("key-file") ?? process.env.KALSHI_PRIVATE_KEY_PATH;
-if (!keyId || !pemPath) {
-  console.error("refuse: need the key id and the PEM file path.");
-  console.error("  npx tsx ws-pin.ts --key-id <uuid> --key-file /real/path/demo-key.pem");
-  console.error("The id and the path are not secrets; the file CONTENT is — it stays in the file.");
+
+import { homedir } from "node:os";
+const PEM_FILE = `${homedir()}/kalshi-demo-key.pem`;
+const ID_FILE = `${homedir()}/kalshi-demo-key.id`;
+
+function readOrRefuse(path: string, what: string): string {
+  try {
+    return readFileSync(path, "utf8").trim();
+  } catch {
+    console.error(`refuse: missing ${what} at ${path}`);
+    console.error("Copy the value in the Kalshi demo console, then:  pbpaste > " + path);
+    process.exit(2);
+  }
+}
+const pem = readOrRefuse(PEM_FILE, "private key PEM");
+const keyId = readOrRefuse(ID_FILE, "key id");
+if (!pem.includes("BEGIN") || !pem.includes("PRIVATE")) {
+  console.error(`refuse: ${PEM_FILE} does not look like a PEM — did the key id land there instead? Re-copy the PRIVATE KEY and rerun: pbpaste > ${PEM_FILE}`);
+  process.exit(2);
+}
+if (pem.length < 500) {
+  console.error(`refuse: ${PEM_FILE} is too short to be an RSA private key — re-copy it from the console.`);
+  process.exit(2);
+}
+if (keyId.includes("-----") || keyId.length > 80 || /\s/.test(keyId)) {
+  console.error(`refuse: ${ID_FILE} does not look like a key id (expected a short uuid-like token). Re-copy the KEY ID and rerun: pbpaste > ${ID_FILE}`);
   process.exit(2);
 }
 
@@ -118,7 +142,7 @@ if (!ticker) {
 }
 console.log(`pinning orderbook_delta on ${ticker} via ${WS_URL}`);
 
-const key = await importKalshiPrivateKey(readFileSync(pemPath, "utf8"));
+const key = await importKalshiPrivateKey(pem);
 const headers = await signKalshiRequest(key, keyId, "GET", WS_PATH);
 
 const ws = new WebSocket(WS_URL, { headers });
