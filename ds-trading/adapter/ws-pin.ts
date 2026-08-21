@@ -31,10 +31,18 @@ const WS_PATH = "/trade-api/ws/v2";
 const MAX_DELTAS = Number(arg("max-deltas") ?? 20);
 const MAX_SECONDS = Number(arg("seconds") ?? 60);
 
-const keyId = process.env.KALSHI_KEY_ID;
-const pemPath = process.env.KALSHI_PRIVATE_KEY_PATH;
+// Custody guard: if key MATERIAL ever appears on the command line, refuse —
+// argv lands in shell history and process listings.
+if (process.argv.some((a) => a.includes("PRIVATE KEY") || a.includes("MIIE"))) {
+  console.error("refuse: that is key MATERIAL on the command line. Save the key to a FILE and pass its path via --key-file. Then rotate this key — it is now in your shell history.");
+  process.exit(2);
+}
+const keyId = arg("key-id") ?? process.env.KALSHI_KEY_ID;
+const pemPath = arg("key-file") ?? process.env.KALSHI_PRIVATE_KEY_PATH;
 if (!keyId || !pemPath) {
-  console.error("refuse: set KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PATH (see header). Never pass the key inline.");
+  console.error("refuse: need the key id and the PEM file path.");
+  console.error("  npx tsx ws-pin.ts --key-id <uuid> --key-file /real/path/demo-key.pem");
+  console.error("The id and the path are not secrets; the file CONTENT is — it stays in the file.");
   process.exit(2);
 }
 
