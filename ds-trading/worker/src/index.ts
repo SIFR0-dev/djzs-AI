@@ -16,6 +16,8 @@ import {
   type FlagCode,
 } from "./verdict-core.ts";
 
+import { computeSpecHash, SPEC_ID_RE, type SpecInput } from "./signal-core.ts";
+
 // Gate freshness window. "No order without a FRESH verdict row" (brief).
 // 15 minutes is a conservative placeholder — OPERATOR RATIFICATION PENDING;
 // reject-by-default means the placeholder can only ever refuse more.
@@ -134,6 +136,27 @@ export function createApp(deps: AppDeps = {}) {
       unknowns: (b.unknowns as string[]) ?? [],
     };
 
+    // Shadow-box discipline: a signal_box verdict must cite a spec that was
+    // registered (hash computed) and armed BEFORE this signal. Refuse otherwise.
+    let signal_spec: string | null = null;
+    if (source === "signal_box") {
+      if (typeof b.signal_spec !== "string" || !SPEC_ID_RE.test(b.signal_spec)) {
+        return c.json({ error: "signal_box verdicts require a registered signal_spec (SC-xx)" }, 400);
+      }
+      const spec = await c.env.LEDGER.prepare(
+        "SELECT spec_id, status FROM signal_specs WHERE spec_id = ?1",
+      )
+        .bind(b.signal_spec)
+        .first<{ spec_id: string; status: string }>();
+      if (!spec) {
+        return c.json({ error: "signal_spec not registered — hash before first signal", action: "HALT" }, 403);
+      }
+      if (spec.status !== "shadow" && spec.status !== "live") {
+        return c.json({ error: `signal_spec is ${spec.status}, not armed`, action: "HALT" }, 403);
+      }
+      signal_spec = spec.spec_id;
+    }
+
     let d;
     try {
       d = decide(input.flags, input.unknowns);
@@ -151,7 +174,7 @@ export function createApp(deps: AppDeps = {}) {
        VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)`,
     )
       .bind(
-        verdict_id, created_at, source, (b.signal_spec as string) ?? null,
+        verdict_id, created_at, source, signal_spec,
         input.subject, input.thesis, input.market_ticker, input.side,
         input.p_claim_e4, input.market_price_e4, input.fee_est_e4,
         d.taxonomy, JSON.stringify(d.flags), d.risk_score, d.verdict, verdict_hash,
@@ -167,6 +190,73 @@ export function createApp(deps: AppDeps = {}) {
       },
       201,
     );
+  });
+
+  // ---- SIGNAL SPECS ------------------------------------------------------
+  // Registration computes the spec hash BEFORE any signal can exist. Params
+  // and kill_criteria are write-once: there is no update route. Lifecycle:
+  // draft (registered, not yet armed) -> shadow (emitting shadow verdicts,
+  // no capital) -> live/retired (later, separately-ruled).
+  app.post("/signal-specs", async (c) => {
+    const b = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!b) return c.json({ error: "invalid_json" }, 400);
+    if (typeof b.spec_id !== "string" || !SPEC_ID_RE.test(b.spec_id)) {
+      return c.json({ error: "spec_id must match SC-xx" }, 400);
+    }
+    if (typeof b.version !== "string" || !b.version.trim()) {
+      return c.json({ error: "version required" }, 400);
+    }
+    const isObj = (v: unknown) => typeof v === "object" && v !== null && !Array.isArray(v);
+    if (!isObj(b.params) || !isObj(b.kill_criteria)) {
+      return c.json({ error: "params and kill_criteria must be objects (kill_criteria pre-registered, not optional)" }, 400);
+    }
+    if (Object.keys(b.kill_criteria as object).length === 0) {
+      return c.json({ error: "kill_criteria must not be empty — pre-register the kill conditions" }, 400);
+    }
+    const existing = await c.env.LEDGER.prepare(
+      "SELECT spec_id FROM signal_specs WHERE spec_id = ?1",
+    ).bind(b.spec_id).first();
+    if (existing) return c.json({ error: "spec_id already registered — specs are immutable; new logic = new spec_id or version bump via a NEW id" }, 409);
+
+    const spec: SpecInput = {
+      spec_id: b.spec_id,
+      version: b.version,
+      params: b.params as Record<string, unknown>,
+      kill_criteria: b.kill_criteria as Record<string, unknown>,
+    };
+    const spec_hash = await computeSpecHash(spec);
+    const registered_at = new Date().toISOString();
+    await c.env.LEDGER.prepare(
+      `INSERT INTO signal_specs (spec_id, version, spec_hash, registered_at, status, params, kill_criteria)
+       VALUES (?1,?2,?3,?4,'draft',?5,?6)`,
+    )
+      .bind(spec.spec_id, spec.version, spec_hash, registered_at,
+        JSON.stringify(spec.params), JSON.stringify(spec.kill_criteria))
+      .run();
+    return c.json({ spec_id: spec.spec_id, version: spec.version, spec_hash, registered_at, status: "draft" }, 201);
+  });
+
+  app.get("/signal-specs/:id", async (c) => {
+    const row = await c.env.LEDGER.prepare(
+      "SELECT spec_id, version, spec_hash, registered_at, status, params, kill_criteria FROM signal_specs WHERE spec_id = ?1",
+    ).bind(c.req.param("id")).first();
+    if (!row) return c.json({ error: "not_found" }, 404);
+    return c.json(row);
+  });
+
+  app.post("/signal-specs/:id/promote", async (c) => {
+    const id = c.req.param("id");
+    const row = await c.env.LEDGER.prepare(
+      "SELECT spec_id, status FROM signal_specs WHERE spec_id = ?1",
+    ).bind(id).first<{ spec_id: string; status: string }>();
+    if (!row) return c.json({ error: "not_found" }, 404);
+    if (row.status !== "draft") {
+      return c.json({ error: `only draft -> shadow is promotable here; spec is ${row.status} (live/retired are separately-ruled)` }, 409);
+    }
+    await c.env.LEDGER.prepare(
+      "UPDATE signal_specs SET status = 'shadow' WHERE spec_id = ?1 AND status = 'draft'",
+    ).bind(id).run();
+    return c.json({ spec_id: id, status: "shadow" });
   });
 
   // ---- THE GATE ----------------------------------------------------------

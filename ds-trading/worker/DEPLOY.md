@@ -1,6 +1,11 @@
-# ds-trading-worker — first deploy runbook (Operator-run)
+# ds-trading-worker — deploy runbook (Operator-run)
 
-Increment 1 close-out. Deploy doctrine applies: a deploy is done when the
+First deploy DONE 2026-08-21 (version 5628908e…, close cert 516771ec…,
+3/3 canonical). Redeploys follow the same sequence; name the rollback target
+first: `npx wrangler rollback <previous-version-id>`. The section-1 manifest
+tracks the CURRENT branch tip — verify against it before every deploy.
+Increment-2 surface added post-close: /signal-specs registration + shadow
+verdict gating (worker code only; no schema change, ledger untouched). Deploy doctrine applies: a deploy is done when the
 DEPLOYED VERSION is probed live and answers correctly, not when wrangler
 prints "Deployed". Content-verify BEFORE deploying. Paste blocks follow
 terminal doctrine: bare commands, one per line, each block opens with cd.
@@ -28,8 +33,9 @@ terminal doctrine: bare commands, one per line, each block opens with cd.
 41b740b937a99cc6a2b79b5d0c763d351dd9bb21cc16221a91e3ee804a2d0195  ds-trading/worker/wrangler.toml
 2143a87c2cbdd8d2b63a8c6fadfd1fb9c96e73a03e19de0afaa6cb84f96dcf7d  ds-trading/worker/package.json
 220cf525ef23b65abe5f57f22196fdcb4d8d5807e17cc6732e064116de0655f5  ds-trading/worker/package-lock.json
-ae32fcd22d10f8aa4d2f831916b928f0ed4c6f44df213e2a8516560597e94f95  ds-trading/worker/src/index.ts
+78c861ace534d72627d1a235604a1b816e7fb8d340bd56ab3aaf39b51c77350c  ds-trading/worker/src/index.ts
 e2c4c6060592fa7145f0c1e4611a0583474527b1d1576f4b9a7036618940960b  ds-trading/worker/src/verdict-core.ts
+41eb839fe64467bf10c83a9321014047fefabadceb53be0dad1f53749dc77823  ds-trading/worker/src/signal-core.ts
 7b8c33ef1d7b237426c5e6acb102bd82b366962383c84aeb9ec77a49d0566de9  ds-trading/adapter/kalshi-rest.ts
 fb38057b8500d03643831e46efab5ed3ea40130dc6061a25cfdf837e06260d78  ds-trading/adapter/fixed.ts
 ```
