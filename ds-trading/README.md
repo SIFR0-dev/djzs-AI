@@ -25,3 +25,15 @@ reclaim and moves out of djzs-AI once the canonical dst-studio push lands.
 - Default `/markets` listing is dominated by bookless `KXMVECROSSCATEGORY` shard markets; filter by `series_ticker` for real books.
 
 No keys, no orders, no auth anywhere in this directory.
+
+## Domain topology (Operator-stamped ruling, 2026-08-21)
+
+- apex/www = frontend (placeholder stands)
+- `api.deterministic-signal.trading` = June app (`dst-studio-worker`) — untouched, never redeployed over
+- v1 = **`ds-trading-worker` on custom domain `gate.deterministic-signal.trading`** — subdomain, never path-split
+- D1 binding: `ds-trading-ledger` (`fadbdf1c-47ee-4c91-8cd1-4971c907ffad`), fork B
+
+`worker/` holds the v1 Worker scaffold (Hono, health + read-only market routes).
+Deploys are Operator-run (`wrangler deploy` from the canonical repo after
+transplant); `workers_dev = true` is explicit in `wrangler.toml` because
+declaring `routes` silently disables workers.dev otherwise (proven live, §12).
