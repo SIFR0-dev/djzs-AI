@@ -134,13 +134,23 @@ function summarize(code: number): never {
 // ---- main ------------------------------------------------------------------
 
 const rest = new KalshiPublicClient(HOST);
-let ticker = arg("ticker");
-if (!ticker) {
-  const { markets } = await rest.getMarkets({ limit: 50, status: "open", series_ticker: "KXBTC" });
-  ticker = (markets.find((m) => m.yes_bid_dollars && m.yes_bid_dollars !== "0.0000") ?? markets[0])?.ticker;
-  if (!ticker) { console.error("no open market found; pass --ticker"); process.exit(2); }
+let tickers: string[];
+const explicit = arg("ticker");
+if (explicit) {
+  tickers = [explicit];
+} else {
+  // Markets with RECENT TRADES are provably active — subscribe to a batch of
+  // them so a quiet single market can't starve the pin.
+  const { trades } = await rest.getTrades({ limit: 100 });
+  tickers = [...new Set(trades.map((t) => t.ticker))].slice(0, 20);
+  if (tickers.length === 0) {
+    const { markets } = await rest.getMarkets({ limit: 20, status: "open" });
+    tickers = markets.map((m) => m.ticker).slice(0, 10);
+  }
+  if (tickers.length === 0) { console.error("no active market found; pass --ticker"); process.exit(2); }
 }
-console.log(`pinning orderbook_delta on ${ticker} via ${WS_URL}`);
+console.log(`pinning orderbook_delta on ${tickers.length} active market(s) via ${WS_URL}`);
+console.log(`  ${tickers.slice(0, 5).join(", ")}${tickers.length > 5 ? ", …" : ""}`);
 
 const key = await importKalshiPrivateKey(pem);
 const headers = await signKalshiRequest(key, keyId, "GET", WS_PATH);
@@ -148,7 +158,7 @@ const headers = await signKalshiRequest(key, keyId, "GET", WS_PATH);
 const ws = new WebSocket(WS_URL, { headers });
 ws.on("open", () => {
   console.log("connected; subscribing…");
-  ws.send(JSON.stringify({ id: 1, cmd: "subscribe", params: { channels: ["orderbook_delta"], market_tickers: [ticker] } }));
+  ws.send(JSON.stringify({ id: 1, cmd: "subscribe", params: { channels: ["orderbook_delta"], market_tickers: tickers } }));
 });
 ws.on("message", (data) => {
   record(String(data));
