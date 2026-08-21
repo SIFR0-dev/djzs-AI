@@ -7,7 +7,10 @@ terminal doctrine: bare commands, one per line, each block opens with cd.
 
 ## 0. Facts
 
-- Branch/tip: `claude/build-audit-seat-split-r4onyu` @ `aba9aef` (PR #129), tree clean.
+- Branch: `claude/build-audit-seat-split-r4onyu` (PR #129). The binding
+  invariant is the sha256 list in section 1 — shipping files are unchanged
+  since `aba9aef`; docs-only commits after it (this runbook) move the tip
+  without touching the closure. Verify hashes, not the HEAD sha.
 - Creates a NEW worker `ds-trading-worker` on `gate.deterministic-signal.trading`
   (custom domain; zone already in the account). `dst-studio-worker` / `api.` is a
   different worker and is not touched.
@@ -31,7 +34,7 @@ e2c4c6060592fa7145f0c1e4611a0583474527b1d1576f4b9a7036618940960b  ds-trading/wor
 fb38057b8500d03643831e46efab5ed3ea40130dc6061a25cfdf837e06260d78  ds-trading/adapter/fixed.ts
 ```
 
-Checkout + verify (expect HEAD `aba9aef…`, hashes byte-identical to the list):
+Checkout + verify (clean tree; hashes byte-identical to the list above):
 
 ```
 cd /path/to/djzs-AI
