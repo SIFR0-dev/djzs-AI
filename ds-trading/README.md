@@ -12,7 +12,7 @@ reclaim and moves out of djzs-AI once the canonical dst-studio push lands.
 | `kalshi-rest.ts` | read-only public-data client (markets, orderbook, trades), 2026 dollars/fp wire shape | live-verified vs demo + elections hosts |
 | `fixed.ts` | exact decimal-string fixed point (price e4 = $0.0001, qty e2 = 0.01 contracts); no floats on the money path | tested |
 | `orderbook-sync.ts` | pure seq-gap state machine: gap -> HALTED, refuses all deltas until fresh snapshot | tested |
-| `kalshi-ws.ts` | WS subscriber: gap -> drop socket -> reconnect -> resubscribe -> re-sync; socket factory injected | offline-tested; wire field names `[WS-SHAPE-UNVERIFIED]` until an authed socket runs |
+| `kalshi-ws.ts` | WS subscriber: gap -> drop socket -> reconnect -> resubscribe -> re-sync; socket factory injected | **SHAPE PINNED live 2026-08-21** (authed demo socket, 20 markets, 20 deltas, 0 gaps): snapshot `yes_dollars_fp`/`no_dollars_fp`, delta `price_dollars`/`delta_fp`/`side` (+`market_id`,`ts`,`ts_ms`); seq is one global counter per sid; off-shape frames halt+resync |
 | `kalshi-sign.ts` | RSA-PSS/SHA-256 request signing (`ts+METHOD+path`), WebCrypto only (Workers-native), BYO PKCS#8 key | self-verify tested |
 | `adapter.test.ts` | offline battery, no network/key: `node --experimental-strip-types --test adapter.test.ts` | 10/10 |
 | `probe-live.ts` | read-only smoke vs demo env: `node --experimental-strip-types probe-live.ts` | PROBE_OK 2026-08-21 |

@@ -7,37 +7,33 @@
 import { OrderbookSync, type DeltaMsg, type SnapshotMsg, type Side } from "./orderbook-sync.ts";
 import { parsePriceE4, parseQtyE2 } from "./fixed.ts";
 
-// Wire normalization. REST is confirmed on the 2026 dollars/fp shape (live,
-// both hosts); WS delta field names are UNVERIFIED until an authed socket
-// runs — both shapes are accepted and the live run must pin which one.
-// [WS-SHAPE-UNVERIFIED]
+// Wire normalization — SHAPE PINNED from a live authed demo socket
+// 2026-08-21 (ws-pin, 20 markets, 20 deltas, 0 seq gaps):
+//   snapshot: msg.{yes_dollars_fp,no_dollars_fp} = [[price_dollars, qty_fp]…]
+//             (EMPTY books omit the arrays entirely; market_id uuid present)
+//   delta:    msg.{price_dollars, delta_fp, side, market_ticker, market_id, ts, ts_ms}
+//   seq:      one global counter per sid across ALL subscribed markets.
+// Anything off-shape THROWS — the feed halts and resyncs rather than guess.
 export function normalizeSnapshot(msg: Record<string, unknown>): SnapshotMsg {
   const dollars = (v: unknown): Array<[number, number]> =>
     ((v ?? []) as Array<[string, string]>).map(([p, q]) => [parsePriceE4(p), parseQtyE2(q)]);
-  const cents = (v: unknown): Array<[number, number]> =>
-    ((v ?? []) as Array<[number, number]>).map(([p, q]) => [p * 100, q * 100]);
-  const hasDollars = "yes_dollars" in msg || "no_dollars" in msg;
   return {
     market_ticker: String(msg.market_ticker ?? ""),
-    yes: hasDollars ? dollars(msg.yes_dollars) : cents(msg.yes),
-    no: hasDollars ? dollars(msg.no_dollars) : cents(msg.no),
+    yes: dollars(msg.yes_dollars_fp),
+    no: dollars(msg.no_dollars_fp),
   };
 }
 
 export function normalizeDelta(msg: Record<string, unknown>): DeltaMsg {
-  const side = msg.side as Side;
-  if (typeof msg.price_dollars === "string") {
-    return {
-      market_ticker: String(msg.market_ticker ?? ""),
-      priceE4: parsePriceE4(msg.price_dollars),
-      deltaQtyE2: parseQtyE2(String(msg.delta_fp ?? msg.delta ?? "0")),
-      side,
-    };
+  if (typeof msg.price_dollars !== "string" || typeof msg.delta_fp !== "string") {
+    throw new Error("orderbook_delta off pinned shape (expected price_dollars/delta_fp strings)");
   }
+  const side = msg.side;
+  if (side !== "yes" && side !== "no") throw new Error(`orderbook_delta bad side: ${String(side)}`);
   return {
     market_ticker: String(msg.market_ticker ?? ""),
-    priceE4: (msg.price as number) * 100,
-    deltaQtyE2: (msg.delta as number) * 100,
+    priceE4: parsePriceE4(msg.price_dollars),
+    deltaQtyE2: parseQtyE2(msg.delta_fp),
     side,
   };
 }
@@ -139,21 +135,28 @@ export class KalshiOrderbookFeed {
     } catch {
       return; // non-JSON frames are ignored, never trusted
     }
-    if (env.type === "orderbook_snapshot" && env.seq !== undefined && env.msg) {
-      const snap = normalizeSnapshot(env.msg);
-      this.sync.applySnapshot(env.seq, snap);
-      this.opts.onEvent?.({ kind: "synced", ticker: snap.market_ticker });
-      return;
-    }
-    if (env.type === "orderbook_delta" && env.seq !== undefined && env.msg) {
-      const res = this.sync.applyDelta(env.seq, normalizeDelta(env.msg));
-      if (!res.ok && res.reason === "seq_gap") {
-        this.opts.onEvent?.({ kind: "gap_halt", expectedSeq: res.expectedSeq, gotSeq: res.gotSeq });
-        // Halt discipline: this exact socket is now untrusted.
-        this.ws?.close(); // onclose triggers reconnect -> resubscribe -> fresh snapshot
+    try {
+      if (env.type === "orderbook_snapshot" && env.seq !== undefined && env.msg) {
+        const snap = normalizeSnapshot(env.msg);
+        this.sync.applySnapshot(env.seq, snap);
+        this.opts.onEvent?.({ kind: "synced", ticker: snap.market_ticker });
         return;
       }
-      if (res.ok) this.opts.onEvent?.({ kind: "delta_applied", seq: env.seq });
+      if (env.type === "orderbook_delta" && env.seq !== undefined && env.msg) {
+        const res = this.sync.applyDelta(env.seq, normalizeDelta(env.msg));
+        if (!res.ok && res.reason === "seq_gap") {
+          this.opts.onEvent?.({ kind: "gap_halt", expectedSeq: res.expectedSeq, gotSeq: res.gotSeq });
+          // Halt discipline: this exact socket is now untrusted.
+          this.ws?.close(); // onclose triggers reconnect -> resubscribe -> fresh snapshot
+          return;
+        }
+        if (res.ok) this.opts.onEvent?.({ kind: "delta_applied", seq: env.seq });
+      }
+    } catch {
+      // Off-pinned-shape wire data is a desync, same class as a seq gap:
+      // never guess a book from it — drop the socket and resync.
+      this.opts.onEvent?.({ kind: "gap_halt" });
+      this.ws?.close();
     }
   }
 }

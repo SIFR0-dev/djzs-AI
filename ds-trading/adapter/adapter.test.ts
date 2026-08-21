@@ -30,20 +30,34 @@ test("parseFixed is exact and refuses junk or lost precision", () => {
 
 // ---------- wire normalization (both shapes) ----------
 
-test("normalize handles 2026 dollars shape and legacy cents shape", () => {
-  const snapNew = normalizeSnapshot({
-    market_ticker: "T",
-    yes_dollars: [["0.6100", "400.00"]],
-    no_dollars: [],
+test("normalize matches the PINNED live wire shape (2026-08-21 demo socket)", () => {
+  // Verbatim field layout from the live pin: yes_dollars_fp/no_dollars_fp.
+  const snap = normalizeSnapshot({
+    market_ticker: "KXMARMAD-27-DUKE",
+    market_id: "d7c07e00-8944-4741-997e-11975ad0a48c",
+    yes_dollars_fp: [["0.0010", "4736.00"], ["0.0300", "37.77"]],
+    no_dollars_fp: [["0.8500", "175555.38"]],
   });
-  assert.deepEqual(snapNew.yes, [[6100, 40000]]);
-  const snapOld = normalizeSnapshot({ market_ticker: "T", yes: [[61, 400]] });
-  assert.deepEqual(snapOld.yes, [[6100, 40000]]);
+  assert.deepEqual(snap.yes, [[10, 473600], [300, 3777]]);
+  assert.deepEqual(snap.no, [[8500, 17555538]]);
+  // Empty books omit the arrays entirely (live-observed).
+  const empty = normalizeSnapshot({ market_ticker: "T", market_id: "x" });
+  assert.deepEqual(empty.yes, []);
+  assert.deepEqual(empty.no, []);
 
-  const dNew = normalizeDelta({ market_ticker: "T", price_dollars: "0.4500", delta_fp: "-2.50", side: "no" });
-  assert.deepEqual(dNew, { market_ticker: "T", priceE4: 4500, deltaQtyE2: -250, side: "no" });
-  const dOld = normalizeDelta({ market_ticker: "T", price: 45, delta: -2, side: "no" });
-  assert.deepEqual(dOld, { market_ticker: "T", priceE4: 4500, deltaQtyE2: -200, side: "no" });
+  const d = normalizeDelta({
+    market_ticker: "KXMAXSHARDINGTEST-26AUG2818-T59499.99",
+    market_id: "642972c3-a29f-4022-81df-fb03ef65dc50",
+    price_dollars: "0.9700", delta_fp: "-1.00", side: "yes",
+    ts: "2026-08-21T22:15:56.84145Z", ts_ms: 1787350556841,
+  });
+  assert.deepEqual(d, {
+    market_ticker: "KXMAXSHARDINGTEST-26AUG2818-T59499.99",
+    priceE4: 9700, deltaQtyE2: -100, side: "yes",
+  });
+  // The legacy-cents branch is DELETED: off-shape deltas throw (halt+resync).
+  assert.throws(() => normalizeDelta({ market_ticker: "T", price: 45, delta: -2, side: "no" }));
+  assert.throws(() => normalizeDelta({ market_ticker: "T", price_dollars: "0.4500", delta_fp: "-1.00", side: "maybe" }));
 });
 
 // ---------- orderbook-sync ----------
@@ -121,12 +135,12 @@ test("feed halts on gap, drops socket, resubscribes, re-syncs on snapshot", asyn
   assert.equal(s1.sent.length, 1);
   assert.match(s1.sent[0]!, /orderbook_delta/);
 
-  s1.push({ type: "orderbook_snapshot", sid: 1, seq: 1, msg: { market_ticker: "T", yes: [[40, 10]] } });
-  s1.push({ type: "orderbook_delta", sid: 1, seq: 2, msg: { market_ticker: "T", price: 40, delta: 5, side: "yes" } });
+  s1.push({ type: "orderbook_snapshot", sid: 1, seq: 1, msg: { market_ticker: "T", market_id: "m1", yes_dollars_fp: [["0.4000", "10.00"]] } });
+  s1.push({ type: "orderbook_delta", sid: 1, seq: 2, msg: { market_ticker: "T", market_id: "m1", price_dollars: "0.4000", delta_fp: "5.00", side: "yes" } });
   assert.equal(feed.sync.status, "SYNCED");
 
   // gap: seq jumps 2 -> 4
-  s1.push({ type: "orderbook_delta", sid: 1, seq: 4, msg: { market_ticker: "T", price: 40, delta: 1, side: "yes" } });
+  s1.push({ type: "orderbook_delta", sid: 1, seq: 4, msg: { market_ticker: "T", market_id: "m1", price_dollars: "0.4000", delta_fp: "1.00", side: "yes" } });
   assert.equal(s1.closed, true, "gap must drop the socket");
 
   // allow the reconnect timer to fire
@@ -136,7 +150,7 @@ test("feed halts on gap, drops socket, resubscribes, re-syncs on snapshot", asyn
   s2.open();
   assert.match(s2.sent[0]!, /subscribe/, "must resubscribe on the new socket");
 
-  s2.push({ type: "orderbook_snapshot", sid: 2, seq: 1, msg: { market_ticker: "T", yes: [[41, 3]] } });
+  s2.push({ type: "orderbook_snapshot", sid: 2, seq: 1, msg: { market_ticker: "T", market_id: "m1", yes_dollars_fp: [["0.4100", "3.00"]] } });
   assert.equal(feed.sync.status, "SYNCED");
   assert.deepEqual(feed.sync.levels("T", "yes"), [[4100, 300]]);
   assert.ok(events.includes("gap_halt"));
