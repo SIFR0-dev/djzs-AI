@@ -7,3 +7,6 @@
 2026-08-20T23:02:39Z DEPENDABOT_TRIAGE_P1_CORRECTED root=101_walletconnect_reown trust_mcp=24_sharp_libvips_toolside subgraph=17_1critical note=supersedes_2247Z_attribution
 2026-08-20T23:02:39Z DEPENDABOT_TRIAGE_FINAL critical_pkg=axios advisory=GHSA-wf5p-g6vw-rhxx location=djzs-subgraph context=build_tooling_cli class_inapplicable=no_browser_credential_model payment_path=UNINDICTED queue=hygiene_batch_post_probe
 2026-08-20T23:20:38Z BAZAAR_SCAN total=15156 listing_found=0
+2026-08-22T21:58:32Z BAZAAR_SCAN total=15187 listing_found=0
+2026-08-22T21:59:01Z BAZAAR_SCAN total=15187 listing_found=0
+2026-08-22T21:59:01Z BAZAAR_ADJUDICATION_T48H verdict=NOT_INDEXED catalog_total=15187 grew_plus31_over_window lag_hypothesis=dead cross_vantage=claude_T2h_15156_15152_T48h_15187_15187_all_found0 reproduction=COMPLETE eliminates=2112_payee_linkage_hypothesis filing=operator_discretion
