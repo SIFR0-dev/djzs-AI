@@ -10,3 +10,5 @@
 2026-08-22T21:58:32Z BAZAAR_SCAN total=15187 listing_found=0
 2026-08-22T21:59:01Z BAZAAR_SCAN total=15187 listing_found=0
 2026-08-22T21:59:01Z BAZAAR_ADJUDICATION_T48H verdict=NOT_INDEXED catalog_total=15187 grew_plus31_over_window lag_hypothesis=dead cross_vantage=claude_T2h_15156_15152_T48h_15187_15187_all_found0 reproduction=COMPLETE eliminates=2112_payee_linkage_hypothesis filing=operator_discretion
+2026-08-22T23:09:27Z RESTORED original_ts=2026-08-20T23:23:49Z EPOCH_NOTE scan_2303Z_was_T+40min_not_24h commit_4cd1ae0_label_corrected
+2026-08-22T23:09:27Z RESTORED original_ts=2026-08-20T23:23:49Z CATALOG_CHURN_OBSERVED total_fluctuated_down_midscan_15156_15153_15155 eviction_confirmed hypotheses=ttl_or_activity_persistence,nonatomic_offset_scan
