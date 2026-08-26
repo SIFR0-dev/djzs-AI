@@ -143,4 +143,128 @@ x402scan: wallet-signature listing signed by the treasury key — the strongest 
 
 One ledger entry per step with: artifact sha256, command run, output captured, tx hashes where applicable. Everything stays DRAFT-UNVERIFIED until its evidence line exists. The listing claim ("djzs.ai is in the Bazaar") is not made anywhere public until Probe C returns present.
 
+## STEP 10 — ENRICHMENT (discovery surfaces on the resource host)
+
+Added 2026-08-25. Status: DRAFT-UNVERIFIED until the post-deploy probes below are logged.
+
+### The hypothesis being tested
+
+The listing satisfies every documented condition for indexing — CDP facilitator settlement,
+discovery extension registered and emitted, CDP-linked payee — and was still not indexed at
+T+5d (see the NOT_INDEXED adjudication in EVIDENCE.log). One variable on our side remained
+untested: facilitator metadata-enrichment engines are documented, for at least one production
+facilitator, to probe the MERCHANT DOMAIN on roughly a daily cycle for `llms.txt`, agent
+well-knowns, and OpenGraph fields. The apex `djzs.ai` carries the manifest; the resource host
+`mcp.djzs.ai` carried none of them. `src/discovery-surfaces.ts` closes that gap.
+
+Whether CDP's pipeline probes at all is HYPOTHESIS-GRADE and must not be written up as
+established. The change is zero-regret either way: these four surfaces are pure gain for
+x402scan, the 402 Index, B402, and any indexer that arrives later. A negative result is
+also a result — if the listing is still absent at T+7d with the surfaces live and served,
+enrichment-probe starvation is eliminated as the explanation and the next hypothesis moves up.
+
+### The four surfaces
+
+| Path | Content-type | What it carries |
+|---|---|---|
+| `/llms.txt` | `text/plain; charset=utf-8` | llmstxt.org-convention prose: what the gate does, the paid endpoint, price/network/asset/payTo, the money-behaviour contract, the 2026-08-20 production receipt. |
+| `/.well-known/x402.json` | `application/json; charset=utf-8` | Host-local manifest mirror: resource, accepts[], full input bodySchema, output example. `maxAmountRequired` is emitted alongside `amount` because legacy catalogs read the older name. |
+| `/.well-known/agent-card.json` (alias `/.well-known/agent.json`) | `application/json; charset=utf-8` | A2A-style capability descriptor. DRAFT-UNVERIFIED against the current A2A schema — verify field names before relying on it for interop; harmless as a breadcrumb regardless. |
+| `/` | `text/html; charset=utf-8` | OpenGraph landing. **NOT MOUNTED on this deployment** — see below. |
+
+**Root landing is OFF.** `index.ts` already claims `/` for its operational-status JSON
+(`{name, version, status:"operational"}`), which is load-bearing for anything already probing
+the host root. `SERVE_ROOT_LANDING = false`, so `handleDiscoverySurfaces` returns null for `/`
+and the existing handler answers. The OG html is written and dormant; freeing `/` and flipping
+the flag is the entire change if that is ever wanted. OG enrichment therefore remains UNTESTED
+by this deploy — only three of the four surfaces are live.
+
+### No drift by construction
+
+Every price, address, network and URL in `discovery-surfaces.ts` is imported from
+`http-x402-bazaar.v2.ts`. The advertised manifest cannot disagree with the live 402 challenge,
+because a change to the route changes both in the same compile. Note the import is
+`EXPECTED_ATOMIC_AMOUNT as PRICE_ATOMIC` — the module was drafted against a `PRICE_ATOMIC`
+export that does not exist; aliasing at the import preserves the no-drift property rather than
+introducing a second literal.
+
+### Pre-deploy gates
+
+    grep -c 'DJZS_SENTINEL: discovery-surfaces.v1' src/discovery-surfaces.ts   # 1
+    grep -c 'handleDiscoverySurfaces(c.req.raw)' src/index.ts                  # 1
+    grep -c '0xc1923748669dFC3a79497d0403A90a275161eCCA' src/discovery-surfaces.ts   # 0
+
+The third gate is the point: zero literal treasury addresses proves the module imports its
+money constants instead of restating them. Companion gates, all of which must also print 0:
+
+    grep -c '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' src/discovery-surfaces.ts   # 0
+    grep -c '"2000000"' src/discovery-surfaces.ts                                    # 0
+    grep -c 'eip155:8453' src/discovery-surfaces.ts                                  # 0
+
+Plus a clean typecheck (`npx tsc --noEmit -p tsconfig.json`, exit 0). Confirm the module is
+actually in scope rather than silently excluded:
+
+    npx tsc --noEmit -p tsconfig.json --listFiles | grep -c discovery-surfaces.ts   # 1
+
+Mount ordering is not greppable beyond the callsite count. It is positional: `app.use("*")`
+must stay above `app.all("/mcp")`, because Hono dispatches in registration order. The handler
+returns null for every path it does not own and for every non-GET/HEAD method, so it cannot
+shadow `/mcp`, `/health/x402`, `/x402/verify`, or `/x402/verify_pm_trade`.
+
+### Post-deploy probes
+
+Run after DJ deploys. Each must be logged in EVIDENCE.log with its output.
+
+**Probe E1 — surfaces answer 200 with the right content-type.**
+
+    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/llms.txt
+    # expect: 200 text/plain; charset=utf-8
+
+    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/.well-known/x402.json
+    # expect: 200 application/json; charset=utf-8
+
+    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/.well-known/agent-card.json
+    # expect: 200 application/json; charset=utf-8
+
+    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/
+    # expect: 200 application/json — the PRE-EXISTING status JSON, not the landing page.
+    # SERVE_ROOT_LANDING is false on this deployment. text/html here means the flag
+    # was flipped without freeing the route, and the status JSON has been shadowed.
+
+Confirm the three new surfaces are served by this module and not by something else:
+
+    curl -sS -D- -o /dev/null https://mcp.djzs.ai/llms.txt | grep -i 'x-djzs-surface'
+    # expect: x-djzs-surface: discovery
+
+**Probe E2 — the manifest agrees with the live 402 challenge.**
+
+This is the probe that would catch a drift the greps cannot: it compares what we advertise
+against what the route actually charges, across the network rather than in source.
+
+    MAN=$(curl -sS https://mcp.djzs.ai/.well-known/x402.json)
+    CHAL=$(curl -sS -X POST https://mcp.djzs.ai/x402/verify_pm_trade -d '')
+
+    echo "$MAN"  | jq -r '.resources[0].accepts[0].payTo'
+    echo "$CHAL" | jq -r '.accepts[0].payTo'
+    # must be byte-identical, and must equal 0xc1923748669dFC3a79497d0403A90a275161eCCA
+
+    echo "$MAN"  | jq -r '.resources[0].accepts[0].amount'
+    echo "$CHAL" | jq -r '.accepts[0].amount'
+    # must be byte-identical, and must equal 2000000
+
+    echo "$MAN"  | jq -r '.resources[0].accepts[0].network'
+    echo "$CHAL" | jq -r '.accepts[0].network'
+    # must be byte-identical, and must equal eip155:8453
+
+A mismatch on any of the three means the manifest and the route have diverged despite the
+shared import — treat it as a deploy fault and do not list until it reconciles. Note the
+challenge POST carries an empty body deliberately: the route issues the 402 before reading
+the body, so no intent is needed and nothing is charged.
+
+**Probe E3 — enrichment outcome, T+48h and T+7d after Step 10 ships.**
+
+Re-run the Step 8 catalog scan. Record present/absent with the scan size, exactly as the
+earlier adjudications do. If still absent at T+7d, log enrichment-probe starvation as
+ELIMINATED and move to the next hypothesis. Do not quietly drop the negative.
+
 END_TRANSMISSION. //

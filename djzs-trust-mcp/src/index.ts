@@ -9,6 +9,7 @@ import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
 import { handleX402VerifyPmTrade, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
+import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
 import { registerExactEvmScheme } from "@x402/evm/exact/server"
 import {
@@ -381,6 +382,28 @@ function buildServer(env: Env): McpServer {
 }
 
 const app = new Hono<{ Bindings: Env }>()
+
+/**
+ * Agent-facing discovery surfaces — MOUNTED FIRST, before every other route.
+ *
+ * Hono dispatches in registration order, so "first" here is positional, not
+ * decorative: this must stay above app.all("/mcp") or a later-registered route
+ * would win the match for any path they share.
+ *
+ * It cannot shadow anything. handleDiscoverySurfaces owns exactly three paths
+ * (/llms.txt, /.well-known/x402.json, /.well-known/agent-card.json plus the
+ * /agent.json alias) and returns null for everything else, including "/" — which
+ * this deployment already claims for the operational-status JSON below, so
+ * SERVE_ROOT_LANDING is false. A null falls through to next() untouched.
+ *
+ * Read-only: non-GET/HEAD methods return null, so POST /x402/verify_pm_trade
+ * and app.all("/mcp") are unreachable from here regardless of path.
+ */
+app.use("*", async (c, next) => {
+  const d = handleDiscoverySurfaces(c.req.raw)
+  if (d) return d
+  return next()
+})
 // Per-request MCP server so verify_pm_trade's handler can read the ANTHROPIC_API_KEY
 // secret from c.env. Streamable-HTTP transport via @hono/mcp (the stable, documented
 // MCP-over-Hono adapter): build server → connect transport → handleRequest(c).
