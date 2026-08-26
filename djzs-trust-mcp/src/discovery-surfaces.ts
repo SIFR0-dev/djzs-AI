@@ -36,17 +36,31 @@ import {
 // ------------------------------------------------------------------
 // Config
 // ------------------------------------------------------------------
-// Root landing is served ONLY if nothing else in the router claims "/".
-// VERIFIED AT INTEGRATION (2026-08-25): "/" IS TAKEN. index.ts registers
-//   app.get("/", (c) => c.json({ name: "djzs-trust-mcp", version, status: "operational" }))
-// as its liveness surface. That JSON is load-bearing for anything already probing
-// the host root, so the landing page does not take the path — this flag is false
-// and handleDiscoverySurfaces returns null for "/", letting the existing handler
-// answer. The other three surfaces ship unaffected.
+// Root landing is CONTENT-NEGOTIATED at "/". It does not claim the path.
 //
-// If "/" is ever freed, flipping this to true is the whole change: the OG landing
-// html is written and waiting below.
-export const SERVE_ROOT_LANDING = false;
+// "/" IS TAKEN (verified at integration 2026-08-25): index.ts registers
+//   app.get("/", (c) => c.json({ name: "djzs-trust-mcp", version, status: "operational" }))
+// as its liveness surface, and that JSON is load-bearing for anything already
+// probing the host root. So the default at "/" is unchanged and is never
+// shadowed: handleDiscoverySurfaces returns null for "/" and the existing
+// handler answers.
+//
+// The ONE exception is a caller that explicitly announces text/html in its
+// Accept header — a browser, or an enrichment engine fetching OpenGraph. Those
+// get the landing; everyone else, including every JSON prober, gets the status
+// JSON exactly as before. Crucially `Accept: */*` — curl's default, and what
+// most machine probers send — does NOT count as announcing html. Neither does
+// an absent or empty Accept. The negotiated response carries `Vary: Accept` so
+// an edge cache cannot serve a browser's html to the next JSON prober.
+//
+// Nearly additive, but not strictly — and the exception is worth knowing. Any
+// caller that already sent a browser-shaped Accept to "/" now gets html where it
+// used to get the status JSON. Uptime monitors are the realistic case: several
+// send `Accept: text/html,...` to look like a browser, and one asserting on
+// `application/json` or on a body field would start failing at this deploy. If a
+// monitor watches the host root, either point it at /health/x402 (which is what
+// it should have been watching) or set its Accept to application/json.
+export const NEGOTIATE_ROOT_LANDING = true;
 
 export const HOST = "https://mcp.djzs.ai" as const;
 export const APEX = "https://djzs.ai" as const;
@@ -223,7 +237,9 @@ function agentCard(): unknown {
 }
 
 // ------------------------------------------------------------------
-// / — OpenGraph landing. Enrichment engines pull title/description here.
+// / (negotiated) and /index.html — OpenGraph landing. Enrichment engines pull
+// title/description here. See NEGOTIATE_ROOT_LANDING: at "/" this is served only
+// to callers that explicitly announce text/html; /index.html serves it outright.
 // og:image deliberately omitted: a fabricated or 404 image URL is worse than none.
 // ------------------------------------------------------------------
 function landingHtml(): string {
@@ -330,21 +346,61 @@ export function handleDiscoverySurfaces(request: Request): Response | null {
   if (path === "/.well-known/agent-card.json" || path === "/.well-known/agent.json") {
     return json(agentCard());
   }
-  if (SERVE_ROOT_LANDING && (path === "/" || path === "/index.html")) {
-    return text(landingHtml(), "text/html; charset=utf-8");
+  // /index.html is unclaimed and is itself an explicit request for html, so it
+  // serves the landing outright — no header games needed to see the page, and
+  // nothing to shadow. NEGOTIATE_ROOT_LANDING governs "/" only.
+  if (path === "/index.html") {
+    return text(landingHtml(), HTML_CONTENT_TYPE);
   }
+
+  // "/" is claimed by index.ts's status JSON. Hand back the landing ONLY to a
+  // caller that explicitly announced html; otherwise return null and let the
+  // existing handler answer. Vary: Accept is not optional here — without it a
+  // shared cache can hand a browser's html to the next JSON prober.
+  if (NEGOTIATE_ROOT_LANDING && path === "/" && acceptsHtml(request)) {
+    return text(landingHtml(), HTML_CONTENT_TYPE, { vary: "Accept" });
+  }
+
   return null;
 }
 
-const CACHE = "public, max-age=300";
+/**
+ * Does this request explicitly announce text/html?
+ *
+ * Word-boundary, case-insensitive. Deliberately NOT a wildcard match: a bare
+ * wildcard Accept — curl's default, and what most machine probers send — is
+ * false, which is the whole point. Announcing "anything" is not announcing html,
+ * and treating it as such would shadow the status JSON for exactly the callers
+ * that need it. An absent or empty Accept is likewise false and falls through.
+ *
+ * The literal has no /g flag: a global regex carries lastIndex between calls and
+ * would make this return alternating answers for identical requests.
+ */
+const HTML_ACCEPT = /\btext\/html\b/i;
 
-function text(body: string, contentType: string): Response {
+function acceptsHtml(request: Request): boolean {
+  const accept = request.headers.get("accept");
+  if (!accept) return false;
+  return HTML_ACCEPT.test(accept);
+}
+
+const CACHE = "public, max-age=300";
+const HTML_CONTENT_TYPE = "text/html; charset=utf-8" as const;
+
+/**
+ * `extra` is merged last so a negotiated response can add `Vary: Accept` without
+ * a second near-identical helper. Everything this module serves is cacheable and
+ * carries the x-djzs-surface marker, which is what post-deploy probe E1 greps for
+ * to prove these paths are answered here and not by some other route.
+ */
+function text(body: string, contentType: string, extra: Record<string, string> = {}): Response {
   return new Response(body, {
     status: 200,
     headers: {
       "content-type": contentType,
       "cache-control": CACHE,
       "x-djzs-surface": "discovery",
+      ...extra,
     },
   });
 }

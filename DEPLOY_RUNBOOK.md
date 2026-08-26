@@ -163,6 +163,25 @@ x402scan, the 402 Index, B402, and any indexer that arrives later. A negative re
 also a result — if the listing is still absent at T+7d with the surfaces live and served,
 enrichment-probe starvation is eliminated as the explanation and the next hypothesis moves up.
 
+The OG landing is now reachable — negotiated at `/`, unconditional at `/index.html` — so all
+three targets an enrichment engine is documented to fetch (`llms.txt`, the agent well-knowns,
+OpenGraph metadata) are served, where before the root surface was dark. That widens what a
+T+7d negative can eliminate, but READ THE NEXT PARAGRAPH BEFORE WRITING "ELIMINATED".
+
+The coverage is conditional, and the condition is this section's own premise. The root serves
+OG only to callers matching `\btext\/html\b`; `Accept: */*` and an absent `Accept` both fall
+through to the status JSON, which carries no `og:*` tags at all. Those are the default shapes
+of curl, Python `requests`, Node's global fetch, and Go's `net/http` — i.e. the most likely
+shape of a backend crawler. This runbook classifies the enrichment probe as HYPOTHESIS-GRADE
+at the top of this step precisely because its request shape is unknown; it follows that we do
+not know whether it announces html, and therefore do not know whether it is being served OG
+at `/` at all. `/index.html` does not close the gap — nothing documents an engine probing that
+path, and the landing's own `canonical` and `og:url` both point back at `/`.
+
+So a T+7d null eliminates enrichment starvation IN FULL **for html-announcing probers**, and
+leaves it OPEN for wildcard and no-Accept probers. Write that, not a bare "ELIMINATED".
+Probe E3 below carries the extra step needed to close the remaining half.
+
 ### The four surfaces
 
 | Path | Content-type | What it carries |
@@ -170,14 +189,34 @@ enrichment-probe starvation is eliminated as the explanation and the next hypoth
 | `/llms.txt` | `text/plain; charset=utf-8` | llmstxt.org-convention prose: what the gate does, the paid endpoint, price/network/asset/payTo, the money-behaviour contract, the 2026-08-20 production receipt. |
 | `/.well-known/x402.json` | `application/json; charset=utf-8` | Host-local manifest mirror: resource, accepts[], full input bodySchema, output example. `maxAmountRequired` is emitted alongside `amount` because legacy catalogs read the older name. |
 | `/.well-known/agent-card.json` (alias `/.well-known/agent.json`) | `application/json; charset=utf-8` | A2A-style capability descriptor. DRAFT-UNVERIFIED against the current A2A schema — verify field names before relying on it for interop; harmless as a breadcrumb regardless. |
-| `/` | `text/html; charset=utf-8` | OpenGraph landing. **NOT MOUNTED on this deployment** — see below. |
+| `/` (negotiated) and `/index.html` | `text/html; charset=utf-8` | OpenGraph landing: title, description, og:* and twitter:* tags, canonical. Served at `/` **only** to callers announcing `text/html`; every other caller still gets the pre-existing status JSON. `/index.html` serves it unconditionally. |
 
-**Root landing is OFF.** `index.ts` already claims `/` for its operational-status JSON
-(`{name, version, status:"operational"}`), which is load-bearing for anything already probing
-the host root. `SERVE_ROOT_LANDING = false`, so `handleDiscoverySurfaces` returns null for `/`
-and the existing handler answers. The OG html is written and dormant; freeing `/` and flipping
-the flag is the entire change if that is ever wanted. OG enrichment therefore remains UNTESTED
-by this deploy — only three of the four surfaces are live.
+**Root landing is CONTENT-NEGOTIATED, not mounted.** `index.ts` claims `/` for its
+operational-status JSON (`{name, version, status:"operational"}`), which is load-bearing for
+anything already probing the host root, and that default is unchanged and never shadowed.
+`NEGOTIATE_ROOT_LANDING = true` adds exactly one exception: a caller that explicitly announces
+`text/html` in its `Accept` header — a browser, or an enrichment engine fetching OpenGraph —
+receives the landing instead. Everyone else, including every JSON prober, gets the status JSON
+byte-for-byte as before.
+
+`Accept: */*` deliberately does NOT count as announcing html. That is curl's default and what
+most machine probers send; treating a wildcard as an html request would shadow the status JSON
+for precisely the callers that depend on it. An absent or empty `Accept` likewise falls
+through to JSON. `/index.html` is unclaimed and serves the landing unconditionally — the
+escape hatch for viewing the page without header games.
+
+The negotiated response carries `Vary: Accept` alongside its `cache-control`. This is not
+decorative: without it a shared or edge cache that stored the browser's html keyed on URL
+alone will hand that html to the next JSON prober, silently breaking the liveness surface for
+everything downstream. If you change the root branch, keep the `Vary`.
+
+All four surfaces are now live. OG enrichment is therefore exercised by this deploy FOR
+CALLERS THAT ANNOUNCE HTML — not unconditionally. A prober sending `Accept: */*` or no Accept
+still receives the status JSON at `/` and sees no OpenGraph. Do not write up this deploy as
+having tested OG enrichment generally.
+
+`index.ts` was not modified for this change — the middleware already runs first and already
+falls through on null, so the entire negotiation lives in `handleDiscoverySurfaces`.
 
 ### No drift by construction
 
@@ -226,15 +265,43 @@ Run after DJ deploys. Each must be logged in EVIDENCE.log with its output.
     curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/.well-known/agent-card.json
     # expect: 200 application/json; charset=utf-8
 
-    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/
-    # expect: 200 application/json — the PRE-EXISTING status JSON, not the landing page.
-    # SERVE_ROOT_LANDING is false on this deployment. text/html here means the flag
-    # was flipped without freeing the route, and the status JSON has been shadowed.
+The root is negotiated, so it takes TWO probes — one for each side of the branch. Both must
+pass; either one alone proves nothing.
 
-Confirm the three new surfaces are served by this module and not by something else:
+    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' -H 'Accept: text/html' https://mcp.djzs.ai/
+    # expect: 200 text/html; charset=utf-8
+    # application/json here means the negotiation is not reaching the landing at all
+    # and OG enrichment is still dark despite the flag.
+
+    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/
+    # expect: 200 application/json — the PRE-EXISTING status JSON, unshadowed.
+    # curl sends Accept: */* by default, which must NOT match. text/html here is a
+    # REGRESSION: the wildcard is being treated as an html request and every JSON
+    # prober hitting the host root is now getting a web page.
+
+    curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mcp.djzs.ai/index.html
+    # expect: 200 text/html; charset=utf-8 — unconditional, no Accept header needed.
+
+The negotiated response must advertise that it varies, or an edge cache will serve one
+caller's answer to the other:
+
+    curl -sS -D- -o /dev/null -H 'Accept: text/html' https://mcp.djzs.ai/ | grep -i '^vary:'
+    # expect: Vary: Accept
+    # MISSING THIS IS A DEPLOY BLOCKER. Without it a shared cache keyed on URL alone
+    # can serve the html to a JSON prober, breaking the liveness surface downstream.
+
+Confirm the surfaces are served by this module and not by something else. Every response
+this module emits carries the marker; the status JSON at `/` does not, which is exactly what
+makes it a usable discriminator at the negotiated root:
 
     curl -sS -D- -o /dev/null https://mcp.djzs.ai/llms.txt | grep -i 'x-djzs-surface'
     # expect: x-djzs-surface: discovery
+
+    curl -sS -D- -o /dev/null -H 'Accept: text/html' https://mcp.djzs.ai/ | grep -i 'x-djzs-surface'
+    # expect: x-djzs-surface: discovery   (the landing, from this module)
+
+    curl -sS -D- -o /dev/null https://mcp.djzs.ai/ | grep -ci 'x-djzs-surface'
+    # expect: 0   (the status JSON, from index.ts — this module never answered)
 
 **Probe E2 — the manifest agrees with the live 402 challenge.**
 
@@ -262,6 +329,20 @@ challenge POST carries an empty body deliberately: the route issues the 402 befo
 the body, so no intent is needed and nothing is charged.
 
 **Probe E3 — enrichment outcome, T+48h and T+7d after Step 10 ships.**
+
+BEFORE any elimination is written, capture what the probers actually send. The negotiation
+makes the root's OG coverage conditional on `Accept`, so the observed header is the difference
+between an elimination and a false one. Read the Workers request logs (or add a counter on the
+`/` branch) and record, for every non-browser fetch of `/`:
+
+  - the `User-Agent`,
+  - the exact `Accept` string, or its absence,
+  - which branch answered (the landing carries `x-djzs-surface: discovery`; the status JSON
+    does not — that header is the discriminator).
+
+If no non-browser fetch of `/` announced html, then OG was never delivered to a crawler and
+the hypothesis is NOT eliminated regardless of the catalog result — log it as still open and
+consider widening the branch on `User-Agent` for known OG fetchers rather than on `Accept`.
 
 Re-run the Step 8 catalog scan. Record present/absent with the scan size, exactly as the
 earlier adjudications do. If still absent at T+7d, log enrichment-probe starvation as
