@@ -328,6 +328,116 @@ shared import — treat it as a deploy fault and do not list until it reconciles
 challenge POST carries an empty body deliberately: the route issues the 402 before reading
 the body, so no intent is needed and nothing is charged.
 
+### The instrument (telemetry)
+
+Until this step there was nothing capturing request shapes, so the E3 branches below could
+not be told apart — they are keyed on observations nothing was making. `schema/gate-telemetry.sql`
+and the recorder in `src/index.ts` are that instrument.
+
+Apply the schema before deploying the worker (operator-side, idempotent):
+
+    wrangler d1 execute djzs-gate-telemetry --remote --file djzs-trust-mcp/schema/gate-telemetry.sql
+
+`surface_fetch` gets one row per request to any of the six enrichment paths, written through
+`waitUntil` and wrapped so a D1 failure can never delay or alter a response. `bazaar_scan` gets
+one row per daily cron fire (09:37 UTC), including on failure.
+
+NO IP ADDRESS IS RECORDED — not raw, not hashed. Request shape (User-Agent, Accept, method,
+path) plus coarse country/ASN only. That is everything the E3 question needs and nothing more.
+
+EVERY caller is recorded, browser or not. The browser/non-browser split happens at QUERY time
+because it is a HEURISTIC, and heuristics must stay revisable after the data is in hand.
+
+### The E3 branches, as pre-committed
+
+Recorded in EVIDENCE.log at 2026-08-26T01:56:46Z, `note=named_before_any_data_seen` — named
+before any observation existed, so the reading cannot be fitted to the result. Verbatim:
+
+    branchA = html_announcing_nonbrowser_fetch_observed
+              -> scoped_elimination_valid
+    branchB = nonbrowser_fetches_none_announcing_html
+              -> widen_on_user_agent_redeploy_restart_clock_no_elimination
+    branchC = no_nonbrowser_fetch_of_root_at_all
+              -> enrichment_falsified_at_probe_step_lever_dead_with_evidence
+
+In plain terms: **A** — something non-browser fetched `/` and announced html, so it was served
+OG and the scoped elimination holds. **B** — non-browser fetches happened but none announced
+html, so the `Accept` predicate is the wrong gate: widen on User-Agent, redeploy, restart the
+clock, and claim NO elimination. **C** — nothing non-browser ever fetched `/` at all, so the
+enrichment probe does not happen and the whole lever is dead; that is a falsification with
+evidence, not an inconclusive.
+
+### Reading the instrument
+
+**Run this FIRST, and actually read it.** The browser/non-browser split is a heuristic and the
+queries after it encode one. Do not skip to them.
+
+    wrangler d1 execute djzs-gate-telemetry --remote --command "
+      SELECT path, branch, user_agent, accept, COUNT(*) AS n,
+             MIN(ts) AS first_seen, MAX(ts) AS last_seen
+      FROM surface_fetch
+      GROUP BY path, branch, user_agent, accept
+      ORDER BY n DESC;"
+
+Eyeball the distinct `user_agent` / `accept` pairs yourself. A `LIKE '%Mozilla%'` predicate is
+a guess, not a fact: headless Chrome, many crawlers, and several monitoring services all send
+browser-shaped User-Agents, and some backend clients send none at all. The branch you pick is
+only as good as your reading of this list. If a User-Agent is ambiguous, treat it as ambiguous
+and say so in the evidence line rather than letting a predicate decide.
+
+`accept` being NULL is itself a signal, not missing data: Go's `net/http` sends no Accept header,
+and that caller cannot ever reach the landing under the current predicate.
+
+**Branch C test — did any non-browser fetch `/` at all?**
+
+    wrangler d1 execute djzs-gate-telemetry --remote --command "
+      SELECT COUNT(*) AS nonbrowser_root_fetches
+      FROM surface_fetch
+      WHERE path = '/'
+        AND (user_agent IS NULL OR user_agent NOT LIKE '%Mozilla%');"
+
+Zero, over a full T+7d window with the surfaces live, is branch C: nothing probes the root, the
+enrichment hypothesis is falsified at the probe step, and the lever is dead WITH evidence.
+
+**Branch A vs B — of those non-browser fetches, did any announce html?**
+
+    wrangler d1 execute djzs-gate-telemetry --remote --command "
+      SELECT branch, COUNT(*) AS n
+      FROM surface_fetch
+      WHERE path = '/'
+        AND (user_agent IS NULL OR user_agent NOT LIKE '%Mozilla%')
+      GROUP BY branch;"
+
+`branch = 'landing'` rows are non-browser callers that announced html and WERE served OG —
+any such row is branch A, and the scoped elimination is valid. Only `branch = 'status'` rows,
+with none landing, is branch B: the predicate gated out every real prober, so widen the branch
+on User-Agent for known OG fetchers, redeploy, restart the clock, and record NO elimination.
+
+To see exactly who those callers were before deciding:
+
+    wrangler d1 execute djzs-gate-telemetry --remote --command "
+      SELECT ts, branch, user_agent, accept, cf_asn
+      FROM surface_fetch
+      WHERE path = '/'
+        AND (user_agent IS NULL OR user_agent NOT LIKE '%Mozilla%')
+      ORDER BY ts DESC LIMIT 50;"
+
+### Reading the scans
+
+    wrangler d1 execute djzs-gate-telemetry --remote --command "
+      SELECT ts, total, pages, found, error
+      FROM bazaar_scan
+      ORDER BY ts DESC LIMIT 14;"
+
+One row per day. `found = 1` ends the investigation — read `detail` for the matched entries:
+
+    wrangler d1 execute djzs-gate-telemetry --remote --command "
+      SELECT ts, detail FROM bazaar_scan WHERE found = 1 ORDER BY ts DESC LIMIT 1;"
+
+A row with `error` set is a FAILED scan, not a negative observation — do not count it as
+evidence of absence. A MISSING row for a day means the cron did not fire at all; check the
+Worker's cron logs before treating that day as covered.
+
 **Probe E3 — enrichment outcome, T+48h and T+7d after Step 10 ships.**
 
 BEFORE any elimination is written, capture what the probers actually send. The negotiation

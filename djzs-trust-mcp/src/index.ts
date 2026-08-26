@@ -1,13 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StreamableHTTPTransport } from "@hono/mcp"
 import { Hono } from "hono"
+import type { Context, ExecutionContext } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
-import { handleX402VerifyPmTrade, type X402Env } from "./http-x402-bazaar.v2"
+import { handleX402VerifyPmTrade, PAY_TO, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
@@ -100,6 +101,24 @@ interface Env {
    * the route at a different facilitator without a code change.
    */
   FACILITATOR_URL?: string
+  /**
+   * D1 telemetry database (wrangler binding TELEMETRY, db djzs-gate-telemetry).
+   * OPTIONAL by design: absent binding => recording silently no-ops and every
+   * surface still answers. Telemetry is never load-bearing for a response.
+   *
+   * Typed structurally rather than as D1Database because tsconfig sets
+   * `"types": ["node"]`, so @cloudflare/workers-types globals are not in scope;
+   * pulling them in to name one type would change global typings project-wide.
+   * This describes exactly the surface used and nothing else.
+   */
+  TELEMETRY?: TelemetryDB
+}
+
+/** The slice of the D1 client this worker actually calls. See Env.TELEMETRY. */
+interface TelemetryDB {
+  prepare(query: string): {
+    bind(...values: unknown[]): { run(): Promise<unknown> }
+  }
 }
 
 /**
@@ -383,6 +402,78 @@ function buildServer(env: Env): McpServer {
 
 const app = new Hono<{ Bindings: Env }>()
 
+/** The six paths the enrichment recorder observes. Nothing else is recorded. */
+const ENRICHMENT_PATHS = new Set([
+  "/",
+  "/index.html",
+  "/llms.txt",
+  "/.well-known/x402.json",
+  "/.well-known/agent-card.json",
+  "/.well-known/agent.json",
+])
+
+/**
+ * Record one surface_fetch row. Fire-and-forget, off the response path, and
+ * incapable of affecting the response.
+ *
+ * Three layers of guard, because telemetry must never be able to break a surface:
+ *   1. c.executionCtx ACCESS itself is wrapped — Hono throws when there is no
+ *      execution context (it is not merely undefined), so reading it outside a
+ *      Worker request would throw synchronously inside the middleware.
+ *   2. The enqueue is wrapped, so a waitUntil that rejects synchronously cannot
+ *      escape into the handler.
+ *   3. The D1 promise carries its own .catch, so a failed INSERT settles quietly
+ *      instead of surfacing as an unhandled rejection in the isolate.
+ * Nothing here is awaited: the response is already decided before this is called.
+ *
+ * EVERY caller is recorded — browser, crawler, monitor, script. Whether a row is
+ * "non-browser" is decided at QUERY time, by eyeballing the distinct User-Agent /
+ * Accept distribution (DEPLOY_RUNBOOK Step 10). Discarding at the edge would throw
+ * away the exact evidence the E3 branches are keyed on, and the classification is
+ * a heuristic that must stay auditable and revisable after the fact.
+ *
+ * No IP address is captured — see the PRIVACY note in schema/gate-telemetry.sql.
+ */
+function recordSurfaceFetch(c: Context<{ Bindings: Env }>, path: string, branch: string): void {
+  let ctx: ExecutionContext | undefined
+  try {
+    ctx = c.executionCtx
+  } catch {
+    return // no execution context (tests, non-Worker host): nothing to defer onto
+  }
+  if (!ctx || typeof ctx.waitUntil !== "function") return
+
+  const db = c.env?.TELEMETRY
+  if (!db) return // binding absent => telemetry is simply off
+
+  try {
+    const req = c.req.raw
+    const cf = (req as unknown as { cf?: Record<string, unknown> }).cf
+    const asn = cf?.asn
+    ctx.waitUntil(
+      db
+        .prepare(
+          "INSERT INTO surface_fetch (ts, path, branch, method, user_agent, accept, cf_country, cf_asn, ray) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          new Date().toISOString(),
+          path,
+          branch,
+          req.method,
+          req.headers.get("user-agent"),
+          req.headers.get("accept"),
+          typeof cf?.country === "string" ? cf.country : null,
+          asn === undefined || asn === null ? null : String(asn),
+          req.headers.get("cf-ray"),
+        )
+        .run()
+        .catch(() => {}),
+    )
+  } catch {
+    // Telemetry is never load-bearing. Swallow and serve.
+  }
+}
+
 /**
  * Agent-facing discovery surfaces — MOUNTED FIRST, before every other route.
  *
@@ -390,17 +481,38 @@ const app = new Hono<{ Bindings: Env }>()
  * decorative: this must stay above app.all("/mcp") or a later-registered route
  * would win the match for any path they share.
  *
- * It cannot shadow anything. handleDiscoverySurfaces owns exactly three paths
- * (/llms.txt, /.well-known/x402.json, /.well-known/agent-card.json plus the
- * /agent.json alias) and returns null for everything else, including "/" — which
- * this deployment already claims for the operational-status JSON below, so
- * SERVE_ROOT_LANDING is false. A null falls through to next() untouched.
+ * WHAT IT OWNS. handleDiscoverySurfaces answers, and returns null for everything
+ * else — a null falls through to next() untouched, so no existing route can be
+ * shadowed:
+ *   /llms.txt, /.well-known/x402.json, /.well-known/agent-card.json
+ *     (plus the /.well-known/agent.json alias)  -> always answered here
+ *   /index.html                                 -> always answered here (the OG
+ *     landing; the path is unclaimed, and it is itself an explicit html request)
+ *   "/"                                         -> CONTENT-NEGOTIATED. The landing
+ *     is returned ONLY when the caller's Accept matches text/html. Otherwise null,
+ *     and app.get("/") below answers with the operational status JSON exactly as
+ *     it always has. A bare wildcard Accept and an absent Accept both fall
+ *     through to JSON.
+ *     The negotiated html carries Vary: Accept.
  *
- * Read-only: non-GET/HEAD methods return null, so POST /x402/verify_pm_trade
- * and app.all("/mcp") are unreachable from here regardless of path.
+ * Read-only: non-GET/HEAD methods return null, so POST /x402/verify_pm_trade and
+ * app.all("/mcp") are unreachable from here regardless of path.
+ *
+ * IT ALSO RECORDS. For the six enrichment paths only, one surface_fetch row is
+ * written per request via waitUntil — after the branch is known, never awaited,
+ * and unable to alter or delay the response. At "/" the branch distinguishes which
+ * side answered ('landing' vs 'status'); the other five record as 'surface'. This
+ * is the instrument the E3 pre-commitment in EVIDENCE.log is keyed on: without it
+ * branches A, B and C cannot be told apart.
  */
 app.use("*", async (c, next) => {
   const d = handleDiscoverySurfaces(c.req.raw)
+
+  const path = new URL(c.req.url).pathname
+  if (ENRICHMENT_PATHS.has(path)) {
+    recordSurfaceFetch(c, path, path === "/" ? (d ? "landing" : "status") : "surface")
+  }
+
   if (d) return d
   return next()
 })
@@ -1003,4 +1115,108 @@ app.post("/x402/verify_pm_trade", async (c) => {
   }
 })
 
-export default app
+// ------------------------------------------------------------------
+// Scheduled full-catalog Bazaar scan.
+// ------------------------------------------------------------------
+// Same scan as scripts/bazaar-scan.zsh, on a cron instead of DJ's terminal:
+// paginate limit=1000 by offset until offset >= pagination.total, match
+// case-insensitively on "djzs" and on the treasury address, write one row.
+//
+// The treasury needle is derived from the imported PAY_TO, never restated — the
+// same no-drift rule the discovery surfaces follow. The "0x" prefix is stripped
+// so the needle matches whether or not the catalog renders it.
+const BAZAAR_DISCOVERY_URL = "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources"
+const BAZAAR_PAGE_LIMIT = 1000
+/** Same safety cap as the shell script: 30 pages = 30k entries. */
+const BAZAAR_PAGE_CAP = 30
+
+/**
+ * Run the scan and write exactly one bazaar_scan row.
+ *
+ * NEVER THROWS. Every failure path — network, non-200, malformed JSON, missing
+ * binding — is converted into a row with `error` set. A missing row must mean
+ * "the cron did not fire", never "the scan failed silently", because the T+48h
+ * and T+7d adjudications read absence as signal.
+ */
+async function runBazaarScan(env: Env): Promise<void> {
+  const ts = new Date().toISOString()
+  let total: number | null = null
+  let pages = 0
+  let found = false
+  let error: string | null = null
+  const matches: unknown[] = []
+
+  try {
+    const treasury = PAY_TO.toLowerCase().replace(/^0x/, "")
+    let offset = 0
+    let known = 1 // provisional, replaced by pagination.total on the first page
+    while (offset < known) {
+      if (pages >= BAZAAR_PAGE_CAP) {
+        error = `SAFETY_CAP: stopped after ${pages} pages at offset ${offset}`
+        break
+      }
+      const resp = await fetch(`${BAZAAR_DISCOVERY_URL}?limit=${BAZAAR_PAGE_LIMIT}&offset=${offset}`, {
+        headers: { accept: "application/json" },
+      })
+      if (!resp.ok) throw new Error(`discovery HTTP ${resp.status}`)
+      const body = (await resp.json()) as { items?: unknown[]; pagination?: { total?: number } }
+      pages++
+      known = typeof body.pagination?.total === "number" ? body.pagination.total : 0
+      total = known
+      const items = Array.isArray(body.items) ? body.items : []
+      for (const item of items) {
+        const hay = JSON.stringify(item).toLowerCase()
+        if (hay.includes("djzs") || hay.includes(treasury)) {
+          found = true
+          matches.push(item)
+        }
+      }
+      if (items.length === 0) break
+      offset += BAZAAR_PAGE_LIMIT
+    }
+  } catch (e) {
+    error = (e instanceof Error ? e.message : String(e)).slice(0, 500)
+  }
+
+  try {
+    const db = env?.TELEMETRY
+    if (!db) return // no binding: nowhere to write, and nothing worth throwing over
+    await db
+      .prepare("INSERT INTO bazaar_scan (ts, total, pages, found, detail, error) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(ts, total, pages, found ? 1 : 0, matches.length ? JSON.stringify(matches).slice(0, 100000) : null, error)
+      .run()
+  } catch {
+    // The row is the only output; if it cannot be written there is nothing left
+    // to do but fail quietly. Throwing would only make the cron retry the scan.
+  }
+}
+
+/**
+ * WORKER ENTRYPOINT.
+ *
+ * This was `export default app`. Adding a cron requires a `scheduled` handler,
+ * which a bare Hono instance does not carry, so the default export is now an
+ * object literal exposing both.
+ *
+ * `fetch: app.fetch` preserves routing exactly. Hono defines fetch as a CLASS
+ * PROPERTY holding an arrow function (hono/dist/hono-base.js: `fetch = (request,
+ * ...rest) => {...}`), so it closes over the instance at construction and stays
+ * bound when detached from `app`. Every route registered above — the discovery
+ * middleware, /mcp, /, /health/*, /openapi.json, /x402/* — resolves through the
+ * same dispatcher it always did. This is Hono's documented pattern for adding a
+ * scheduled handler, not a workaround.
+ *
+ * `scheduled` cannot throw: runBazaarScan converts every failure into an error
+ * row, and the call is wrapped again here. An unhandled throw would make the
+ * runtime retry the cron, turning one failed scan into a retry storm.
+ */
+export default {
+  fetch: app.fetch,
+  scheduled: async (_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> => {
+    try {
+      ctx.waitUntil(runBazaarScan(env))
+    } catch {
+      // never propagate out of a scheduled handler
+    }
+  },
+}

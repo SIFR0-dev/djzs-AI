@@ -43,3 +43,19 @@ IRYS_NODE_URL = "https://uploader.irys.xyz"
 # are DJ's alone (D5). Absent secret => anchoring reports "disabled"; audits run.
 [alias]
 "@shared" = "../shared"
+
+[[d1_databases]]
+binding = "TELEMETRY"
+database_name = "djzs-gate-telemetry"
+database_id = "068b2a2b-f489-453f-977a-e0f5b9a9bb3a"
+
+# Daily full-catalog Bazaar scan (src/index.ts `scheduled`). 09:37 UTC = 02:37 PT,
+# off-peak for this audience. The minute is deliberately NOT :00 — Cloudflare's cron
+# scheduler is busiest at the top of the hour, and a scan that competes for slots is a
+# scan that occasionally does not run, which the T+48h/T+7d adjudications would read as
+# absence-of-listing rather than absence-of-scan.
+#
+# The handler writes exactly one bazaar_scan row per fire, INCLUDING on failure (error
+# column set), so a missing row means the cron did not fire — never a silent failure.
+[triggers]
+crons = ["37 9 * * *"]

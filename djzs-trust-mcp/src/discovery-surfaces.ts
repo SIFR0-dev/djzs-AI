@@ -28,6 +28,7 @@ import {
   NETWORK,
   USDC_BASE,
   EXPECTED_ATOMIC_AMOUNT as PRICE_ATOMIC,
+  PRICE_USD,
   RESOURCE_URL,
   TERMS_URL,
   DESCRIPTION,
@@ -74,7 +75,13 @@ const REAL_VERDICT_HASH =
 const REAL_SETTLE_TX =
   "0x792ec25081910a6a4cb236705fa38e5349bcfbeb7149fc37bd2b1249c9676724" as const;
 
-const PRICE_HUMAN = "2.00 USDC";
+/**
+ * Human-readable price. DERIVED, not restated — the "no drift by construction"
+ * rule covers the prose too, including the public og:description below. A reprice
+ * changes PRICE_USD in http-x402-bazaar.v2 and every rendered surface follows in
+ * the same compile. toFixed(2) reproduces the previous literal exactly ("2.00 USDC").
+ */
+const PRICE_HUMAN = `${PRICE_USD.toFixed(2)} USDC`;
 
 // -------------------------------------------------------------------
 // /llms.txt — llmstxt.org convention
@@ -244,8 +251,7 @@ function agentCard(): unknown {
 // ------------------------------------------------------------------
 function landingHtml(): string {
   const title = `${SERVICE_NAME} — deterministic trade-intent audit over x402`;
-  const desc =
-    "Pay-per-call adversarial logic audit for prediction-market trade intents. 2.00 USDC on Base via x402. Out-of-scope requests refused without charge. Audit, not advice.";
+  const desc = `Pay-per-call adversarial logic audit for prediction-market trade intents. ${PRICE_HUMAN} on Base via x402. Out-of-scope requests refused without charge. Audit, not advice.`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
