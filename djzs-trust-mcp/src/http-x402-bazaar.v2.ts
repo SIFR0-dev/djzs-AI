@@ -171,16 +171,16 @@ const discoveryExtensions = withDiscoveryFixups(declareDiscoveryExtension({
  * in the first place. Adding one without the other just moves the contradiction.
  */
 function withDiscoveryFixups<T>(ext: T): T {
-  const e = ext as unknown as {
+  const e = (ext as unknown as any).bazaar as {
     info: { input: Record<string, unknown>; output?: Record<string, unknown> };
     schema: { properties: { output?: { properties?: Record<string, unknown> } } };
   };
 
   // S2 — the request method. Named by the schema, absent from the payload.
-  e.info.input.method = "POST";
+  if (e?.info?.input) e.info.input.method = "POST";
 
   // S3 — the response media type, in BOTH halves.
-  if (e.info.output) {
+  if (e?.info?.output) {
     e.info.output.mimeType = OUTPUT_MIME_TYPE;
     const outSchema = e.schema?.properties?.output;
     if (outSchema) {
