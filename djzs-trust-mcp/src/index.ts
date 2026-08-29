@@ -281,7 +281,14 @@ function buildServer(env: Env): McpServer {
   // Step 2 (Path B ruling 2026-07-12): the ONLY paid tool. The handler body is
   // the Step 1 handler byte-identical; withX402 owns the 402/verify/settle
   // cycle in-band, and the free registry tools above are untouched.
-  server.paidTool(
+  // S6a: `paidTool` builds its tool config as {description, inputSchema,
+  // annotations, _meta} and passes NO top-level `title` (agents 0.17.3,
+  // dist/mcp/x402.js:36-43), which is why verify_pm_trade was the only tool
+  // without one while both free tools have it. It DOES return the RegisteredTool,
+  // so the title is set through the SDK's documented `update()` rather than by
+  // reaching into server internals. annotations.title is left untouched for
+  // clients that read the older field.
+  const verifyPmTradeTool = server.paidTool(
     "verify_pm_trade",
     // ASCII ONLY in this description: it travels inside the x402 payment
     // resource, and the agents client wrapper base64-encodes the payment
@@ -289,7 +296,7 @@ function buildServer(env: Env): McpServer {
     // point above 0xFF (rehearsal finding 2026-07-12; U+2192 arrows crashed
     // every agents-based payer). Upstream bug candidate; ruled: paid-tool
     // descriptions stay ASCII.
-    `Deterministic pre-execution audit of a prediction-market trade thesis. Extracts the reasoning, audits it against the calibrated DJZS-M taxonomy (M01 narrative/resolution gap, M02 falsification absent, M03 probability unsourced, M04 consensus-as-edge advisory), and returns PASS->PROCEED, FAIL, or WAIT->HALT with flagged defects and a reproducible verdict_hash. Audit before act. Paid tool: ${VERIFY_PM_TRADE_PRICE_USD} USDC per audit via x402.`,
+    `Deterministic pre-execution audit of a prediction-market trade thesis, run before capital is committed. USE THIS TOOL before opening, sizing, or increasing any prediction-market position, and whenever a user or an upstream agent asks whether a thesis is sound, carries a falsification condition, or has a sourced probability basis. Audits against the calibrated DJZS-M taxonomy (M01 narrative/resolution gap, M02 falsification absent, M03 probability unsourced, M04 consensus-as-edge advisory) and returns PASS->PROCEED, WAIT->HALT, or FAIL with the flagged defects and a reproducible verdict_hash. DO NOT use to retrieve past verdicts or certificates - use query_pol_certificates for those. DO NOT use for an agent's historical trust score - use query_agent_trust for that. DO NOT use for spot, perpetuals, or equities: out-of-scope submissions are refused WITHOUT CHARGE. Audit before act. Paid tool: ${VERIFY_PM_TRADE_PRICE_USD} USDC per audit via x402 on Base.`,
     VERIFY_PM_TRADE_PRICE_USD,
     {
       ...VERIFY_PM_TRADE_INPUT,
@@ -396,6 +403,11 @@ function buildServer(env: Env): McpServer {
     return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
     }
   )
+
+  // S6a — top-level title, alongside the annotations.title kept above.
+  verifyPmTradeTool.update({
+    title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)",
+  })
 
   return server
 }
@@ -1101,7 +1113,13 @@ const CDP_FACILITATOR_URL = "https://api.cdp.coinbase.com/platform/v2/x402"
  * (misconfigured key, extraction outage) strictly BEFORE settlePayment is reachable,
  * so a 503 here has always cost the caller nothing.
  */
-app.post("/x402/verify_pm_trade", async (c) => {
+// S1 + S4: registered with `app.all`, not `app.post`. The handler has always
+// carried a method guard, but Hono never dispatched anything but POST here, so
+// GET / HEAD / OPTIONS died at the router with a 404 and the guard was dead code.
+// A live paid endpoint that 404s to a crawler reads as a dead endpoint. Method
+// policy — challenge-only GET/HEAD, 204 preflight, 405 for the rest — is decided
+// in ONE place, inside handleX402VerifyPmTrade.
+app.all("/x402/verify_pm_trade", async (c) => {
   const env = c.env
   const x402Env: X402Env = {
     FACILITATOR_URL: env.FACILITATOR_URL ?? CDP_FACILITATOR_URL,

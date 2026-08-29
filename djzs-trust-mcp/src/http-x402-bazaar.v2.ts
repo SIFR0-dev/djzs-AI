@@ -90,7 +90,7 @@ export const NOT_WIRED: EngineAdapter = {
 // Discovery declaration — this is the Bazaar listing content.
 // Parameter descriptions are ranking inputs; keep them rich.
 // ------------------------------------------------------------------
-const discoveryExtensions = declareDiscoveryExtension({
+const discoveryExtensions = withDiscoveryFixups(declareDiscoveryExtension({
   bodyType: "json",
   input: {
     intent: {
@@ -148,7 +148,69 @@ const discoveryExtensions = declareDiscoveryExtension({
       terms: TERMS_URL,
     },
   },
-});
+}));
+
+/**
+ * S2 + S3 — POST-HELPER FIXUPS, applied to the object `declareDiscoveryExtension`
+ * returns rather than to its config.
+ *
+ * WHY NOT THE CONFIG: `method` is meant to be filled in by
+ * `bazaarResourceServerExtension.enrichDeclaration`, which fires only from
+ * `x402HTTPResourceServer` — the class this route deliberately does not use
+ * (§14: the low-level verify/settle sequence is shared with /mcp). The result is
+ * that the emitted `info.input` OMITS `method` while the schema co-shipped in the
+ * SAME response marks it REQUIRED (`["type","method","bodyType","body"]`). The
+ * payload contradicts itself, and `facilitator.ts` validates info against that
+ * schema with Ajv 2020 and silently drops the resource on failure. This is the
+ * best-supported explanation for five epochs of NOT_INDEXED; 181/181 live indexed
+ * declarations carry `method`, and ours was the one that did not.
+ *
+ * INVARIANT, and the whole point of doing both halves here: every field added to
+ * `info` is also added to `schema` in the same function. S3 exists because S2's
+ * mistake in reverse — describing a field the payload lacks — is what broke this
+ * in the first place. Adding one without the other just moves the contradiction.
+ */
+function withDiscoveryFixups<T>(ext: T): T {
+  const e = ext as unknown as {
+    info: { input: Record<string, unknown>; output?: Record<string, unknown> };
+    schema: { properties: { output?: { properties?: Record<string, unknown> } } };
+  };
+
+  // S2 — the request method. Named by the schema, absent from the payload.
+  e.info.input.method = "POST";
+
+  // S3 — the response media type, in BOTH halves.
+  if (e.info.output) {
+    e.info.output.mimeType = OUTPUT_MIME_TYPE;
+    const outSchema = e.schema?.properties?.output;
+    if (outSchema) {
+      outSchema.properties = { ...(outSchema.properties ?? {}), mimeType: { type: "string" } };
+    }
+  }
+  return ext;
+}
+
+/** Response media type for the audit verdict — one home, used by info and schema. */
+const OUTPUT_MIME_TYPE = "application/json";
+
+/**
+ * S4 — CORS. `Expose-Headers` is the load-bearing line: without it a browser
+ * client receives the 402 but cannot READ the challenge header, so it cannot pay.
+ * A 402 whose challenge is unreadable is indistinguishable from a hard refusal.
+ * These ride the 402 and the 200 as well as the preflight — a preflight-only
+ * policy leaves the actual responses unreadable.
+ */
+const CORS_EXPOSE = "payment-required, PAYMENT-RESPONSE, X-PAYMENT-RESPONSE";
+const CORS_BASE: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Expose-Headers": CORS_EXPOSE,
+};
+const CORS_PREFLIGHT: Record<string, string> = {
+  ...CORS_BASE,
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Accept, X-PAYMENT",
+  "Access-Control-Max-Age": "86400",
+};
 
 // ------------------------------------------------------------------
 // Resource server — lazy singleton (Workers isolate friendly).
@@ -246,9 +308,31 @@ export async function handleX402VerifyPmTrade(
   env: X402Env,
   engine: EngineAdapter = NOT_WIRED,
 ): Promise<Response> {
-  if (request.method !== "POST") {
-    return json({ error: "method_not_allowed", allow: "POST" }, 405);
+  const method = request.method.toUpperCase();
+
+  // S4 — preflight, answered before any facilitator work. No body, no challenge.
+  if (method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_PREFLIGHT });
   }
+  if (method !== "GET" && method !== "HEAD" && method !== "POST") {
+    return json({ error: "method_not_allowed", allow: "GET, HEAD, POST, OPTIONS" }, 405);
+  }
+
+  /**
+   * S1 — GET and HEAD are CHALLENGE-ONLY, unconditionally.
+   *
+   * An indexer, a crawler, or a human pasting the URL issues GET. Answering 404
+   * there makes a live paid endpoint look dead. So GET and HEAD return the SAME
+   * 402 the POST path returns.
+   *
+   * GUARD RAIL: they must NEVER settle, even when a valid payment header is
+   * attached. A GET carries no intent body, so there is nothing to audit — a
+   * settled GET would take money for no work. This flag is the enforcement: it
+   * suppresses the payment header entirely, so `verifyPayment`, `settlePayment`
+   * and the engine are all unreachable from a GET or HEAD. The invariant is
+   * re-asserted below the challenge block rather than trusted from here.
+   */
+  const challengeOnly = method === "GET" || method === "HEAD";
 
   // DISCOVERY ORDERING (same fix HEAD 7634b42 applied to /x402/verify). The 402
   // challenge MUST be reachable regardless of body shape: registration probes and
@@ -270,8 +354,9 @@ export async function handleX402VerifyPmTrade(
   }
 
   // 1 — no payment: 402 challenge with discovery extension attached. Body unread.
-  const sigHeader =
-    request.headers.get("PAYMENT-SIGNATURE") ?? request.headers.get("X-PAYMENT");
+  const sigHeader = challengeOnly
+    ? null
+    : request.headers.get("PAYMENT-SIGNATURE") ?? request.headers.get("X-PAYMENT");
   if (!sigHeader) {
     const paymentRequired = await server.createPaymentRequiredResponse(
       reqs,
@@ -279,13 +364,24 @@ export async function handleX402VerifyPmTrade(
       undefined,
       discoveryExtensions,
     );
-    return new Response(JSON.stringify(paymentRequired), {
+    // HEAD: identical status and headers, no body — per RFC 9110 a HEAD response
+    // carries the headers its GET would, and nothing else.
+    return new Response(method === "HEAD" ? null : JSON.stringify(paymentRequired), {
       status: 402,
       headers: {
         "content-type": "application/json",
         "PAYMENT-REQUIRED": encodePaymentRequiredHeader(paymentRequired),
+        ...CORS_BASE,
       },
     });
+  }
+
+  // S1 GUARD RAIL, asserted rather than assumed. `challengeOnly` forces sigHeader
+  // to null above, so this is unreachable — which is exactly why it is here: if a
+  // future edit reintroduces a header read for GET, this throws instead of
+  // quietly charging for an audit that has no intent to audit.
+  if (challengeOnly) {
+    return json({ error: "invariant_violated", detail: "GET/HEAD reached the paid path" }, 402);
   }
 
   // 2 — verify the payment authorization (no funds move here).
@@ -379,6 +475,7 @@ export async function handleX402VerifyPmTrade(
       headers: {
         "content-type": "application/json",
         "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle),
+        ...CORS_BASE,
       },
     },
   );
