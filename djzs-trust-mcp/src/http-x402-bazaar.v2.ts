@@ -360,7 +360,7 @@ export async function handleX402VerifyPmTrade(
   if (!sigHeader) {
     const paymentRequired = await server.createPaymentRequiredResponse(
       reqs,
-      { url: RESOURCE_URL, description: DESCRIPTION, serviceName: "DJZS Audit Gate", tags: ["audit", "prediction-markets", "trading", "verification"] },
+      { url: RESOURCE_URL, description: DESCRIPTION, mimeType: "application/json", serviceName: "DJZS Audit Gate", tags: ["audit", "prediction-markets", "trading", "verification"] },
       undefined,
       discoveryExtensions,
     );
