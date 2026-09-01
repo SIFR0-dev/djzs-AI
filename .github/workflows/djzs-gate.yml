@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      - name: root deps (engine imports zod from repo root)
+        run: npm ci
       - run: npm install
         working-directory: djzs-trust-mcp
       - name: djzs-trust-mcp — bundle (no deploy, no secrets)
