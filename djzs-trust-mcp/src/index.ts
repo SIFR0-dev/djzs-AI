@@ -12,6 +12,7 @@ import { handleX402VerifyPmTrade, PAY_TO, type X402Env } from "./http-x402-bazaa
 import { createEngineAdapter } from "./engine-adapter"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
+import { attesterBalance } from "./attest-worker"
 import { registerExactEvmScheme } from "@x402/evm/exact/server"
 import {
   encodePaymentRequiredHeader,
@@ -565,12 +566,23 @@ app.get("/health/x402", async (c) => {
       createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)
     )
     const supported = await client.getSupported()
+    // Attester health (v2 receipts). Zero ETH here silently decouples receipt from attestation.
+    const attester = await (async () => {
+      if (!env.DJZS_ATTESTER_KEY) return { configured: false }
+      try {
+        const b = await attesterBalance({ DJZS_ATTESTER_KEY: env.DJZS_ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL })
+        return { configured: true, address: b.address, eth: b.eth, low: b.low }
+      } catch (e) {
+        return { configured: true, error: (e instanceof Error ? e.message : String(e)).slice(0, 120) }
+      }
+    })()
     const kinds = (supported?.kinds ?? []) as Array<{ network?: string }>
     const networkSupported = kinds.some((k) => k.network === caip2)
     return c.json({
       network: X402_NETWORK, caip2, facilitator_configured: true,
       network_supported: networkSupported,
-      advertised_networks: [...new Set(kinds.map((k) => k.network).filter(Boolean))]
+      advertised_networks: [...new Set(kinds.map((k) => k.network).filter(Boolean))],
+      attester
     }, networkSupported ? 200 : 502)
   } catch (e) {
     return c.json({

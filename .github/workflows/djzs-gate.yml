@@ -1,0 +1,23 @@
+name: djzs-gate
+on: { push: { branches: [main, "fix/**", "feat/**"] }, pull_request: {} }
+jobs:
+  engine-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: PM engine — exhaustive verdict-space test
+        run: npx tsx tests/pm-engine-integrity.ts
+  worker-builds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install
+        working-directory: djzs-trust-mcp
+      - name: djzs-trust-mcp — bundle (no deploy, no secrets)
+        run: npx wrangler deploy --dry-run --outdir /tmp/dry
+        working-directory: djzs-trust-mcp
