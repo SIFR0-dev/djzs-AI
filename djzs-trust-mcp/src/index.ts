@@ -101,6 +101,8 @@ interface Env {
    * the route at a different facilitator without a code change.
    */
   FACILITATOR_URL?: string
+  /** EAS attester key (v2 receipt). SECRET. Absent => verdicts served, attestation skipped with eas_error. */
+  DJZS_ATTESTER_KEY?: string
   /**
    * D1 telemetry database (wrangler binding TELEMETRY, db djzs-gate-telemetry).
    * OPTIONAL by design: absent binding => recording silently no-ops and every
@@ -1124,6 +1126,8 @@ app.all("/x402/verify_pm_trade", async (c) => {
   const x402Env: X402Env = {
     FACILITATOR_URL: env.FACILITATOR_URL ?? CDP_FACILITATOR_URL,
     FACILITATOR_AUTH: createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
+    ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
+    BASE_RPC_URL: env.BASE_RPC_URL,
   }
   try {
     return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env))

@@ -31,6 +31,11 @@ import {
 import type { PaymentRequirements } from "@x402/core/types";
 import type { FacilitatorConfig } from "@x402/core/http";
 
+import { intentHash, attestVerdict, DJZS_SCHEMA_UID } from "./attest-worker";
+import { toDJZSIntent } from "./djzs-intent";
+
+/** Ruleset the attested verdict was scored under. Bump with the taxonomy, never silently. */
+const RULESET_VERSION = "DJZS-PM-v1.0";
 // ------------------------------------------------------------------
 // Canonical constants — content-verify these before every deploy.
 // ------------------------------------------------------------------
@@ -68,6 +73,11 @@ export interface VerdictResult {
   flags: string[];
   verdict_hash: string;
   intent_sha256: string; // binding key — verdict_hash is not injective
+  intent_hash?: string;        // v2 binding key — EIP-712, reproducible by anyone
+  eas_uid?: string | null;     // EAS attestation UID on Base
+  eas_tx?: string | null;
+  eas_schema?: string;
+  eas_error?: string;          // set only when attestation failed; verdict still valid
   pol_certificate?: unknown;
 }
 
@@ -144,6 +154,9 @@ const discoveryExtensions = withDiscoveryFixups(declareDiscoveryExtension({
       flags: ["DJZS-M02", "DJZS-M01", "DJZS-M04", "unknown:probability_basis"],
       verdict_hash: "0xb1a2…9bb3",
       intent_sha256: "…binding key…",
+      intent_hash: "…EIP-712 binding key (v2)…",
+      eas_uid: "…EAS attestation uid…",
+      eas_schema: "0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030",
       charged: true,
       terms: TERMS_URL,
     },
@@ -216,6 +229,10 @@ const CORS_PREFLIGHT: Record<string, string> = {
 // Resource server — lazy singleton (Workers isolate friendly).
 // ------------------------------------------------------------------
 export interface X402Env {
+  /** EAS attester key for the v2 receipt. Optional: absent => attestation skipped, eas_error set. */
+  ATTESTER_KEY?: string;
+  /** Base RPC for attestation writes. Public endpoints refuse Worker egress; use the configured one. */
+  BASE_RPC_URL?: string;
   FACILITATOR_URL: string; // CDP: https://api.cdp.coinbase.com/platform/v2/x402
   /**
    * Auth seam: the CDP mainnet facilitator requires request auth headers.
@@ -467,9 +484,33 @@ export async function handleX402VerifyPmTrade(
     );
   }
 
+  // 5a — v2 binding + EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
+  // Fail-soft: a charged, valid verdict is never hostage to a second transaction.
+  const intent_hash = intentHash(toDJZSIntent(intent));
+  let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: string | undefined;
+  if (!env.ATTESTER_KEY) {
+    eas_error = "attester_not_configured";
+  } else {
+    try {
+      const a = await attestVerdict(
+        { DJZS_ATTESTER_KEY: env.ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL },
+        {
+          intentHash: intent_hash,
+          verdict: result.verdict as "PASS" | "WAIT" | "FAIL",
+          riskScore: result.risk_score,
+          flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
+          rulesetVersion: RULESET_VERSION,
+          agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
+        },
+      );
+      eas_uid = a.uid; eas_tx = a.txHash;
+    } catch (e) {
+      eas_error = (e instanceof Error ? e.message : String(e)).slice(0, 160);
+    }
+  }
   // 5 — verdict + settlement evidence.
   return new Response(
-    JSON.stringify({ ...result, charged: true, terms: TERMS_URL }),
+    JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: DJZS_SCHEMA_UID, ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
     {
       status: 200,
       headers: {
