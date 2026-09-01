@@ -31,6 +31,17 @@
   are model-independent. Same input struct -> same verdict_hash.
 - WAIT is never silent: an unknown decision-critical fact drains to HALT with unknown_fields returned.
 
+## Receipts (v2 — reproducible by anyone)
+
+- Every paid verdict returns intent_hash (EIP-712 typed data, domain DJZS / 2 / eip155:8453) and
+  writes an EAS attestation on Base under schema
+  0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030 from attester
+  0xfB0e11471D41f88D1eE43A1bA38d885fb6b77824 onto the paying agent's address. intent_sha256 (v1)
+  is returned alongside: sha256 over renderIntentText(intent) — sorted keys, one `key: value` line each.
+- Recompute any receipt with zero trust in DJZS: https://djzs.ai/verify
+- Scoring rules, verdict formula, both binding contracts: https://djzs.ai/ruleset
+- For agent-framework builders and treasuries (Safe Guard / AgentKit posture): https://djzs.ai/builders
+
 ## Taxonomies (frozen)
 
 - DJZS-M (prediction market, DJZS-PM-v1.0): M01-M04, weights sum 100, FAIL threshold 25. All live.

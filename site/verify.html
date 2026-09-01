@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DJZS · Proof-of-Logic Verifier v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--canvas:#0A0A0A;--panel:#0D0D0D;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;--pass:#3DFF88;--wait:#FFB000;--fail:#FF4D4D;--base:#0052FF;--mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--canvas);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:.01em;padding:clamp(16px,4vw,60px)}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(61,255,136,.035) 3px,rgba(61,255,136,.035) 4px)}
+  .wrap{max-width:880px;margin:0 auto;position:relative;z-index:1}
+  a{color:var(--pass);text-decoration:none}a:hover{background:var(--pass);color:var(--canvas)}::selection{background:var(--pass);color:var(--canvas)}
+  header{border-bottom:1px solid var(--rule);padding-bottom:22px;margin-bottom:26px}
+  .path{color:var(--muted);font-size:13px;margin:0 0 18px}.path .p{color:var(--pass);font-weight:700}
+  .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
+  h1{font-size:clamp(19px,3.4vw,26px);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}.wordmark{color:var(--base);font-weight:800}
+  .boot{margin:20px 0 0;display:grid;gap:7px}.boot .row{display:grid;grid-template-columns:52px 128px 1fr;gap:12px;align-items:baseline;font-size:12.5px}.boot .ok{color:var(--pass);font-weight:700}.boot .k{color:var(--muted)}.boot .v{color:var(--text)}
+  .lede{color:var(--muted);margin:22px 0 0;max-width:74ch;font-size:13.5px}.lede b{color:var(--text);font-weight:700}
+  .io{margin:26px 0 0}.label{color:var(--muted);font-size:12px;margin:0 0 8px}.label::before{content:"// ";color:var(--rule)}
+  textarea{width:100%;min-height:220px;resize:vertical;background:#080808;color:var(--text);border:1px solid var(--rule);border-radius:0;padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.55;tab-size:2}textarea:focus{outline:none;border-color:var(--pass)}
+  .controls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  .btn{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;background:transparent;color:var(--pass);border:1px solid var(--pass);border-radius:0;padding:10px 18px}.btn:hover{background:var(--pass);color:var(--canvas)}.btn.ghost{color:var(--muted);border-color:var(--rule)}.btn.ghost:hover{background:transparent;color:var(--text);border-color:var(--muted)}.btn:disabled{opacity:.5;cursor:progress}
+  .verdict{margin:30px 0 22px;border:1px solid var(--rule);border-radius:0;background:var(--panel)}.verdict[data-state="pass"]{border-color:var(--pass)}.verdict[data-state="wait"]{border-color:var(--wait)}.verdict[data-state="fail"]{border-color:var(--fail);border-width:2px}
+  .verdict-head{padding:20px 20px 4px}.stamp{display:inline-block;font-weight:800;letter-spacing:.14em;border:1px solid currentColor;border-radius:0;padding:.2rem .6rem;font-size:13px}[data-state="pass"] .stamp{color:var(--pass)}[data-state="wait"] .stamp{color:var(--wait)}[data-state="fail"] .stamp{color:var(--fail);border-width:2px}
+  .verdict-title{display:inline-block;margin-left:14px;font-weight:700;font-size:14px}.verdict-note{color:var(--muted);font-size:13px;margin:0;padding:12px 20px 20px;max-width:74ch}.verdict-note .coda{color:var(--text);display:block;margin-top:10px}
+  .ledger{border:1px solid var(--rule);border-radius:0;background:var(--panel)}.claim{border-top:1px solid var(--rule);padding:15px 20px;display:grid;grid-template-columns:64px 1fr;gap:0 14px}.claim:first-child{border-top:0}
+  .claim .tok{font-weight:700;font-size:12px;letter-spacing:.06em;grid-row:1/3;padding-top:1px}.claim[data-r="pass"] .tok{color:var(--pass)}.claim[data-r="wait"] .tok{color:var(--wait)}.claim[data-r="fail"] .tok{color:var(--fail)}.claim[data-r="idle"] .tok{color:var(--muted)}
+  .claim-name{font-weight:700;font-size:13.5px;margin:0}.claim-name .chip{font-weight:800;font-size:11px;letter-spacing:.06em;border:1px solid currentColor;border-radius:0;padding:1px 6px;margin-left:10px;vertical-align:1px}[data-r="pass"] .chip{color:var(--pass)}[data-r="wait"] .chip{color:var(--wait)}[data-r="fail"] .chip{color:var(--fail)}[data-r="idle"] .chip{color:var(--muted)}
+  .claim-body{margin:7px 0 0;color:var(--muted);font-size:13px;max-width:76ch}.ev{display:block;color:var(--text);font-size:12px;margin-top:8px;white-space:pre-wrap;word-break:break-all;padding-left:10px;border-left:1px solid var(--rule)}
+  .empty{color:var(--muted);font-size:13px;padding:26px 20px}.empty::before{content:"// ";color:var(--rule)}
+  footer{margin-top:28px;padding-top:18px;border-top:1px solid var(--rule);color:var(--muted);font-size:12px;line-height:1.9}footer .k::before{content:"// ";color:var(--rule)}footer .k b{color:var(--text);font-weight:700}footer .sig{margin-top:14px}footer .sig .p{color:var(--pass);font-weight:700}
+  @media (prefers-reduced-motion:reduce){.cursor{animation:none}}@media (max-width:560px){.boot .row{grid-template-columns:44px 1fr;gap:4px 10px}.boot .v{grid-column:1/3}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="path"><span class="p">~/djzs/verify</span> $ <span id="cmd">recompute --receipt --v2</span><span class="cursor"></span></p>
+    <h1><span class="wordmark">DJZS.</span> Proof-of-Logic Verifier <span style="color:var(--muted);font-weight:500">v2</span></h1>
+    <div class="boot">
+      <div class="row"><span class="ok">OK</span><span class="k">SCOPE</span><span class="v">recomputation — trusts the chain, not DJZS</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">SETTLEMENT</span><span class="v">USDC transfer read direct from Base</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">BINDING</span><span class="v">intent_hash recomputed as EIP-712 typed data — domain DJZS · 2 · 8453</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">ATTESTATION</span><span class="v">EAS getAttestation(eas_uid) — schema, attester, recipient, fields</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">LADDER</span><span class="v">PASS reproduced · WAIT unprovable · FAIL contradicted</span></div>
+    </div>
+    <p class="lede">A receipt is a claim. This tool recomputes it. Settlement from the chain; the binding key from the intent alone; the attestation from EAS — and it checks that all three <b>agree with each other</b>. Nothing here trusts DJZS. Unknown resolves to <b>WAIT</b>, contradiction to <b>FAIL</b>.</p>
+  </header>
+
+  <div class="io">
+    <p class="label">receipt · json — body + payment_response as the gate returned them</p>
+    <textarea id="rcpt" spellcheck="false"></textarea>
+    <div class="controls">
+      <button class="btn" id="run">Recompute</button>
+      <button class="btn ghost" id="load">Load live v2 receipt</button>
+      <button class="btn ghost" id="clear">Clear</button>
+    </div>
+  </div>
+
+  <div class="verdict" id="verdict" data-state="idle" hidden>
+    <div class="verdict-head"><span class="stamp" id="vstamp">—</span><span class="verdict-title" id="vtitle"></span></div>
+    <p class="verdict-note" id="vnote"></p>
+  </div>
+  <div class="ledger" id="ledger"><div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div></div>
+
+  <footer>
+    <div class="k"><b>settlement</b> — Base chain read, independent of DJZS.</div>
+    <div class="k"><b>binding</b> — EIP-712 hashStruct(DJZSIntent) under the published domain. v1 <code class="inl">intent_sha256</code> recomputed via renderIntentText.</div>
+    <div class="k"><b>attestation</b> — EAS on Base · schema 0x5ef67e2b…2030 · attester 0xfB0e…7824.</div>
+    <div class="k"><b>verdict</b> — attested by DJZS; re-deriving it from rules requires the published engine.</div>
+    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/verify · audit before act</p>
+  </footer>
+</div>
+
+<script type="module">
+import { hashTypedData, encodeFunctionData, decodeFunctionResult, decodeAbiParameters, parseAbi } from "https://esm.sh/viem@2.56.1";
+
+const USDC="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", XFER="0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const EAS="0x4200000000000000000000000000000000000021";
+const DJZS_SCHEMA="0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030", DJZS_ATTESTER="0xfb0e11471d41f88d1ee43a1ba38d885fb6b77824";
+const RPCS=["https://base.llamarpc.com","https://base-rpc.publicnode.com","https://mainnet.base.org","https://1rpc.io/base"];
+const DOMAIN={name:"DJZS",version:"2",chainId:8453};
+const TYPES={DJZSIntent:[{name:"action",type:"string"},{name:"venue",type:"string"},{name:"market",type:"string"},{name:"side",type:"string"},{name:"thesis",type:"string"},{name:"probability_basis",type:"string"},{name:"size_usd_cents",type:"uint256"},{name:"max_loss_usd_cents",type:"uint256"},{name:"exit_condition",type:"string"},{name:"params_hash",type:"bytes32"}]};
+const ZERO32="0x"+"00".repeat(32);
+const EAS_ABI=parseAbi(["function getAttestation(bytes32 uid) view returns ((bytes32 uid,bytes32 schema,uint64 time,uint64 expirationTime,uint64 revocationTime,bytes32 refUID,address recipient,address attester,bool revocable,bytes data))"]);
+const FIELDS=[{type:"bytes32"},{type:"string"},{type:"uint8"},{type:"string[]"},{type:"string"}];
+
+// the live v2 receipt — settlement 0xfdd03e7e…, attestation 0xc5995989… on Base, 2026-09-01T20:34Z
+const SAMPLE={
+  intent:{market:"KXBTCD-26SEP0217-T76999.99",side:"YES",
+    thesis:"BTC spot ~$77,263 (Coinbase 2026-09-01T20:08Z) sits ~0.34% above the $77,000 line; absent a close under $77,000 at the Sep 2 settlement, KXBTCD-26SEP0217-T76999.99 resolves YES.",
+    probability_basis:"spot $77,263 vs $77,000 strike = +0.34% ITM; Kalshi book unquoted so implied N/A; model P(YES) approx 0.70; basis Coinbase spot 2026-09-01T20:08Z",
+    size_usd:250,bounds:{max_loss_usd:250,exit_condition:"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement"}},
+  payment_response:{success:true,payer:"0x46448Ea69912Aa8E2191dde67839A4987D269d17",transaction:"0xfdd03e7efb1a00d964b96ba6d02188765be59573bd626f1fdda2200f6004a048",network:"eip155:8453"},
+  verdict:"PASS",risk_score:0,flags:[],
+  verdict_hash:"0xbf34cdf397e99774df8219ce0f7ce021f4519c044dbe79765012160afa1f0246",
+  intent_sha256:"0x4534c5866286414064776749570932b24e88249d6d7885097370dd19167cc155",
+  intent_hash:"0x34c493a055e5b6b3683fb5bac14654190de392557aad09f8a48a74c6992cb206",
+  eas_uid:"0xc59959896c7663314da81e153134f23782315887e643ca60e38bb9f915a05a89",
+  eas_tx:"0xdfd061fb3d79e503eb886379030ce933747c2984acc131e0854c9d70ee1841a4",
+  eas_schema:DJZS_SCHEMA,
+  expected_amount_usdc:"2.00",pay_to:"0xc1923748669dFC3a79497d0403A90a275161eCCA"
+};
+
+const $=s=>document.querySelector(s), ta=$("#rcpt"), norm=a=>(a||"").toLowerCase();
+$("#load").onclick=()=>{ta.value=JSON.stringify(SAMPLE,null,2)}; $("#clear").onclick=()=>{ta.value="";$("#verdict").hidden=true;empty()}; $("#run").onclick=run;
+ta.value=JSON.stringify(SAMPLE,null,2);
+function empty(){$("#ledger").innerHTML='<div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div>'}
+
+// same documented defaults as the engine's toDJZSIntent — venue "" unless supplied, cents, ZERO32
+function toDJZSIntent(pm){const c=x=>BigInt(Math.round((typeof x==="number"&&isFinite(x)?x:0)*100));
+  return {action:"pm_trade",venue:pm.venue??"",market:pm.market,side:pm.side,thesis:pm.thesis,probability_basis:pm.probability_basis??"",
+    size_usd_cents:c(pm.size_usd),max_loss_usd_cents:c(pm.bounds?.max_loss_usd),exit_condition:pm.bounds?.exit_condition??"",params_hash:ZERO32};}
+// exact port of engine-adapter.ts renderIntentText — the v1 binding rule
+function renderIntentText(i){if(typeof i==="string")return i;if(!i||typeof i!=="object")return String(i);return Object.keys(i).sort().map(k=>{const v=i[k];const s=typeof v==="string"?v:(typeof v==="number"||typeof v==="boolean")?String(v):JSON.stringify(v);return `${k}: ${s}`}).join("\n")}
+async function sha256hex(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return"0x"+[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function rpc(method,params){let last;for(const url of RPCS){try{const r=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});if(!r.ok){last=new Error(url+" HTTP "+r.status);continue}const j=await r.json();if(j.error){last=new Error(j.error.message);continue}return{result:j.result,node:url.replace("https://","")}}catch(e){last=e}}throw last||new Error("no reachable Base node")}
+
+async function run(){
+  const btn=$("#run");btn.disabled=true;btn.textContent="Recomputing…";
+  const C=[];let r;try{r=JSON.parse(ta.value)}catch(e){setV("fail","FAIL","receipt unreadable","Not valid JSON.");render([{r:"fail",tok:"FAIL",name:"Parse receipt",chip:"FAIL",body:e.message}]);reset(btn);return}
+
+  // 1 — settlement
+  let settleOK=false;const tx=r?.payment_response?.transaction;
+  if(!tx)C.push({r:"fail",tok:"FAIL",name:"Settlement present",chip:"FAIL",body:"No payment_response.transaction in receipt."});
+  else try{const {result:rc,node}=await rpc("eth_getTransactionReceipt",[tx]);
+    if(!rc)C.push({r:"wait",tok:"WAIT",name:"Settlement on Base",chip:"NOT FOUND",body:"No receipt for this hash yet.",ev:tx});
+    else{const ok=rc.status==="0x1";const x=(rc.logs||[]).find(l=>norm(l.address)===USDC&&norm(l.topics?.[0])===XFER&&l.topics.length===3);
+      let to,amt;if(x){to="0x"+x.topics[2].slice(26);amt=parseInt(x.data,16)/1e6}
+      const wTo=norm(r.pay_to),wAmt=parseFloat(r.expected_amount_usdc);const toOK=wTo?norm(to)===wTo:!!to,amtOK=isFinite(wAmt)?Math.abs(amt-wAmt)<1e-6:!!amt;
+      settleOK=ok&&!!x&&toOK&&amtOK;
+      C.push({r:settleOK?"pass":"fail",tok:settleOK?"OK":"FAIL",name:"Settlement on Base",chip:settleOK?"PROVEN":"MISMATCH",
+        body:settleOK?"Chain confirms a successful USDC transfer matching the receipt.":"Transaction exists but does not match the receipt.",
+        ev:`status ${ok?"0x1 success":rc.status} · block ${parseInt(rc.blockNumber,16)} · node ${node}`+(x?`\nUSDC ${amt?.toFixed(2)} -> ${to}`:"\nno USDC Transfer log"),link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}}
+  catch(e){C.push({r:"wait",tok:"WAIT",name:"Settlement on Base",chip:"UNREACHABLE",body:"No Base node reachable from this browser.",ev:e.message,link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}
+
+  // 2 — binding: v2 EIP-712 (intent_hash) and v1 renderIntentText (intent_sha256), checked independently
+  let recomputed=null,bindOK=false;
+  if(r.intent&&r.intent_hash){try{recomputed=hashTypedData({domain:DOMAIN,types:TYPES,primaryType:"DJZSIntent",message:toDJZSIntent(r.intent)});bindOK=norm(recomputed)===norm(r.intent_hash);
+      C.push({r:bindOK?"pass":"fail",tok:bindOK?"OK":"FAIL",name:"Intent binding · v2",chip:bindOK?"PROVEN":"MISMATCH",
+        body:bindOK?"intent_hash reproduced from the intent alone as EIP-712 typed data. The verdict is provably bound to this exact intent — by anyone, with no access to DJZS.":"Recomputed EIP-712 hash does not equal the receipt's intent_hash. Either the intent text differs from what was audited, or the engine's canonicalization has diverged from the published contract.",
+        ev:`receipt     ${r.intent_hash}\nrecomputed  ${recomputed}\ndomain      DJZS · 2 · eip155:8453`})}
+    catch(e){C.push({r:"wait",tok:"WAIT",name:"Intent binding · v2",chip:"ERROR",body:"Could not compute EIP-712 hash.",ev:e.message})}}
+  if(r.intent&&r.intent_sha256){const v1=await sha256hex(renderIntentText(r.intent));const m=norm(v1)===norm(r.intent_sha256);
+    C.push({r:m?"pass":"fail",tok:m?"OK":"FAIL",name:"Intent binding · v1 (intent_sha256)",chip:m?"PROVEN":"MISMATCH",
+      body:m?"intent_sha256 reproduced: sha256 over renderIntentText(intent) — sorted keys, one key: value line each, nested objects as compact JSON. A pure function of the intent, recomputable by anyone.":"Recomputed intent_sha256 does not equal the receipt's — the intent text differs from what was audited.",
+      ev:`receipt     ${r.intent_sha256}\nrecomputed  ${v1}`})}
+  if(!(r.intent&&(r.intent_hash||r.intent_sha256)))C.push({r:"wait",tok:"WAIT",name:"Intent binding",chip:"ABSENT",body:"Receipt lacks intent + a binding key."});
+
+  // 3 — attestation on EAS
+  let attOK=false;
+  if(!r.eas_uid)C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"ABSENT",body:r.eas_error?"Gate reported an attestation failure. The verdict was still delivered and charged; the on-chain record did not land.":"Receipt carries no eas_uid (pre-v2 receipt).",ev:r.eas_error||""});
+  else try{const data=encodeFunctionData({abi:EAS_ABI,functionName:"getAttestation",args:[r.eas_uid]});
+      const {result,node}=await rpc("eth_call",[{to:EAS,data},"latest"]);
+      const a=decodeFunctionResult({abi:EAS_ABI,functionName:"getAttestation",data:result});
+      if(!a||norm(a.uid)!==norm(r.eas_uid)||/^0x0+$/.test(a.uid))C.push({r:"fail",tok:"FAIL",name:"Attestation on Base",chip:"NOT FOUND",body:"No attestation exists at this UID.",ev:r.eas_uid});
+      else{const [ih,verdict,risk,flags,ruleset]=decodeAbiParameters(FIELDS,a.data);
+        const schemaOK=norm(a.schema)===DJZS_SCHEMA,attesterOK=norm(a.attester)===DJZS_ATTESTER,revoked=a.revocationTime!==0n;
+        const bindMatch=recomputed?norm(ih)===norm(recomputed):norm(ih)===norm(r.intent_hash);
+        const verdictOK=verdict===r.verdict&&Number(risk)===Number(r.risk_score)&&JSON.stringify([...flags].sort())===JSON.stringify([...(r.flags||[])].sort());
+        attOK=schemaOK&&attesterOK&&!revoked&&bindMatch&&verdictOK;
+        const why=[!schemaOK&&"schema is not the DJZS schema",!attesterOK&&"attester is not the DJZS attester",revoked&&"attestation revoked",!bindMatch&&"attested intentHash != recomputed binding key",!verdictOK&&"attested verdict/risk/flags != receipt"].filter(Boolean);
+        C.push({r:attOK?"pass":"fail",tok:attOK?"OK":"FAIL",name:"Attestation on Base",chip:attOK?"PROVEN":"CONTRADICTED",
+          body:attOK?"EAS holds an attestation from the DJZS attester, under the DJZS schema, onto the paying agent, binding this exact intent hash to this exact verdict. Read from the chain, not from DJZS.":"The on-chain attestation contradicts the receipt: "+why.join("; ")+".",
+          ev:`uid        ${a.uid}\nschema     ${a.schema}${schemaOK?"  == DJZS":"  MISMATCH"}\nattester   ${a.attester}${attesterOK?"  == DJZS":"  MISMATCH"}\nrecipient  ${a.recipient}\ntime       ${new Date(Number(a.time)*1000).toISOString()}\nfields     ${verdict} · ${risk} · [${flags.join(",")}] · ${ruleset}\nintentHash ${ih}${bindMatch?"  == binding key":"  MISMATCH"}\nnode       ${node}`,
+          link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}}
+    catch(e){C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"UNREACHABLE",body:"Could not read EAS from this browser.",ev:e.message,link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}
+
+  // 4 — verdict reproducibility
+  C.push({r:"idle",tok:"----",name:"Verdict reproducibility",chip:attOK?"ATTESTED":"NEEDS RULESET",body:attOK?"The verdict is attested on-chain by DJZS. Re-deriving it from the rules independently requires the published engine; the attestation is the binding commitment.":"verdict_hash attests DJZS produced this verdict; re-deriving it requires the published ruleset.",ev:r.verdict_hash||""});
+
+  render(C);
+  const s=C.find(c=>c.name.startsWith("Settlement")),a=C.find(c=>c.name.startsWith("Attestation"));const bR=C.filter(c=>c.name.startsWith("Intent binding"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
+  if(s?.r==="fail"||b?.r==="fail"||a?.r==="fail")setV("fail","FAIL","receipt contradicts the chain","At least one recomputation contradicts what the receipt claims. Treat it as unverified.","Recompute or it didn't happen.");
+  else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","fully reproduced","Payment settled on Base. The binding key recomputes from the intent alone. An EAS attestation from the DJZS identity binds that key to this verdict on the paying agent's record. Three independent reads, one consistent story — and none of them trusted DJZS.","Same receipt, same result, any machine.");
+  else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","attestation not on chain","Settlement and binding both reproduce; the on-chain attestation is absent or unreachable. The verdict is real and bound — it just isn't yet on the public record.","Unknown means WAIT.");
+  else if(s?.r==="pass")setV("wait","WAIT","binding unprovable","Settlement proven; the binding could not be reproduced. v1 receipt — re-audit for v2.","Unknown means WAIT.");
+  else setV("wait","WAIT","settlement unconfirmed","Could not confirm settlement from this browser.","Read the chain, don't trust the tab.");
+  reset(btn);
+}
+function reset(b){b.disabled=false;b.textContent="Recompute"}
+function setV(st,stamp,title,note,coda){const v=$("#verdict");v.hidden=false;v.dataset.state=st;$("#vstamp").textContent=stamp;$("#vtitle").textContent="// "+title;$("#vnote").innerHTML=note+(coda?`<span class="coda">${coda}</span>`:"")}
+function render(C){$("#ledger").innerHTML=C.map(c=>`<div class="claim" data-r="${c.r}"><span class="tok">${c.tok}</span><p class="claim-name">${c.name}<span class="chip">${c.chip}</span></p><div class="claim-body">${c.body}${c.ev?`<span class="ev">${c.ev}</span>`:""}${c.link?`<span class="ev"><a href="${c.link[1]}" target="_blank" rel="noopener">${c.link[0]} -></a></span>`:""}</div></div>`).join("")}
+</script>
+</body>
+</html>

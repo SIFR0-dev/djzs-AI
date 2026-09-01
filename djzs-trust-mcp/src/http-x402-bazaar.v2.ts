@@ -31,6 +31,11 @@ import {
 import type { PaymentRequirements } from "@x402/core/types";
 import type { FacilitatorConfig } from "@x402/core/http";
 
+import { intentHash, attestVerdict, DJZS_SCHEMA_UID } from "./attest-worker";
+import { toDJZSIntent } from "./djzs-intent";
+
+/** Ruleset the attested verdict was scored under. Bump with the taxonomy, never silently. */
+const RULESET_VERSION = "DJZS-PM-v1.0";
 // ------------------------------------------------------------------
 // Canonical constants — content-verify these before every deploy.
 // ------------------------------------------------------------------
@@ -68,6 +73,11 @@ export interface VerdictResult {
   flags: string[];
   verdict_hash: string;
   intent_sha256: string; // binding key — verdict_hash is not injective
+  intent_hash?: string;        // v2 binding key — EIP-712, reproducible by anyone
+  eas_uid?: string | null;     // EAS attestation UID on Base
+  eas_tx?: string | null;
+  eas_schema?: string;
+  eas_error?: string;          // set only when attestation failed; verdict still valid
   pol_certificate?: unknown;
 }
 
@@ -90,7 +100,7 @@ export const NOT_WIRED: EngineAdapter = {
 // Discovery declaration — this is the Bazaar listing content.
 // Parameter descriptions are ranking inputs; keep them rich.
 // ------------------------------------------------------------------
-const discoveryExtensions = declareDiscoveryExtension({
+const discoveryExtensions = withDiscoveryFixups(declareDiscoveryExtension({
   bodyType: "json",
   input: {
     intent: {
@@ -144,16 +154,85 @@ const discoveryExtensions = declareDiscoveryExtension({
       flags: ["DJZS-M02", "DJZS-M01", "DJZS-M04", "unknown:probability_basis"],
       verdict_hash: "0xb1a2…9bb3",
       intent_sha256: "…binding key…",
+      intent_hash: "…EIP-712 binding key (v2)…",
+      eas_uid: "…EAS attestation uid…",
+      eas_schema: "0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030",
       charged: true,
       terms: TERMS_URL,
     },
   },
-});
+}));
+
+/**
+ * S2 + S3 — POST-HELPER FIXUPS, applied to the object `declareDiscoveryExtension`
+ * returns rather than to its config.
+ *
+ * WHY NOT THE CONFIG: `method` is meant to be filled in by
+ * `bazaarResourceServerExtension.enrichDeclaration`, which fires only from
+ * `x402HTTPResourceServer` — the class this route deliberately does not use
+ * (§14: the low-level verify/settle sequence is shared with /mcp). The result is
+ * that the emitted `info.input` OMITS `method` while the schema co-shipped in the
+ * SAME response marks it REQUIRED (`["type","method","bodyType","body"]`). The
+ * payload contradicts itself, and `facilitator.ts` validates info against that
+ * schema with Ajv 2020 and silently drops the resource on failure. This is the
+ * best-supported explanation for five epochs of NOT_INDEXED; 181/181 live indexed
+ * declarations carry `method`, and ours was the one that did not.
+ *
+ * INVARIANT, and the whole point of doing both halves here: every field added to
+ * `info` is also added to `schema` in the same function. S3 exists because S2's
+ * mistake in reverse — describing a field the payload lacks — is what broke this
+ * in the first place. Adding one without the other just moves the contradiction.
+ */
+function withDiscoveryFixups<T>(ext: T): T {
+  const e = (ext as unknown as any).bazaar as {
+    info: { input: Record<string, unknown>; output?: Record<string, unknown> };
+    schema: { properties: { output?: { properties?: Record<string, unknown> } } };
+  };
+
+  // S2 — the request method. Named by the schema, absent from the payload.
+  if (e?.info?.input) e.info.input.method = "POST";
+
+  // S3 — the response media type, in BOTH halves.
+  if (e?.info?.output) {
+    e.info.output.mimeType = OUTPUT_MIME_TYPE;
+    const outSchema = e.schema?.properties?.output;
+    if (outSchema) {
+      outSchema.properties = { ...(outSchema.properties ?? {}), mimeType: { type: "string" } };
+    }
+  }
+  return ext;
+}
+
+/** Response media type for the audit verdict — one home, used by info and schema. */
+const OUTPUT_MIME_TYPE = "application/json";
+
+/**
+ * S4 — CORS. `Expose-Headers` is the load-bearing line: without it a browser
+ * client receives the 402 but cannot READ the challenge header, so it cannot pay.
+ * A 402 whose challenge is unreadable is indistinguishable from a hard refusal.
+ * These ride the 402 and the 200 as well as the preflight — a preflight-only
+ * policy leaves the actual responses unreadable.
+ */
+const CORS_EXPOSE = "payment-required, PAYMENT-RESPONSE, X-PAYMENT-RESPONSE";
+const CORS_BASE: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Expose-Headers": CORS_EXPOSE,
+};
+const CORS_PREFLIGHT: Record<string, string> = {
+  ...CORS_BASE,
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Accept, X-PAYMENT",
+  "Access-Control-Max-Age": "86400",
+};
 
 // ------------------------------------------------------------------
 // Resource server — lazy singleton (Workers isolate friendly).
 // ------------------------------------------------------------------
 export interface X402Env {
+  /** EAS attester key for the v2 receipt. Optional: absent => attestation skipped, eas_error set. */
+  ATTESTER_KEY?: string;
+  /** Base RPC for attestation writes. Public endpoints refuse Worker egress; use the configured one. */
+  BASE_RPC_URL?: string;
   FACILITATOR_URL: string; // CDP: https://api.cdp.coinbase.com/platform/v2/x402
   /**
    * Auth seam: the CDP mainnet facilitator requires request auth headers.
@@ -246,9 +325,31 @@ export async function handleX402VerifyPmTrade(
   env: X402Env,
   engine: EngineAdapter = NOT_WIRED,
 ): Promise<Response> {
-  if (request.method !== "POST") {
-    return json({ error: "method_not_allowed", allow: "POST" }, 405);
+  const method = request.method.toUpperCase();
+
+  // S4 — preflight, answered before any facilitator work. No body, no challenge.
+  if (method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_PREFLIGHT });
   }
+  if (method !== "GET" && method !== "HEAD" && method !== "POST") {
+    return json({ error: "method_not_allowed", allow: "GET, HEAD, POST, OPTIONS" }, 405);
+  }
+
+  /**
+   * S1 — GET and HEAD are CHALLENGE-ONLY, unconditionally.
+   *
+   * An indexer, a crawler, or a human pasting the URL issues GET. Answering 404
+   * there makes a live paid endpoint look dead. So GET and HEAD return the SAME
+   * 402 the POST path returns.
+   *
+   * GUARD RAIL: they must NEVER settle, even when a valid payment header is
+   * attached. A GET carries no intent body, so there is nothing to audit — a
+   * settled GET would take money for no work. This flag is the enforcement: it
+   * suppresses the payment header entirely, so `verifyPayment`, `settlePayment`
+   * and the engine are all unreachable from a GET or HEAD. The invariant is
+   * re-asserted below the challenge block rather than trusted from here.
+   */
+  const challengeOnly = method === "GET" || method === "HEAD";
 
   // DISCOVERY ORDERING (same fix HEAD 7634b42 applied to /x402/verify). The 402
   // challenge MUST be reachable regardless of body shape: registration probes and
@@ -270,22 +371,34 @@ export async function handleX402VerifyPmTrade(
   }
 
   // 1 — no payment: 402 challenge with discovery extension attached. Body unread.
-  const sigHeader =
-    request.headers.get("PAYMENT-SIGNATURE") ?? request.headers.get("X-PAYMENT");
+  const sigHeader = challengeOnly
+    ? null
+    : request.headers.get("PAYMENT-SIGNATURE") ?? request.headers.get("X-PAYMENT");
   if (!sigHeader) {
     const paymentRequired = await server.createPaymentRequiredResponse(
       reqs,
-      { url: RESOURCE_URL, description: DESCRIPTION, serviceName: "DJZS Audit Gate", tags: ["audit", "prediction-markets", "trading", "verification"] },
+      { url: RESOURCE_URL, description: DESCRIPTION, mimeType: "application/json", serviceName: "DJZS Audit Gate", tags: ["audit", "prediction-markets", "trading", "verification"] },
       undefined,
       discoveryExtensions,
     );
-    return new Response(JSON.stringify(paymentRequired), {
+    // HEAD: identical status and headers, no body — per RFC 9110 a HEAD response
+    // carries the headers its GET would, and nothing else.
+    return new Response(method === "HEAD" ? null : JSON.stringify(paymentRequired), {
       status: 402,
       headers: {
         "content-type": "application/json",
         "PAYMENT-REQUIRED": encodePaymentRequiredHeader(paymentRequired),
+        ...CORS_BASE,
       },
     });
+  }
+
+  // S1 GUARD RAIL, asserted rather than assumed. `challengeOnly` forces sigHeader
+  // to null above, so this is unreachable — which is exactly why it is here: if a
+  // future edit reintroduces a header read for GET, this throws instead of
+  // quietly charging for an audit that has no intent to audit.
+  if (challengeOnly) {
+    return json({ error: "invariant_violated", detail: "GET/HEAD reached the paid path" }, 402);
   }
 
   // 2 — verify the payment authorization (no funds move here).
@@ -371,14 +484,39 @@ export async function handleX402VerifyPmTrade(
     );
   }
 
+  // 5a — v2 binding + EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
+  // Fail-soft: a charged, valid verdict is never hostage to a second transaction.
+  const intent_hash = intentHash(toDJZSIntent(intent));
+  let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: string | undefined;
+  if (!env.ATTESTER_KEY) {
+    eas_error = "attester_not_configured";
+  } else {
+    try {
+      const a = await attestVerdict(
+        { DJZS_ATTESTER_KEY: env.ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL },
+        {
+          intentHash: intent_hash,
+          verdict: result.verdict as "PASS" | "WAIT" | "FAIL",
+          riskScore: result.risk_score,
+          flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
+          rulesetVersion: RULESET_VERSION,
+          agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
+        },
+      );
+      eas_uid = a.uid; eas_tx = a.txHash;
+    } catch (e) {
+      eas_error = (e instanceof Error ? e.message : String(e)).slice(0, 160);
+    }
+  }
   // 5 — verdict + settlement evidence.
   return new Response(
-    JSON.stringify({ ...result, charged: true, terms: TERMS_URL }),
+    JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: DJZS_SCHEMA_UID, ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
     {
       status: 200,
       headers: {
         "content-type": "application/json",
         "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle),
+        ...CORS_BASE,
       },
     },
   );
