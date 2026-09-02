@@ -45,3 +45,4 @@ server/engine-v2/calibration/predictions.json
 # trivially swept in by a careless `git add .` (2026-08-10 cleanup).
 *.bak-pre-*
 *.bak-pre-upstream
+tests/out/q2-stub-*.json
