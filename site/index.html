@@ -32,6 +32,8 @@
       <a href="#architecture">Architecture</a>
       <a href="#taxonomies">Taxonomies</a>
       <a href="#proof">Proof</a>
+      <a href="/verify">Verify</a>
+      <a href="/builders">Builders</a>
       <a href="/guide.html" aria-current="false">Connect -&gt;</a>
     </nav>
   </div>
@@ -50,10 +52,11 @@
       <div class="row"><span class="ok">OK</span><span class="label">GATE</span><span class="val">verify_pm_trade — LIVE · PAID 2.00 USDC via x402 [MCP] [streamable-HTTP]</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">TAXONOMY</span><span class="val">DJZS-PM-v1.0 4/4 calibrated · DJZS-LF-v1.1 11 frozen / 3 live</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">LEDGER</span><span class="val">Irys mainnet — every in-scope audit anchors a permanent ProofOfLogic certificate; readable via query_pol_certificates</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">RECEIPT</span><span class="val">EIP-712 intent_hash + EAS attestation on Base — extraction contract DJZS-X-v1.1 · recompute any receipt at <a href="/verify">djzs.ai/verify</a></span></div>
       <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">OPERATIONAL<span class="cursor"></span></span></div>
     </div>
     <p class="lede">It checks the claim before the money moves.
-    It produces a receipt anyone can recompute.
+    It produces a receipt <a href="/verify">anyone can recompute</a>.
     It never guesses — unknown means <strong>WAIT</strong>, and WAIT means <strong>HALT</strong>.</p>
     <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
     <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
@@ -123,7 +126,7 @@
     <h2>Taxonomies <span class="k">// prediction market, live</span></h2>
 
     <h3>DJZS-M — Prediction Market (DJZS-PM-v1.0)</h3>
-    <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated.</p>
+    <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated. Full rules, verdict formula, both binding contracts, and the extraction-contract changelog: <a href="/ruleset">djzs.ai/ruleset</a>.</p>
     <div class="table-wrap">
     <table aria-label="DJZS-PM-v1.0 codes, severities, and weights">
       <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Severity</th><th scope="col">Weight</th></tr></thead>
@@ -173,6 +176,20 @@
     input) is green. Hash parity is discharged: the anchor instrument reproduced this exact hash
     byte-identical from live extraction into the frozen engine (exit 0, 2026-07-12) and it has held
     across every re-run since, including runs with extraction divergence on non-preimage fields.</p>
+    <p><strong>Since then, two stronger proofs.</strong> The deterministic engine has been enumerated over its
+    <strong>entire</strong> prediction-market input space — 108 inputs, 8 properties (totality, determinism,
+    monotonicity, threshold, PASS/WAIT invariants) — and that test runs in CI on every push. The extraction
+    layer has been <strong>measured</strong>: 15 theses spanning the verdict space, 5 replays each, N=3 consensus —
+    verdict reproduced <strong>100%</strong> under extraction contract <code>DJZS-X-v1.1</code>. That measurement
+    found a defect (an unsourced claim in plain prose was demoted to WAIT instead of firing M03); it was
+    reproduced from raw samples, removed with a control test, and shipped as a versioned contract change.
+    Every response now states its contract as <code>taxonomy.extraction</code>. Harness, raw runs, and
+    regression tests live in <code>tests/</code>; the full account is on <a href="/ruleset">/ruleset</a>.</p>
+    <p><strong>And the receipt itself is now recomputable by anyone.</strong> Every paid verdict returns an
+    EIP-712 <code>intent_hash</code> any third party derives from the intent alone, and writes an
+    <a href="https://base.easscan.org/schema/view/0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030">EAS attestation on Base</a>
+    onto the paying agent's address. Paste a receipt at <a href="/verify">/verify</a> and it re-derives the
+    settlement, both binding keys, and the attestation with no trust in DJZS.</p>
   </section>
 
   <!-- 7b — UPSTREAM GATE (MetaMask Agent Wallet) -->
@@ -209,7 +226,8 @@ on-chain</code></pre>
     true or the trade wins.</p>
     <p class="doctrine">The gate clears the logic; the position is yours.</p>
     <p><span class="k">// status</span> Live on Base mainnet, payable over HTTP x402 at
-    <code>mcp.djzs.ai/x402/verify</code>. Base MCP, MetaMask Agent Wallet, and x402-axios
+    <code>mcp.djzs.ai/x402/verify</code> (Bazaar-listed as <code>/x402/verify_pm_trade</code>). Integration posture for
+    framework builders and treasuries — Safe Guard, AgentKit — is on <a href="/builders">/builders</a>. Base MCP, MetaMask Agent Wallet, and x402-axios
     all speak this rail. The gate audits its own operation on the public record; the
     end-to-end wallet compositions remain the <strong>reference design</strong>.</p>
   </section>
@@ -228,6 +246,11 @@ on-chain</code></pre>
       certificate to Irys mainnet and returns its id; it is retrievable by id and via
       <code>query_pol_certificates</code>. The certificate is assembled after the <code>verdict_hash</code>
       and never alters it.</li>
+      <li><strong>Receipts bind to the intent and to the chain.</strong> Every paid verdict returns an
+      EIP-712 <code>intent_hash</code> (domain DJZS / 2 / eip155:8453) and an EAS attestation on Base under
+      the DJZS schema, attested from a dedicated attester onto the paying agent. <code>intent_sha256</code> (v1)
+      is returned alongside; its rule is published. A Safe Guard or Zodiac module can require the attestation.
+      Recompute any receipt at <a href="/verify">/verify</a>; contract at <a href="/ruleset">/ruleset</a>.</li>
       <li><strong>The trust loop is closed and live.</strong> Pass an optional <code>agent_address</code>
       to <code>verify_pm_trade</code> and the verdict is written on-chain (<code>DJZSLogicTrustScore</code>
       on Base) by a dedicated authorized writer, indexed by the DJZS subgraph on The Graph, and readable
@@ -324,6 +347,9 @@ on-chain</code></pre>
   <div class="wrap">
     <span>No agent acts without audit.</span>
     <span>
+      <a href="/verify">Verify</a>
+      <a href="/ruleset">Ruleset</a>
+      <a href="/builders">Builders</a>
       <a href="https://x.com/Djzs_ai">X @Djzs_ai</a>
       <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a>
       <a href="/legal.html">Legal</a>
