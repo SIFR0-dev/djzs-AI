@@ -1,0 +1,1453 @@
+{
+  "mode": "live",
+  "model": "claude-sonnet-4-6",
+  "K": 5,
+  "thresholds": {
+    "reliable": "mean>=0.95 && full>=0.8",
+    "marginal": "mean>=0.85",
+    "failsafe_max": 0.02
+  },
+  "grade": "RELIABLE",
+  "meanStab": 1,
+  "pctFull": 1,
+  "fsRate": 0,
+  "fieldFlip": {
+    "invalidation_condition": 2,
+    "resolution_engagement": 0,
+    "probability_basis": 0,
+    "edge_claim": 1,
+    "audit_context": 0
+  },
+  "designedMatch": 15,
+  "results": [
+    {
+      "id": "F1",
+      "cls": "FULL",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "cls": "FULL",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "cls": "FULL",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "stop_loss",
+            "data_sources",
+            "oracle_source",
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "PASS",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "I1",
+      "cls": "NO_INVALIDATION",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "I2",
+      "cls": "NO_INVALIDATION",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 45,
+          "codes": [
+            "DJZS-M02",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "take_profit",
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "confidence",
+            "edge_claim(evidence)"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 45,
+          "codes": [
+            "DJZS-M02",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 45,
+          "codes": [
+            "DJZS-M02",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 45,
+          "codes": [
+            "DJZS-M02",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "I3",
+      "cls": "NO_INVALIDATION",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M02"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "present",
+            "edge_claim": "present"
+          },
+          "disagreements": [],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "R1",
+      "cls": "NO_RESOLUTION",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "stop_loss"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "R2",
+      "cls": "NO_RESOLUTION",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 30,
+          "codes": [
+            "DJZS-M01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "absent",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "R3",
+      "cls": "NO_RESOLUTION",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "stop_loss",
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "stop_loss",
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "P1",
+      "cls": "NO_PROBABILITY",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "invalidation_condition",
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "invalidation_condition"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "invalidation_condition",
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "invalidation_condition",
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 55,
+          "codes": [
+            "DJZS-M02",
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "absent",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "data_sources",
+            "confidence"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "cls": "NO_PROBABILITY",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 40,
+          "codes": [
+            "DJZS-M03",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "absent"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 40,
+          "codes": [
+            "DJZS-M03",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 40,
+          "codes": [
+            "DJZS-M03",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 40,
+          "codes": [
+            "DJZS-M03",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 40,
+          "codes": [
+            "DJZS-M03",
+            "DJZS-M04"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "absent"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "cls": "NO_PROBABILITY",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "invalidation_condition"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "stop_loss"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 25,
+          "codes": [
+            "DJZS-M03"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "present",
+            "resolution_engagement": "present",
+            "probability_basis": "absent",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "A1",
+      "cls": "AMBIGUOUS",
+      "designed": "WAIT",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "present",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "A2",
+      "cls": "AMBIGUOUS",
+      "designed": "WAIT",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "resolution_engagement",
+            "probability_basis"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "resolution_engagement",
+            "probability_basis"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "resolution_engagement",
+            "probability_basis"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "probability_basis"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "prediction_market",
+            "invalidation_condition": "unknown",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [
+            "probability_basis"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "N1",
+      "cls": "NON_PM",
+      "designed": "OUT_OF_SCOPE",
+      "runs": [
+        {
+          "verdict": "OUT_OF_SCOPE",
+          "risk": 0,
+          "codes": [],
+          "in_scope": false,
+          "states": {
+            "audit_context": "(unset)",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "OUT_OF_SCOPE",
+          "risk": 0,
+          "codes": [],
+          "in_scope": false,
+          "states": {
+            "audit_context": "(unset)",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "OUT_OF_SCOPE",
+          "risk": 0,
+          "codes": [],
+          "in_scope": false,
+          "states": {
+            "audit_context": "(unset)",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "OUT_OF_SCOPE",
+          "risk": 0,
+          "codes": [],
+          "in_scope": false,
+          "states": {
+            "audit_context": "(unset)",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "OUT_OF_SCOPE",
+          "risk": 0,
+          "codes": [],
+          "in_scope": false,
+          "states": {
+            "audit_context": "(unset)",
+            "invalidation_condition": "present",
+            "resolution_engagement": "unknown",
+            "probability_basis": "unknown",
+            "edge_claim": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        }
+      ]
+    }
+  ]
+}
