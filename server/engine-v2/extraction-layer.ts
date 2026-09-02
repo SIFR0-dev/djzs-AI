@@ -30,6 +30,22 @@ import { callClaudeText } from "../claude-client";
 /** The injected model transport: prompt in, raw text out. */
 export type ModelFn = (prompt: string) => Promise<string>;
 
+/**
+ * Extraction-contract version. Bumped whenever a change to the prompt or a post-parse gate
+ * can alter the tri-state struct handed to the deterministic engine — i.e. can change a verdict
+ * for the same intent. Surfaced in verify_pm_trade responses as taxonomy.extraction.
+ *
+ * v1.1 (2026-09-01) — REMOVED the M03 "probability-token precondition": a surviving absent
+ *   probability_basis was demoted to unknown unless the intent contained %/percent/odds/chance/
+ *   likel/probabl. It contradicted the prompt (which defines certainty claims as assertions) and
+ *   made M03 unreachable for plain-prose unsourced claims ("everyone knows", "gut feel"), while
+ *   letting an incidental "%" in an unrelated field unlock it. The verbatim-quote gate remains the
+ *   evidence requirement. Also: probability_basis absent quote must be ONE contiguous span.
+ *   Evidence: tests/out/q2-live-2026-09-02-*.json (before) and the v1.1 re-run (after).
+ * v1.0 — contract as shipped through Worker 821da611.
+ */
+export const EXTRACTION_CONTRACT_VERSION = "DJZS-X-v1.1" as const;
+
 export interface ExtractionResult {
   input: AuditInput;
   /** raw model output, retained for the audit trail / debugging */
@@ -129,7 +145,7 @@ Rules you must obey:
     preceded every prior approval on the docket") is NOT a forecasting track record; it is
     checkable evidence.
     For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
-      {"state":"absent","quote":"<verbatim text from the intent — the unsourced assertion>"}
+      {"state":"absent","quote":"<ONE contiguous verbatim span from the intent — the unsourced assertion. Never join two spans; pick the single strongest one>"}
     Never absent — these are NOT unsourced assertions:
     - A thesis that asserts no probability, certainty, or edge argues nothing to source — mark
       present (vacuously), never absent.
@@ -247,7 +263,6 @@ const FALSIFICATION_MARKERS = ["wrong if", "invalid if", "invalidation"];
  * "likel" covers likely/likelihood; "probabl" covers probable/probably/probability.
  * M03 (PROBABILITY_UNSOURCED) is definitionally moot without one of these present.
  */
-const PROBABILITY_TOKENS = ["%", "percent", "odds", "chance", "likel", "probabl"];
 
 /** Parse one raw model output into a trusted AuditInput (the fail-safe pipeline). */
 function parseOne(
@@ -314,18 +329,9 @@ function parseOne(
       input.resolution_engagement = UNKNOWN;
     }
   }
-  // M03 DEFINITIONAL PRECONDITION (probability_basis only): an unsourced-probability
-  // flag requires an asserted probability. If the basis survives as absent but the
-  // INTENT contains no explicit probability token anywhere, there is nothing to be
-  // unsourced — certainty prose ("already done") is not a probability claim. Demote
-  // to unknown: absence of an assertion drains to abstention, never to a CRITICAL.
-  // Scope: the whole intent (the assertion may sit anywhere), not the gate quote.
-  if (input.probability_basis.state === "absent") {
-    const intent = originalText.toLowerCase();
-    if (!PROBABILITY_TOKENS.some((t) => intent.includes(t))) {
-      input.probability_basis = UNKNOWN;
-    }
-  }
+  // (v1.1) The M03 probability-token precondition that lived here was removed — see
+  // EXTRACTION_CONTRACT_VERSION. A surviving absent probability_basis already carries a
+  // verbatim quote of the unsourced assertion (gateProbabilityBasis); that is the evidence.
   if (typeof parsed.market_type === "string" && parsed.market_type.trim() !== "") {
     input.market_type = parsed.market_type;
   }

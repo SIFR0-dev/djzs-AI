@@ -12,6 +12,7 @@
  */
 import {
   extractAuditInputConsensus,
+  EXTRACTION_CONTRACT_VERSION,
   type ModelFn,
 } from "../../server/engine-v2/extraction-layer";
 import { runDeterministicAudit } from "../../server/engine-v2/deterministic-engine";
@@ -100,6 +101,7 @@ export async function runVerifyPmTrade(
       taxonomy_hash: TAXONOMY_HASH,
       pm_weights_hash: PM_WEIGHTS_HASH,
       pm_taxonomy_hash: PM_TAXONOMY_HASH,
+      extraction: EXTRACTION_CONTRACT_VERSION,
     },
         verdict: result.verdict,
     action,
