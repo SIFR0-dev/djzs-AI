@@ -23,3 +23,13 @@ jobs:
       - name: djzs-trust-mcp — bundle (no deploy, no secrets)
         run: npx wrangler deploy --dry-run --outdir /tmp/dry
         working-directory: djzs-trust-mcp
+
+  q3-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Q3 — recompute every record hash; match every anchor to its Irys item
+        run: npx tsx tests/q3/q3-verify.ts

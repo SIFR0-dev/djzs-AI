@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://djzs.ai/schemas/q3-record-1.1.json",
+  "title": "DJZS Q3 record (protocol v1.1)",
+  "description": "One narrative, bound to one objective resolution, audited once. Phase A fields are hashed before price lookup (phase_a_hash); Phase B adds price and seals (record_hash). outcome is outside both hashes.",
+  "type": "object",
+  "required": ["id", "protocol_version", "posted_at", "origin", "scan_ref", "source", "market", "binding", "prescreen", "intent", "criterion", "engine", "intent_sha256", "phase_a_hash"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^q3-\\d{4}-\\d{2}-\\d{2}-[A-Za-z0-9_-]+$" },
+    "protocol_version": { "type": "string" },
+    "posted_at": { "type": "string", "format": "date-time" },
+    "origin": { "enum": ["scan", "pool"] },
+    "scan_ref": { "type": "string" },
+    "supersedes": { "type": ["string", "null"] },
+    "deviated": { "type": "boolean" },
+    "inclusion_note": { "type": ["string", "null"] },
+    "source": { "type": "object", "required": ["url", "text", "captured_at"], "properties": { "url": { "type": "string" }, "text": { "type": "string", "minLength": 1 }, "captured_at": { "type": "string", "format": "date-time" } } },
+    "market": { "type": "object", "required": ["venue", "ticker", "side", "resolution_source", "resolution_due"], "properties": { "venue": { "enum": ["kalshi", "polymarket", "series"] }, "ticker": { "type": "string" }, "title": { "type": "string" }, "side": { "enum": ["YES", "NO"] }, "resolution_source": { "type": "string" }, "resolution_due": { "type": "string", "format": "date-time" } } },
+    "binding": { "type": "object", "required": ["type"], "properties": { "type": { "enum": ["venue", "series", "unbound"] }, "series": { "type": ["string", "null"] }, "threshold": { "type": ["string", "null"] }, "at": { "type": ["string", "null"] } } },
+    "prescreen": { "type": "object", "required": ["codes", "sigma", "verdict", "by"], "properties": { "codes": { "type": "array", "items": { "type": "string" } }, "sigma": { "type": "number" }, "verdict": { "enum": ["PASS", "WAIT", "FAIL", "OUT_OF_SCOPE"] }, "by": { "type": "string" } } },
+    "intent": { "type": "object", "required": ["market", "side", "thesis"], "properties": { "market": { "type": "string" }, "side": { "type": "string" }, "thesis": { "type": "string" }, "probability_basis": { "type": "string" }, "size_usd": { "type": "number" }, "bounds": { "type": "object" } } },
+    "intent_sha256": { "type": "string", "pattern": "^0x[0-9a-f]{64}$" },
+    "intent_hash": { "type": ["string", "null"], "pattern": "^0x[0-9a-f]{64}$" },
+    "engine": { "type": "object", "required": ["verdict", "risk_score", "codes", "taxonomy", "in_scope"], "properties": { "verdict": { "enum": ["PASS", "WAIT", "FAIL", "OUT_OF_SCOPE"] }, "action": { "type": "string" }, "risk_score": { "type": "number" }, "codes": { "type": "array", "items": { "type": "string" } }, "unknown_fields": { "type": "array" }, "verdict_hash": { "type": ["string", "null"] }, "taxonomy": { "type": "object", "required": ["pm", "engine", "extraction"] }, "eas_uid": { "type": ["string", "null"] }, "paid": { "type": "boolean" }, "in_scope": { "type": "boolean" }, "disagreements": { "type": "array" }, "failsafe": { "type": "boolean" } } },
+    "criterion": { "type": "object", "required": ["correct_if", "incorrect_if", "void_if", "grade_due"], "properties": { "correct_if": { "type": "string" }, "incorrect_if": { "type": "string" }, "void_if": { "type": "string" }, "grade_due": { "type": "string", "format": "date-time" } } },
+    "phase_a_hash": { "type": "string", "pattern": "^0x[0-9a-f]{64}$" },
+    "price_at_audit": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "implied_prob_at_audit": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "price_captured_at": { "type": ["string", "null"] },
+    "record_hash": { "type": ["string", "null"], "pattern": "^0x[0-9a-f]{64}$" },
+    "outcome": { "type": ["object", "null"], "required": ["result", "evidence_url", "graded_at", "grader"], "properties": { "result": { "enum": ["CORRECT", "INCORRECT", "VOID"] }, "settled_value": { "type": ["string", "null"] }, "evidence_url": { "type": "string" }, "graded_at": { "type": "string", "format": "date-time" }, "grader": { "type": "string" }, "note": { "type": ["string", "null"] } } }
+  }
+}

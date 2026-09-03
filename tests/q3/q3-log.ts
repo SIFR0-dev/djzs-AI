@@ -42,6 +42,10 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     const missing = REQUIRED_A.filter(k => !(k in rec)); if (missing.length) { console.error("Phase A: missing fields:", missing.join(", ")); process.exit(1); }
     for (const k of ["price_at_audit", "implied_prob_at_audit", "engine", "phase_a_hash", "record_hash", "outcome"]) if (k in rec && rec[k] != null) { console.error(`Phase A: '${k}' must not be present — it is computed or belongs to a later phase`); process.exit(1); }
     const date = String(rec.posted_at).slice(0, 10); const recs = loadDay(date); if (recs.some(r => r.id === rec.id)) { console.error(`Phase A: id ${rec.id} already exists in ${date}`); process.exit(1); }
+    // Venue ticker must resolve before anything is hashed — a 404 ticker is an ungradable record (learned from pilot N5).
+    const mk = rec.market as Record<string, unknown>; const bt = (rec.binding as Record<string, unknown>)?.type;
+    if (bt === "venue" && mk.venue === "kalshi") { const vr = await fetch(`https://api.elections.kalshi.com/trade-api/v2/markets/${encodeURIComponent(String(mk.ticker))}`); if (vr.status === 404) { console.error(`Phase A ABORT: kalshi ticker ${mk.ticker} not found — check the strike suffix (e.g. -H25)`); process.exit(1); } if (!vr.ok) console.error(`  warn: kalshi HTTP ${vr.status} validating ticker; continuing`); }
+    if (bt === "venue" && mk.venue === "polymarket") { const slug = String(mk.ticker).replace(/^polymarket:/, ""); const vr = await fetch(`https://gamma-api.polymarket.com/markets?slug=${encodeURIComponent(slug)}`); const arr = vr.ok ? await vr.json() as unknown[] : []; if (vr.ok && arr.length === 0) { console.error(`Phase A ABORT: polymarket slug ${slug} not found`); process.exit(1); } }
     const intent = rec.intent as Record<string, unknown>; const text = renderIntentText(intent);
     const model = args.includes("--stub") ? stubModel : anthropicModel();
     const x = await extractAuditInputConsensus(text, model, 3);
