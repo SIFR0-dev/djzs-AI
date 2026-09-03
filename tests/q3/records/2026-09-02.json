@@ -82,10 +82,10 @@
     "intent_sha256": "0xfd4605daa447f97812e48540c5cf20d8d8cf02c05c5568fea824b8cbf5771734",
     "intent_hash": "0x9c734284d612a8787b0d45a7c90e89dee04ed6b1813b4ffd0adb0490e3a0eb22",
     "phase_a_hash": "0xffc29c7bbe92dbcbcae476823a05f36726039ddd3ae20cd2f353e44ccaeb33e3",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "record_hash": null,
+    "price_at_audit": 0.664,
+    "implied_prob_at_audit": 0.664,
+    "price_captured_at": "2026-09-03T02:41:42.071Z",
+    "record_hash": "0x5d5334817ac7d26733430fe139e9cbf51a97e60a7752810d39a75a758bdd3112",
     "outcome": null
   },
   {
@@ -166,8 +166,8 @@
     "phase_a_hash": "0x186f0979f3fc9456739845b69f8115787a41f76ec90ddbc081076de7e407e54a",
     "price_at_audit": null,
     "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "record_hash": null,
+    "price_captured_at": "2026-09-03T02:41:42.331Z",
+    "record_hash": "0x3191ced09e45f2d74bcd3c20eab7502710f5d499d0f978cea9e814f4fa62140d",
     "outcome": null
   }
 ]
