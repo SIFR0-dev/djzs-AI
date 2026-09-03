@@ -1,0 +1,41 @@
+[
+  {
+    "id": "N5-0902",
+    "fix": "name the NFP print that moves hike odds >15 points; bind the FOMC + NFP pair",
+    "original": {
+      "market": "Kalshi — September FOMC 25bp hike",
+      "side": "YES",
+      "thesis": "Friday's jobs report locks the hike.",
+      "probability_basis": "the hike is already 66.4% priced",
+      "size_usd": 250,
+      "bounds": { "max_loss_usd": 250 }
+    },
+    "respec": {
+      "market": "Kalshi — September FOMC 25bp hike",
+      "side": "YES",
+      "thesis": "TODO_SCAN_AUTHOR — same claim, with the NFP print named: 'an NFP print below/above X on Sep 5 moves September hike odds by more than 15 points'",
+      "probability_basis": "TODO_SCAN_AUTHOR — 66.4% priced (Kalshi, 2026-09-02) plus the source for the NFP→odds sensitivity",
+      "size_usd": 250,
+      "bounds": { "max_loss_usd": 250, "exit_condition": "TODO_SCAN_AUTHOR — only if the prescription named one; otherwise delete this key" }
+    }
+  },
+  {
+    "id": "CLARITY-TODO",
+    "fix": "pull the odds and source them",
+    "original": {
+      "market": "TODO_SCAN_AUTHOR",
+      "side": "YES",
+      "thesis": "TODO_SCAN_AUTHOR — the CLARITY narrative verbatim as it stood when it FAILed",
+      "size_usd": 250,
+      "bounds": { "max_loss_usd": 250 }
+    },
+    "respec": {
+      "market": "TODO_SCAN_AUTHOR",
+      "side": "YES",
+      "thesis": "TODO_SCAN_AUTHOR — same thesis",
+      "probability_basis": "TODO_SCAN_AUTHOR — the pulled odds, venue, and date",
+      "size_usd": 250,
+      "bounds": { "max_loss_usd": 250 }
+    }
+  }
+]
