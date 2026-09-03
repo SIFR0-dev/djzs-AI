@@ -1,0 +1,11 @@
+[
+  {
+    "date": "2026-09-02",
+    "protocol_version": "1.1",
+    "record_count": 2,
+    "merkle_root": "0x8a5117fa6f999355cc0e02560d0dbde5a96fb6bed2a21381b837b58f99ad335d",
+    "irys_id": "Cf87hGKm9unc642AC4CztyqBj6GiDFhLaCXqVSKrWfY4",
+    "gateway_url": "https://gateway.irys.xyz/Cf87hGKm9unc642AC4CztyqBj6GiDFhLaCXqVSKrWfY4",
+    "anchored_at": "2026-09-03T02:44:52.514Z"
+  }
+]
