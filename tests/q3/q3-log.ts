@@ -13,6 +13,7 @@ import { runDeterministicAudit } from "../../server/engine-v2/deterministic-engi
 import { PM_SCHEMA_VERSION } from "../../shared/pm-taxonomy";
 import { SCHEMA_VERSION } from "../../shared/audit-schema";
 import { canonical, sha256hex, renderIntentText, devVar, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
+import { runDuneQuery, asPriceRow } from "./dune";
 
 const args = process.argv.slice(2); const flag = (f: string) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const REC_DIR = "tests/q3/records";
@@ -62,13 +63,27 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     console.log(`Phase A · ${rec.id} · engine ${engine.verdict} ${(engine.codes as string[]).join("+") || "—"} risk ${engine.risk_score} · prescreen ${(rec.prescreen as any).verdict} · agree=${engine.verdict === (rec.prescreen as any).verdict}`);
     console.log(`  phase_a_hash ${rec.phase_a_hash}\n  → ${REC_DIR}/${date}.json   COMMIT NOW, then look up the price.`);
   } else if (flag("--phase-b")) {
-    const id = flag("--phase-b")!, price = Number(flag("--price")); if (!(price >= 0 && price <= 1)) { console.error("--price must be in [0,1] (price of the audited side)"); process.exit(1); }
+    const id = flag("--phase-b")!, fromDune = args.includes("--price-from-dune"), price = Number(flag("--price"));
+    if (!fromDune && !(price >= 0 && price <= 1)) { console.error("--price must be in [0,1] (price of the audited side), or use --price-from-dune"); process.exit(1); }
     const f = findRecord(id); if (!f) { console.error(`no record ${id}`); process.exit(1); } const rec = f.recs[f.idx];
     if (!rec.phase_a_hash) { console.error("Phase B refused: phase_a_hash missing — run Phase A first"); process.exit(1); }
     if (rec.record_hash) { console.error("Phase B refused: record already sealed"); process.exit(1); }
-    const bt = (rec.binding as any)?.type; if (bt === "series") { console.error("Phase B: binding.type=series has no market price — sealing without price"); }
-    if (bt !== "series") { rec.price_at_audit = price; rec.implied_prob_at_audit = price; }
-    rec.price_captured_at = new Date().toISOString();
+    const bt = (rec.binding as any)?.type; const capturedAt = new Date().toISOString();
+    if (bt === "series") { console.error("Phase B: binding.type=series has no market price — sealing without price"); }
+    else if (fromDune) {
+      // v1.2: Polymarket price from a PUBLIC saved Dune query over on-chain trades — recomputable by anyone with the same params.
+      const mk = rec.market as any; if (mk.venue !== "polymarket") { console.error("--price-from-dune is for venue=polymarket records only"); process.exit(1); }
+      if (!mk.token_id) { console.error("--price-from-dune needs market.token_id (the audited outcome token)"); process.exit(1); }
+      const cfg = JSON.parse(readFileSync("tests/q3/dune.json", "utf8")); if (!cfg.price_query_id) { console.error("tests/q3/dune.json: price_query_id not set — scan instance creates the public query first"); process.exit(1); }
+      const qp = { token_id: String(mk.token_id), captured_at: capturedAt, window_min: Number(cfg.window_min ?? 60) };
+      const run = await runDuneQuery(Number(cfg.price_query_id), qp); const pr = asPriceRow(run.rows);
+      if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no trades on ${mk.token_id} in the ${qp.window_min}-min window — cannot price; widen window_min in dune.json (recorded) or grade as unpriced`); process.exit(1); }
+      rec.price_at_audit = pr.vwap; rec.implied_prob_at_audit = pr.vwap;
+      rec.price_source = { provider: "dune", query_id: run.query_id, execution_id: run.execution_id, query_params: qp, vwap: pr.vwap, trade_count: pr.trade_count, volume_usdc: pr.volume_usdc, window_start: pr.window_start, window_end: pr.window_end };
+      console.log(`  price from Dune: vwap ${pr.vwap} over ${pr.trade_count} trades (${pr.volume_usdc.toFixed(2)} USDC) · query ${run.query_id} · execution ${run.execution_id}`);
+    }
+    else { rec.price_at_audit = price; rec.implied_prob_at_audit = price; rec.price_source = { provider: "operator", note: "manually captured; not independently recomputable" }; }
+    rec.price_captured_at = capturedAt;
     rec.record_hash = sha256hex(canonical(strip(rec, PHASE_B_EXCLUDE)));
     const rt = sha256hex(canonical(strip(JSON.parse(JSON.stringify(rec)), PHASE_B_EXCLUDE)));
     if (rt !== rec.record_hash) { console.error("Phase B ABORT: record_hash does not survive JSON round-trip"); process.exit(1); }

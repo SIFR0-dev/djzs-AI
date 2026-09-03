@@ -7,11 +7,13 @@
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { canonical, sha256hex, merkleRoot, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
+import { runDuneQuery, asPriceRow, duneKey } from "./dune";
 const REC_DIR = "tests/q3/records", ANCHORS = "tests/q3/anchors.json";
 const ORIGINS = new Set(["scan", "pool"]), BIND = new Set(["venue", "series", "unbound"]), VERD = new Set(["PASS", "WAIT", "FAIL", "OUT_OF_SCOPE"]), RESULT = new Set(["CORRECT", "INCORRECT", "VOID"]);
 const REQ = ["id", "protocol_version", "posted_at", "origin", "scan_ref", "source", "market", "binding", "prescreen", "intent", "criterion", "engine", "intent_sha256", "phase_a_hash"];
 const HEX = /^0x[0-9a-f]{64}$/;
 let fails: string[] = [], warns: string[] = [], n = 0, sealed = 0, deviated = 0, graded = 0;
+const priceChecks: { id: string; ps: any; price: number }[] = []; const tol = Number((JSON.parse(readFileSync("tests/q3/dune.json", "utf8")) as any).price_tolerance ?? 1e-9);
 const anchors: any[] = existsSync(ANCHORS) ? JSON.parse(readFileSync(ANCHORS, "utf8")) : [];
 if (!existsSync(REC_DIR)) { console.log("q3-verify: no records yet"); process.exit(0); }
 for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
@@ -31,6 +33,7 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     if (r.record_hash) { sealed++; if (!HEX.test(r.record_hash)) fails.push(`${id}: record_hash format`); if (sha256hex(canonical(strip(r, PHASE_B_EXCLUDE))) !== r.record_hash) fails.push(`${id}: record_hash does not recompute`); dayHashes.push(r.record_hash);
       if (r.binding?.type === "venue" && (r.price_at_audit == null)) fails.push(`${id}: venue record sealed without price_at_audit`); }
     if (r.deviated) deviated++;
+    if (r.price_source?.provider === "dune") priceChecks.push({ id: r.id, ps: r.price_source, price: r.price_at_audit });
     if (r.outcome) { graded++; if (!RESULT.has(r.outcome.result)) fails.push(`${id}: outcome.result ${r.outcome.result}`); if (r.outcome.grader === "dj" && !r.outcome.evidence_url) fails.push(`${id}: manual grade without evidence_url`);
       if (r.criterion?.grade_due && r.outcome.graded_at && r.outcome.graded_at < r.criterion.grade_due) fails.push(`${id}: graded before grade_due`); }
   }
@@ -46,8 +49,14 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
       if (item.merkle_root !== a.merkle_root) fails.push(`${a.date}: Irys root ≠ anchors.json root`); if (item.date !== a.date) fails.push(`${a.date}: Irys date ${item.date}`); if (item.record_count !== a.record_count) fails.push(`${a.date}: Irys count ${item.record_count}`);
     } catch (e) { fails.push(`${a.date}: Irys fetch failed ${(e as Error).message}`); }
   }
+  if (priceChecks.length) {
+    if (!duneKey()) warns.push(`${priceChecks.length} Polymarket price(s) not re-verified — no DUNE_API_KEY`);
+    else for (const pc of priceChecks) { try { const run = await runDuneQuery(Number(pc.ps.query_id), pc.ps.query_params); const pr = asPriceRow(run.rows);
+      if (Math.abs(pr.vwap - pc.price) > tol) fails.push(`${pc.id}: Dune re-execution vwap ${pr.vwap} ≠ recorded ${pc.price}`); if (pr.trade_count !== pc.ps.trade_count) fails.push(`${pc.id}: trade_count ${pr.trade_count} ≠ recorded ${pc.ps.trade_count}`);
+    } catch (e) { fails.push(`${pc.id}: Dune re-execution failed — ${(e as Error).message}`); } }
+  }
   console.log(`q3-verify · ${n} records (${sealed} sealed, ${deviated} pilot/deviated, ${graded} graded) · ${anchors.length} anchor(s)`);
   for (const w of warns) console.log("  WARN", w);
   if (fails.length) { console.error("FAIL:\n  " + fails.join("\n  ")); process.exit(1); }
-  console.log("PASS — every hash recomputes, every anchor matches its Irys item");
+  console.log(`PASS — every hash recomputes, every anchor matches its Irys item${priceChecks.length && duneKey() ? `, ${priceChecks.length} Polymarket price(s) re-derived from chain` : ""}`);
 })();

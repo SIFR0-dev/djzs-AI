@@ -33,3 +33,4 @@ jobs:
       - run: npm ci
       - name: Q3 — recompute every record hash; match every anchor to its Irys item
         run: npx tsx tests/q3/q3-verify.ts
+        env: { DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }} }
