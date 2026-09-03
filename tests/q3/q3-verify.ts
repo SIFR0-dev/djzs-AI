@@ -7,7 +7,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { canonical, sha256hex, merkleRoot, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
-import { runDuneQuery, asPriceRow, duneKey } from "./dune";
+import { runDuneQuery, asPriceRow, duneKey } from "./dune-client";
 const REC_DIR = "tests/q3/records", ANCHORS = "tests/q3/anchors.json";
 const ORIGINS = new Set(["scan", "pool"]), BIND = new Set(["venue", "series", "unbound"]), VERD = new Set(["PASS", "WAIT", "FAIL", "OUT_OF_SCOPE"]), RESULT = new Set(["CORRECT", "INCORRECT", "VOID"]);
 const REQ = ["id", "protocol_version", "posted_at", "origin", "scan_ref", "source", "market", "binding", "prescreen", "intent", "criterion", "engine", "intent_sha256", "phase_a_hash"];

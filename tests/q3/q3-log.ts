@@ -13,7 +13,7 @@ import { runDeterministicAudit } from "../../server/engine-v2/deterministic-engi
 import { PM_SCHEMA_VERSION } from "../../shared/pm-taxonomy";
 import { SCHEMA_VERSION } from "../../shared/audit-schema";
 import { canonical, sha256hex, renderIntentText, devVar, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
-import { runDuneQuery, asPriceRow } from "./dune";
+import { runDuneQuery, asPriceRow } from "./dune-client";
 
 const args = process.argv.slice(2); const flag = (f: string) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const REC_DIR = "tests/q3/records";
