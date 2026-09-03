@@ -13,6 +13,7 @@ import { createEngineAdapter } from "./engine-adapter"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
 import { attesterBalance } from "./attest-worker"
+import { anchorQ3, keyMatches, validateQ3AnchorRequest } from "./q3-anchor"
 import { registerExactEvmScheme } from "@x402/evm/exact/server"
 import {
   encodePaymentRequiredHeader,
@@ -78,6 +79,8 @@ interface Env {
   IRYS_UPLOAD_KEY?: string
   /** Irys upload node. Defaults to devnet (D3 ruling); mainnet cutover flips this var. */
   IRYS_NODE_URL?: string
+  /** Q3 study: bearer for POST /q3/anchor. SECRET. Absent => route returns 503 (anchoring disabled). */
+  DJZS_Q3_ANCHOR_KEY?: string
   /** CDP facilitator API key id (A10). SECRET, request-scoped. Absent => paid tool cannot settle. */
   CDP_API_KEY_ID?: string
   /** CDP facilitator API key secret (A10). SECRET, request-scoped. Never module-scope. */
@@ -590,6 +593,28 @@ app.get("/health/x402", async (c) => {
       network_supported: false,
       detail: (e instanceof Error ? e.message : String(e)).slice(0, 200)
     }, 502)
+  }
+})
+
+/**
+ * Q3 daily anchor (2026-09-02). Authenticated. Accepts the day's record hashes, computes
+ * the Merkle root, signs with IRYS_UPLOAD_KEY (the same funded key PoL certificates use)
+ * and uploads to Irys. Nothing is metered; nothing touches the audit path. One call per day.
+ * Auth: header X-DJZS-Anchor-Key must equal the DJZS_Q3_ANCHOR_KEY secret (constant-time).
+ */
+app.post("/q3/anchor", async (c) => {
+  const env = c.env
+  if (!env.DJZS_Q3_ANCHOR_KEY || !env.IRYS_UPLOAD_KEY) return c.json({ error: "q3 anchoring not configured" }, 503)
+  if (!keyMatches(c.req.header("X-DJZS-Anchor-Key"), env.DJZS_Q3_ANCHOR_KEY)) return c.json({ error: "unauthorized" }, 401)
+  let body: unknown
+  try { body = await c.req.json() } catch { return c.json({ error: "invalid JSON" }, 400) }
+  const v = validateQ3AnchorRequest(body)
+  if (!v.ok) return c.json({ error: v.error }, 400)
+  try {
+    const out = await anchorQ3(v.req, env.IRYS_UPLOAD_KEY, env.IRYS_NODE_URL ?? DEFAULT_IRYS_NODE_URL)
+    return c.json({ status: "anchored", date: v.req.date, protocol_version: v.req.protocol_version, ...out })
+  } catch (e) {
+    return c.json({ status: "error", detail: (e instanceof Error ? e.message : String(e)).slice(0, 300) }, 502)
   }
 })
 
