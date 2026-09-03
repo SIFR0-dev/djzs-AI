@@ -40,7 +40,9 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
 }
 (async () => {
   for (const a of anchors) {
-    try { const r = await fetch(a.gateway_url, { redirect: "follow" }); if (!r.ok) { fails.push(`${a.date}: Irys gateway HTTP ${r.status}`); continue; } const item = await r.json() as any;
+    let r: Response | null = null; for (let t = 1; t <= 3 && !r; t++) { try { r = await fetch(a.gateway_url, { redirect: "follow" }); } catch { if (t < 3) await new Promise(z => setTimeout(z, 3000 * t)); } }
+    if (!r) { fails.push(`${a.date}: Irys gateway unreachable after 3 attempts (network) — anchor NOT verified`); continue; }
+    try { if (!r.ok) { fails.push(`${a.date}: Irys gateway HTTP ${r.status}`); continue; } const item = await r.json() as any;
       if (item.merkle_root !== a.merkle_root) fails.push(`${a.date}: Irys root ≠ anchors.json root`); if (item.date !== a.date) fails.push(`${a.date}: Irys date ${item.date}`); if (item.record_count !== a.record_count) fails.push(`${a.date}: Irys count ${item.record_count}`);
     } catch (e) { fails.push(`${a.date}: Irys fetch failed ${(e as Error).message}`); }
   }
