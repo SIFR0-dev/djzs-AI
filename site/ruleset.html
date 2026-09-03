@@ -79,13 +79,18 @@
   footer .sig{margin-top:14px} footer .sig .p{color:var(--pass);font-weight:700}
   @media (prefers-reduced-motion:reduce){.cursor{animation:none}}
   @media (max-width:560px){.rung{grid-template-columns:1fr}.rung .verdict{justify-self:start;margin-bottom:8px}}
+  nav.site{display:flex;flex-wrap:wrap;gap:0 1.1rem;margin:0 0 1.1rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.12em;font-size:.72rem}
+  nav.site a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+  nav.site a:hover{color:var(--text)} nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--green)}
+  nav.site a.home{color:var(--text)} a.wordmark{text-decoration:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify">verify</a><a href="/ruleset" aria-current="page">ruleset</a><a href="/builders">builders</a></nav>
     <p class="path"><span class="p">~/djzs/ruleset</span> $ cat DJZS-PM-v1.0<span class="cursor"></span></p>
-    <h1><span class="wordmark">DJZS.</span> Ruleset &amp; Binding Contract</h1>
+    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Ruleset &amp; Binding Contract</h1>
     <p class="lede">The taxonomy the gate scores against, the formula it hashes with, and the <b>binding contract</b> that lets anyone recompute a verdict from its intent — without trusting DJZS. Weights are hash-locked; a change is a versioned re-derive, never a hot patch. That immutability is what makes every hash reproducible.</p>
   </header>
 
