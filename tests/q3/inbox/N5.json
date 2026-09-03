@@ -1,0 +1,8 @@
+{ "id": "q3-2026-09-02-N5", "protocol_version": "1.1", "posted_at": "2026-09-02T14:37:00Z", "origin": "scan", "scan_ref": "2026-09-02_v2_governed_005 / N5",
+  "supersedes": null, "deviated": true, "inclusion_note": "day-0 pilot: price observed before intent hash; engine not run at post time",
+  "source": { "url": "scan:2026-09-02_v2_governed_005#N5", "text": "Friday's jobs report locks the hike", "captured_at": "2026-09-02T14:37:00Z" },
+  "market": { "venue": "kalshi", "ticker": "KXFEDDECISION-26SEP", "title": "Fed raises 25bp at the Sep 17 FOMC?", "side": "YES", "resolution_source": "Kalshi rules — FOMC statement", "resolution_due": "2026-09-17T18:00:00Z" },
+  "binding": { "type": "venue", "series": null, "threshold": null, "at": null },
+  "prescreen": { "codes": ["DJZS-M03", "DJZS-M04"], "sigma": 40, "verdict": "FAIL", "by": "scan-model" },
+  "intent": { "market": "Kalshi — September FOMC 25bp hike", "side": "YES", "thesis": "Friday's jobs report locks the hike.", "probability_basis": "the hike is already 66.4% priced", "size_usd": 250, "bounds": { "max_loss_usd": 250 } },
+  "criterion": { "correct_if": "Kalshi settles the September 25bp hike market YES.", "incorrect_if": "Kalshi settles it NO.", "void_if": "Market cancelled or settlement disputed past 7 days.", "grade_due": "2026-09-18T00:00:00Z" } }

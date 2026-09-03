@@ -1,0 +1,173 @@
+[
+  {
+    "id": "q3-2026-09-02-N5",
+    "protocol_version": "1.1",
+    "posted_at": "2026-09-02T14:37:00Z",
+    "origin": "scan",
+    "scan_ref": "2026-09-02_v2_governed_005 / N5",
+    "supersedes": null,
+    "deviated": true,
+    "inclusion_note": "day-0 pilot: price observed before intent hash; engine not run at post time",
+    "source": {
+      "url": "scan:2026-09-02_v2_governed_005#N5",
+      "text": "Friday's jobs report locks the hike",
+      "captured_at": "2026-09-02T14:37:00Z"
+    },
+    "market": {
+      "venue": "kalshi",
+      "ticker": "KXFEDDECISION-26SEP",
+      "title": "Fed raises 25bp at the Sep 17 FOMC?",
+      "side": "YES",
+      "resolution_source": "Kalshi rules — FOMC statement",
+      "resolution_due": "2026-09-17T18:00:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "prescreen": {
+      "codes": [
+        "DJZS-M03",
+        "DJZS-M04"
+      ],
+      "sigma": 40,
+      "verdict": "FAIL",
+      "by": "scan-model"
+    },
+    "intent": {
+      "market": "Kalshi — September FOMC 25bp hike",
+      "side": "YES",
+      "thesis": "Friday's jobs report locks the hike.",
+      "probability_basis": "the hike is already 66.4% priced",
+      "size_usd": 250,
+      "bounds": {
+        "max_loss_usd": 250
+      }
+    },
+    "criterion": {
+      "correct_if": "Kalshi settles the September 25bp hike market YES.",
+      "incorrect_if": "Kalshi settles it NO.",
+      "void_if": "Market cancelled or settlement disputed past 7 days.",
+      "grade_due": "2026-09-18T00:00:00Z"
+    },
+    "engine": {
+      "verdict": "FAIL",
+      "action": "FAIL",
+      "risk_score": 25,
+      "codes": [
+        "DJZS-M03"
+      ],
+      "unknown_fields": [
+        "invalidation_condition",
+        "resolution_engagement"
+      ],
+      "verdict_hash": "0xa529e5c42f9dfe783412eea70cb3d9f4fefc5b52bed466fd83b6fbeaf73d71ee",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.1",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [
+        "oracle_source",
+        "resolution_engagement",
+        "edge_claim"
+      ],
+      "failsafe": false
+    },
+    "intent_sha256": "0xfd4605daa447f97812e48540c5cf20d8d8cf02c05c5568fea824b8cbf5771734",
+    "intent_hash": "0x9c734284d612a8787b0d45a7c90e89dee04ed6b1813b4ffd0adb0490e3a0eb22",
+    "phase_a_hash": "0xffc29c7bbe92dbcbcae476823a05f36726039ddd3ae20cd2f353e44ccaeb33e3",
+    "price_at_audit": null,
+    "implied_prob_at_audit": null,
+    "price_captured_at": null,
+    "record_hash": null,
+    "outcome": null
+  },
+  {
+    "id": "q3-2026-09-02-N2",
+    "protocol_version": "1.1",
+    "posted_at": "2026-09-02T14:37:00Z",
+    "origin": "scan",
+    "scan_ref": "2026-09-02_v2_governed_005 / N2",
+    "supersedes": null,
+    "deviated": true,
+    "inclusion_note": "day-0 pilot: engine not run at post time; series binding, no market price",
+    "source": {
+      "url": "scan:2026-09-02_v2_governed_005#N2",
+      "text": "A $3B+ ETF month is followed by a down month. Twelve months since launch have drawn $3 billion or more; Bitcoin fell in the month straight after seven of them, averaging 0.13% versus 2.93% for an ordinary month. The last three Septembers all finished higher.",
+      "captured_at": "2026-09-02T14:37:00Z"
+    },
+    "market": {
+      "venue": "series",
+      "ticker": "COINBASE:BTC-USD monthly close",
+      "title": "BTC September 2026 monthly close below August 2026 monthly close",
+      "side": "YES",
+      "resolution_source": "Coinbase BTC-USD daily close 2026-09-30 vs 2026-08-31",
+      "resolution_due": "2026-10-01T00:00:00Z"
+    },
+    "binding": {
+      "type": "series",
+      "series": "COINBASE:BTC-USD",
+      "threshold": "Sep 30 close < Aug 31 close",
+      "at": "2026-09-30T23:59:59Z"
+    },
+    "prescreen": {
+      "codes": [],
+      "sigma": 0,
+      "verdict": "WAIT",
+      "by": "scan-model"
+    },
+    "intent": {
+      "market": "BTC September 2026 monthly close vs August 2026 close",
+      "side": "YES",
+      "thesis": "A $3B+ ETF month is followed by a down month. Twelve months since launch have drawn $3 billion or more; Bitcoin fell in the month straight after seven of them, averaging 0.13% versus 2.93% for an ordinary month. The last three Septembers all finished higher.",
+      "probability_basis": "7 of 12 post-$3B months were down; source: the narrative's own stated base rate",
+      "size_usd": 250,
+      "bounds": {
+        "max_loss_usd": 250
+      }
+    },
+    "criterion": {
+      "correct_if": "Coinbase BTC-USD close on 2026-09-30 is below the close on 2026-08-31.",
+      "incorrect_if": "The 2026-09-30 close is at or above the 2026-08-31 close.",
+      "void_if": "Coinbase BTC-USD series unavailable for either date.",
+      "grade_due": "2026-10-01T06:00:00Z"
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "invalidation_condition"
+      ],
+      "verdict_hash": "0x343e465210b7367621553359e57da9ef32fcb7a2dae6f001b5cb513179e09908",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.1",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [
+        "invalidation_condition",
+        "edge_claim"
+      ],
+      "failsafe": false
+    },
+    "intent_sha256": "0xc234a135a3c7f1db1c1899a39f7149e2fab6ccd98440f39017496b451fe3e05e",
+    "intent_hash": "0xe582bedfc119a6eab7ef8037e9f7394483008a0c073bcb096848012cb0f3c1b9",
+    "phase_a_hash": "0x186f0979f3fc9456739845b69f8115787a41f76ec90ddbc081076de7e407e54a",
+    "price_at_audit": null,
+    "implied_prob_at_audit": null,
+    "price_captured_at": null,
+    "record_hash": null,
+    "outcome": null
+  }
+]
