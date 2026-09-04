@@ -72,15 +72,18 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     if (bt === "series") { console.error("Phase B: binding.type=series has no market price — sealing without price"); }
     else if (fromDune) {
       // v1.2: Polymarket price from a PUBLIC saved Dune query over on-chain trades — recomputable by anyone with the same params.
-      const mk = rec.market as any; if (mk.venue !== "polymarket") { console.error("--price-from-dune is for venue=polymarket records only"); process.exit(1); }
-      if (!mk.token_id) { console.error("--price-from-dune needs market.token_id (the audited outcome token)"); process.exit(1); }
-      const cfg = JSON.parse(readFileSync("tests/q3/dune.json", "utf8")); if (!cfg.price_query_id) { console.error("tests/q3/dune.json: price_query_id not set — scan instance creates the public query first"); process.exit(1); }
+      const mk = rec.market as any; const cfg = JSON.parse(readFileSync("tests/q3/dune.json", "utf8"));
+      let qid: number; let qparams: Record<string, string | number>; const win = Number(cfg.window_min ?? 60);
+      if (mk.venue === "polymarket") { if (!mk.token_id) { console.error("--price-from-dune needs market.token_id (the audited outcome token)"); process.exit(1); } if (!cfg.price_query_id) { console.error("tests/q3/dune.json: price_query_id not set"); process.exit(1); }
+        qid = Number(cfg.price_query_id); qparams = { token_id: String(mk.token_id), captured_at: String(rec.posted_at), window_min: win }; }
+      else if (mk.venue === "kalshi") { if (!cfg.kalshi_price_query_id) { console.error("tests/q3/dune.json: kalshi_price_query_id not set"); process.exit(1); }
+        qid = Number(cfg.kalshi_price_query_id); qparams = { ticker: String(mk.ticker), side: String(mk.side).toLowerCase(), captured_at: String(rec.posted_at), window_min: win }; }
+      else { console.error(`--price-from-dune: venue ${mk.venue} has no Dune price query`); process.exit(1); }
       // Window ends at posted_at — the audit moment — not at seal time. Dune lags ~1h, so Phase B for Polymarket runs ≥2h after Phase A; the price is still blind (hashed before it exists in the table).
-      const qp = { token_id: String(mk.token_id), captured_at: String(rec.posted_at), window_min: Number(cfg.window_min ?? 60) };
-      const run = await runDuneQuery(Number(cfg.price_query_id), qp); const pr = asPriceRow(run.rows);
-      if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no trades on ${mk.token_id} in the ${qp.window_min}-min window before posted_at ${rec.posted_at}. Dune indexes ~1h behind — if posted_at is recent, rerun Phase B later; otherwise widen window_min in dune.json (recorded) or leave unpriced`); process.exit(1); }
+      const qp = qparams; const run = await runDuneQuery(qid, qp); const pr = asPriceRow(run.rows);
+      if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no fills on ${mk.venue === "kalshi" ? mk.ticker : mk.token_id} in the ${qp.window_min}-min window before posted_at ${rec.posted_at}. Dune indexes behind chain/feed (Polymarket ~1h; Kalshi longer) — if posted_at is recent, rerun Phase B later; otherwise widen window_min in dune.json (recorded) or leave unpriced`); process.exit(1); }
       rec.price_at_audit = pr.vwap; rec.implied_prob_at_audit = pr.vwap;
-      rec.price_source = { provider: "dune", query_id: run.query_id, execution_id: run.execution_id, query_params: qp, vwap: pr.vwap, trade_count: pr.trade_count, volume_usdc: pr.volume_usdc, window_start: pr.window_start, window_end: pr.window_end };
+      rec.price_source = { provider: "dune", venue: mk.venue, query_id: run.query_id, execution_id: run.execution_id, query_params: qp, vwap: pr.vwap, trade_count: pr.trade_count, volume_usdc: pr.volume_usdc, window_start: pr.window_start, window_end: pr.window_end };
       console.log(`  price from Dune: vwap ${pr.vwap} over ${pr.trade_count} trades (${pr.volume_usdc.toFixed(2)} USDC) · query ${run.query_id} · execution ${run.execution_id}`);
     }
     else { rec.price_at_audit = price; rec.implied_prob_at_audit = price; rec.price_source = { provider: "operator", note: "manually captured; not independently recomputable" }; }

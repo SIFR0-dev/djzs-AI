@@ -1,7 +1,9 @@
 {
-  "_comment": "Filled by the scan instance after creating the saved queries via Dune MCP. Both queries must be PUBLIC. SQL text committed alongside in tests/q3/queries/.",
+  "_comment": "Saved PUBLIC Dune query IDs. polymarket_* over polymarket_polygon.market_trades (on-chain); kalshi_* over kalshi.market_trades (Kalshi partner feed). SQL committed in tests/q3/queries/. Created/updated by dune-publish.ts.",
   "price_query_id": 8601184,
   "pool_query_id": 8601185,
   "window_min": 60,
-  "price_tolerance": 1e-09
+  "price_tolerance": 1e-9,
+  "kalshi_price_query_id": 8601564,
+  "kalshi_pool_query_id": 8601565
 }

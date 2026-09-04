@@ -17,6 +17,12 @@ const SPECS = {
   pool: { name: "DJZS Q3 · polymarket_pool (top-N by 24h volume, protocol v1.2)", file: `${Q}/polymarket_pool.sql`, idKey: "pool_query_id",
     description: "Top-n Polymarket markets by single-counted 24h on-chain volume, excluding condition_ids already recorded. SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
     params: [{ key: "n", value: "5", type: "number" }, { key: "exclude", value: "", type: "text" }] as Param[] },
+  kalshi_price: { name: "DJZS Q3 · kalshi_price (VWAP, protocol v1.3)", file: `${Q}/kalshi_price.sql`, idKey: "kalshi_price_query_id",
+    description: "VWAP of Kalshi fills on one market for the audited side in [captured_at - window_min, captured_at). Source kalshi.market_trades (partner data). SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
+    params: [{ key: "ticker", value: "KXFEDDECISION-26SEP-H25", type: "text" }, { key: "side", value: "yes", type: "text" }, { key: "captured_at", value: "2026-01-01T00:00:00Z", type: "text" }, { key: "window_min", value: "60", type: "number" }] as Param[] },
+  kalshi_pool: { name: "DJZS Q3 · kalshi_pool (top-N by 24h volume as of table freshness, protocol v1.3)", file: `${Q}/kalshi_pool.sql`, idKey: "kalshi_pool_query_id",
+    description: "Top-n Kalshi markets by USD volume in the 24h ending at the table's freshest fill, excluding tickers already recorded. SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
+    params: [{ key: "n", value: "5", type: "number" }, { key: "exclude", value: "", type: "text" }] as Param[] },
 };
 const key = duneKey(); if (!key) { console.error("DUNE_API_KEY not set (env or djzs-trust-mcp/.dev.vars)"); process.exit(1); }
 const H = { "X-Dune-API-Key": key, "Content-Type": "application/json" };
@@ -58,17 +64,37 @@ async function checks(priceId: number, poolId: number) {
   need(empty.rows[0].vwap === null && Number(empty.rows[0].trade_count) === 0, `empty window → vwap NULL, trade_count 0 (got vwap=${empty.rows[0].vwap}, trade_count=${empty.rows[0].trade_count})`);
   for (const c of ["vwap", "trade_count", "volume_usdc", "window_start", "window_end"]) need(c in empty.rows[0], `price column '${c}' present on the NULL-path row`);
 }
+async function kalshiChecks(priceId: number, poolId: number) {
+  console.log("checks (kalshi)");
+  const pool = await runDuneQuery(poolId, { n: 5, exclude: "" }); const rows = pool.rows;
+  need(rows.length === 5, `kalshi pool n=5 exclude="" → 5 rows (got ${rows.length})`);
+  for (const c of ["ticker", "title", "volume_24h_usdc", "last_price_yes", "status", "as_of"]) need(rows.every(r => c in r), `kalshi pool column '${c}' present on every row`);
+  const asOf = String(rows[0].as_of); need(/^\d{4}-\d{2}-\d{2}/.test(asOf), `kalshi pool as_of is a timestamp (${asOf}) — table freshness`);
+  const ex = await runDuneQuery(poolId, { n: 5, exclude: String(rows[0].ticker) });
+  need(ex.rows.length === 5 && !ex.rows.some(r => r.ticker === rows[0].ticker), `kalshi pool exclude=${rows[0].ticker} drops that market and still returns 5 rows`);
+  // price window ends 1h before the table's freshest fill, on the top-volume ticker — a window the table is guaranteed to cover
+  const endIso = new Date(new Date(asOf.replace(" ", "T") + (asOf.endsWith("Z") ? "" : "Z")).getTime() - 3600e3).toISOString();
+  let live: DuneRow[] | null = null, liveTk = "";
+  for (const r of rows) { if (live) break; const run = await runDuneQuery(priceId, { ticker: String(r.ticker), side: "yes", captured_at: endIso, window_min: 60 }); if (run.rows.length === 1 && Number(run.rows[0].trade_count) > 0) { live = run.rows; liveTk = String(r.ticker); } }
+  need(live, `kalshi price on a live ticker, window ending as_of−1h, window_min=60 → trade_count > 0 (tried the top-5 pool)`);
+  const pr = asPriceRow(live!); need(Number.isFinite(pr.vwap) && pr.vwap > 0 && pr.vwap < 1, `kalshi price ${liveTk}: one row, vwap ${pr.vwap} over ${pr.trade_count} fills`);
+  const no = await runDuneQuery(priceId, { ticker: liveTk, side: "no", captured_at: endIso, window_min: 60 }); const pn = asPriceRow(no.rows);
+  need(Math.abs(pn.vwap + pr.vwap - 1) < 0.02, `kalshi side=no is the complement: yes ${pr.vwap.toFixed(4)} + no ${pn.vwap.toFixed(4)} ≈ 1`);
+  const empty = await runDuneQuery(priceId, { ticker: liveTk, side: "yes", captured_at: "2020-01-01T00:00:00Z", window_min: 1 });
+  need(empty.rows.length === 1 && empty.rows[0].vwap === null && Number(empty.rows[0].trade_count) === 0, "kalshi empty window → one row, vwap NULL, trade_count 0");
+}
 (async () => {
   const mode = process.argv.includes("--test") ? "test" : process.argv.includes("--update") ? "update" : "create";
-  const cfg = JSON.parse(readFileSync(CFG, "utf8")); let priceId = Number(cfg.price_query_id), poolId = Number(cfg.pool_query_id);
-  if (mode === "create") {
-    if (priceId || poolId) { console.error(`${CFG} already has IDs (${priceId}, ${poolId}); use --update or --test`); process.exit(1); }
-    console.log("create (public)"); priceId = await create(SPECS.price); poolId = await create(SPECS.pool);
-    cfg.price_query_id = priceId; cfg.pool_query_id = poolId; writeFileSync(CFG, JSON.stringify(cfg, null, 2) + "\n"); console.log(`wrote ${CFG} immediately (IDs survive a failed check)`);
-  } else if (!priceId || !poolId) { console.error(`${CFG}: price_query_id / pool_query_id not set`); process.exit(1); }
-  if (mode === "update") { console.log("update"); await update(priceId, SPECS.price); await update(poolId, SPECS.pool); }
-  if (mode !== "test") { await ensurePublic(priceId, SPECS.price); await ensurePublic(poolId, SPECS.pool); }
-  await checks(priceId, poolId);
-  if (mode === "create") { cfg.price_query_id = priceId; cfg.pool_query_id = poolId; writeFileSync(CFG, JSON.stringify(cfg, null, 2) + "\n"); console.log(`wrote ${CFG}: price_query_id ${priceId}, pool_query_id ${poolId}`); }
+  const cfg = JSON.parse(readFileSync(CFG, "utf8")); const ids: Record<string, number> = {};
+  for (const [k, s] of Object.entries(SPECS)) {
+    let id = Number(cfg[s.idKey] ?? 0);
+    if (!id) { if (mode !== "create") { console.error(`${CFG}: ${s.idKey} not set — run without --test/--update to create it`); process.exit(1); }
+      console.log(`create (public) ${k}`); id = await create(s); cfg[s.idKey] = id; writeFileSync(CFG, JSON.stringify(cfg, null, 2) + "\n"); console.log(`  wrote ${s.idKey} = ${id} immediately (IDs survive a failed check)`); }
+    ids[k] = id;
+  }
+  if (mode === "update") { console.log("update"); for (const [k, s] of Object.entries(SPECS)) await update(ids[k], s); }
+  if (mode !== "test") for (const [k, s] of Object.entries(SPECS)) await ensurePublic(ids[k], s);
+  await checks(ids.price, ids.pool);
+  await kalshiChecks(ids.kalshi_price, ids.kalshi_pool);
   console.log("PASS — now: npx tsx tests/q3/q3-verify.ts && git add tests/q3 && git commit");
 })().catch(e => { console.error(String((e as Error).message ?? e)); process.exit(1); });
