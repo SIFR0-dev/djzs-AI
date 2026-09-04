@@ -38,19 +38,15 @@ Anyone with a Dune account re-runs the public query with a record's `price_sourc
 - Token ids in the pool output are decimal strings on purpose: a 256-bit id does not survive a JSON number.
 - Publishing: `npx tsx tests/q3/dune-publish.ts` reads the two `.sql` files verbatim, creates both saved queries **public** through the Dune REST API, runs the contract checks (one row with five columns and `trade_count > 0` on a live token; one row with `vwap = NULL` and `trade_count = 0` on an empty window; five pool rows; the exclude path), and writes the IDs into `dune.json`. `--test` re-runs the checks against the IDs already there; `--update` pushes the committed SQL to the existing IDs. The Dune query endpoints need an Analyst plan or higher; without one, paste the SQL into the Dune UI, set the parameters and defaults by hand, make the queries public, type the IDs into `dune.json`, and run `--test`.
 
-## `kalshi_price` — `price_at_audit` for a Kalshi record (v1.3)
+## Kalshi — venue API, not Dune (v1.3.1)
 
-Parameters: `ticker` (text) · `side` (text, `yes`|`no` — the audited side) · `captured_at` (text, the record's `posted_at`) · `window_min` (integer, default 60).
-Returns the same one-row contract as `polymarket_price` (`vwap` · `trade_count` · `volume_usdc` · `window_start` · `window_end`). Price is `yes_price_dollars` or `no_price_dollars` per fill, weighted by `count_fp`. Kalshi fills are single rows already — no taker filter.
+Dune's per-fill Kalshi tables (`kalshi.market_trades`, `prediction_markets.trades`) are plan-gated; its legacy `kalshi.trade_report` stopped ingesting in June 2026. Kalshi prices therefore come from **Kalshi's own public trades endpoint** via `tests/q3/kalshi-client.ts`:
+`GET https://api.elections.kalshi.com/trade-api/v2/markets/trades?ticker=&min_ts=&max_ts=&limit=1000` (paginated by `cursor`), VWAP of the audited side (`yes_price_dollars` | `no_price_dollars`) weighted by `count_fp`, over fills in `[posted_at − window_min, posted_at)`. No key. `price_source.query_params` records `ticker · side · min_ts · max_ts`; the verifier re-fetches and recomputes on every run.
 
-## `kalshi_pool` — the §3 coverage pool, Kalshi half (v1.3)
-
-Parameters: `n` (integer) · `exclude` (text, comma-separated tickers). Returns `ticker` · `title` · `volume_24h_usdc` · `last_price_yes` · `status` · `as_of`. The 24h window ends at **`as_of` = the table's freshest fill**, not `now()`, so the pool is well-defined however far the feed lags.
-
-## Provenance tiers (disclosed on every record via `price_source`)
+## Provenance tiers (disclosed on every record via `price_source.tier`)
 
 | tier | venue | source | what a verifier can do |
 |---|---|---|---|
-| on-chain | Polymarket | Polygon trades indexed by Dune | re-run the public query; independently reconstruct from chain |
-| partner feed | Kalshi | Kalshi's public trade feed as ingested by Dune | re-run the public query; cross-check against Kalshi's own `/trade-api/v2/markets/trades?ticker=&min_ts=&max_ts=` |
-| operator | any | typed by the operator | nothing — disclosed as not recomputable; fallback only |
+| `on-chain` | Polymarket | Polygon trades indexed by Dune, public saved query | re-run the query; independently reconstruct from chain |
+| `venue-api` | Kalshi | Kalshi's public trades endpoint (immutable fill history) | re-fetch the same window; compare fill-for-fill |
+| — | any | operator-typed | **prohibited for venue records since v1.3.1**; unpriced records are excluded from the base-rate metric instead |

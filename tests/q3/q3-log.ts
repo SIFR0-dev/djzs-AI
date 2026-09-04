@@ -14,6 +14,7 @@ import { PM_SCHEMA_VERSION } from "../../shared/pm-taxonomy";
 import { SCHEMA_VERSION } from "../../shared/audit-schema";
 import { canonical, sha256hex, renderIntentText, devVar, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { runDuneQuery, asPriceRow } from "./dune-client";
+import { kalshiVwap } from "./kalshi-client";
 
 const args = process.argv.slice(2); const flag = (f: string) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const REC_DIR = "tests/q3/records";
@@ -63,8 +64,8 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     console.log(`Phase A · ${rec.id} · engine ${engine.verdict} ${(engine.codes as string[]).join("+") || "—"} risk ${engine.risk_score} · prescreen ${(rec.prescreen as any).verdict} · agree=${engine.verdict === (rec.prescreen as any).verdict}`);
     console.log(`  phase_a_hash ${rec.phase_a_hash}\n  → ${REC_DIR}/${date}.json   COMMIT NOW, then look up the price.`);
   } else if (flag("--phase-b")) {
-    const id = flag("--phase-b")!, fromDune = args.includes("--price-from-dune"), price = Number(flag("--price"));
-    if (!fromDune && !(price >= 0 && price <= 1)) { console.error("--price must be in [0,1] (price of the audited side), or use --price-from-dune"); process.exit(1); }
+    const id = flag("--phase-b")!, fromDune = args.includes("--price-from-dune") || args.includes("--price-from-venue"), price = Number(flag("--price"));
+    if (!fromDune && !(price >= 0 && price <= 1)) { console.error("use --price-from-venue (Polymarket → Dune on-chain VWAP; Kalshi → Kalshi trades API VWAP). Operator-typed --price is not permitted for venue records (v1.3.1)."); process.exit(1); }
     const f = findRecord(id); if (!f) { console.error(`no record ${id}`); process.exit(1); } const rec = f.recs[f.idx];
     if (!rec.phase_a_hash) { console.error("Phase B refused: phase_a_hash missing — run Phase A first"); process.exit(1); }
     if (rec.record_hash) { console.error("Phase B refused: record already sealed"); process.exit(1); }
@@ -72,21 +73,26 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     if (bt === "series") { console.error("Phase B: binding.type=series has no market price — sealing without price"); }
     else if (fromDune) {
       // v1.2: Polymarket price from a PUBLIC saved Dune query over on-chain trades — recomputable by anyone with the same params.
-      const mk = rec.market as any; const cfg = JSON.parse(readFileSync("tests/q3/dune.json", "utf8"));
-      let qid: number; let qparams: Record<string, string | number>; const win = Number(cfg.window_min ?? 60);
-      if (mk.venue === "polymarket") { if (!mk.token_id) { console.error("--price-from-dune needs market.token_id (the audited outcome token)"); process.exit(1); } if (!cfg.price_query_id) { console.error("tests/q3/dune.json: price_query_id not set"); process.exit(1); }
-        qid = Number(cfg.price_query_id); qparams = { token_id: String(mk.token_id), captured_at: String(rec.posted_at), window_min: win }; }
-      else if (mk.venue === "kalshi") { if (!cfg.kalshi_price_query_id) { console.error("tests/q3/dune.json: kalshi_price_query_id not set"); process.exit(1); }
-        qid = Number(cfg.kalshi_price_query_id); qparams = { ticker: String(mk.ticker), side: String(mk.side).toLowerCase(), captured_at: String(rec.posted_at), window_min: win }; }
-      else { console.error(`--price-from-dune: venue ${mk.venue} has no Dune price query`); process.exit(1); }
-      // Window ends at posted_at — the audit moment — not at seal time. Dune lags ~1h, so Phase B for Polymarket runs ≥2h after Phase A; the price is still blind (hashed before it exists in the table).
-      const qp = qparams; const run = await runDuneQuery(qid, qp); const pr = asPriceRow(run.rows);
-      if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no fills on ${mk.venue === "kalshi" ? mk.ticker : mk.token_id} in the ${qp.window_min}-min window before posted_at ${rec.posted_at}. Dune indexes behind chain/feed (Polymarket ~1h; Kalshi longer) — if posted_at is recent, rerun Phase B later; otherwise widen window_min in dune.json (recorded) or leave unpriced`); process.exit(1); }
-      rec.price_at_audit = pr.vwap; rec.implied_prob_at_audit = pr.vwap;
-      rec.price_source = { provider: "dune", venue: mk.venue, query_id: run.query_id, execution_id: run.execution_id, query_params: qp, vwap: pr.vwap, trade_count: pr.trade_count, volume_usdc: pr.volume_usdc, window_start: pr.window_start, window_end: pr.window_end };
-      console.log(`  price from Dune: vwap ${pr.vwap} over ${pr.trade_count} trades (${pr.volume_usdc.toFixed(2)} USDC) · query ${run.query_id} · execution ${run.execution_id}`);
+      const mk = rec.market as any; const cfg = JSON.parse(readFileSync("tests/q3/dune.json", "utf8")); const win = Number(cfg.window_min ?? 60);
+      if (mk.venue === "polymarket") {
+        // on-chain tier: Dune public saved query over Polygon trades; window ends at posted_at (v1.2.1)
+        if (!mk.token_id) { console.error("--price-from-venue needs market.token_id for Polymarket (the audited outcome token)"); process.exit(1); } if (!cfg.price_query_id) { console.error("tests/q3/dune.json: price_query_id not set"); process.exit(1); }
+        const qp = { token_id: String(mk.token_id), captured_at: String(rec.posted_at), window_min: win };
+        const run = await runDuneQuery(Number(cfg.price_query_id), qp); const pr = asPriceRow(run.rows);
+        if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no trades on ${mk.token_id} in the ${win}-min window before posted_at ${rec.posted_at}. Dune indexes ~1h behind chain — if posted_at is recent, rerun later; otherwise leave unpriced (excluded from base-rate metric)`); process.exit(1); }
+        rec.price_at_audit = pr.vwap; rec.implied_prob_at_audit = pr.vwap;
+        rec.price_source = { provider: "dune", tier: "on-chain", venue: "polymarket", query_id: run.query_id, execution_id: run.execution_id, query_params: qp, vwap: pr.vwap, trade_count: pr.trade_count, volume_usdc: pr.volume_usdc, window_start: pr.window_start, window_end: pr.window_end };
+        console.log(`  price (on-chain via Dune): vwap ${pr.vwap} over ${pr.trade_count} trades · query ${run.query_id} · execution ${run.execution_id}`);
+      } else if (mk.venue === "kalshi") {
+        // venue-API tier: Kalshi's public trades endpoint, per-fill, immutable history; re-queryable by anyone with the same params
+        const k = await kalshiVwap(String(mk.ticker), String(mk.side), String(rec.posted_at), win);
+        if (!(k.trade_count > 0) || k.vwap == null) { console.error(`Phase B refused: no Kalshi fills on ${mk.ticker} in the ${win}-min window before posted_at ${rec.posted_at}. Leave unpriced (excluded from base-rate metric); operator-typed prices are not permitted (v1.3.1)`); process.exit(1); }
+        rec.price_at_audit = k.vwap; rec.implied_prob_at_audit = k.vwap;
+        rec.price_source = { provider: "kalshi-api", tier: "venue-api", venue: "kalshi", endpoint: "GET /trade-api/v2/markets/trades", query_params: k.query, vwap: k.vwap, trade_count: k.trade_count, contracts: k.contracts, volume_usdc: k.volume_usdc, window_start: k.window_start, window_end: k.window_end };
+        console.log(`  price (Kalshi trades API): vwap ${k.vwap} over ${k.trade_count} fills, ${k.contracts} contracts · window ${k.window_start} → ${k.window_end}`);
+      } else { console.error(`--price-from-venue: venue ${mk.venue} has no supported price source`); process.exit(1); }
     }
-    else { rec.price_at_audit = price; rec.implied_prob_at_audit = price; rec.price_source = { provider: "operator", note: "manually captured; not independently recomputable" }; }
+    else { console.error("Operator-typed prices are not permitted for venue records (v1.3.1) — use --price-from-venue"); process.exit(1); }
     rec.price_captured_at = capturedAt;
     rec.record_hash = sha256hex(canonical(strip(rec, PHASE_B_EXCLUDE)));
     const rt = sha256hex(canonical(strip(JSON.parse(JSON.stringify(rec)), PHASE_B_EXCLUDE)));
