@@ -64,6 +64,7 @@ async function checks(priceId: number, poolId: number) {
   if (mode === "create") {
     if (priceId || poolId) { console.error(`${CFG} already has IDs (${priceId}, ${poolId}); use --update or --test`); process.exit(1); }
     console.log("create (public)"); priceId = await create(SPECS.price); poolId = await create(SPECS.pool);
+    cfg.price_query_id = priceId; cfg.pool_query_id = poolId; writeFileSync(CFG, JSON.stringify(cfg, null, 2) + "\n"); console.log(`wrote ${CFG} immediately (IDs survive a failed check)`);
   } else if (!priceId || !poolId) { console.error(`${CFG}: price_query_id / pool_query_id not set`); process.exit(1); }
   if (mode === "update") { console.log("update"); await update(priceId, SPECS.price); await update(poolId, SPECS.pool); }
   if (mode !== "test") { await ensurePublic(priceId, SPECS.price); await ensurePublic(poolId, SPECS.pool); }

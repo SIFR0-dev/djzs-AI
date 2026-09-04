@@ -10,10 +10,14 @@
 --   reliable; when a market is not yet in market_details the tokens fall back to the trades' Yes/No labels.
 --   volume_24h_usdc = SUM(amount) over taker legs (is_taker_side) in the trailing 24h — the documented single-counted volume.
 --   last_price_yes  = price of the latest taker trade on token_id_yes in that window (NULL if the YES token did not trade).
-WITH excluded AS (
-  SELECT CASE WHEN substr(v, 1, 2) = '0x' THEN v ELSE '0x' || v END AS cid_hex
-  FROM (SELECT lower(trim(x)) AS v FROM UNNEST(split({{exclude}}, ',')) AS u(x)) s
-  WHERE v <> ''
+WITH parts AS (
+  SELECT split({{exclude}}, ',') AS arr
+),
+excluded AS (
+  SELECT CASE WHEN substr(lower(trim(x)), 1, 2) = '0x' THEN lower(trim(x)) ELSE '0x' || lower(trim(x)) END AS cid_hex
+  FROM parts
+  CROSS JOIN UNNEST(arr) AS u(x)
+  WHERE trim(x) <> ''
 ),
 recent AS (
   SELECT

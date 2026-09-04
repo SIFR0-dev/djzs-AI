@@ -1,7 +1,7 @@
 {
   "_comment": "Filled by the scan instance after creating the saved queries via Dune MCP. Both queries must be PUBLIC. SQL text committed alongside in tests/q3/queries/.",
-  "price_query_id": null,
-  "pool_query_id": null,
+  "price_query_id": 8601184,
+  "pool_query_id": 8601185,
   "window_min": 60,
-  "price_tolerance": 1e-9
+  "price_tolerance": 1e-09
 }
