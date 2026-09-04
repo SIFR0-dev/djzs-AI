@@ -80,8 +80,8 @@
     "phase_a_hash": "0x9b207f326449c360e3b9986887922951a87f3e025b066e3f5b9d645513efdb6b",
     "price_at_audit": null,
     "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "record_hash": null,
+    "price_captured_at": "2026-09-04T16:33:24.164Z",
+    "record_hash": "0xb393fdfe3d61b835d9bad781c30891356a7b828562de6158e4afe7481608e75b",
     "outcome": null
   }
 ]
