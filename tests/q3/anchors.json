@@ -7,5 +7,14 @@
     "irys_id": "Cf87hGKm9unc642AC4CztyqBj6GiDFhLaCXqVSKrWfY4",
     "gateway_url": "https://gateway.irys.xyz/Cf87hGKm9unc642AC4CztyqBj6GiDFhLaCXqVSKrWfY4",
     "anchored_at": "2026-09-03T02:44:52.514Z"
+  },
+  {
+    "date": "2026-09-04",
+    "protocol_version": "1.3.1",
+    "record_count": 1,
+    "merkle_root": "0xb393fdfe3d61b835d9bad781c30891356a7b828562de6158e4afe7481608e75b",
+    "irys_id": "CvkLcDSJbxnkyrDoVY5ZGhEyvhCYPxMwKTrj6YToSWxN",
+    "gateway_url": "https://gateway.irys.xyz/CvkLcDSJbxnkyrDoVY5ZGhEyvhCYPxMwKTrj6YToSWxN",
+    "anchored_at": "2026-09-04T16:33:35.186Z"
   }
 ]
