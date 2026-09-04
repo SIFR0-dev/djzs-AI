@@ -1,7 +1,7 @@
 -- Q3 protocol v1.2 · polymarket_pool
 -- Top-{{n}} Polymarket markets by single-counted 24h on-chain volume, excluding condition_ids already in the book (§3 coverage pool).
 -- Sources: polymarket_polygon.market_trades (volume, last price) · polymarket_polygon.market_details (question, outcome tokens)
--- Params (Dune wraps text params in quotes itself):
+-- Params (text params are substituted RAW by Dune — quote them in SQL as '{{param}}'; number params unquoted):
 --   n        number  pool size, default 5
 --   exclude  text    comma-separated 0x condition_ids already recorded; may be empty ("")
 -- Output columns: condition_id · question · token_id_yes · token_id_no · volume_24h_usdc · last_price_yes
@@ -11,7 +11,7 @@
 --   volume_24h_usdc = SUM(amount) over taker legs (is_taker_side) in the trailing 24h — the documented single-counted volume.
 --   last_price_yes  = price of the latest taker trade on token_id_yes in that window (NULL if the YES token did not trade).
 WITH parts AS (
-  SELECT split({{exclude}}, ',') AS arr
+  SELECT split('{{exclude}}', ',') AS arr
 ),
 excluded AS (
   SELECT CASE WHEN substr(lower(trim(x)), 1, 2) = '0x' THEN lower(trim(x)) ELSE '0x' || lower(trim(x)) END AS cid_hex

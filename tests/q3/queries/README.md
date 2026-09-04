@@ -4,9 +4,9 @@ Both queries are **saved, public** Dune queries over `polymarket_polygon.market_
 
 ## `polymarket_price` — `price_at_audit` for a Polymarket record
 
-Parameters (Dune `{{param}}` syntax):
+Parameters (Dune `{{param}}` syntax — **text params are substituted raw; the SQL quotes them as `'{{param}}'`**):
 - `token_id` (text) — the outcome token of the audited side (`market.token_id` on the record)
-- `captured_at` (text, ISO-8601 UTC) — the Phase B timestamp
+- `captured_at` (text, ISO-8601 UTC) — the record's `posted_at`: the window ENDS at the audit moment. `market_trades` indexes ~60 min behind chain, so run Phase B ≥2h after Phase A.
 - `window_min` (integer) — lookback, default 60
 
 Must return **exactly one row** with columns:

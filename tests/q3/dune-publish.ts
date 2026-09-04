@@ -47,10 +47,10 @@ async function checks(priceId: number, poolId: number) {
   need(ex.rows.length === 5 && !ex.rows.some(r => r.condition_id === rows[0].condition_id), `pool exclude=${String(rows[0].condition_id).slice(0, 12)}… drops that market and still returns 5 rows`);
   const now = new Date().toISOString(); let live: DuneRow[] | null = null, liveTok = "";
   for (const r of rows) for (const tok of [String(r.token_id_yes), String(r.token_id_no)]) {
-    if (live) break; const run = await runDuneQuery(priceId, { token_id: tok, captured_at: now, window_min: 60 });
+    if (live) break; const run = await runDuneQuery(priceId, { token_id: tok, captured_at: new Date(Date.now() - 3 * 3600e3).toISOString(), window_min: 60 });
     if (run.rows.length === 1 && Number(run.rows[0].trade_count) > 0) { live = run.rows; liveTok = tok; }
   }
-  need(live, "price on a live token, captured_at=now, window_min=60 → trade_count > 0 (tried YES/NO tokens of the top-5 pool)");
+  need(live, "price on a live token, captured_at=now−3h (table lags ~1h), window_min=60 → trade_count > 0 (tried YES/NO tokens of the top-5 pool)");
   const pr = asPriceRow(live!); need(Number.isFinite(pr.vwap) && pr.vwap > 0 && pr.vwap < 1, `price live token ${liveTok.slice(0, 10)}…: one row, five columns, vwap ${pr.vwap} over ${pr.trade_count} trades, ${pr.volume_usdc.toFixed(2)} USDC`);
   need(pr.window_start < pr.window_end, `window_start ${pr.window_start} < window_end ${pr.window_end}`);
   const empty = await runDuneQuery(priceId, { token_id: liveTok, captured_at: "2020-01-01T00:00:00Z", window_min: 1 });

@@ -75,9 +75,10 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
       const mk = rec.market as any; if (mk.venue !== "polymarket") { console.error("--price-from-dune is for venue=polymarket records only"); process.exit(1); }
       if (!mk.token_id) { console.error("--price-from-dune needs market.token_id (the audited outcome token)"); process.exit(1); }
       const cfg = JSON.parse(readFileSync("tests/q3/dune.json", "utf8")); if (!cfg.price_query_id) { console.error("tests/q3/dune.json: price_query_id not set — scan instance creates the public query first"); process.exit(1); }
-      const qp = { token_id: String(mk.token_id), captured_at: capturedAt, window_min: Number(cfg.window_min ?? 60) };
+      // Window ends at posted_at — the audit moment — not at seal time. Dune lags ~1h, so Phase B for Polymarket runs ≥2h after Phase A; the price is still blind (hashed before it exists in the table).
+      const qp = { token_id: String(mk.token_id), captured_at: String(rec.posted_at), window_min: Number(cfg.window_min ?? 60) };
       const run = await runDuneQuery(Number(cfg.price_query_id), qp); const pr = asPriceRow(run.rows);
-      if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no trades on ${mk.token_id} in the ${qp.window_min}-min window — cannot price; widen window_min in dune.json (recorded) or grade as unpriced`); process.exit(1); }
+      if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no trades on ${mk.token_id} in the ${qp.window_min}-min window before posted_at ${rec.posted_at}. Dune indexes ~1h behind — if posted_at is recent, rerun Phase B later; otherwise widen window_min in dune.json (recorded) or leave unpriced`); process.exit(1); }
       rec.price_at_audit = pr.vwap; rec.implied_prob_at_audit = pr.vwap;
       rec.price_source = { provider: "dune", query_id: run.query_id, execution_id: run.execution_id, query_params: qp, vwap: pr.vwap, trade_count: pr.trade_count, volume_usdc: pr.volume_usdc, window_start: pr.window_start, window_end: pr.window_end };
       console.log(`  price from Dune: vwap ${pr.vwap} over ${pr.trade_count} trades (${pr.volume_usdc.toFixed(2)} USDC) · query ${run.query_id} · execution ${run.execution_id}`);
