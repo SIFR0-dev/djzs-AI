@@ -276,3 +276,17 @@ Dune publishes `kalshi.market_trades` (one row per Kalshi fill: `ticker`, `creat
 3. Tiers reported separately and pooled: `on-chain` (Polymarket), `venue-api` (Kalshi).
 
 *Finding recorded.* Pilot record `q3-2026-09-02-N5` was sealed with operator-typed `price_at_audit = 0.664`. Kalshi's fills on the corrected ticker `KXFEDDECISION-26SEP-H25` in the hour before its `posted_at` (13:37–14:37Z, 30 fills, 22,055 contracts) ranged 0.580–0.590, VWAP **0.5806**. The recorded value matches the day's event-level "hike odds ≈ 66%" figure — an aggregate across strikes — not the audited contract's price: a category error of 8.3 points that would have entered the base-rate control undetected. The sealed record is unchanged (pilot, excluded from primary); rule 2 above is its consequence.
+
+**v1.5 — 2026-09-05 — §3 coverage pool restricted to the scan's categories; sports excluded from the primary analysis. Pre-registered before any `origin: pool` record exists (verified at append time: zero pool records in the book).**
+
+*Motivation.* The first live ranking of both venues by 24h volume (2026-09-05, via the tape source) returned US Open tennis, League of Legends, Counter-Strike, and college football in the top five, with a single rates contract. Applied literally, §3 would fill the coverage pool with sports outcomes. The DJZS-M taxonomy audits claims that carry a probability basis, a source, and an invalidation; the public "narrative" attached to a sports contract is a pundit pick and would fail M03 near-uniformly. A pool dominated by sports would measure the engine's response to one kind of emptiness a hundred times over and would not test the question in §0.
+
+*Rules.*
+1. The §3 coverage pool is **top-N by 24h volume within the scan's categories — economics, rates and central banks, crypto, domestic politics, geopolitics — per venue**, N=5. Sports, esports, entertainment, and weather markets are excluded from the pool.
+2. The exact venue category labels that implement rule 1 are committed in the pool query SQL (`tests/q3/queries/polymarket_pool.sql`) and, for Kalshi, in the venue-direct pool read; the mapping is therefore inspectable and re-executable, not asserted.
+3. A market outside the categories that a `scan`-origin narrative binds to is still admitted — rule 1 constrains the *pool*, not scan bindings.
+4. **Sports stratum, optional and exploratory.** If sports records are ever logged, they carry `inclusion_note: "sports stratum"`, are reported as their own stratum with their own n, and never enter the primary or base-rate-controlled analyses. Their faster settlement is the only reason to log them; that reason does not buy them a seat in the primary.
+5. The Stage 1 timeline estimate in §8 is unchanged; the category restriction lowers the daily pool yield and the estimate already assumed churn-limited yield.
+
+*What v1.5 does not change.* Hypotheses, sample sizes, decision branches, grading, hashing, price provenance (v1.2–v1.3.1). No record is affected.
+
