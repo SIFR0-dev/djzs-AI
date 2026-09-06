@@ -6,3 +6,6 @@ Columns: `scan_day` (UTC) · `credits_used` (from the CLI's own accounting for t
 
 | scan_day | credits_used | over_ceiling | commands | notes |
 |---|---|---|---|---|
+
+## Tape toolkit
+See tests/q3/tape/README.md. Credit lines below are appended by the tools.

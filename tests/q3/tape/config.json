@@ -1,0 +1,11 @@
+{
+  "_comment": "Tape source config (protocol v1.4/v1.5). Surf is TAPE ONLY — nothing here is record-bearing. Categories map v1.5 rule 1 onto Surf's enum: {crypto, culture, economics, financials, politics, stem, sports}.",
+  "credit_ceiling_per_day": 100,
+  "pool_categories": ["economics", "financials", "crypto", "politics"],
+  "excluded_categories": ["sports", "culture", "stem"],
+  "declared_venue": { "exchange": "coinbase", "quote": "USD" },
+  "perp_reference": { "exchange": "binance", "quote": "USDT" },
+  "macro_chain_queries": ["oil price rate hike bitcoin", "jobs report fed hike crypto", "yields treasury bitcoin selloff", "inflation print fed bitcoin", "tariff risk-off crypto"],
+  "ledger_dir": "tests/q3/tape/ledger",
+  "journal": "tests/q3/tape-journal.md"
+}

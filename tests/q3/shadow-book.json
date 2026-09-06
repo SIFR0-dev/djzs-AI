@@ -1,0 +1,13 @@
+{
+  "_comment": "Shadow book + stubs — a SEPARATE ledger from Q3 records (PROTOCOL §4). Priced daily by shadow-mark.ts via the tape source. Owned by the scan author; entries marked CONFIRM need the author's numbers.",
+  "positions": [
+    { "id": "N2-0903", "label": "Bart pattern — 'this pullback is the top'", "pair": "BTC/USD", "side": "short", "units": 1, "entry": 77900, "opened": "2026-09-03", "horizon": null },
+    { "id": "N4-0903", "label": "relief trade — 'strikes will be brief, buy the dip'", "pair": "BTC/USD", "side": "long", "units": 1, "entry": 77900, "opened": "2026-09-03", "horizon": "2026-09-10" }
+  ],
+  "stubs": [
+    { "id": "N3-0903", "label": "oil→hike→risk-off chain", "watch": { "pair": "BTC/USD", "op": "<", "level": 72000 }, "horizon": "2026-09-16", "wrong_if": "hike delivered AND BTC <72K at FOMC close" },
+    { "id": "N4-0903-stub", "label": "relief trade falsifier", "watch": { "pair": "BTC/USD", "op": ">", "level": 80000 }, "horizon": "2026-09-10", "wrong_if": "no further US strikes by horizon AND BTC >80K" },
+    { "id": "REKTEMBER", "label": "N1-0903 / N3-0901 — September close below August close", "watch": { "pair": "BTC/USD", "op": "<", "level": 78563, "level_note": "CONFIRM: Aug 31 Coinbase daily close (Sep 1 open used as proxy)" }, "horizon": "2026-09-30", "wrong_if": "Sep 30 close >= Aug 31 close" },
+    { "id": "N5-0903", "label": "dominance 59.6% — 'alts are dead'", "watch": { "metric": "btc_dominance", "op": "<", "level": 57 }, "horizon": "2026-09-16", "wrong_if": "dominance <57 by horizon", "note": "dominance not on the tape client yet — mark by hand" }
+  ]
+}

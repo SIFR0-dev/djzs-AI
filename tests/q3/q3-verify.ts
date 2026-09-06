@@ -9,6 +9,7 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { canonical, sha256hex, merkleRoot, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { runDuneQuery, asPriceRow, duneKey } from "./dune-client";
 import { kalshiVwap } from "./kalshi-client";
+import { surf, surfAvailable, rows } from "./tape/surf";
 const REC_DIR = "tests/q3/records", ANCHORS = "tests/q3/anchors.json";
 const ORIGINS = new Set(["scan", "pool"]), BIND = new Set(["venue", "series", "unbound"]), VERD = new Set(["PASS", "WAIT", "FAIL", "OUT_OF_SCOPE"]), RESULT = new Set(["CORRECT", "INCORRECT", "VOID"]);
 const REQ = ["id", "protocol_version", "posted_at", "origin", "scan_ref", "source", "market", "binding", "prescreen", "intent", "criterion", "engine", "intent_sha256", "phase_a_hash"];
@@ -54,6 +55,19 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
   for (const kc of kalshiChecks) { try { const q = kc.ps.query_params; const k = await kalshiVwap(String(q.ticker), String(q.side), new Date(Number(q.max_ts) * 1000).toISOString(), Math.round((Number(q.max_ts) - Number(q.min_ts)) / 60));
       if (k.vwap == null || Math.abs(k.vwap - kc.price) > tol) fails.push(`${kc.id}: Kalshi re-fetch vwap ${k.vwap} ≠ recorded ${kc.price}`); if (k.trade_count !== kc.ps.trade_count) fails.push(`${kc.id}: Kalshi fills ${k.trade_count} ≠ recorded ${kc.ps.trade_count}`);
     } catch (e) { fails.push(`${kc.id}: Kalshi re-fetch failed — ${(e as Error).message}`); } }
+  // v1.4 use 6 — third-source cross-check (Surf-indexed Polymarket trades) on Dune-priced records. Tape tier: WARN by default, never record-bearing.
+  const CROSS = process.env.CROSS_CHECK ?? "warn";
+  if (CROSS !== "off" && priceChecks.length && surfAvailable()) {
+    for (const pc of priceChecks) { try { const q = pc.ps.query_params; const end = Math.floor(new Date(q.captured_at).getTime() / 1000); const start = end - Number(q.window_min ?? 60) * 60;
+        const rec = JSON.parse(readFileSync(`${REC_DIR}/${pc.id.slice(3, 13)}.json`, "utf8")).find((r: any) => r.id === pc.id); const side = String(rec?.market?.side ?? "YES") === "NO" ? "No" : "Yes";
+        const t = rows(surf("polymarket-trades", ["--condition-id", String(rec.market.ticker), "--outcome-label", side, "--type", "trade", "--from", String(start), "--to", String(end), "--limit", "500"]), pc.id);
+        let num = 0, den = 0; for (const x of t as any[]) { const px = Number(x.price ?? x.price_usd); const sz = Number(x.size ?? x.shares ?? (x.amount_usd && px ? x.amount_usd / px : 0)); if (px > 0 && sz > 0) { num += px * sz; den += sz; } }
+        const v3 = den ? num / den : NaN; const d = Math.abs(v3 - pc.price);
+        if (!Number.isFinite(v3)) warns.push(`${pc.id}: Surf cross-check — no trades returned (${t.length} rows)`);
+        else if (d > 0.02) (CROSS === "strict" ? fails : warns).push(`${pc.id}: Surf cross-check vwap ${v3.toFixed(4)} vs Dune ${pc.price} (Δ ${d.toFixed(4)} > 0.02)`);
+        else warns.push(`${pc.id}: Surf cross-check agrees (Δ ${d.toFixed(4)})`);
+      } catch (e) { warns.push(`${pc.id}: Surf cross-check unavailable — ${(e as Error).message.slice(0, 100)}`); } }
+  }
   if (priceChecks.length) {
     if (!duneKey()) warns.push(`${priceChecks.length} Polymarket price(s) not re-verified — no DUNE_API_KEY`);
     else for (const pc of priceChecks) { try { const run = await runDuneQuery(Number(pc.ps.query_id), pc.ps.query_params); const pr = asPriceRow(run.rows);

@@ -1,0 +1,18 @@
+/** Use 1 — claim vs tape. Prints a data-hygiene line for a card: what the narrative asserted, what the tape shows. Not a code; the taxonomy audits structure.
+ *  npx tsx tests/q3/tape/claim-check.ts --metric etf_flow_1d|funding_8h|funding_annual|liq_24h|price|unlock_next --asset BTC --claim 1000000000 [--label "ETF inflows $1B"] */
+import { surf, CFG, pct, rows } from "./surf";
+const a = process.argv.slice(2); const flag = (f: string) => { const i = a.indexOf(f); return i >= 0 ? a[i + 1] : undefined; };
+const metric = flag("--metric")!, asset = (flag("--asset") ?? "BTC").toUpperCase(), claim = Number(flag("--claim")), label = flag("--label") ?? `${metric} ${asset}`;
+if (!metric || !Number.isFinite(claim)) { console.error("need --metric and --claim <number>"); process.exit(1); }
+let tape: number, unit = "", src = "";
+try {
+if (metric === "etf_flow_1d") { const d = rows(surf("market-etf", ["--symbol", asset]), asset + " ETF flows"); const row = d.find((x: any) => x.settled) ?? d[0]; tape = row.flow_usd; unit = "USD"; src = `market-etf ${new Date(row.timestamp * 1000).toISOString().slice(0, 10)}${row.settled ? "" : " (unsettled)"}`; }
+else if (metric === "funding_8h" || metric === "funding_annual") { const r = surf("exchange-perp", ["--exchange", CFG.perp_reference.exchange, "--pair", `${asset}/${CFG.perp_reference.quote}`]); const f = (Array.isArray(r.data) ? r.data[0] : r.data).funding; tape = metric === "funding_8h" ? f.funding_rate_8h : f.funding_rate_annualized; unit = "rate"; src = `exchange-perp ${CFG.perp_reference.exchange}`; }
+else if (metric === "liq_24h") { const r = surf("market-liquidation-exchange-list", ["--symbol", asset, "--time-range", "24h"]); const d = rows(r, asset + " liquidations"); const all = d.find((x: any) => x.exchange === "All") ?? d[0]; tape = all.liquidation_usd; unit = "USD"; src = `liquidations 24h (long ${Math.round(all.long_liquidation_usd / 1e6)}M / short ${Math.round(all.short_liquidation_usd / 1e6)}M)`; }
+else if (metric === "price") { const r = surf("exchange-price", ["--exchange", CFG.declared_venue.exchange, "--pair", `${asset}/${CFG.declared_venue.quote}`]); tape = (Array.isArray(r.data) ? r.data[0] : r.data).last; unit = "USD"; src = `exchange-price ${CFG.declared_venue.exchange}`; }
+else if (metric === "unlock_next") { const d = rows(surf("token-tokenomics", ["--symbol", asset]), asset + " unlocks"); const now = Date.now() / 1000; const nxt = d.filter((x: any) => x.timestamp > now).sort((p: any, q: any) => p.timestamp - q.timestamp)[0]; if (!nxt) { console.log(`${label}: tape shows NO upcoming unlock for ${asset} this month`); process.exit(0); } tape = nxt.timestamp; unit = "unix"; src = `token-tokenomics next unlock ${new Date(nxt.timestamp * 1000).toISOString().slice(0, 10)}`; }
+else { console.error(`unknown metric ${metric}`); process.exit(1); }
+} catch (e) { console.log(`DATA HYGIENE · ${label}\n  tape unavailable — ${(e as Error).message}\n  card line: none (do not assert against a tape that did not answer)`); process.exit(2); }
+const delta = tape! === 0 ? NaN : claim / tape! - 1; const fmt = (v: number) => unit === "USD" ? `$${Math.round(v).toLocaleString()}` : unit === "rate" ? pct(v, 4) : String(v);
+const verdict = Math.abs(delta) < 0.05 ? "matches tape" : Math.abs(delta) < 0.25 ? "off the tape" : "CONTRADICTS tape";
+console.log(`DATA HYGIENE · ${label}\n  claim  ${fmt(claim)}\n  tape   ${fmt(tape!)}  (${src})\n  delta  ${Number.isFinite(delta) ? pct(delta) : "n/a"} → ${verdict}\n  card line: "Claim says ${fmt(claim)}; tape shows ${fmt(tape!)} (${src}). ${verdict === "matches tape" ? "Sourced and consistent." : "Sourced, but the number is " + (verdict === "off the tape" ? "off." : "wrong.")}"`);
