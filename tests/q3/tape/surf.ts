@@ -17,9 +17,9 @@ export function surfAvailable(): boolean { return spawnSync("surf", ["--version"
 /** Run one surf operation. Refuses if today's ledger is at/over the ceiling. Throws on API error. */
 export function surf<T = any>(op: string, args: string[] = []): SurfResult<T> {
   const used = creditsToday(); if (used >= CFG.credit_ceiling_per_day) throw new Error(`credit ceiling: ${used}/${CFG.credit_ceiling_per_day} used today — stop and flag (v1.4 rule 5)`);
-  const r = spawnSync("surf", [op, ...args, "-o", "json"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync("surf", [op, ...args, "-o", "json"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env: { ...process.env, NO_COLOR: "1", CLICOLOR: "0", CLICOLOR_FORCE: "0", FORCE_COLOR: "0", TERM: "dumb" } });
   if (r.status !== 0 && !r.stdout.trim()) throw new Error(`surf ${op} exited ${r.status}: ${(r.stderr || "").trim().slice(0, 300)}`);
-  const s = r.stdout; const i = s.indexOf("{"); if (i < 0) throw new Error(`surf ${op}: no JSON on stdout: ${s.slice(0, 200)}`);
+  const s = r.stdout.replace(/\x1b\[[0-9;]*[A-Za-z]/g, ""); const i = s.indexOf("{"); // strip ANSI colour codes regardless of the shell's settings if (i < 0) throw new Error(`surf ${op}: no JSON on stdout: ${s.slice(0, 200)}`);
   const j = JSON.parse(s.slice(i)); if (j.error) throw new Error(`surf ${op}: ${j.error.code} ${j.error.message}`);
   const meta = j.meta ?? {}; ledger(op, args, meta.credits_used, meta.cached); return { data: j.data, meta, op };
 }

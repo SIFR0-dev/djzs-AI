@@ -9,3 +9,4 @@ Columns: `scan_day` (UTC) · `credits_used` (from the CLI's own accounting for t
 
 ## Tape toolkit
 See tests/q3/tape/README.md. Credit lines below are appended by the tools.
+- 2026-09-06T20:19Z · shadow-mark · credits today so far: 1/100
