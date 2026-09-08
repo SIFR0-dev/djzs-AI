@@ -39,8 +39,12 @@ function readDevVar(name: string): string | undefined {
 function anthropicModelFn(apiKey: string): ModelFn {
   return async (prompt) => {
     for (let attempt = 1; attempt <= 4; attempt++) {
-      const r = await fetch(ANTHROPIC_URL, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1024, temperature: 0, messages: [{ role: "user", content: prompt }] }) });
+      let r: Response;
+      try {
+        r = await fetch(ANTHROPIC_URL, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+          body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1024, temperature: 0, messages: [{ role: "user", content: prompt }] }), signal: AbortSignal.timeout(60_000) });
+      } catch (e) { // network-level failure (connect timeout, reset, DNS) — retry like a 5xx instead of killing the run
+        if (attempt === 4) throw e; console.error(`  [net] attempt ${attempt}: ${(e as Error).message.slice(0, 80)} — retrying`); await new Promise(res => setTimeout(res, 2000 * attempt)); continue; }
       if (r.status === 429 || r.status === 529 || r.status >= 500) { await new Promise(res => setTimeout(res, 1500 * attempt)); continue; }
       if (!r.ok) throw new Error(`Claude API ${r.status}: ${(await r.text()).slice(0, 200)}`);
       const d = await r.json() as { content?: { text?: string }[] }; return d.content?.[0]?.text ?? "";
