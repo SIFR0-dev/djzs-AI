@@ -158,7 +158,7 @@ export const ALL_LF_CODES = Object.keys(LOGIC_FAILURE_TAXONOMY) as LFCode[];
 
 export const VALID_FAILURE_CODES = ALL_LF_CODES;
 
-export const DJZS_LF_VERSION = "1.1" as const;
+export const DJZS_LF_VERSION = "1.2" as const; // 1.2: S01 activated for thesis-absent (perp path); weights unchanged, sum 200
 export const SCHEMA_VERSION = `DJZS-LF-v${DJZS_LF_VERSION}` as const;
 
 if (MAX_RISK_SCORE !== 200) {

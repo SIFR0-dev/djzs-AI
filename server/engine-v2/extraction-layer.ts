@@ -44,7 +44,7 @@ export type ModelFn = (prompt: string) => Promise<string>;
  *   Evidence: tests/out/q2-live-2026-09-02-*.json (before) and the v1.1 re-run (after).
  * v1.0 — contract as shipped through Worker 821da611.
  */
-export const EXTRACTION_CONTRACT_VERSION = "DJZS-X-v1.1" as const;
+export const EXTRACTION_CONTRACT_VERSION = "DJZS-X-v1.2" as const; // 1.2: thesis_statement (quote-gated absent)
 
 export interface ExtractionResult {
   input: AuditInput;
@@ -91,6 +91,18 @@ Rules you must obey:
   resolves YES") IS an affirmative absence of a falsification → absent. A thesis that is simply
   SILENT on what would make it wrong → unknown. (This mirrors the no-exit-plan rule above: a stated
   no-falsification stance is "absent", mere silence is "unknown".)
+- thesis_statement — the stated REASON the trader expects the price to move in the chosen direction:
+  a macro view, a flow or positioning argument, a structural/technical setup WITH a reason attached,
+  a catalyst, a valuation. It is NOT the direction, size, leverage, entry, stop, target, or venue —
+  those describe the position, not why it should work.
+    PRESENT: a reason is stated, however brief ("funding is extreme and 82K has rejected four
+    times", "CPI prints hot and the Fed hikes", "ETF inflows resumed"). value = a short quote of it.
+    ABSENT: the intent consists ONLY of position mechanics — direction/side, size or notional,
+    leverage, entry, stop, take-profit, venue — with no reason given anywhere. Emit:
+      {"state":"absent","quote":"<verbatim text from the intent — the position statement itself>"}
+    The quote proves you read the whole intent and found only mechanics. If any reason is present,
+    even a weak one, this is PRESENT (weak reasons are the engine's job to score, not yours).
+    UNKNOWN: when unclear whether a phrase is a reason or a description; be conservative.
 - resolution_engagement — ONLY meaningful when audit_context is "prediction_market" (for anything
   else, always return unknown). It captures whether the REASONING engages the market's OWN
   resolution criteria — its window/date, its threshold or event definition, its resolution
@@ -176,7 +188,7 @@ Rules you must obey:
 Keys:
   agent_type (string), intended_action (string), market_type (string),
   leverage (number), position_size (number), stop_loss (number|string),
-  take_profit (number|string), invalidation_condition (string),
+  take_profit (number|string), invalidation_condition (string), thesis_statement (string),
   resolution_engagement (string), probability_basis (string), edge_claim (string),
   data_sources (string[]), oracle_source (string), confidence (number 0-100)
 
@@ -253,7 +265,7 @@ export async function extractAuditInput(
 }
 
 /** Gate-surviving absent quote for the two CRITICAL-driving PM fields (null unless the field is a surviving absent). */
-type SurvivingQuotes = { resolution_engagement: string | null; probability_basis: string | null; edge_claim: string | null };
+type SurvivingQuotes = { resolution_engagement: string | null; probability_basis: string | null; edge_claim: string | null; thesis_statement: string | null };
 
 /** Markers that betray a quote is lifting the falsification clause, never the argued thesis. */
 const FALSIFICATION_MARKERS = ["wrong if", "invalid if", "invalidation"];
@@ -284,13 +296,14 @@ function parseOne(
     return {
       input: allUnknownInput(),
       failsafe: true,
-      quotes: { resolution_engagement: null, probability_basis: null, edge_claim: null },
+      quotes: { resolution_engagement: null, probability_basis: null, edge_claim: null, thesis_statement: null },
     };
   }
 
   const gated = gateResolutionEngagement(parsed.resolution_engagement, originalText);
   const gatedBasis = gateProbabilityBasis(parsed.probability_basis, originalText);
   const gatedEdge = gateEdgeClaim(parsed.edge_claim, originalText);
+  const gatedThesis = gateThesisStatement(parsed.thesis_statement, originalText);
   const input: AuditInput = {
     agent_type: asString(parsed.agent_type),
     intended_action: asString(parsed.intended_action),
@@ -299,6 +312,7 @@ function parseOne(
     stop_loss: coerceField(parsed.stop_loss) as Field<number | string>,
     take_profit: coerceField(parsed.take_profit) as Field<number | string>,
     invalidation_condition: coerceField(parsed.invalidation_condition) as Field<string>,
+    thesis_statement: coerceField(gatedThesis.field) as Field<string>,
     resolution_engagement: coerceField(gated.field) as Field<string>,
     probability_basis: coerceField(gatedBasis.field) as Field<string>,
     edge_claim: coerceField(gatedEdge.field) as Field<string>,
@@ -354,6 +368,7 @@ function parseOne(
     resolution_engagement: input.resolution_engagement.state === "absent" ? gated.quote : null,
     probability_basis: input.probability_basis.state === "absent" ? gatedBasis.quote : null,
     edge_claim: input.edge_claim.state === "absent" ? gatedEdge.quote : null,
+    thesis_statement: input.thesis_statement.state === "absent" ? gatedThesis.quote : null,
   };
   return { input, failsafe: false, quotes };
 }
@@ -441,6 +456,28 @@ function gateEdgeClaim(
     : { field: UNKNOWN, quote: null };
 }
 
+/**
+ * An ABSENT thesis_statement (LF-v1.2 → DJZS-S01, CRITICAL) is trusted only when it quotes,
+ * verbatim from the intent, the position statement the model found in place of a reason. No
+ * quote, or a quote not in the intent → UNKNOWN (→ WAIT, never a guessed FAIL). Mirrors
+ * gateEdgeClaim exactly; the validated quote feeds evidence-unanimity in consensus.
+ */
+function gateThesisStatement(
+  raw: unknown,
+  originalText: string,
+): { field: unknown; quote: string | null } {
+  if (!raw || typeof raw !== "object") return { field: raw, quote: null };
+  const obj = raw as Record<string, unknown>;
+  if (obj.state !== "absent") return { field: raw, quote: null };
+  const quoteOk =
+    typeof obj.quote === "string" &&
+    obj.quote.trim() !== "" &&
+    collapseWs(originalText).includes(collapseWs(obj.quote));
+  return quoteOk
+    ? { field: { state: "absent" }, quote: obj.quote as string }
+    : { field: UNKNOWN, quote: null };
+}
+
 // ─── Consensus extraction ─────────────────────────────────────────────────
 
 /** All tri-state facts a consensus merge must cover (perp list + PM-only fields, incl. advisory edge_claim). */
@@ -448,7 +485,7 @@ const CONSENSUS_FIELDS = [...AUDIT_FIELDS, "resolution_engagement", "probability
 type ConsensusField = (typeof CONSENSUS_FIELDS)[number];
 
 /** PM absents that must clear evidence-unanimity, not merely state-unanimity (the two CRITICAL-driving fields + advisory edge_claim). */
-const EVIDENCE_FIELDS = new Set<ConsensusField>(["resolution_engagement", "probability_basis", "edge_claim"]);
+const EVIDENCE_FIELDS = new Set<ConsensusField>(["resolution_engagement", "probability_basis", "edge_claim", "thesis_statement"]);
 
 /** Normalize an absent's evidence quote for STRICT cross-sample identity: lowercase, collapse whitespace, trim, strip trailing punctuation. */
 const normalizeEvidence = (s: string) => collapseWs(s).replace(/[.,;:!?]+$/, "").trim();
@@ -544,7 +581,7 @@ export async function extractAuditInputConsensus(
       // probe 2's superset quote would unify the exact case this must demote.
       if (EVIDENCE_FIELDS.has(field)) {
         const quotes = samples.map(
-          (s) => s.quotes[field as "resolution_engagement" | "probability_basis" | "edge_claim"],
+          (s) => s.quotes[field as "resolution_engagement" | "probability_basis" | "edge_claim" | "thesis_statement"],
         );
         const norm = quotes.map((q) => (typeof q === "string" ? normalizeEvidence(q) : ""));
         const unanimousEvidence = norm.every((q) => q !== "" && q === norm[0]);

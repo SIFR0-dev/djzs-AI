@@ -46,6 +46,13 @@ export interface AuditInput {
   stop_loss: Field<number | string>;
   take_profit: Field<number | string>;
   invalidation_condition: Field<string>;
+  /**
+   * LF-v1.2 scored fact (perp path). The stated REASON the price moves in the chosen
+   * direction — macro, flow, structure, catalyst, valuation, positioning. Direction, size,
+   * leverage, entry, stop, target and venue alone are NOT a thesis. ABSENT is quote-gated
+   * (X-v1.2) and drives DJZS-S01 (CRITICAL): a position with no premise is its own premise.
+   */
+  thesis_statement: Field<string>;
   /** PM-only scored fact — listed in PM_AUDIT_FIELDS, deliberately NOT in AUDIT_FIELDS. */
   resolution_engagement: Field<string>;
   /** PM-only scored fact — listed in PM_AUDIT_FIELDS, deliberately NOT in AUDIT_FIELDS. */
@@ -76,6 +83,7 @@ export const AUDIT_FIELDS = [
   "data_sources",
   "oracle_source",
   "confidence",
+  "thesis_statement", // LF-v1.2 — appended last so existing WAIT orderings are preserved
 ] as const;
 
 export type AuditField = (typeof AUDIT_FIELDS)[number];
@@ -109,6 +117,7 @@ export const auditInputSchema = z.object({
   stop_loss: fieldSchema,
   take_profit: fieldSchema,
   invalidation_condition: fieldSchema,
+  thesis_statement: fieldSchema,
   resolution_engagement: fieldSchema,
   probability_basis: fieldSchema,
   edge_claim: fieldSchema,

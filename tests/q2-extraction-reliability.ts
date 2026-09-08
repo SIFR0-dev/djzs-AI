@@ -82,6 +82,7 @@ const CORPUS: { id: string; designed: "PASS" | "FAIL" | "WAIT" | "OUT_OF_SCOPE";
   { id: "P3", designed: "FAIL", cls: "NO_PROBABILITY", intent: { market: "polymarket:eth-above-4000-sep-30", side: "NO", thesis: "Resolves on the Sep 30 Coinbase close vs $4,000. ETH at $3,610 won't make it; the chart looks heavy.", probability_basis: "chart looks heavy", size_usd: 300, bounds: { max_loss_usd: 300, exit_condition: "exit if ETH closes above $3,850" } } },
   { id: "A1", designed: "WAIT", cls: "AMBIGUOUS", intent: { market: "KXBTCD", side: "YES", thesis: "btc yes", size_usd: 100 } },
   { id: "A2", designed: "WAIT", cls: "AMBIGUOUS", intent: { market: "fed cut market", side: "YES", thesis: "cut incoming, sizing later", size_usd: 50 } },
+  { id: "N2", designed: "OUT_OF_SCOPE", cls: "NON_PM_NO_THESIS", intent: { instrument: "BTC-PERP", side: "SHORT", leverage: 10, entry: 77481.55, stop_loss: 79800, take_profit: 73000, size_usd: 3000, venue: "Binance (assumed)", thesis: "Short BTC, entry $77,481.55, $3,000 notional, 10x leverage, stop $79,800, TP $73,000." } },
   { id: "N1", designed: "OUT_OF_SCOPE", cls: "NON_PM", intent: { instrument: "ETH-PERP", side: "LONG", leverage: 5, entry: 4120, stop_loss: 3950, take_profit: 4600, size_usd: 2000, thesis: "ETH-PERP long 5x: breakout above 4,100 resistance with rising OI; stop 3,950, target 4,600." } },
 ];
 

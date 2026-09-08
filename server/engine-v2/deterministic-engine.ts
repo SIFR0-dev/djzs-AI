@@ -12,7 +12,7 @@
  *   PASS  — every scored fact is known, and no rule fired
  *
  * Rule codes and weights are NOT redefined here — they are imported from the
- * frozen shared taxonomy (DJZS-LF-v1.1) so engine-v2 scores against the same
+ * frozen shared taxonomy (DJZS-LF-v1.2) so engine-v2 scores against the same
  * canonical table as everything else in the system.
  */
 import { LOGIC_FAILURE_TAXONOMY, type LFCode, type Severity } from "@shared/audit-schema";
@@ -114,7 +114,25 @@ function ruleFomoLoop(input: AuditInput): EngineFlag | null {
   return null;
 }
 
-const RULES = [ruleExecutionUnbound, ruleOracleUnverified, ruleFomoLoop];
+/**
+ * DJZS-S01 CIRCULAR_LOGIC (LF-v1.2 activation) — a position stated with NO articulated thesis.
+ * The taxonomy's S01 is "reasoning chain references its own conclusion as premise"; a trade that
+ * offers direction, size, leverage, entry, stop, target and venue but no reason is the degenerate
+ * case — the position is its only premise. Fires ONLY on an affirmative, quote-gated ABSENT
+ * (extraction X-v1.2); an unknown thesis surfaces as WAIT, never as this flag.
+ */
+function ruleThesisAbsent(input: AuditInput): EngineFlag | null {
+  const hasPosition = is(input.leverage, "present") || is(input.position_size, "present"); // same definition as X01
+  if (hasPosition && is(input.thesis_statement, "absent")) {
+    return flag(
+      "DJZS-S01",
+      "Position stated with no articulated thesis — direction, size, stop and venue only. The position is offered as its own premise; mechanics can be checked, reasoning cannot.",
+    );
+  }
+  return null;
+}
+
+const RULES = [ruleExecutionUnbound, ruleOracleUnverified, ruleFomoLoop, ruleThesisAbsent];
 
 // ─── Prediction-market rules (DJZS-M) ───────────────────────────────────────
 // These fire ONLY when audit_context === "prediction_market" and score against
@@ -202,8 +220,10 @@ export function runDeterministicAudit(input: AuditInput): EngineResult {
   if (hasCritical || risk_score >= FAIL_THRESHOLD) {
     // A real finding on known facts always condemns — even amid open questions.
     verdict = "FAIL";
-  } else if (flags.length === 0 && isBounded) {
-    // Bounded position, no flaw fired: remaining unknowns cannot change a no-flag verdict.
+  } else if (flags.length === 0 && isBounded && input.thesis_statement.state === "present") {
+    // Bounded position WITH a stated thesis and no flaw fired: remaining unknowns cannot change
+    // a no-flag verdict. LF-v1.2: a stop alone no longer buys a PASS — an unknown thesis could
+    // still resolve to S01, so it falls through to WAIT below.
     verdict = "PASS";
   } else if (unknown_fields.length > 0) {
     // No finding, but an unknown could still be decision-critical: abstain rather than guess.

@@ -10,6 +10,8 @@ jobs:
       - run: npm ci
       - name: PM engine — exhaustive verdict-space test
         run: npx tsx tests/pm-engine-integrity.ts
+      - name: LF engine — exhaustive verdict-space test (perp path, LF-v1.2)
+        run: npx tsx tests/lf-engine-integrity.ts
   worker-builds:
     runs-on: ubuntu-latest
     steps:
