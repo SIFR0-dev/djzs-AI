@@ -173,20 +173,10 @@ Rules you must obey:
     BE the argued case for the bet.
     UNKNOWN: when unclear; be conservative.
 
-- thesis_statement — ONLY meaningful when the intent is a perpetual/spot TRADE (audit_context NOT
-  "prediction_market"). For a prediction-market bet ALWAYS return unknown and do not let this field
-  influence any other. For a trade, it is the stated REASON the trader expects the price to move in
-  the chosen direction: a macro view, a flow or positioning argument, a structural/technical setup
-  WITH a reason attached, a catalyst, a valuation. It is NOT the direction, size, leverage, entry,
-  stop, target, or venue — those describe the position, not why it should work.
-    PRESENT: a reason is stated, however brief ("funding is extreme and 82K has rejected four times",
-    "CPI prints hot and the Fed hikes", "ETF inflows resumed"). value = a short quote of it.
-    ABSENT: the intent consists ONLY of position mechanics — direction/side, size or notional,
-    leverage, entry, stop, take-profit, venue — with no reason given anywhere. Emit:
-      {"state":"absent","quote":"<verbatim text from the intent — the position statement itself>"}
-    The quote proves you read the whole intent and found only mechanics. If any reason is present,
-    even a weak one, this is PRESENT (weak reasons are the engine's job to score, not yours).
-    UNKNOWN: when unclear whether a phrase is a reason or a description; be conservative.
+- thesis_statement — trades only; for a prediction-market bet always return unknown. The stated
+  REASON the price should move the chosen way (a view, a flow, a catalyst, a setup with a reason).
+  PRESENT = any reason is stated (value: short quote). ABSENT = the intent gives no reason at all —
+  emit {"state":"absent","quote":"<verbatim excerpt of the intent>"}. UNKNOWN = unclear.
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
