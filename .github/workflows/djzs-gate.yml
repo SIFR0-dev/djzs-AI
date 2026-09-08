@@ -12,6 +12,8 @@ jobs:
         run: npx tsx tests/pm-engine-integrity.ts
       - name: LF engine — exhaustive verdict-space test (perp path, LF-v1.2)
         run: npx tsx tests/lf-engine-integrity.ts
+      - name: verify_perp_trade pipeline — offline, fake model
+        run: npx tsx tests/verify-perp-trade.test.ts
   worker-builds:
     runs-on: ubuntu-latest
     steps:

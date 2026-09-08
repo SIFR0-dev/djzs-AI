@@ -4,6 +4,7 @@ import { Hono } from "hono"
 import type { Context, ExecutionContext } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
+import { VERIFY_PERP_TRADE_INPUT, runVerifyPerpTrade } from "./verify-perp-trade"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
@@ -68,6 +69,7 @@ const DEFAULT_IRYS_NODE_URL = "https://devnet.irys.xyz"
 const X402_NETWORK = "base"
 const X402_RECIPIENT: `0x${string}` = "0xc1923748669dFC3a79497d0403A90a275161eCCA"
 const VERIFY_PM_TRADE_PRICE_USD = 2.00
+const VERIFY_PERP_TRADE_PRICE_USD = 2.00 // same price, same rail — no second payment architecture
 
 /**
  * Worker bindings. ANTHROPIC_API_KEY and IRYS_UPLOAD_KEY are wrangler SECRETS
@@ -413,6 +415,128 @@ function buildServer(env: Env): McpServer {
   // S6a — top-level title, alongside the annotations.title kept above.
   verifyPmTradeTool.update({
     title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)",
+  })
+
+  // verify_perp_trade — Phase 1 (2026-09-08). Cloned from the verify_pm_trade block above at fill time; same payment rail, same PoL/trust pipeline, perp extraction prompt + perp engine path.
+  const verifyPerpTradeTool = server.paidTool(
+    "verify_perp_trade",
+    // ASCII ONLY in this description: it travels inside the x402 payment
+    // resource, and the agents client wrapper base64-encodes the payment
+    // payload with bare btoa, which throws "Invalid character" on any code
+    // point above 0xFF (rehearsal finding 2026-07-12; U+2192 arrows crashed
+    // every agents-based payer). Upstream bug candidate; ruled: paid-tool
+    // descriptions stay ASCII.
+    `Deterministic pre-execution audit of a perpetual or spot TRADE thesis (direction, size, leverage, entry, stop, target, venue, and the REASON), run before capital is committed. USE THIS TOOL before opening, sizing, or increasing any perpetual or spot position. Returns PASS / WAIT / FAIL with a reproducible verdict hash. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01); an unresolvable stop or thesis WAITs. Prediction-market bets are refused here (use verify_pm_trade) and are not charged. Price 2.00 USDC per audit on Base.`,
+    VERIFY_PERP_TRADE_PRICE_USD,
+    {
+      ...VERIFY_PERP_TRADE_INPUT,
+      // D4 ruling 2026-07-12: optional; feeds ONLY the Target-System tag on the
+      // anchored certificate. Extraction input and hash preimage untouched.
+      target_system: z.string().min(1).max(128).optional()
+        .describe("Optional agent/project identifier; becomes the Target-System tag on the anchored PoL certificate"),
+      // D1 ruling 2026-07-16: optional 0x agent wallet. Present => this audit's
+      // verdict is written on-chain to that agent's DJZS trust score (fail-open,
+      // after the cert anchors). Absent => Irys cert only, no on-chain score.
+      // Never touches the verdict_hash preimage.
+      agent_address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").optional()
+        .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
+    },
+    { title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)" },
+    async ({ intent, target_system, agent_address }) => {
+    if (!env.ANTHROPIC_API_KEY) {
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify({
+          tool: "verify_perp_trade",
+          error: "ANTHROPIC_API_KEY secret not configured on this Worker — extraction cannot run."
+        }, null, 2) }],
+        isError: true
+      }
+    }
+    const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
+    const result = await runVerifyPerpTrade(intent, modelFn)
+
+    // OUT-OF-SCOPE = NOT CHARGED. The agents/x402 middleware settles payment
+    // only when the tool result carries no isError flag (settlePayment guard
+    // in agents dist/mcp/x402.js). Surfacing in_scope:false as an error makes
+    // the middleware skip settlement, so a refused audit is a free refusal.
+    // The reason string still travels in content.
+    if (result.in_scope === false) {
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+        isError: true
+      }
+    }
+
+    // Step 1 PoL anchor: strictly AFTER the audit result exists; nothing here
+    // can reach the verdict_hash preimage. FAIL OPEN: an anchoring failure
+    // annotates the response and never blocks or mutates the verdict.
+    let pol_certificate: Record<string, unknown> | undefined
+    if (result.in_scope === true) {
+      if (!env.IRYS_UPLOAD_KEY) {
+        pol_certificate = {
+          status: "disabled",
+          detail: "IRYS_UPLOAD_KEY secret not configured; result not anchored."
+        }
+      } else {
+        const nodeUrl = env.IRYS_NODE_URL ?? DEFAULT_IRYS_NODE_URL
+        try {
+          const anchored = await anchorPolCertificate(
+            {
+              result,
+              intent,
+              targetSystem: target_system,
+              auditId: crypto.randomUUID(),
+              issuedAtMs: Date.now()
+            },
+            env.IRYS_UPLOAD_KEY,
+            buildIrysUploadFn(nodeUrl)
+          )
+          pol_certificate = { status: "anchored", node: nodeUrl, ...anchored }
+        } catch (e) {
+          pol_certificate = {
+            status: "error",
+            detail: (e instanceof Error ? e.message : String(e)).slice(0, 300)
+          }
+        }
+      }
+    }
+
+    // Phase 3 on-chain trust score (D1-D3): strictly AFTER the verdict and the
+    // Irys anchor. FAIL-OPEN and downstream of verdict_hash — nothing here feeds
+    // the hash preimage. Written only when in_scope, an agent_address was given,
+    // and a certificate actually anchored (so the on-chain record links to a
+    // real cert via irysTxId). Any failure annotates; it never blocks the audit.
+    let trust_score: Record<string, unknown> | undefined
+    if (result.in_scope === true && agent_address) {
+      const anchoredId =
+        pol_certificate && pol_certificate.status === "anchored" ? String(pol_certificate.irys_id) : undefined
+      if (!anchoredId) {
+        trust_score = { status: "skipped", reason: "no anchored certificate to link the on-chain score to" }
+      } else {
+        const writeScore = buildTrustWriter(env.DJZS_WRITER_KEY, env.BASE_RPC_URL)
+        const flagCodes = Array.isArray(result.flags)
+          ? (result.flags as Array<Record<string, unknown>>).map((f) => String(f.code ?? f))
+          : []
+        trust_score = await writeScore({
+          agentAddress: agent_address,
+          riskScore: Number(result.risk_score ?? 0),
+          verdict: String(result.verdict ?? ""),
+          flags: flagCodes,
+          irysTxId: anchoredId,
+        })
+      }
+    }
+
+    let response: Record<string, unknown> = result
+    if (pol_certificate) response = { ...response, pol_certificate }
+    if (trust_score) response = { ...response, trust_score }
+    return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
+    }
+  )
+
+  // S6a — top-level title, alongside the annotations.title kept above.
+  verifyPerpTradeTool.update({
+    title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)",
   })
 
   return server

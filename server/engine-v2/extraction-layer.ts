@@ -44,7 +44,8 @@ export type ModelFn = (prompt: string) => Promise<string>;
  *   Evidence: tests/out/q2-live-2026-09-02-*.json (before) and the v1.1 re-run (after).
  * v1.0 — contract as shipped through Worker 821da611.
  */
-export const EXTRACTION_CONTRACT_VERSION = "DJZS-X-v1.2" as const; // 1.2: thesis_statement (quote-gated absent)
+export const EXTRACTION_CONTRACT_VERSION = "DJZS-X-v1.1" as const; // PM contract — unchanged; measured 100% (09-01) / 97.5% (09-08)
+export const EXTRACTION_CONTRACT_VERSION_LF = "DJZS-X-LF-v1.2" as const; // perp/spot contract — adds thesis_statement (quote-gated absent)
 
 export interface ExtractionResult {
   input: AuditInput;
@@ -173,10 +174,144 @@ Rules you must obey:
     BE the argued case for the bet.
     UNKNOWN: when unclear; be conservative.
 
-- thesis_statement — trades only; for a prediction-market bet always return unknown. The stated
-  REASON the price should move the chosen way (a view, a flow, a catalyst, a setup with a reason).
-  PRESENT = any reason is stated (value: short quote). ABSENT = the intent gives no reason at all —
-  emit {"state":"absent","quote":"<verbatim excerpt of the intent>"}. UNKNOWN = unclear.
+Keys:
+  agent_type (string), intended_action (string), market_type (string),
+  leverage (number), position_size (number), stop_loss (number|string),
+  take_profit (number|string), invalidation_condition (string),
+  resolution_engagement (string), probability_basis (string), edge_claim (string),
+  data_sources (string[]), oracle_source (string), confidence (number 0-100)
+
+Optional key — audit_context:
+  Set "audit_context": "prediction_market" ONLY if the intent is a bet on a market OUTCOME — it
+  mentions a prediction-market venue (Kalshi, Polymarket, Limitless), a YES/NO outcome, a resolution
+  date, or the probability of an event resolving. Otherwise OMIT this key entirely (the default is a
+  perpetual/spot trade). Be conservative: if you are unsure, OMIT it. This is a plain string, NOT a
+  tri-state object.`;
+
+/** Perp/spot TRADE prompt (DJZS-X-LF-v1.2): the PM prompt above plus the thesis_statement block. Selected by the caller's declared context — never by the model. */
+export const STRICT_EXTRACTION_PROMPT_PERP = `You are a fact extractor for a deterministic audit engine. You do NOT judge,
+score, or advise. You ONLY report observable facts from the agent's stated intent.
+
+Return STRICT JSON with exactly these keys. Every scored fact MUST be a tri-state object:
+  { "state": "present", "value": <the value> }   when the fact is explicitly given
+  { "state": "absent" }                            when the text affirmatively says it does NOT exist
+  { "state": "unknown" }                           when you cannot tell — DO NOT GUESS
+
+Rules you must obey:
+- "absent" = the text affirmatively indicates NO such control exists, INCLUDING a stated plan
+  to act with no exit logic. Treat ALL of these as ABSENT (not unknown): "no stop loss",
+  "unhedged", "all in", "diamond hands", "just hold until target", "hold until we hit target",
+  "ride it until it tops out", "ride the momentum", "just monitor manually", "hold through anything".
+  A stated intention to hold/ride with no protective exit IS an affirmative absence of both
+  stop_loss and invalidation_condition — mark BOTH absent.
+- "unknown" = the text is SILENT (never addresses exit/stop logic) OR genuinely vague about a
+  value ("I'll bail if it tanks" gives no level → unknown). Use unknown only when you truly
+  cannot tell, NOT when a no-exit plan is stated.
+- Never invent a number. A vague gesture toward a VALUE is "unknown"; a stated no-exit PLAN is "absent".
+- An AGGRESSIVE ENTRY with no risk management is an affirmative ABSENT of stop_loss. A position
+  described ONLY by direction + size/leverage + a momentum/sentiment rationale ("go long ETH 10x
+  because Twitter is bullish", "ape into X, it's pumping", "max long, sentiment is hot"), with NO
+  exit, stop, or invalidation mentioned anywhere, is a stated plan to enter with no protective
+  exit — mark stop_loss absent (not unknown). The test: did the trader describe an aggressive/
+  leveraged entry AND conspicuously include no protective exit? → absent. This does NOT override the
+  unknown cases above: a vague gesture at an exit with no level ("I'll bail if it drops") stays
+  unknown, and a neutral factual mention with no leverage/urgency that simply doesn't discuss stops
+  stays unknown. Aggressive entry + conspicuous silence on exits → absent; merely not mentioning
+  stops in passing → unknown.
+- PREDICTION-MARKET theses: invalidation_condition is the FALSIFICATION — a stated observable
+  condition that would prove the thesis WRONG before the market resolves (e.g. "I'm wrong if the
+  poll average drops below 45% by Oct 1", "invalid if the official source reports under 2% growth").
+  A stated falsification → present. A thesis that asserts the outcome with NO falsifiable condition
+  (pure narrative, "it'll definitely happen", "the vibe is clearly YES", "everyone knows this
+  resolves YES") IS an affirmative absence of a falsification → absent. A thesis that is simply
+  SILENT on what would make it wrong → unknown. (This mirrors the no-exit-plan rule above: a stated
+  no-falsification stance is "absent", mere silence is "unknown".)
+- resolution_engagement — ONLY meaningful when audit_context is "prediction_market" (for anything
+  else, always return unknown). It captures whether the REASONING engages the market's OWN
+  resolution criteria — its window/date, its threshold or event definition, its resolution
+  source — versus arguing a proposition adjacent to all of them.
+    PRESENT (engaged): the reasoning engages at least ONE of the market's own resolution
+    criteria specifically — the market's window/date, the market's threshold or event
+    definition, or the market's resolution source — either directly or by deriving the outcome
+    through it. Schedule math against the market's stated deadline counts as engaging the
+    window; component math against the resolved index counts as engaging the definition.
+    value = a short quote/paraphrase of HOW it engages.
+    Engagement means arguing about THE MARKET'S criterion itself. Reasoning about a DIFFERENT
+    date, a DIFFERENT threshold, or a DIFFERENT authority than the market's own is adjacency,
+    not engagement ("this year" does not engage a market resolving on a specific meeting).
+    ABSENT (adjacent): the reasoning makes an identifiable argued claim that engages NONE of the
+    market's criteria — adjacent to all of them. Four shapes, all ABSENT:
+      (a) title/direction only: argues the headline or direction, not the resolved question
+      (b) wrong source: relies on an authority other than the market's resolution source
+      (c) wrong threshold/definition: argues an adjacent cutoff or definition
+      (d) wrong window: argues the event happens but not within the market's resolution window
+    For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
+      {"state":"absent","shape":"a"|"b"|"c"|"d","quote":"<verbatim text from the intent — the adjacent claim>"}
+    Never absent — these are NOT adjacency:
+    - A personal invalidation or exit level is trade construction, not adjacency; a
+      falsification clause is never the argued thesis.
+    - Absence of a source citation is never, by itself, evidence of adjacency.
+    - A thesis that argues NOTHING (just the bet, an exit level, or position mechanics) argues
+      no adjacent claim — mark unknown, never absent. Absent requires an identifiable argued
+      adjacent claim.
+    - Judge the REASONING, not the bet statement — the market's terms appearing in the bet
+      description is neither engagement nor adjacency; the criterion must be engaged IN THE
+      REASONING.
+    UNKNOWN: when unclear, unknown. Mark absent only on a clearly argued adjacent claim; mark
+    present only when a market criterion is clearly engaged in the reasoning; otherwise unknown.
+- probability_basis — ONLY meaningful when audit_context is "prediction_market" (for anything
+  else, always return unknown). It captures whether every probability/edge ASSERTION in the
+  reasoning carries a VERIFIABLE basis.
+    An ASSERTION is a claimed likelihood or edge: a stated probability ("70% likely"), a
+    certainty claim about the outcome ("approval is already done", "guaranteed to resolve YES"),
+    or a claimed mispricing/edge versus the market's odds.
+    A VERIFIABLE basis is checkable data or derivation NAMED IN THE REASONING: a dataset or
+    filing, an official source or schedule, the market's own pricing/volume history, or an
+    explicit model/derivation with stated inputs — including the thesis's OWN derivation when
+    it shows its work: schedule or dependency math, component math, or a documented pattern in
+    the market's resolution source (e.g. prior entries on the official docket).
+    PRESENT: EITHER the reasoning asserts no probability/edge at all (nothing claimed = nothing
+    unsourced — vacuously present), OR every assertion carries a verifiable basis.
+    value = a short quote/paraphrase of the basis, or "no probability asserted".
+    ABSENT: at least one assertion whose ONLY support is rumor-grade or missing — an unnamed
+    insider, a tweet or "people are saying", a personal or third-party FORECASTING track record
+    ("his last three calls hit" — someone's history of being RIGHT), pure conviction, or no
+    support at all. A documented pattern in the resolution source itself ("this designation
+    preceded every prior approval on the docket") is NOT a forecasting track record; it is
+    checkable evidence.
+    For THIS FIELD ONLY, absent carries evidence and MUST be emitted as:
+      {"state":"absent","quote":"<ONE contiguous verbatim span from the intent — the unsourced assertion. Never join two spans; pick the single strongest one>"}
+    Never absent — these are NOT unsourced assertions:
+    - A thesis that asserts no probability, certainty, or edge argues nothing to source — mark
+      present (vacuously), never absent.
+    - A falsification clause or an exit level is trade construction, not a probability assertion.
+    - Attribution is not verification: naming WHO said it (a tweet, a fund manager, an insider)
+      does not make the basis verifiable — checkable data, filings, official sources, market
+      pricing history, or an explicit derivation do.
+    - A conclusion the reasoning DERIVES from stated facts, dates, thresholds, or the market's
+      own criteria ("leaving no realistic turnaround inside the window") is not an unsourced
+      assertion — the shown derivation IS its basis. Absent requires support that is MISSING,
+      not support that is the surrounding reasoning itself.
+    UNKNOWN: when unclear whether an assertion is made, or whether its basis is verifiable,
+    unknown — never guess absent.
+- edge_claim — ONLY meaningful when audit_context is "prediction_market" (for anything else,
+  always return unknown). It captures whether the thesis states an INDEPENDENT edge — a reason the
+  market is MISPRICED — versus resting the case on the consensus/market position itself.
+    PRESENT: the reasoning articulates why the market is WRONG or has not priced something —
+    information, analysis, or a derivation the market hasn't absorbed ("the market hasn't priced
+    this morning's minutes revision"). value = a short quote/paraphrase of the edge.
+    ABSENT: the stated case for the bet IS the consensus/market position itself — the price or
+    the crowd's agreement is offered as the reason ("it's at 92¢ and everyone knows", "the crowd
+    has this right, easy money"). Emit:
+      {"state":"absent","quote":"<verbatim text from the intent — the consensus-as-edge claim>"}
+    NOTE: merely CITING the price as data is not absent — absent requires the consensus/price to
+    BE the argued case for the bet.
+    UNKNOWN: when unclear; be conservative.
+
+- thesis_statement — trades only. The stated REASON the price should move the chosen way (a view, a
+  flow, a catalyst, a setup with a reason). PRESENT = any reason is stated (value: short quote).
+  ABSENT = the intent gives no reason at all — emit {"state":"absent","quote":"<verbatim excerpt of the
+  intent>"}. UNKNOWN = unclear.
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
@@ -247,11 +382,15 @@ function allUnknownInput(): AuditInput {
  */
 const defaultModel: ModelFn = (prompt) => callClaudeText(prompt);
 
+export type ExtractionContext = "perp" | "prediction_market";
+const promptFor = (ctx?: ExtractionContext) => ctx === "perp" ? STRICT_EXTRACTION_PROMPT_PERP : STRICT_EXTRACTION_PROMPT;
+
 export async function extractAuditInput(
   text: string,
   model: ModelFn = defaultModel,
+  context?: ExtractionContext,
 ): Promise<ExtractionResult> {
-  const prompt = `${STRICT_EXTRACTION_PROMPT}\n\nAGENT INTENT:\n${text}`;
+  const prompt = `${promptFor(context)}\n\nAGENT INTENT:\n${text}`;
   const raw = await model(prompt);
   const { input, failsafe } = parseOne(raw, text);
   return { input, raw, failsafe };
@@ -534,8 +673,9 @@ export async function extractAuditInputConsensus(
   text: string,
   model: ModelFn = defaultModel,
   n = 3,
+  context?: ExtractionContext,
 ): Promise<ConsensusExtractionResult> {
-  const prompt = `${STRICT_EXTRACTION_PROMPT}\n\nAGENT INTENT:\n${text}`;
+  const prompt = `${promptFor(context)}\n\nAGENT INTENT:\n${text}`;
   const raws = await Promise.all(Array.from({ length: n }, () => model(prompt)));
   const samples = raws.map((raw) => parseOne(raw, text));
   const inputs = samples.map((s) => s.input);
