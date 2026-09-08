@@ -93,7 +93,7 @@ const CORPUS: { id: string; designed: "PASS" | "FAIL" | "WAIT" | "OUT_OF_SCOPE";
 // ── run ────────────────────────────────────────────────────────────────────────────────────────
 const args = new Set(process.argv.slice(2)); const STUB = args.has("--stub") || args.has("--stub-noisy");
 const K = Number(process.env.K ?? 5); const CONC = 3;
-const FIELDS = ["invalidation_condition", "resolution_engagement", "probability_basis", "edge_claim"] as const;
+const FIELDS = ["invalidation_condition", "resolution_engagement", "probability_basis", "edge_claim", "thesis_statement"] as const;
 type Run = { verdict: string; risk: number; codes: string[]; in_scope: boolean; states: Record<string, string>; disagreements: string[]; failsafe: boolean };
 
 const model: ModelFn = STUB ? stubModelFn(args.has("--stub-noisy")) : (() => { const k = readDevVar("ANTHROPIC_API_KEY"); if (!k) { console.error("ANTHROPIC_API_KEY not found in djzs-trust-mcp/.dev.vars or env"); process.exit(2); } return anthropicModelFn(k); })();
