@@ -90,7 +90,12 @@ function flagStrings(result: VerifyPmTradeResult): string[] {
  * verify-pm-trade's ModelFn): pass a stub to exercise this adapter with no key and
  * no network. Production never passes it.
  */
-export function createEngineAdapter(env: EngineAdapterEnv, modelFn?: ModelFn): EngineAdapter {
+export function createEngineAdapter(
+  env: EngineAdapterEnv,
+  modelFn?: ModelFn,
+  /** Which pipeline audits the intent. Default: the PM pipeline (unchanged behavior). */
+  runner: (text: string, model: ModelFn) => Promise<VerifyPmTradeResult> = runVerifyPmTrade,
+): EngineAdapter {
   /** intent_sha256 -> in-flight/settled pipeline run. One entry per request in practice. */
   const runs = new Map<string, Promise<VerifyPmTradeResult>>()
 
@@ -103,7 +108,7 @@ export function createEngineAdapter(env: EngineAdapterEnv, modelFn?: ModelFn): E
       // Fail CLOSED and fail EARLY: thrown from scopeCheck this is an uncharged refusal.
       return Promise.reject(new Error("EXTRACTION_UNAVAILABLE: ANTHROPIC_API_KEY not configured"))
     }
-    const p = runVerifyPmTrade(renderIntentText(intent), model)
+    const p = runner(renderIntentText(intent), model)
     runs.set(key, p)
     return p
   }

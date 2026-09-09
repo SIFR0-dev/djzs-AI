@@ -163,6 +163,63 @@ const discoveryExtensions = withDiscoveryFixups(declareDiscoveryExtension({
   },
 }));
 
+// Discovery declaration for the PERP/spot trade surface (X-LF-v1.2 · DJZS-LF-v1.2). Same rail, same price.
+const discoveryExtensionsPerp = withDiscoveryFixups(declareDiscoveryExtension({
+  bodyType: "json",
+  input: {
+    intent: {
+      instrument: "BTC-PERP",
+      side: "LONG",
+      leverage: 5,
+      entry: 78900,
+      stop_loss: 76200,
+      take_profit: 83000,
+      size_usd: 3000,
+      venue: "Binance",
+      thesis: "Funding reset to 2% after the weekend flush; 80K held on the daily close; ETF inflows resumed. Invalidation: daily close below 76,200. Oracle: Binance mark price.",
+    },
+  },
+  inputSchema: {
+    type: "object",
+    required: ["intent"],
+    properties: {
+      intent: {
+        type: "object",
+        description:
+          "A perpetual or spot TRADE intent to be adversarially audited before capital is committed. Deterministic engine: the LLM layer detects, TypeScript decides. A position stated with no reason FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused WITHOUT CHARGE (use verify_pm_trade).",
+        required: ["instrument", "side", "thesis"],
+        properties: {
+          instrument: { type: "string", description: "Instrument, e.g. BTC-PERP, ETH-USD spot." },
+          side: { type: "string", description: "LONG or SHORT." },
+          thesis: { type: "string", description: "The REASON the price should move the chosen way. Direction, size and levels alone are not a thesis." },
+          leverage: { type: "number", description: "Leverage multiplier (1 for spot)." },
+          entry: { type: "number", description: "Intended entry price." },
+          stop_loss: { type: "number", description: "Stop level. A position with neither a stop nor an invalidation condition cannot PASS." },
+          take_profit: { type: "number", description: "Target level." },
+          invalidation: { type: "string", description: "The condition that proves the thesis wrong, if not a price stop." },
+          size_usd: { type: "number", description: "Notional in USD." },
+          venue: { type: "string", description: "Execution venue; also the mark-price oracle unless stated otherwise." },
+          data_sources: { type: "string", description: "Where the inputs came from. Social/sentiment-only sourcing is flagged (DJZS-I01), not blocked." },
+        },
+      },
+    },
+  },
+  output: {
+    example: {
+      verdict: "FAIL",
+      risk_score: 30,
+      flags: ["DJZS-S01"],
+      verdict_hash: "0x7c…e1",
+      intent_sha256: "…binding key…",
+      intent_hash: "…EIP-712 binding key (v2)…",
+      eas_uid: "…EAS attestation uid…",
+      eas_schema: "0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030",
+      charged: true,
+      terms: TERMS_URL,
+    },
+  },
+}));
+
 /**
  * S2 + S3 — POST-HELPER FIXUPS, applied to the object `declareDiscoveryExtension`
  * returns rather than to its config.
@@ -280,6 +337,32 @@ async function getServer(env: X402Env): Promise<x402ResourceServer> {
 export const DESCRIPTION =
   "DJZS adversarial logic audit of a prediction-market trade intent. Deterministic verdict (PASS/WAIT/FAIL) with risk score, defect flags, verdict_hash, and on-chain Proof-of-Logic receipt. Out-of-scope requests are refused WITHOUT CHARGE. Audit, not advice.";
 
+/** Which paid surface a request is for. The PM spec is the default so the original route is byte-identical. */
+export interface ResourceSpec {
+  url: string;
+  description: string;
+  rulesetVersion: string;
+  tags: string[];
+  extensions: typeof discoveryExtensions;
+}
+export const PM_RESOURCE: ResourceSpec = {
+  url: RESOURCE_URL,
+  description: DESCRIPTION,
+  rulesetVersion: RULESET_VERSION,
+  tags: ["audit", "prediction-markets", "trading", "verification"],
+  extensions: discoveryExtensions,
+};
+export const PERP_RESOURCE_URL = "https://mcp.djzs.ai/x402/verify_perp_trade" as const;
+export const PERP_DESCRIPTION =
+  "DJZS adversarial logic audit of a perpetual or spot TRADE intent — direction, size, leverage, entry, stop, target, venue, and the REASON. Deterministic verdict (PASS/WAIT/FAIL) with risk score, defect flags, verdict_hash, and on-chain Proof-of-Logic receipt. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused WITHOUT CHARGE. Audit, not advice.";
+export const PERP_RESOURCE: ResourceSpec = {
+  url: PERP_RESOURCE_URL,
+  description: PERP_DESCRIPTION,
+  rulesetVersion: "DJZS-LF-v1.2",
+  tags: ["audit", "perpetuals", "trading", "verification"],
+  extensions: discoveryExtensionsPerp,
+};
+
 /**
  * Build the payment requirements FROM THE LIBRARY (§14 standing rule).
  *
@@ -324,6 +407,7 @@ export async function handleX402VerifyPmTrade(
   request: Request,
   env: X402Env,
   engine: EngineAdapter = NOT_WIRED,
+  spec: ResourceSpec = PM_RESOURCE,
 ): Promise<Response> {
   const method = request.method.toUpperCase();
 
@@ -377,9 +461,9 @@ export async function handleX402VerifyPmTrade(
   if (!sigHeader) {
     const paymentRequired = await server.createPaymentRequiredResponse(
       reqs,
-      { url: RESOURCE_URL, description: DESCRIPTION, mimeType: "application/json", serviceName: "DJZS Audit Gate", tags: ["audit", "prediction-markets", "trading", "verification"] },
+      { url: spec.url, description: spec.description, mimeType: "application/json", serviceName: "DJZS Audit Gate", tags: spec.tags },
       undefined,
-      discoveryExtensions,
+      spec.extensions,
     );
     // HEAD: identical status and headers, no body — per RFC 9110 a HEAD response
     // carries the headers its GET would, and nothing else.
@@ -408,7 +492,7 @@ export async function handleX402VerifyPmTrade(
   } catch {
     return json({ error: "malformed_payment_header", terms: TERMS_URL }, 400);
   }
-  const verify = await server.verifyPayment(payload, reqs[0], discoveryExtensions);
+  const verify = await server.verifyPayment(payload, reqs[0], spec.extensions);
   if (!verify?.isValid) {
     return json(
       { error: "payment_verification_failed", detail: verify?.invalidReason ?? "unknown", terms: TERMS_URL },
@@ -453,7 +537,7 @@ export async function handleX402VerifyPmTrade(
   }
 
   // 4 — settle FIRST (no free verdicts), then run the deterministic engine.
-  const settle = await server.settlePayment(payload, reqs[0], discoveryExtensions);
+  const settle = await server.settlePayment(payload, reqs[0], spec.extensions);
   if (!settle?.success) {
     return json(
       { error: "settlement_failed", detail: settle?.errorReason ?? "unknown", charged: false, terms: TERMS_URL },
@@ -499,7 +583,7 @@ export async function handleX402VerifyPmTrade(
           verdict: result.verdict as "PASS" | "WAIT" | "FAIL",
           riskScore: result.risk_score,
           flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
-          rulesetVersion: RULESET_VERSION,
+          rulesetVersion: spec.rulesetVersion,
           agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
         },
       );

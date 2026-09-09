@@ -40,8 +40,8 @@
   <section>
     <h1>Connect the gate</h1>
     <p class="lede">DJZS is exposed as a Model Context Protocol server over streamable HTTP at
-    <code>/mcp</code>. The lead tool is <code>verify_pm_trade</code> — the pre-execution audit an
-    agent calls before it acts.</p>
+    <code>/mcp</code>. Two paid tools: <code>verify_pm_trade</code> for prediction-market theses and
+    <code>verify_perp_trade</code> for perpetual/spot trade theses — the pre-execution audit an agent calls before it acts.</p>
     <div class="status">
       <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">MODE</span><span class="val">CONNECT — streamable HTTP at /mcp</span></div>
@@ -74,6 +74,7 @@
       <thead><tr><th scope="col">Tool</th><th scope="col">Cost</th><th scope="col">Returns</th></tr></thead>
       <tbody>
         <tr><td><code>verify_pm_trade</code></td><td>2.00 USDC</td><td>verdict + flags + verdict_hash + anchored certificate</td></tr>
+        <tr><td><code>verify_perp_trade</code></td><td>2.00 USDC</td><td>same shape for a perpetual/spot trade; no thesis or no bound FAILS (S01 / X01); PM bets refused free</td></tr>
         <tr><td><code>query_pol_certificates</code></td><td>free</td><td>permanent ProofOfLogic certificates from Irys mainnet</td></tr>
         <tr><td><code>query_agent_trust</code></td><td>free</td><td>on-chain trust: totalAudits, failRate, PROCEED / HALT / NO_HISTORY</td></tr>
       </tbody>

@@ -14,12 +14,17 @@
   Optional `agent_address` (0x wallet) links the verdict to that agent's on-chain trust record.
   Prediction-market only: a non-PM or undetermined intent returns in_scope:false (never a silent
   perpetuals audit).
+- Second paid tool: `verify_perp_trade` — pass a free-text perpetual or spot TRADE thesis (direction,
+  size, leverage, entry, stop, target, venue, and the REASON). Same verdict shape, same price. A position
+  stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01); an unresolvable stop or
+  thesis WAITs. Prediction-market bets are refused here (in_scope:false, not charged) — use verify_pm_trade.
+  The two tools run separate extraction contracts (X-v1.1 for PM, X-LF-v1.2 for trades); see /ruleset.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
   `query_agent_trust` (LIVE — on-chain trust score read from the DJZS subgraph: totalAudits,
   pass/fail counts, failRate, latest verdict/risk, DJZS-S01/X01 flag counts, and an action of
   PROCEED, HALT, or NO_HISTORY; HALT if failRate > 0.3 or S01/X01 fired more than once).
-- Paying: verify_pm_trade costs 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
+- Paying: verify_pm_trade and verify_perp_trade each cost 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
   network "base", and maxPaymentValue 2000000n — the library's default cap is 0.10 USDC and
   refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
@@ -49,7 +54,7 @@
 
 ## Live posture (stated honestly)
 
-- verify_pm_trade is PAID: 2.00 USDC per audit over x402 (CDP facilitator) on Base mainnet,
+- verify_pm_trade and verify_perp_trade are PAID: 2.00 USDC per audit over x402 (CDP facilitator) on Base mainnet,
   non-custodial (payer -> treasury via EIP-3009; the facilitator submits the transfer and pays gas).
   The registry tools (query_pol_certificates, query_agent_trust) are free.
 - Certificates anchor to Irys MAINNET and are permanent; retrievable by id and via

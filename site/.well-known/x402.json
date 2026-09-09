@@ -3,7 +3,7 @@
   "publisher": "DJZS AI, LLC",
   "canonical": "https://djzs.ai/.well-known/x402.json",
   "termsOfService": "https://djzs.ai/terms",
-  "lastUpdated": "2026-08-20",
+  "lastUpdated": "2026-09-09",
   "resources": [
     {
       "type": "http",
@@ -76,8 +76,111 @@
                   "DJZS-M04",
                   "unknown:probability_basis"
                 ],
-                "verdict_hash": "0x\u2026",
-                "intent_sha256": "\u2026",
+                "verdict_hash": "0x…",
+                "intent_sha256": "…",
+                "charged": true
+              }
+            }
+          },
+          "extra": {
+            "name": "USD Coin",
+            "version": "2",
+            "termsOfService": "https://djzs.ai/terms",
+            "unchargedScopeRefusal": true
+          },
+          "amount": "2000000"
+        }
+      ]
+    },
+    {
+      "type": "http",
+      "resource": "https://mcp.djzs.ai/x402/verify_perp_trade",
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0xc1923748669dFC3a79497d0403A90a275161eCCA",
+          "maxAmountRequired": "2000000",
+          "maxTimeoutSeconds": 120,
+          "mimeType": "application/json",
+          "resource": "https://mcp.djzs.ai/x402/verify_perp_trade",
+          "description": "DJZS adversarial logic audit of a perpetual or spot TRADE intent (direction, size, leverage, entry, stop, target, venue, and the REASON). Deterministic verdict (PASS/WAIT/FAIL) with risk score, defect flags, verdict_hash, intent_sha256, and on-chain Proof-of-Logic receipt. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused WITHOUT CHARGE. Audit, not advice.",
+          "outputSchema": {
+            "input": {
+              "method": "POST",
+              "type": "http",
+              "bodySchema": {
+                "type": "object",
+                "required": [
+                  "intent"
+                ],
+                "properties": {
+                  "intent": {
+                    "type": "object",
+                    "required": [
+                      "instrument",
+                      "side",
+                      "thesis"
+                    ],
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "description": "Instrument, e.g. BTC-PERP, ETH-USD spot."
+                      },
+                      "side": {
+                        "type": "string",
+                        "description": "LONG or SHORT."
+                      },
+                      "thesis": {
+                        "type": "string",
+                        "description": "The REASON the price should move the chosen way. Direction, size and levels alone are not a thesis."
+                      },
+                      "leverage": {
+                        "type": "number",
+                        "description": "Leverage multiplier (1 for spot)."
+                      },
+                      "entry": {
+                        "type": "number",
+                        "description": "Intended entry price."
+                      },
+                      "stop_loss": {
+                        "type": "number",
+                        "description": "Stop level. Neither a stop nor an invalidation cannot PASS."
+                      },
+                      "take_profit": {
+                        "type": "number",
+                        "description": "Target level."
+                      },
+                      "invalidation": {
+                        "type": "string",
+                        "description": "The condition that proves the thesis wrong."
+                      },
+                      "size_usd": {
+                        "type": "number",
+                        "description": "Notional in USD."
+                      },
+                      "venue": {
+                        "type": "string",
+                        "description": "Execution venue / mark-price oracle."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "output": {
+              "example": {
+                "verdict": "FAIL",
+                "risk_score": 75,
+                "flags": [
+                  "DJZS-M02",
+                  "DJZS-M01",
+                  "DJZS-M04",
+                  "unknown:probability_basis"
+                ],
+                "verdict_hash": "0x…",
+                "intent_sha256": "…",
                 "charged": true
               }
             }

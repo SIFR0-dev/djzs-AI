@@ -9,7 +9,7 @@ import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
-import { handleX402VerifyPmTrade, PAY_TO, type X402Env } from "./http-x402-bazaar.v2"
+import { handleX402VerifyPmTrade, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
@@ -912,9 +912,9 @@ async function anchorAndScore(
 const OPENAPI_DOC = {
   "openapi": "3.1.0",
   "info": {
-    "title": "DJZS Protocol — verify_pm_trade",
+    "title": "DJZS Protocol — verify_pm_trade · verify_perp_trade",
     "version": "1.0.0",
-    "summary": "Deterministic pre-execution audit of a prediction-market trade thesis.",
+    "summary": "Deterministic pre-execution audit of a prediction-market or perpetual/spot trade thesis.",
     "description": "DJZS audits the thesis, not the transaction. Wallet-layer tooling checks whether a transfer is safe; nothing checks whether the reasoning behind it holds. verify_pm_trade extracts the claims from a free-text trade thesis and scores them against a frozen taxonomy (narrative/resolution gap, falsification absent, probability unsourced, consensus-as-edge), returning a verdict, the codes that fired, a risk score, and a hash anyone can recompute from the submitted text. Out-of-scope requests are refused free: no payment settles.",
     "contact": {
       "name": "DJZS AI, LLC",
@@ -928,6 +928,17 @@ const OPENAPI_DOC = {
     { "url": "https://mcp.djzs.ai", "description": "Production (Base mainnet)" }
   ],
   "paths": {
+    "/x402/verify_perp_trade": {
+      "post": {
+        "operationId": "verifyPerpTrade",
+        "summary": "Audit a perpetual or spot trade thesis",
+        "description": "Returns PASS, WAIT, or FAIL with the DJZS-LF codes that fired and a reproducible verdict_hash. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused without charge. Paid: 2.00 USDC on Base over x402; refusals free.",
+        "tags": ["audit"],
+        "x-payment-info": { "price": { "mode": "fixed", "currency": "USD", "amount": "2.00" }, "protocols": [{ "x402": {} }] },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["intent"], "properties": { "intent": { "type": "object", "required": ["instrument", "side", "thesis"], "properties": { "instrument": { "type": "string" }, "side": { "type": "string", "enum": ["LONG", "SHORT"] }, "thesis": { "type": "string" }, "leverage": { "type": "number" }, "entry": { "type": "number" }, "stop_loss": { "type": "number" }, "take_profit": { "type": "number" }, "invalidation": { "type": "string" }, "size_usd": { "type": "number" }, "venue": { "type": "string" } } } } } } } },
+        "responses": { "200": { "description": "Audit result: verdict, action, risk_score, flags, unknown_fields, verdict_hash, receipt" }, "402": { "description": "x402 payment challenge" } }
+      }
+    },
     "/x402/verify": {
       "post": {
         "operationId": "verifyPmTrade",
@@ -1292,6 +1303,24 @@ app.all("/x402/verify_pm_trade", async (c) => {
   }
   try {
     return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env))
+  } catch (e) {
+    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
+    return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)
+  }
+})
+
+// POST /x402/verify_perp_trade — the perp/spot Bazaar surface (Phase 1b, 2026-09-09). Same handler, same payment invariants;
+// only the ResourceSpec (URL, description, discovery schema, ruleset version) and the engine runner differ.
+app.all("/x402/verify_perp_trade", async (c) => {
+  const env = c.env
+  const x402Env: X402Env = {
+    FACILITATOR_URL: env.FACILITATOR_URL ?? CDP_FACILITATOR_URL,
+    FACILITATOR_AUTH: createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
+    ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
+    BASE_RPC_URL: env.BASE_RPC_URL,
+  }
+  try {
+    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env, undefined, runVerifyPerpTrade as unknown as typeof runVerifyPmTrade), PERP_RESOURCE)
   } catch (e) {
     const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
     return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)

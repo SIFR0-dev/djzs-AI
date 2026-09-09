@@ -136,6 +136,10 @@ on-chain</pre>
 <pre>curl -s -X POST https://mcp.djzs.ai/x402/verify_pm_trade \
   -H 'content-type: application/json' \
   -d '{"intent":{"market":"…","side":"YES","thesis":"…"}}'</pre>
+    <p>Perpetual or spot trade — same rail, same price; a position stated with no thesis fails (DJZS-S01), a prediction-market bet is refused free:</p>
+<pre>curl -s -X POST https://mcp.djzs.ai/x402/verify_perp_trade \
+  -H 'content-type: application/json' \
+  -d '{"intent":{"instrument":"BTC-PERP","side":"LONG","leverage":5,"entry":78900,"stop_loss":76200,"take_profit":83000,"size_usd":3000,"venue":"Binance","thesis":"…"}}'</pre>
     <p>As a working pattern: <a href="https://github.com/SIFR0-dev/djzs-pm-gate">djzs-pm-gate</a> audits a thesis and creates the order <b>only on a clean in-scope PASS</b>. Fork it, point it at your venue.</p>
     <p class="note" style="color:var(--muted);font-size:12.5px">Discovery contract at <code class="inl">GET /openapi.json</code> · payment config at <code class="inl">GET /health/x402</code> · machine summary at <a href="https://djzs.ai/llms.txt">/llms.txt</a>. All free.</p>
     <a class="btn" href="https://djzs.ai/guide.html">Connect the gate</a>
