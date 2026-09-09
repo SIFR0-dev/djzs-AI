@@ -13,7 +13,7 @@ export function duneKey(): string | undefined { return devVar("DUNE_API_KEY"); }
 export async function runDuneQuery(queryId: number, params: Record<string, string | number>, opts: { timeoutMs?: number; fetchImpl?: typeof fetch } = {}): Promise<DuneRun> {
   const key = duneKey(); if (!key) throw new Error("DUNE_API_KEY not set");
   const f = opts.fetchImpl ?? fetch; const H = { "X-Dune-API-Key": key, "Content-Type": "application/json" };
-  const ex = await f(`${BASE}/query/${queryId}/execute`, { method: "POST", headers: H, body: JSON.stringify({ query_parameters: params, performance: "medium" }) });
+  const ex = await f(`${BASE}/query/${queryId}/execute`, { method: "POST", headers: H, body: JSON.stringify({ query_parameters: params, ...(process.env.DUNE_PERFORMANCE ? { performance: process.env.DUNE_PERFORMANCE } : {}) }) // 2026-09-09: Dune began rejecting an explicit "medium" ("Invalid performance tier"); omit so the account default applies, override via DUNE_PERFORMANCE if ever needed });
   if (!ex.ok) throw new Error(`dune execute HTTP ${ex.status}: ${(await ex.text()).slice(0, 200)}`);
   const { execution_id } = await ex.json() as { execution_id: string };
   const deadline = Date.now() + (opts.timeoutMs ?? 120_000); let delay = 1500;
