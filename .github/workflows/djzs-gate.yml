@@ -1,10 +1,11 @@
 name: djzs-gate
-on: { push: { branches: [main, "fix/**", "feat/**"] }, pull_request: {} }
+on: { push: { branches: [main, "fix/**", "feat/**"] }, pull_request: {}, schedule: [{ cron: "17 6 * * 1" }] } # Monday 06:17 UTC: full Dune re-verification of every record
 jobs:
   engine-integrity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 2 } # HEAD~1 needed by q3-verify DUNE_REVERIFY=changed
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
@@ -22,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 2 } # HEAD~1 needed by q3-verify DUNE_REVERIFY=changed
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: root deps (engine imports zod from repo root)
@@ -36,9 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 2 } # HEAD~1 needed by q3-verify DUNE_REVERIFY=changed
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Q3 — recompute every record hash; match every anchor to its Irys item
         run: npx tsx tests/q3/q3-verify.ts
-        env: { DUNE_API_KEY: "${{ secrets.DUNE_API_KEY }}" }
+        env: { DUNE_API_KEY: "${{ secrets.DUNE_API_KEY }}", DUNE_REVERIFY: "${{ github.event_name == 'schedule' && 'always' || 'changed' }}" }
