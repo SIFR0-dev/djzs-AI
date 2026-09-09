@@ -44,6 +44,26 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     if (!a) warns.push(`${date}: ${dayHashes.length} sealed record(s), no anchor yet`);
     else { if (a.merkle_root !== root) fails.push(`${date}: anchors.json root ≠ recomputed root`); if (a.record_count !== dayHashes.length) fails.push(`${date}: anchors.json record_count ${a.record_count} ≠ ${dayHashes.length}`); } }
 }
+/** Polymarket identifier rule. `market.ticker` on a Polymarket record is a Gamma MARKET SLUG, not a condition id:
+ *  q3-log.ts Phase A validates it with /markets?slug= and q3-grade.ts grades through the same lookup. Surf's
+ *  polymarket-trades takes --condition-id. Resolve it, never assume: a condition id the record carries wins, then a
+ *  ticker that already holds one, then the slug looked up at Gamma. Returns an error rather than sending a slug where
+ *  a condition id is expected — a slug silently returns no trades, which reads as "no data" instead of "wrong id".
+ *  CONDITION_ID and the record-hash HEX share the 0x+64hex shape; tests/q3/tape/discover.ts holds the same rule. */
+const CONDITION_ID = HEX;
+async function polymarketConditionId(mk: any): Promise<{ id: string; via: string } | { error: string }> {
+  const carried = String(mk?.condition_id ?? "").trim().toLowerCase();
+  if (CONDITION_ID.test(carried)) return { id: carried, via: "market.condition_id" };
+  const raw = String(mk?.ticker ?? "").replace(/^polymarket:/i, "").trim();
+  if (!raw) return { error: "record carries neither market.condition_id nor market.ticker" };
+  if (CONDITION_ID.test(raw.toLowerCase())) return { id: raw.toLowerCase(), via: "market.ticker (already a condition id)" };
+  try {
+    const r = await fetch(`https://gamma-api.polymarket.com/markets?slug=${encodeURIComponent(raw)}`);
+    if (!r.ok) return { error: `gamma HTTP ${r.status} resolving slug ${raw}` };
+    const cid = String((await r.json() as any[])?.[0]?.conditionId ?? "").trim().toLowerCase();
+    return CONDITION_ID.test(cid) ? { id: cid, via: `gamma slug lookup (${raw})` } : { error: `gamma returned no conditionId for slug ${raw}` };
+  } catch (e) { return { error: `gamma unreachable resolving slug ${raw}: ${(e as Error).message.slice(0, 60)}` }; }
+}
 (async () => {
   for (const a of anchors) {
     let r: Response | null = null; for (let t = 1; t <= 3; t++) { try { r = await fetch(a.gateway_url, { redirect: "follow" }); if (r.ok || r.status < 500) break; } catch { r = null; } if (t < 3) await new Promise(s => setTimeout(s, 1500 * t)); }
@@ -62,7 +82,9 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
   if (CROSS !== "off" && priceChecks.length && surfAvailable()) {
     for (const pc of priceChecks) { try { const q = pc.ps.query_params; const end = Math.floor(new Date(q.captured_at).getTime() / 1000); const start = end - Number(q.window_min ?? 60) * 60;
         const rec = JSON.parse(readFileSync(`${REC_DIR}/${pc.id.slice(3, 13)}.json`, "utf8")).find((r: any) => r.id === pc.id); const side = String(rec?.market?.side ?? "YES") === "NO" ? "No" : "Yes";
-        const t = rows(surf("polymarket-trades", ["--condition-id", String(rec.market.ticker), "--outcome-label", side, "--type", "trade", "--from", String(start), "--to", String(end), "--limit", "500"]), pc.id);
+        const resolved = await polymarketConditionId(rec?.market);
+        if ("error" in resolved) { warns.push(`${pc.id}: Surf cross-check skipped — could not resolve a condition id: ${resolved.error}`); continue; }
+        const t = rows(surf("polymarket-trades", ["--condition-id", resolved.id, "--outcome-label", side, "--type", "trade", "--from", String(start), "--to", String(end), "--limit", "500"]), pc.id);
         let num = 0, den = 0; for (const x of t as any[]) { const px = Number(x.price ?? x.price_usd); const sz = Number(x.size ?? x.shares ?? (x.amount_usd && px ? x.amount_usd / px : 0)); if (px > 0 && sz > 0) { num += px * sz; den += sz; } }
         const v3 = den ? num / den : NaN; const d = Math.abs(v3 - pc.price);
         if (!Number.isFinite(v3)) warns.push(`${pc.id}: Surf cross-check — no trades returned (${t.length} rows)`);
