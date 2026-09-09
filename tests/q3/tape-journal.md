@@ -6,7 +6,7 @@ Columns: `scan_day` (UTC) · `credits_used` (from the CLI's own accounting for t
 
 | scan_day | credits_used | over_ceiling | commands | notes |
 |---|---|---|---|---|
-| 2026-09-09 | 0 | no | `npx tsx tests/q3/tape/discover.ts --venue-direct` (×2: second run after the event-level book exclusion fix) | first pool day, v1.5 rule 1 venue-direct. Kalshi top-5: CONTROLH-2026-D, KXBALANCEPOWERCOMBO-27FEB-RR, KXGOVRINOMD-26-DMCK, CONTROLH-2026-R, SENATEME-26-D (KXFEDDECISION-26SEP-* dropped by book, pilot N5). Polymarket top-5 (Gamma print, Dune 8601185 confirmation owed): 0xa3b36b2d…, 0x320a0116…, 0x876506d8…, 0xac02cbb0…, 0x2e4b58fc…. No Surf call (CLI absent in the remote container). |
+| 2026-09-09 | 0 | no | `npx tsx tests/q3/tape/discover.ts --venue-direct` (re-run after the SCAN_SPEC §1.1 book-exclusion change) | First pool day, v1.5 rule 1, venue-direct. **Supersedes the print committed at 772b392** (event-level ticker matching, deviated records excluding); earlier uncommitted prints of this day are not retained, and none was acted on — no Phase A record exists. Book exclusions: NONE on either venue; all three records excluded nothing (N5, N2 deviated; N1 `venue: series`). Kalshi top-5: KXFEDDECISION-26SEP-H0, CONTROLH-2026-D, SENATEME-26-D, KXFEDDECISION-26SEP-H25, KXBALANCEPOWERCOMBO-27FEB-RR. Polymarket top-5 (Gamma print, top-1000-events page cap, Dune 8601185 confirmation owed): 0xa3b36b2d…, 0x2e4b58fc…, 0x320a0116…, 0x876506d8…, 0xac02cbb0…. No Surf call (CLI absent in the remote container). |
 
 ## Tape toolkit
 See tests/q3/tape/README.md. Credit lines below are appended by the tools.
