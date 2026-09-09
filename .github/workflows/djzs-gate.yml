@@ -14,6 +14,8 @@ jobs:
         run: npx tsx tests/lf-engine-integrity.ts
       - name: verify_perp_trade pipeline — offline, fake model
         run: npx tsx tests/verify-perp-trade.test.ts
+      - name: consensus merge — objective facts survive a dissenting sample
+        run: npx tsx tests/merge-fix.test.ts
   worker-builds:
     runs-on: ubuntu-latest
     steps:

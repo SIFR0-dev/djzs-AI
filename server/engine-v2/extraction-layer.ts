@@ -618,6 +618,14 @@ type ConsensusField = (typeof CONSENSUS_FIELDS)[number];
 
 /** PM absents that must clear evidence-unanimity, not merely state-unanimity (the two CRITICAL-driving fields + advisory edge_claim). */
 const EVIDENCE_FIELDS = new Set<ConsensusField>(["resolution_engagement", "probability_basis", "edge_claim", "thesis_statement"]);
+// Objective numeric facts: a stated figure must survive a lone dissenting sample. These merge by MAJORITY
+// state (like agent_type/market_type), not strict unanimity — a 2-of-3 "present" stays present and takes the
+// majority value. None of these drives a PM verdict, so the PM path is unaffected; they gate S01/X01 on the perp path.
+const MAJORITY_STATE_FIELDS = new Set<ConsensusField>(["leverage", "position_size", "stop_loss", "take_profit"]);
+function majorityState(votes: Field<unknown>[]): "present" | "absent" | "unknown" {
+  const c: Record<string, number> = {}; for (const v of votes) c[v.state] = (c[v.state] ?? 0) + 1;
+  return (Object.entries(c).sort((a, b) => b[1] - a[1])[0][0]) as "present" | "absent" | "unknown";
+}
 
 /** Normalize an absent's evidence quote for STRICT cross-sample identity: lowercase, collapse whitespace, trim, strip trailing punctuation. */
 const normalizeEvidence = (s: string) => collapseWs(s).replace(/[.,;:!?]+$/, "").trim();
@@ -701,6 +709,13 @@ export async function extractAuditInputConsensus(
   const fields = input as unknown as Record<ConsensusField, Field<unknown>>;
   for (const field of CONSENSUS_FIELDS) {
     const votes = inputs.map((i) => i[field] as Field<unknown>);
+    if (MAJORITY_STATE_FIELDS.has(field)) {
+      const ms = majorityState(votes);
+      if (ms === "present") { const pv = votes.filter((v) => v.state === "present").map((v) => (v as { value: unknown }).value); fields[field] = { state: "present", value: majorityElseFirst(pv) }; if (!votes.every((v) => v.state === "present")) disagreements.push(field); continue; }
+      fields[field] = ms === "absent" ? { state: "absent" } : UNKNOWN;
+      if (!votes.every((v) => v.state === ms)) disagreements.push(field);
+      continue;
+    }
     const state = votes[0].state;
     if (!votes.every((v) => v.state === state)) {
       disagreements.push(field);
