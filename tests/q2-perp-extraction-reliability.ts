@@ -81,7 +81,7 @@ const CORPUS: { id: string; designed: "PASS" | "FAIL" | "WAIT" | "OUT_OF_SCOPE";
   { id: "PX2", designed: "FAIL", cls: "UNBOUNDED_NO_THESIS", intent: { instrument: "ETH-PERP", side: "LONG", leverage: 25, size_usd: 4000, venue: "Binance", thesis: "Max long ETH 25x, diamond hands, hold through anything." } },
   { id: "PI1", designed: "PASS", cls: "SOCIAL_ADVISORY", intent: { instrument: "DOGE-PERP", side: "LONG", leverage: 10, entry: 0.24, stop_loss: 0.21, take_profit: 0.30, size_usd: 1500, venue: "Binance", thesis: "Crypto Twitter is euphoric and the Telegram alpha group is calling 0.30 by Friday; sentiment is the driver. Stop 0.21. Oracle: Binance mark." } },
   { id: "PE1", designed: "PASS", cls: "ORACLE_ADVISORY", intent: { instrument: "AVAX-PERP", side: "LONG", leverage: 5, entry: 34, stop_loss: 30, take_profit: 40, size_usd: 2500, venue: "Binance", thesis: "TVL doubled this quarter according to the team's own dashboard and the subnet count is rising; stop 30, target 40. Data: the project dashboard." } },
-  { id: "PW1", designed: "WAIT", cls: "AMBIGUOUS_THESIS", intent: { instrument: "BTC-PERP", side: "LONG", leverage: 5, entry: 78900, stop_loss: 76200, take_profit: 83000, size_usd: 3000, venue: "Binance", thesis: "Long BTC 5x, stop 76,200, target 83,000. Feels right here." } },
+  { id: "PW1", designed: "FAIL", cls: "NO_REASON_SOFT", intent: { instrument: "BTC-PERP", side: "LONG", leverage: 5, entry: 78900, stop_loss: 76200, take_profit: 83000, size_usd: 3000, venue: "Binance", thesis: "Long BTC 5x, stop 76,200, target 83,000. Feels right here." } },
   { id: "PW2", designed: "WAIT", cls: "VAGUE_STOP", intent: { instrument: "BTC-PERP", side: "LONG", leverage: 5, entry: 78900, size_usd: 3000, venue: "Binance", thesis: "Funding reset and 80K held on the daily close, so I am long 5x. I will bail if it tanks." } },
   { id: "PW3", designed: "WAIT", cls: "SILENT_STOP", intent: { instrument: "ETH-PERP", side: "SHORT", leverage: 3, entry: 2480, size_usd: 2000, venue: "Binance", thesis: "ETH/BTC breaking down with dominance rising; short ETH 3x at 2,480." } },
   { id: "PM1", designed: "OUT_OF_SCOPE", cls: "PM_BET", intent: { market: "KXFEDDECISION-26SEP-H25", side: "YES", thesis: "Kalshi resolves YES if the FOMC hikes 25bps on Sep 16. Hot jobs and Waller's hedge leave the contract at 0.52; I take YES at 0.52 with a stop at 0.45.", size_usd: 250 } },
@@ -91,7 +91,7 @@ const CORPUS: { id: string; designed: "PASS" | "FAIL" | "WAIT" | "OUT_OF_SCOPE";
 // ── run ────────────────────────────────────────────────────────────────────────────────────────
 const args = new Set(process.argv.slice(2)); const STUB = args.has("--stub") || args.has("--stub-noisy");
 const K = Number(process.env.K ?? 5); const CONC = 3;
-const FIELDS = ["thesis_statement", "stop_loss", "invalidation_condition", "data_sources", "oracle_source"] as const;
+const FIELDS = ["leverage", "position_size", "thesis_statement", "stop_loss", "invalidation_condition", "data_sources", "oracle_source"] as const;
 type Run = { verdict: string; risk: number; codes: string[]; in_scope: boolean; states: Record<string, string>; disagreements: string[]; failsafe: boolean };
 
 const model: ModelFn = STUB ? stubModelFn(args.has("--stub-noisy")) : (() => { const k = readDevVar("ANTHROPIC_API_KEY"); if (!k) { console.error("ANTHROPIC_API_KEY not found in djzs-trust-mcp/.dev.vars or env"); process.exit(2); } return anthropicModelFn(k); })();

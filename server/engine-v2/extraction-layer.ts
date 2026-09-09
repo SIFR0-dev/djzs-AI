@@ -332,8 +332,16 @@ Optional key — audit_context:
  * This is the fail-safe gate: anything malformed collapses to UNKNOWN.
  */
 function coerceField(raw: unknown): Field<unknown> {
+  // A bare stated value is unambiguously PRESENT: a number, a non-empty string, or a non-empty array.
+  // Models emit objective facts this way ("leverage": 10) often enough that treating it as UNKNOWN
+  // silently nulls the fact. ABSENT is never inferred here — it must be stated (and, for gated fields, quoted).
+  if (typeof raw === "number" && Number.isFinite(raw)) return { state: "present", value: raw };
+  if (typeof raw === "string" && raw.trim() !== "" && !["unknown", "absent", "present", "null", "none", "n/a"].includes(raw.trim().toLowerCase())) return { state: "present", value: raw };
+  if (Array.isArray(raw) && raw.length > 0) return { state: "present", value: raw };
   if (!raw || typeof raw !== "object") return UNKNOWN;
   const obj = raw as Record<string, unknown>;
+  // {value: X} with no recognizable state is a stated value → PRESENT (same rule; only PRESENT widens).
+  if (!("state" in obj) && "value" in obj) { const v = obj.value; const empty = v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0); return empty ? UNKNOWN : { state: "present", value: v }; }
 
   switch (obj.state) {
     case "absent":

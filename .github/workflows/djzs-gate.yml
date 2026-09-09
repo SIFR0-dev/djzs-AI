@@ -16,6 +16,8 @@ jobs:
         run: npx tsx tests/verify-perp-trade.test.ts
       - name: consensus merge — objective facts survive a dissenting sample
         run: npx tsx tests/merge-fix.test.ts
+      - name: coerceField — bare stated values are PRESENT, never ABSENT
+        run: npx tsx tests/coerce.test.ts
   worker-builds:
     runs-on: ubuntu-latest
     steps:
