@@ -46,9 +46,11 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
 }
 (async () => {
   for (const a of anchors) {
-    let r: Response | null = null; for (let t = 1; t <= 3 && !r; t++) { try { r = await fetch(a.gateway_url, { redirect: "follow" }); } catch { if (t < 3) await new Promise(z => setTimeout(z, 3000 * t)); } }
-    if (!r) { fails.push(`${a.date}: Irys gateway unreachable after 3 attempts (network) — anchor NOT verified`); continue; }
-    try { if (!r.ok) { fails.push(`${a.date}: Irys gateway HTTP ${r.status}`); continue; } const item = await r.json() as any;
+    let r: Response | null = null; for (let t = 1; t <= 3; t++) { try { r = await fetch(a.gateway_url, { redirect: "follow" }); if (r.ok || r.status < 500) break; } catch { r = null; } if (t < 3) await new Promise(s => setTimeout(s, 1500 * t)); }
+    // Outage is not mismatch: unreachable / 5xx after retries → WARN (anchor not verified THIS run). 404 = item gone → FAIL.
+    if (!r) { warns.push(`${a.date}: Irys gateway unreachable after 3 attempts (network) — anchor NOT verified this run`); continue; }
+    if (r.status >= 500) { warns.push(`${a.date}: Irys gateway HTTP ${r.status} after 3 attempts — anchor NOT verified this run`); continue; }
+    try { if (!r.ok) { fails.push(`${a.date}: Irys gateway HTTP ${r.status} — anchor item missing`); continue; } const item = await r.json() as any;
       if (item.merkle_root !== a.merkle_root) fails.push(`${a.date}: Irys root ≠ anchors.json root`); if (item.date !== a.date) fails.push(`${a.date}: Irys date ${item.date}`); if (item.record_count !== a.record_count) fails.push(`${a.date}: Irys count ${item.record_count}`);
     } catch (e) { fails.push(`${a.date}: Irys fetch failed ${(e as Error).message}`); }
   }
@@ -69,10 +71,17 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
       } catch (e) { warns.push(`${pc.id}: Surf cross-check unavailable — ${(e as Error).message.slice(0, 100)}`); } }
   }
   if (priceChecks.length) {
-    if (!duneKey()) warns.push(`${priceChecks.length} Polymarket price(s) not re-verified — no DUNE_API_KEY`);
+    // DUNE_REVERIFY: "always" (default; weekly schedule) | "changed" (CI on push: only if a record/anchor file changed in this commit) | "never".
+    // Dune executions are metered per billing cycle; a commit that touches no record must not spend one.
+    const mode = process.env.DUNE_REVERIFY ?? "always"; let recordsChanged = true;
+    if (mode === "changed") { try { const { execSync } = await import("node:child_process"); const out = execSync("git diff --name-only HEAD~1 -- tests/q3/records tests/q3/anchors.json", { encoding: "utf8" }); recordsChanged = out.trim().length > 0; } catch { recordsChanged = true; } }
+    if (mode === "never" || (mode === "changed" && !recordsChanged)) warns.push(`${priceChecks.length} Polymarket price(s) not re-executed on Dune this run — no record/anchor changed (DUNE_REVERIFY=${mode}); weekly schedule re-verifies all`);
+    else if (!duneKey()) warns.push(`${priceChecks.length} Polymarket price(s) not re-verified — no DUNE_API_KEY`);
     else for (const pc of priceChecks) { try { const run = await runDuneQuery(Number(pc.ps.query_id), pc.ps.query_params); const pr = asPriceRow(run.rows);
       if (Math.abs(pr.vwap - pc.price) > tol) fails.push(`${pc.id}: Dune re-execution vwap ${pr.vwap} ≠ recorded ${pc.price}`); if (pr.trade_count !== pc.ps.trade_count) fails.push(`${pc.id}: trade_count ${pr.trade_count} ≠ recorded ${pc.ps.trade_count}`);
-    } catch (e) { fails.push(`${pc.id}: Dune re-execution failed — ${(e as Error).message}`); } }
+    } catch (e) { const m = (e as Error).message;
+      // Budget (402), rate limit (429), outage (5xx), network: the record is NOT wrong, it is NOT VERIFIED THIS RUN → WARN. Anything else is a real failure.
+      if (/HTTP (402|429|5\d\d)|fetch failed|ECONN|ETIMEDOUT|UND_ERR/.test(m)) warns.push(`${pc.id}: Dune unavailable (${m.slice(0, 90)}) — price NOT re-verified this run`); else fails.push(`${pc.id}: Dune re-execution failed — ${m}`); } }
   }
   console.log(`q3-verify · ${n} records (${sealed} sealed, ${deviated} pilot/deviated, ${graded} graded) · ${anchors.length} anchor(s)`);
   for (const w of warns) console.log("  WARN", w);

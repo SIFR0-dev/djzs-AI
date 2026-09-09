@@ -1,0 +1,291 @@
+{
+  "date": "2026-09-09",
+  "protocol": "v1.5",
+  "pool": {
+    "kalshi": {
+      "source": "venue-direct",
+      "labels": {
+        "field": "event.category",
+        "include": [
+          "Economics",
+          "Financials",
+          "Crypto",
+          "Politics",
+          "Elections",
+          "World"
+        ]
+      },
+      "excluded_from_book": [
+        "KXFEDDECISION-26SEP"
+      ],
+      "events_scanned": 13047,
+      "dropped_by_book": [
+        "KXFEDDECISION-26SEP-C26",
+        "KXFEDDECISION-26SEP-C25",
+        "KXFEDDECISION-26SEP-H0",
+        "KXFEDDECISION-26SEP-H25",
+        "KXFEDDECISION-26SEP-H26"
+      ],
+      "in_category_markets": 30015,
+      "top": [
+        {
+          "id": "CONTROLH-2026-D",
+          "category": "Elections",
+          "event": "CONTROLH-2026",
+          "question": "Will Democrats win the House in 2026?",
+          "volume_1d": 615619.13,
+          "volume_unit": "contracts",
+          "price": 0.85,
+          "close_time": "2027-02-01T15:00:00Z",
+          "link": "https://kalshi.com/markets/controlh/controlh-2026"
+        },
+        {
+          "id": "KXBALANCEPOWERCOMBO-27FEB-RR",
+          "category": "Elections",
+          "event": "KXBALANCEPOWERCOMBO-27FEB",
+          "question": "Will House Control be Republican AND Senate Control be Republican for Feb 2027?",
+          "volume_1d": 462403.47,
+          "volume_unit": "contracts",
+          "price": 0.16,
+          "close_time": "2027-02-01T15:00:00Z",
+          "link": "https://kalshi.com/markets/kxbalancepowercombo/kxbalancepowercombo-27feb"
+        },
+        {
+          "id": "KXGOVRINOMD-26-DMCK",
+          "category": "Elections",
+          "event": "KXGOVRINOMD-26",
+          "question": "Will Dan McKee be the Democratic nominee for Governor in Rhode Island?",
+          "volume_1d": 336879.18,
+          "volume_unit": "contracts",
+          "price": 0.022,
+          "close_time": "2026-11-03T15:00:00Z",
+          "link": "https://kalshi.com/markets/kxgovrinomd/kxgovrinomd-26"
+        },
+        {
+          "id": "CONTROLH-2026-R",
+          "category": "Elections",
+          "event": "CONTROLH-2026",
+          "question": "Will Republicans win the House in 2026?",
+          "volume_1d": 326155.89,
+          "volume_unit": "contracts",
+          "price": 0.16,
+          "close_time": "2027-02-01T15:00:00Z",
+          "link": "https://kalshi.com/markets/controlh/controlh-2026"
+        },
+        {
+          "id": "SENATEME-26-D",
+          "category": "Elections",
+          "event": "SENATEME-26",
+          "question": "Will Democratics win the Senate race in Maine?",
+          "volume_1d": 289656.66,
+          "volume_unit": "contracts",
+          "price": 0.67,
+          "close_time": "2027-11-03T15:00:00Z",
+          "link": "https://kalshi.com/markets/senateme/senateme-26"
+        }
+      ],
+      "next": [
+        {
+          "id": "SENATETX-26-R",
+          "category": "Elections",
+          "event": "SENATETX-26",
+          "question": "Will Republicans win the Senate race in Texas?",
+          "volume_1d": 287586.88,
+          "volume_unit": "contracts",
+          "price": 0.5,
+          "close_time": "2027-11-03T15:00:00Z",
+          "link": "https://kalshi.com/markets/senatetx/senatetx-26"
+        },
+        {
+          "id": "KXBTCD-26SEP0917-T78999.99",
+          "category": "Crypto",
+          "event": "KXBTCD-26SEP0917",
+          "question": "Bitcoin price on Sep 9, 2026?",
+          "volume_1d": 239835.98,
+          "volume_unit": "contracts",
+          "price": 0.05,
+          "close_time": "2026-09-09T21:00:00Z",
+          "link": "https://kalshi.com/markets/kxbtcd/kxbtcd-26sep0917"
+        },
+        {
+          "id": "KXGOVRINOMD-26-HFOU",
+          "category": "Elections",
+          "event": "KXGOVRINOMD-26",
+          "question": "Will Helena Foulkes be the Democratic nominee for Governor in Rhode Island?",
+          "volume_1d": 185098.05,
+          "volume_unit": "contracts",
+          "price": 0.98,
+          "close_time": "2026-11-03T15:00:00Z",
+          "link": "https://kalshi.com/markets/kxgovrinomd/kxgovrinomd-26"
+        },
+        {
+          "id": "KXBTC15M-26SEP091515-15",
+          "category": "Crypto",
+          "event": "KXBTC15M-26SEP091515",
+          "question": "BTC price up in next 15 mins?",
+          "volume_1d": 166444.88,
+          "volume_unit": "contracts",
+          "price": 0.41,
+          "close_time": "2026-09-09T19:15:00Z",
+          "link": "https://kalshi.com/markets/kxbtc15m/kxbtc15m-26sep091515"
+        },
+        {
+          "id": "KXBTCD-26SEP0917-T78499.99",
+          "category": "Crypto",
+          "event": "KXBTCD-26SEP0917",
+          "question": "Bitcoin price on Sep 9, 2026?",
+          "volume_1d": 161403,
+          "volume_unit": "contracts",
+          "price": 0.36,
+          "close_time": "2026-09-09T21:00:00Z",
+          "link": "https://kalshi.com/markets/kxbtcd/kxbtcd-26sep0917"
+        }
+      ]
+    },
+    "polymarket": {
+      "source": "venue-direct",
+      "labels": {
+        "field": "event.tags[].label",
+        "include": [
+          "Politics",
+          "Elections",
+          "Geopolitics",
+          "World",
+          "Economy",
+          "Fed",
+          "Finance",
+          "Crypto"
+        ],
+        "exclude": [
+          "Sports",
+          "Esports",
+          "Culture",
+          "entertainment",
+          "Weather"
+        ]
+      },
+      "excluded_from_book": [],
+      "events_scanned": 1000,
+      "dropped_by_book": [],
+      "in_category_markets": 3395,
+      "top": [
+        {
+          "id": "0xa3b36b2d6104d34af4e6c6215fc818e43352e78a748fbfb0b85e3a35f71dec9a",
+          "category": "fomc, Economic Policy, Fed Rates, Jerome Powell, Politics, Fed, Economy, CPI Release, Jobs Report",
+          "event": "fed-decision-in-september-762",
+          "question": "Will there be no change in Fed interest rates after the September 2026 meeting?",
+          "volume_1d": 1123813.1552789998,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.465,
+          "end_date": "2026-09-16T00:00:00Z",
+          "link": "https://polymarket.com/event/fed-decision-in-september-762"
+        },
+        {
+          "id": "0x320a0116959f7573f87212ce61e323438862689cdb4dc5e38b3a9f0fbd1cbed4",
+          "category": "FDV, Biden, Crypto, laptop, $LAPTOP, Politics, Memecoins, Pre-Market, Hunter Biden",
+          "event": "laptop-fdv-above-one-day-after-launch",
+          "question": "LAPTOP FDV above $1B one day after launch?",
+          "volume_1d": 919153.8195530003,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.235,
+          "end_date": "2026-12-31T23:59:00Z",
+          "link": "https://polymarket.com/event/laptop-fdv-above-one-day-after-launch"
+        },
+        {
+          "id": "0x876506d8b2bd7a0d3fa4fe18c024eee6e1dd81ee24c26795dadd6cfe4a7b5d0d",
+          "category": "fomc, Economic Policy, Fed Rates, Jerome Powell, Politics, Fed, Economy, CPI Release, Jobs Report",
+          "event": "fed-decision-in-september-762",
+          "question": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
+          "volume_1d": 736773.2085829999,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.535,
+          "end_date": "2026-09-16T00:00:00Z",
+          "link": "https://polymarket.com/event/fed-decision-in-september-762"
+        },
+        {
+          "id": "0xac02cbb049e46d6a3627c0fdf52fa554982a9025d45968207b362acb6ca4b830",
+          "category": "fomc, Economic Policy, Fed Rates, Jerome Powell, Politics, Fed, Economy, CPI Release, Jobs Report",
+          "event": "fed-decision-in-september-762",
+          "question": "Will the Fed decrease interest rates by 25 bps after the September 2026 meeting?",
+          "volume_1d": 655250.715447,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.0035,
+          "end_date": "2026-09-16T00:00:00Z",
+          "link": "https://polymarket.com/event/fed-decision-in-september-762"
+        },
+        {
+          "id": "0x2e4b58fc18dbffd74d5275d89fb076943f21992763c45dcadd81391b83bde13c",
+          "category": "fomc, Economic Policy, Fed Rates, Jerome Powell, Politics, Fed, Economy, CPI Release, Jobs Report",
+          "event": "fed-decision-in-september-762",
+          "question": "Will the Fed increase interest rates by 50+ bps after the September 2026 meeting?",
+          "volume_1d": 517398.727938,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.0075,
+          "end_date": "2026-09-16T00:00:00Z",
+          "link": "https://polymarket.com/event/fed-decision-in-september-762"
+        }
+      ],
+      "next": [
+        {
+          "id": "0xa526fc837cb8824074152805e508daa44017fd4b0729fe3d6f0fc69aa8cedd13",
+          "category": "FDV, Biden, Crypto, laptop, $LAPTOP, Politics, Memecoins, Pre-Market, Hunter Biden",
+          "event": "laptop-fdv-above-one-day-after-launch",
+          "question": "LAPTOP FDV above $500M one day after launch?",
+          "volume_1d": 494524.1931430001,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.515,
+          "end_date": "2026-12-31T23:59:00Z",
+          "link": "https://polymarket.com/event/laptop-fdv-above-one-day-after-launch"
+        },
+        {
+          "id": "0x42b633e7acfedf301c4eb85acefc7430f2e76825c1f3324a39a5582d7a26599b",
+          "category": "Iran, Politics, ceasefire, Peace Deal, Geopolitics, U.S. x Iran, Iran Ceasefire",
+          "event": "us-x-iran-effective-ceasefire-begins-byptptpt-2-week-pause",
+          "question": "US x Iran Effective Ceasefire by September 4?",
+          "volume_1d": 351492.9076699999,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.485,
+          "end_date": "2026-09-04T23:59:00Z",
+          "link": "https://polymarket.com/event/us-x-iran-effective-ceasefire-begins-byptptpt-2-week-pause"
+        },
+        {
+          "id": "0x5e464d85eb49f22d876f3ed6168a7db5e2288e9ae1eb91effd2758e994676f86",
+          "category": "fomc, Economic Policy, Fed Rates, Jerome Powell, Politics, Fed, Economy, CPI Release, Jobs Report",
+          "event": "fed-decision-in-september-762",
+          "question": "Will the Fed decrease interest rates by 50+ bps after the September 2026 meeting?",
+          "volume_1d": 326080.657,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.0015,
+          "end_date": "2026-09-16T00:00:00Z",
+          "link": "https://polymarket.com/event/fed-decision-in-september-762"
+        },
+        {
+          "id": "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc",
+          "category": "Politics, ships, Geopolitics, Economy, Iran Ceasefire, Iran, transit, Hormuz, Strait of Hormuz",
+          "event": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+          "question": "Strait of Hormuz traffic returns to normal by December 31?",
+          "volume_1d": 307781.0497619999,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.195,
+          "end_date": "2026-12-31T00:00:00Z",
+          "link": "https://polymarket.com/event/strait-of-hormuz-traffic-returns-to-normal-by-december-31"
+        },
+        {
+          "id": "0x607ecc84f1b92e42bbf1e5d855f49d0949111dca5ff1502d8970154a4a34c2f3",
+          "category": "FDV, Biden, Crypto, laptop, $LAPTOP, Politics, Memecoins, Pre-Market, Hunter Biden",
+          "event": "laptop-fdv-above-one-day-after-launch",
+          "question": "LAPTOP FDV above $250M one day after launch?",
+          "volume_1d": 261792.709026,
+          "volume_unit": "usd (gamma; dune single-counted decides)",
+          "price": 0.845,
+          "end_date": "2026-12-31T23:59:00Z",
+          "link": "https://polymarket.com/event/laptop-fdv-above-one-day-after-launch"
+        }
+      ]
+    }
+  },
+  "pool_candidates": {},
+  "news": [],
+  "macro_chain_hits": [],
+  "tape": "surf not run (CLI absent or --venue-direct): no Surf candidates, no news, no macro-chain scan"
+}

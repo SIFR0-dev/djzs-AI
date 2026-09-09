@@ -14,8 +14,8 @@ const SPECS = {
   price: { name: "DJZS Q3 · polymarket_price (VWAP, protocol v1.2)", file: `${Q}/polymarket_price.sql`, idKey: "price_query_id",
     description: "VWAP of on-chain trades on one Polymarket outcome token in [captured_at - window_min, captured_at). SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
     params: [{ key: "token_id", value: "0", type: "text" }, { key: "captured_at", value: "2026-01-01T00:00:00Z", type: "text" }, { key: "window_min", value: "60", type: "number" }] as Param[] },
-  pool: { name: "DJZS Q3 · polymarket_pool (top-N by 24h volume, protocol v1.2)", file: `${Q}/polymarket_pool.sql`, idKey: "pool_query_id",
-    description: "Top-n Polymarket markets by single-counted 24h on-chain volume, excluding condition_ids already recorded. SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
+  pool: { name: "DJZS Q3 · polymarket_pool (top-N by 24h volume in scan categories, protocol v1.5)", file: `${Q}/polymarket_pool.sql`, idKey: "pool_query_id",
+    description: "Top-n Polymarket markets by single-counted 24h on-chain volume within the scan categories (v1.5 rule 1; labels in the SQL header, matched on market_details.tags), excluding condition_ids already recorded. SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
     params: [{ key: "n", value: "5", type: "number" }, { key: "exclude", value: "", type: "text" }] as Param[] },
 };
 const key = duneKey(); if (!key) { console.error("DUNE_API_KEY not set (env or djzs-trust-mcp/.dev.vars)"); process.exit(1); }
@@ -36,12 +36,15 @@ async function ensurePublic(id: number, s: typeof SPECS.price) {
   if (String(q.query_sql ?? "").trim() !== readFileSync(s.file, "utf8").trim()) throw new Error(`query ${id}: published SQL ≠ ${s.file}`);
   console.log(`  ${s.idKey} = ${id} · public · SQL matches ${s.file} · https://dune.com/queries/${id}`);
 }
+/** v1.5 rule 1 label sets — MUST equal the regexes in polymarket_pool.sql and tests/q3/tape/discover.ts (the SQL header is the committed source). */
+const POOL_INCLUDE = /(^|[^a-z0-9])(politics|elections|geopolitics|world|economy|fed|finance|crypto)([^a-z0-9]|$)/, POOL_EXCLUDE = /(^|[^a-z0-9])(sports|esports|culture|entertainment|weather)([^a-z0-9]|$)/;
 const need = (cond: unknown, msg: string) => { if (!cond) throw new Error(`CHECK FAILED: ${msg}`); console.log(`  ok  ${msg}`); };
 async function checks(priceId: number, poolId: number) {
   console.log("checks");
   const pool = await runDuneQuery(poolId, { n: 5, exclude: "" }); const rows = pool.rows;
   need(rows.length === 5, `pool n=5 exclude="" → 5 rows (got ${rows.length})`);
-  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
+  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
+  for (const r of rows) { const t = String(r.tags ?? "").toLowerCase(); need(POOL_INCLUDE.test(t) && !POOL_EXCLUDE.test(t), `pool row ${String(r.condition_id).slice(0, 12)}… in-category (v1.5 rule 1): tags=${String(r.tags).slice(0, 80)}`); }
   need(rows.every(r => /^\d+$/.test(String(r.token_id_yes))), "pool token_id_yes is a decimal string on every row");
   const ex = await runDuneQuery(poolId, { n: 5, exclude: String(rows[0].condition_id) });
   need(ex.rows.length === 5 && !ex.rows.some(r => r.condition_id === rows[0].condition_id), `pool exclude=${String(rows[0].condition_id).slice(0, 12)}… drops that market and still returns 5 rows`);

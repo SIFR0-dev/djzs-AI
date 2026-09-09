@@ -20,11 +20,11 @@ Must return **exactly one row** with columns:
 
 If `trade_count = 0` the row is still returned with `vwap = NULL`; the tooling refuses to price the record and says so.
 
-## `polymarket_pool` — the §3 coverage pool
+## `polymarket_pool` — the §3 coverage pool (v1.5: scan categories only)
 
 Parameters: `n` (integer, default 5) · `exclude` (text, comma-separated `condition_id`s already in the book, may be empty)
 
-Returns `n` rows ordered by `volume_24h_usdc` desc, columns: `condition_id`, `question`, `token_id_yes`, `token_id_no`, `volume_24h_usdc`, `last_price_yes`.
+Returns `n` rows ordered by `volume_24h_usdc` desc, columns: `condition_id`, `question`, `token_id_yes`, `token_id_no`, `volume_24h_usdc`, `last_price_yes`, `tags`. Since v1.5 rule 1 the ranking is restricted to markets whose `market_details.tags` carry a scan-category label (Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto) and none of the excluded ones (Sports · Esports · Culture · entertainment · Weather); the exact strings and the matching rule are the header of `polymarket_pool.sql`, and `tags` is returned so every row shows why it qualified. The publish check asserts it on every row. Operating rules: `tests/q3/SCAN_SPEC.md`.
 
 ## Reproducibility
 

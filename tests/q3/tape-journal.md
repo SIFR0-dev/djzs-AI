@@ -6,6 +6,7 @@ Columns: `scan_day` (UTC) · `credits_used` (from the CLI's own accounting for t
 
 | scan_day | credits_used | over_ceiling | commands | notes |
 |---|---|---|---|---|
+| 2026-09-09 | 0 | no | `npx tsx tests/q3/tape/discover.ts --venue-direct` (×2: second run after the event-level book exclusion fix) | first pool day, v1.5 rule 1 venue-direct. Kalshi top-5: CONTROLH-2026-D, KXBALANCEPOWERCOMBO-27FEB-RR, KXGOVRINOMD-26-DMCK, CONTROLH-2026-R, SENATEME-26-D (KXFEDDECISION-26SEP-* dropped by book, pilot N5). Polymarket top-5 (Gamma print, Dune 8601185 confirmation owed): 0xa3b36b2d…, 0x320a0116…, 0x876506d8…, 0xac02cbb0…, 0x2e4b58fc…. No Surf call (CLI absent in the remote container). |
 
 ## Tape toolkit
 See tests/q3/tape/README.md. Credit lines below are appended by the tools.
