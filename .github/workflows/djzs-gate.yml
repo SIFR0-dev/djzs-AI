@@ -42,6 +42,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      - name: Q3 — §3 pool admission matcher (v1.5 categories, v1.8 recurrence, v1.9 duration)
+        run: npx tsx tests/q3/pool-matcher.test.ts
       - name: Q3 — recompute every record hash; match every anchor to its Irys item
         run: npx tsx tests/q3/q3-verify.ts
         env: { DUNE_API_KEY: "${{ secrets.DUNE_API_KEY }}", DUNE_REVERIFY: "${{ github.event_name == 'schedule' && 'always' || 'changed' }}" }

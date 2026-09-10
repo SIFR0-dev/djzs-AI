@@ -8,11 +8,12 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { runDuneQuery, asPriceRow, duneKey, type DuneRow } from "./dune-client";
+import { poolCategoryAdmit, poolDurationAdmit, hoursToClose, slugNamesRecurrence, RECURRENCE_SLUG_ORACLE, POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE, POOL_MIN_HOURS_TO_CLOSE } from "./lib";
 const BASE = "https://api.dune.com/api/v1", CFG = "tests/q3/dune.json", Q = "tests/q3/queries";
 type Param = { key: string; value: string; type: "text" | "number" };
 const SPECS = {
-  price: { name: "DJZS Q3 · polymarket_price (VWAP, protocol v1.2)", file: `${Q}/polymarket_price.sql`, idKey: "price_query_id",
-    description: "VWAP of on-chain trades on one Polymarket outcome token in [captured_at - window_min, captured_at). SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
+  price: { name: "DJZS Q3 · polymarket_price (VWAP + volume at audit, protocol v1.7)", file: `${Q}/polymarket_price.sql`, idKey: "price_query_id",
+    description: "VWAP of on-chain trades on one Polymarket outcome token in [captured_at - window_min, captured_at), plus the bound market volume_24h and volume_total at captured_at (v1.7a, same execution). SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
     params: [{ key: "token_id", value: "0", type: "text" }, { key: "captured_at", value: "2026-01-01T00:00:00Z", type: "text" }, { key: "window_min", value: "60", type: "number" }] as Param[] },
   pool: { name: "DJZS Q3 · polymarket_pool (top-N by 24h volume in scan categories, protocol v1.5)", file: `${Q}/polymarket_pool.sql`, idKey: "pool_query_id",
     description: "Top-n Polymarket markets by single-counted 24h on-chain volume within the scan categories (v1.5 rule 1; labels in the SQL header, matched on market_details.tags), excluding condition_ids already recorded. SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
@@ -36,16 +37,70 @@ async function ensurePublic(id: number, s: typeof SPECS.price) {
   if (String(q.query_sql ?? "").trim() !== readFileSync(s.file, "utf8").trim()) throw new Error(`query ${id}: published SQL ≠ ${s.file}`);
   console.log(`  ${s.idKey} = ${id} · public · SQL matches ${s.file} · https://dune.com/queries/${id}`);
 }
-/** v1.5 rule 1 label sets — MUST equal the regexes in polymarket_pool.sql and tests/q3/tape/discover.ts (the SQL header is the committed source). */
-const POOL_INCLUDE = /(^|[^a-z0-9])(politics|elections|geopolitics|world|economy|fed|finance|crypto)([^a-z0-9]|$)/, POOL_EXCLUDE = /(^|[^a-z0-9])(sports|esports|culture|entertainment|weather)([^a-z0-9]|$)/;
+// v1.5 rule 1 + v1.8 label sets come from tests/q3/lib.ts, the same definition polymarket_pool.sql documents and
+// tape/discover.ts uses, so this check cannot pass a query whose vocabulary has drifted from the tooling.
 const need = (cond: unknown, msg: string) => { if (!cond) throw new Error(`CHECK FAILED: ${msg}`); console.log(`  ok  ${msg}`); };
+/** OUTAGE OR ABSENCE WARNS, MISMATCH FAILS — the same rule q3-verify applies to Irys 5xx and Dune 402. A check that
+ *  could not be exercised has returned UNKNOWN, not WRONG, and failing the run on unknown makes a scheduled republish
+ *  fail at random on conditions nothing in this repo controls. A check that WAS exercised and disagreed still throws. */
+const warns: string[] = [];
+const warn = (msg: string) => { warns.push(msg); console.log(`  WARN ${msg}`); };
 async function checks(priceId: number, poolId: number) {
   console.log("checks");
   const pool = await runDuneQuery(poolId, { n: 5, exclude: "" }); const rows = pool.rows;
   need(rows.length === 5, `pool n=5 exclude="" → 5 rows (got ${rows.length})`);
-  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
-  for (const r of rows) { const t = String(r.tags ?? "").toLowerCase(); need(POOL_INCLUDE.test(t) && !POOL_EXCLUDE.test(t), `pool row ${String(r.condition_id).slice(0, 12)}… in-category (v1.5 rule 1): tags=${String(r.tags).slice(0, 80)}`); }
+  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags", "close_time", "close_basis", "polymarket_link"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
+  // tags is ARRAY(VARCHAR) at source, so the API hands it back as a real array. Assert the shape rather than assume
+  // it: if this ever arrives as a string again, the matcher's legacy branches would quietly paper over a schema change.
+  need(rows.every(r => Array.isArray(r.tags)), `pool tags arrives as an array on every row (ARRAY(VARCHAR) at source), got ${JSON.stringify(rows[0]?.tags)?.slice(0, 60)}`);
+  for (const r of rows) need(poolCategoryAdmit(r.tags), `pool row ${String(r.condition_id).slice(0, 12)}… admitted by v1.5 rule 1 and not category-excluded: tags=${String(r.tags).slice(0, 90)}`);
+  // v1.9 is re-checked HERE against the same shared matcher the venue-direct read uses, on the rows the SQL actually
+  // returned — so the query and the tooling cannot disagree about which markets the pool covers.
+  const asOf = new Date().toISOString();
+  for (const r of rows) {
+    const h = hoursToClose(r.close_time, asOf);
+    need(poolDurationAdmit(r.close_time, asOf, r.tags), `pool row ${String(r.condition_id).slice(0, 12)}… satisfies v1.9: ${h === null ? `no close time, admitted by the v1.8 tag proxy` : `closes in ${h.toFixed(1)}h ≥ ${POOL_MIN_HOURS_TO_CLOSE}h`}`);
+    need(r.close_basis === (r.close_time == null ? "v1.8 tag proxy" : "close time"), `pool row ${String(r.condition_id).slice(0, 12)}… close_basis '${r.close_basis}' agrees with its close_time`);
+  }
+  // A pool where market_end_time is never populated would pass every row above while the duration rule silently
+  // no-ops back to v1.8. Say so out loud rather than reporting a rule that is not running.
+  const byClose = rows.filter(r => r.close_time != null).length;
+  console.log(`  ..  v1.9 basis: ${byClose}/${rows.length} row(s) decided by the published close time, ${rows.length - byClose} by the v1.8 tag proxy${byClose === 0 ? " — market_end_time is NOT populated on any returned row; the duration rule is a no-op on this pool and only the proxy is running" : ""}`);
+  need(rows.every(r => Number(r.volume_24h_usdc) > 0), "pool volume_24h_usdc > 0 on every row (SUM(shares), $1 notional per share)");
   need(rows.every(r => /^\d+$/.test(String(r.token_id_yes))), "pool token_id_yes is a decimal string on every row");
+  // THE RECURRENCE ORACLE, exercised where its rows actually live. A venue-native recurrence market names itself in
+  // polymarket_link (updown-<n>m / updown-<n>h); the query never filters on that, so this checks v1.9's mechanical
+  // rule against a fact the rule never saw. Run over a WIDE pool, not the top 5 — the top 5 are long-dated by
+  // construction, so asking them would be asking a question whose answer is already known.
+  const wide = await runDuneQuery(poolId, { n: 500, exclude: "" });
+  const survivors = wide.rows.filter(r => slugNamesRecurrence(r.polymarket_link));
+  if (survivors.length) {
+    throw new Error(`CHECK FAILED: ${survivors.length} market(s) whose own URL names them as recurrence survived v1.9: ${survivors.slice(0, 3).map(r => `${r.polymarket_link} close_time=${r.close_time}`).join(" · ")}`);
+  }
+  // Zero survivors is the RESULT WE WANT, but on its own it is not evidence: the query returns only admitted rows, so
+  // "0 survivors" looks identical whether the rule excluded them or the pattern simply stopped matching anything.
+  // Probe the venue to tell those apart. The probe DECIDES NOTHING about the pool — it only says whether the check
+  // above was exercised, which is why every outcome of it short of a mismatch is a WARN.
+  let oracleLive = 0, probeError = "";
+  try {
+    for (let off = 0; off < 400; off += 100) {
+      const r = await fetch(`https://gamma-api.polymarket.com/events?order=volume24hr&ascending=false&closed=false&active=true&limit=100&offset=${off}`);
+      if (!r.ok) throw new Error(`gamma HTTP ${r.status}`);
+      const evs = await r.json();
+      if (!Array.isArray(evs) || !evs.length) break;
+      for (const e of evs) for (const m of e.markets ?? []) if (slugNamesRecurrence(`https://polymarket.com/event/${e.slug}/${m.slug ?? ""}`)) oracleLive++;
+    }
+  } catch (e) { probeError = (e as Error).message; }
+  if (probeError) {
+    warn(`recurrence oracle NOT EXERCISED — the venue probe could not run (${probeError}). 0 of ${wide.rows.length} admitted pool rows are named as recurrence by their own URL, but with the venue unreachable that cannot be told apart from a pattern matching nothing. Outage is not mismatch.`);
+  } else if (oracleLive === 0) {
+    // Not inverted: state what was actually observed. Zero live matches means the oracle has nothing to judge RIGHT
+    // NOW — these ladders open and resolve within minutes, so an empty read is the normal state a good fraction of
+    // the time, and a scheduled republish must not fail on it.
+    warn(`recurrence oracle NOT EXERCISED — ${RECURRENCE_SLUG_ORACLE} matched 0 live markets at the venue, so the pattern currently has nothing to match and "0 survivors in the pool" proves nothing this run. These ladders roll every few minutes; an empty oracle is UNKNOWN, not a rule failure. A market that DOES match and survives the filter is still a hard FAIL above.`);
+  } else {
+    console.log(`  ok  recurrence oracle exercised: ${RECURRENCE_SLUG_ORACLE} matches ${oracleLive} live market(s) at the venue, and 0 of ${wide.rows.length} admitted pool rows are named as recurrence by their own URL — a real exclusion, not a pattern that stopped matching`);
+  }
   const ex = await runDuneQuery(poolId, { n: 5, exclude: String(rows[0].condition_id) });
   need(ex.rows.length === 5 && !ex.rows.some(r => r.condition_id === rows[0].condition_id), `pool exclude=${String(rows[0].condition_id).slice(0, 12)}… drops that market and still returns 5 rows`);
   const now = new Date().toISOString(); let live: DuneRow[] | null = null, liveTok = "";
@@ -54,12 +109,25 @@ async function checks(priceId: number, poolId: number) {
     if (run.rows.length === 1 && Number(run.rows[0].trade_count) > 0) { live = run.rows; liveTok = tok; }
   }
   need(live, "price on a live token, captured_at=now−3h (table lags ~1h), window_min=60 → trade_count > 0 (tried YES/NO tokens of the top-5 pool)");
-  const pr = asPriceRow(live!); need(Number.isFinite(pr.vwap) && pr.vwap > 0 && pr.vwap < 1, `price live token ${liveTok.slice(0, 10)}…: one row, five columns, vwap ${pr.vwap} over ${pr.trade_count} trades, ${pr.volume_usdc.toFixed(2)} USDC`);
+  const pr = asPriceRow(live!); need(Number.isFinite(pr.vwap) && pr.vwap > 0 && pr.vwap < 1, `price live token ${liveTok.slice(0, 10)}…: one row, vwap ${pr.vwap} over ${pr.trade_count} trades, ${pr.volume_usdc.toFixed(2)} USDC`);
+  // v1.7(a): the two volume columns must ride this SAME execution — the amendment adds no additional Dune runs.
+  need(pr.volume_24h != null && pr.volume_total != null, `v1.7a volume columns present and non-NULL on a live token (24h ${pr.volume_24h}, total ${pr.volume_total})`);
+  need((pr.volume_24h as number) >= 0 && (pr.volume_total as number) >= 0, "v1.7a volumes are non-negative");
+  need((pr.volume_total as number) >= (pr.volume_24h as number), `v1.7a volume_total ${pr.volume_total} >= volume_24h ${pr.volume_24h} (a cumulative total cannot be smaller than its own last 24h)`);
+  // This probe was selected for trade_count > 0, so a zero here is a systematic condition_id join break, not an idle market.
+  need((pr.volume_total as number) > 0, `v1.7a volume_total > 0 on a token with ${pr.trade_count} trades in-window (a zero means the condition_id join matched nothing)`);
   need(pr.window_start < pr.window_end, `window_start ${pr.window_start} < window_end ${pr.window_end}`);
   const empty = await runDuneQuery(priceId, { token_id: liveTok, captured_at: "2020-01-01T00:00:00Z", window_min: 1 });
   need(empty.rows.length === 1, `price on an empty window (pre-launch captured_at, window_min=1) → still exactly one row (got ${empty.rows.length})`);
   need(empty.rows[0].vwap === null && Number(empty.rows[0].trade_count) === 0, `empty window → vwap NULL, trade_count 0 (got vwap=${empty.rows[0].vwap}, trade_count=${empty.rows[0].trade_count})`);
-  for (const c of ["vwap", "trade_count", "volume_usdc", "window_start", "window_end"]) need(c in empty.rows[0], `price column '${c}' present on the NULL-path row`);
+  for (const c of ["vwap", "trade_count", "volume_usdc", "window_start", "window_end", "volume_24h", "volume_total"]) need(c in empty.rows[0], `price column '${c}' present on the empty-window row`);
+  // v1.7(a): the CASE exists so an UNRESOLVABLE token yields NULL, never 0 — "unknown" and "none" are different answers.
+  // The empty-window probe above does NOT exercise it: that token resolves in market_details, so it takes the 0 branch.
+  // An EARLY captured_at keeps both block_month bounds pruned, so this probe is cheap: the market CTE is empty, and
+  // mkt_trades would otherwise carry an unbounded-below scan on every republish.
+  const unresolved = await runDuneQuery(priceId, { token_id: "0", captured_at: "2020-01-01T00:00:00Z", window_min: 1 });
+  need(unresolved.rows.length === 1 && Number(unresolved.rows[0].trade_count) === 0, `price on an unresolvable token_id → exactly one row, trade_count 0 (got ${unresolved.rows.length} row(s), trade_count ${unresolved.rows[0]?.trade_count})`);
+  need(unresolved.rows[0].volume_24h === null && unresolved.rows[0].volume_total === null, `v1.7a unresolvable token_id → volume_24h and volume_total are NULL, never 0 (got ${unresolved.rows[0].volume_24h}, ${unresolved.rows[0].volume_total})`);
 }
 (async () => {
   const mode = process.argv.includes("--test") ? "test" : process.argv.includes("--update") ? "update" : "create";
@@ -73,5 +141,8 @@ async function checks(priceId: number, poolId: number) {
   if (mode === "update") { console.log("update"); for (const [k, s] of Object.entries(SPECS)) await update(ids[k], s); }
   if (mode !== "test") for (const [k, s] of Object.entries(SPECS)) await ensurePublic(ids[k], s);
   await checks(ids.price, ids.pool);
-  console.log("PASS — now: npx tsx tests/q3/q3-verify.ts && git add tests/q3 && git commit");
+  console.log(warns.length
+    ? `PASS with ${warns.length} WARNING(S) — nothing disagreed; ${warns.length} check(s) could not be exercised this run (listed above). Re-run later to exercise them.`
+    : "PASS");
+  console.log("now: npx tsx tests/q3/q3-verify.ts && git add tests/q3 && git commit");
 })().catch(e => { console.error(String((e as Error).message ?? e)); process.exit(1); });

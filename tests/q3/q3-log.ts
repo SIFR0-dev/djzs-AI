@@ -14,7 +14,7 @@ import { PM_SCHEMA_VERSION } from "../../shared/pm-taxonomy";
 import { SCHEMA_VERSION } from "../../shared/audit-schema";
 import { canonical, sha256hex, renderIntentText, devVar, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { runDuneQuery, asPriceRow } from "./dune-client";
-import { kalshiVwap } from "./kalshi-client";
+import { kalshiVwap, kalshiVolumes } from "./kalshi-client";
 
 const args = process.argv.slice(2); const flag = (f: string) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const REC_DIR = "tests/q3/records";
@@ -59,7 +59,7 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     // Round-trip guard: the hash must reproduce from the record as it will be saved and reloaded.
     const roundtrip = JSON.parse(JSON.stringify(rec)); const re = sha256hex(canonical(strip(roundtrip, PHASE_A_EXCLUDE)));
     if (re !== rec.phase_a_hash) { console.error(`Phase A ABORT: phase_a_hash does not survive JSON round-trip (${rec.phase_a_hash} vs ${re}) — a field is not JSON-stable`); process.exit(1); }
-    rec.price_at_audit = null; rec.implied_prob_at_audit = null; rec.price_captured_at = null; rec.record_hash = null; rec.outcome = null;
+    rec.price_at_audit = null; rec.implied_prob_at_audit = null; rec.price_captured_at = null; rec.volume_24h = null; rec.volume_total = null; rec.record_hash = null; rec.outcome = null;
     recs.push(rec); saveDay(date, recs);
     console.log(`Phase A · ${rec.id} · engine ${engine.verdict} ${(engine.codes as string[]).join("+") || "—"} risk ${engine.risk_score} · prescreen ${(rec.prescreen as any).verdict} · agree=${engine.verdict === (rec.prescreen as any).verdict}`);
     console.log(`  phase_a_hash ${rec.phase_a_hash}\n  → ${REC_DIR}/${date}.json   COMMIT NOW, then look up the price.`);
@@ -70,7 +70,7 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     if (!rec.phase_a_hash) { console.error("Phase B refused: phase_a_hash missing — run Phase A first"); process.exit(1); }
     if (rec.record_hash) { console.error("Phase B refused: record already sealed"); process.exit(1); }
     const bt = (rec.binding as any)?.type; const capturedAt = new Date().toISOString();
-    if (bt === "series") { console.error("Phase B: binding.type=series has no market price — sealing without price"); }
+    if (bt === "series") { console.error("Phase B: binding.type=series has no market price — sealing without price"); rec.volume_24h = null; rec.volume_total = null; /* v1.7(a): a series binding names no venue market */ }
     else if (fromDune) {
       // v1.2: Polymarket price from a PUBLIC saved Dune query over on-chain trades — recomputable by anyone with the same params.
       const mk = rec.market as any; const cfg = JSON.parse(readFileSync("tests/q3/dune.json", "utf8")); const win = Number(cfg.window_min ?? 60);
@@ -80,20 +80,36 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
         const qp = { token_id: String(mk.token_id), captured_at: String(rec.posted_at), window_min: win };
         const run = await runDuneQuery(Number(cfg.price_query_id), qp); const pr = asPriceRow(run.rows);
         if (!(pr.trade_count > 0) || !Number.isFinite(pr.vwap)) { console.error(`Phase B refused: no trades on ${mk.token_id} in the ${win}-min window before posted_at ${rec.posted_at}. Dune indexes ~1h behind chain — if posted_at is recent, rerun later; otherwise leave unpriced (excluded from base-rate metric)`); process.exit(1); }
+        // v1.7(a): NULL volume means the token did not resolve to a market in market_details, not that the market is idle.
+        // A sealed record must never carry a fabricated 0, and null is reserved for series bindings, so refuse and let the operator rerun.
+        if (pr.volume_24h == null || pr.volume_total == null) { console.error(`Phase B refused: the price query returned NULL volume for token ${mk.token_id} - market_details has no row for it yet (the API snapshot lags chain), so the bound market cannot be resolved. v1.7(a) requires volume on every record sealed after the amendment; rerun once the snapshot catches up. Nothing was written.`); process.exit(1); }
         rec.price_at_audit = pr.vwap; rec.implied_prob_at_audit = pr.vwap;
+        // trade_count > 0 means the audited token traded inside the VWAP window, and mkt_trades range is a strict superset
+        // of that window, so a market-wide total of 0 is only possible if the condition_id join matched nothing. That 0
+        // means the join failed, not that the market is idle — refusing keeps a fabricated zero out of record_hash.
+        if (!(pr.volume_total > 0) || !(pr.volume_24h > 0)) { console.error(`Phase B refused: volume_24h ${pr.volume_24h} / volume_total ${pr.volume_total} on token ${mk.token_id}, but the ${win}-min window had ${pr.trade_count} trades. A market whose audited token just traded cannot have zero volume - the condition_id join matched nothing. Nothing was written.`); process.exit(1); }
+        rec.volume_24h = pr.volume_24h; rec.volume_total = pr.volume_total;
         rec.price_source = { provider: "dune", tier: "on-chain", venue: "polymarket", query_id: run.query_id, execution_id: run.execution_id, query_params: qp, vwap: pr.vwap, trade_count: pr.trade_count, volume_usdc: pr.volume_usdc, window_start: pr.window_start, window_end: pr.window_end };
         console.log(`  price (on-chain via Dune): vwap ${pr.vwap} over ${pr.trade_count} trades · query ${run.query_id} · execution ${run.execution_id}`);
+        console.log(`  volume (v1.7a, same execution): 24h ${pr.volume_24h} USDC · total ${pr.volume_total} USDC`);
       } else if (mk.venue === "kalshi") {
         // venue-API tier: Kalshi's public trades endpoint, per-fill, immutable history; re-queryable by anyone with the same params
         const k = await kalshiVwap(String(mk.ticker), String(mk.side), String(rec.posted_at), win);
         if (!(k.trade_count > 0) || k.vwap == null) { console.error(`Phase B refused: no Kalshi fills on ${mk.ticker} in the ${win}-min window before posted_at ${rec.posted_at}. Leave unpriced (excluded from base-rate metric); operator-typed prices are not permitted (v1.3.1)`); process.exit(1); }
+        const kv = await kalshiVolumes(String(mk.ticker), String(rec.posted_at));
+        if (kv.volume_24h == null || kv.volume_total == null) { console.error(`Phase B refused: could not compute v1.7(a) volume for ${mk.ticker} - ${kv.note ?? "unknown reason"}. A partial sum must not be sealed as a total. Nothing was written.`); process.exit(1); }
         rec.price_at_audit = k.vwap; rec.implied_prob_at_audit = k.vwap;
+        if (!(kv.volume_total > 0) || !(kv.volume_24h > 0)) { console.error(`Phase B refused: Kalshi volume_24h ${kv.volume_24h} / volume_total ${kv.volume_total} on ${mk.ticker}, but the VWAP gate just found ${k.trade_count} fills in a window inside the same range. Zero cannot be a true answer here. Nothing was written.`); process.exit(1); }
+        rec.volume_24h = kv.volume_24h; rec.volume_total = kv.volume_total;
         rec.price_source = { provider: "kalshi-api", tier: "venue-api", venue: "kalshi", endpoint: "GET /trade-api/v2/markets/trades", query_params: k.query, vwap: k.vwap, trade_count: k.trade_count, contracts: k.contracts, volume_usdc: k.volume_usdc, window_start: k.window_start, window_end: k.window_end };
         console.log(`  price (Kalshi trades API): vwap ${k.vwap} over ${k.trade_count} fills, ${k.contracts} contracts · window ${k.window_start} → ${k.window_end}`);
+        console.log(`  volume (v1.7a, ${kv.fills} fills over ${kv.pages} pages): 24h ${kv.volume_24h.toFixed(2)} USD · total ${kv.volume_total.toFixed(2)} USD`);
       } else { console.error(`--price-from-venue: venue ${mk.venue} has no supported price source`); process.exit(1); }
     }
     else { console.error("Operator-typed prices are not permitted for venue records (v1.3.1) — use --price-from-venue"); process.exit(1); }
     rec.price_captured_at = capturedAt;
+    // v1.7(a) is forward-only: every record sealed from here carries both keys, even when the value is null.
+    if (rec.volume_24h === undefined) rec.volume_24h = null; if (rec.volume_total === undefined) rec.volume_total = null;
     rec.record_hash = sha256hex(canonical(strip(rec, PHASE_B_EXCLUDE)));
     const rt = sha256hex(canonical(strip(JSON.parse(JSON.stringify(rec)), PHASE_B_EXCLUDE)));
     if (rt !== rec.record_hash) { console.error("Phase B ABORT: record_hash does not survive JSON round-trip"); process.exit(1); }
