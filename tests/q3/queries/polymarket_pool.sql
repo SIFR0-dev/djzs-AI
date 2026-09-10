@@ -1,7 +1,8 @@
--- Q3 protocol v1.8 · polymarket_pool
+-- Q3 protocol v1.9 · polymarket_pool
 -- Top-{{n}} Polymarket markets by 24h traded notional WITHIN THE SCAN'S CATEGORIES (v1.5 rule 1), excluding venue-native
--- recurrence markets (v1.8) and condition_ids already in the book (§3 coverage pool). Rule 2: the exact venue labels are
--- committed here and in tests/q3/lib.ts (POOL_TAGS_INCLUDE / POOL_TAGS_EXCLUDE), not asserted.
+-- short-dated markets (v1.9, with v1.8's recurrence tags as the fallback proxy) and condition_ids already in the book
+-- (§3 coverage pool). Rule 2: the exact venue labels are committed here and in tests/q3/lib.ts (POOL_TAGS_INCLUDE /
+-- POOL_TAGS_EXCLUDE_CATEGORY / POOL_TAGS_EXCLUDE_RECURRENCE), not asserted.
 --
 -- UNIT: SUM(shares) — $1 of notional per share, which is what Polymarket publishes as its volume. Measured 2026-09-10,
 --   Gamma's volume24hr equals Sum(size) at ratio 0.996-1.023 across three markets from 0.007 to 0.46, while
@@ -14,10 +15,23 @@
 --   boundary regex would fire on inside unrelated text. `tags` is read as a JSON array where it parses and as a
 --   comma-delimited list otherwise, so the match holds under either stored form.
 --   INCLUDE (any one admits): Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto
---   EXCLUDE (any one rejects, and exclusion wins): Sports · Esports · Culture · entertainment · Weather   [v1.5]
---                                                  Recurring · Up · Down · 5M · 15M · 1H · 4H             [v1.8]
+--   EXCLUDE, CATEGORY (any one rejects, always):   Sports · Esports · Culture · entertainment · Weather   [v1.5]
+--   EXCLUDE, RECURRENCE (fallback proxy only):     Recurring · Up · Down · 5M · 15M · 1H · 4H             [v1.8]
 --   A market with NO market_details row has no tags and cannot be classified; it is NOT in the pool until the API
 --   snapshot catches up, because showing it as in-category would be an assertion.
+--
+-- DURATION (v1.9), which supersedes the recurrence tags wherever the venue publishes a close time:
+--   A candidate is excluded when the interval from THIS EXECUTION to its scheduled resolution is under 24 hours,
+--   computed from market_details.market_end_time — the venue's own published number, not an inference from tags.
+--   market_end_time is a VARCHAR, so it is parsed with TRY: ISO-8601 first (from_iso8601_timestamp handles the 'Z'
+--   and any offset), then a space-separated fallback pinned to UTC. Anything that does not parse is NULL, never a
+--   date — an unparseable value must not exclude or admit a market on an interval nobody published.
+--   Where close_time IS NULL the v1.8 recurrence tags decide, exactly as they did before this amendment. Where it is
+--   present it GOVERNS in both directions: a market tagged 1H that closes in a week is admitted, and an untagged
+--   market that closes in an hour is excluded. The v1.5 category exclusions are unaffected and apply either way.
+--   close_time and close_basis are returned so a re-run shows WHICH test admitted each row; a pool whose rows all
+--   come back close_basis='v1.8 tag proxy' means market_end_time is not populated, which the publish check surfaces
+--   rather than letting the duration rule silently no-op.
 --
 -- THE JOIN between the two tables, stated because getting it wrong is silent:
 --   market_trades.condition_id is VARBINARY; market_details.condition_id is a 0x-prefixed lowercase hex VARCHAR.
@@ -32,7 +46,8 @@
 -- Params (text params are substituted RAW by Dune — quote them in SQL as '{{param}}'; number params unquoted):
 --   n        number  pool size, default 5
 --   exclude  text    comma-separated 0x condition_ids already recorded; may be empty ("")
--- Output columns: condition_id · question · token_id_yes · token_id_no · volume_24h_usdc · last_price_yes · tags
+-- Output columns: condition_id · question · token_id_yes · token_id_no · volume_24h_usdc · last_price_yes · tags ·
+--                 close_time · close_basis
 --   tags is returned so a re-run shows WHY each row qualified (the publish check asserts on it).
 --   token ids are returned as decimal STRINGS (UINT256 does not survive a JSON number).
 --   YES/NO are POSITIONAL (market_details.outcome_index 0 / 1), per Dune's note that labels are not reliable.
@@ -68,9 +83,11 @@ vol AS (
 ),
 meta AS (
   -- ONE ROW PER MARKET: market_details carries a row per outcome token per snapshot; take the freshest snapshot's tags.
-  SELECT cid_hex, max_by(tags, last_changed_at) AS tags
+  SELECT cid_hex,
+         max_by(tags, last_changed_at)             AS tags,
+         max_by(market_end_time, last_changed_at)  AS market_end_time
   FROM (
-    SELECT lower(condition_id) AS cid_hex, tags, last_changed_at
+    SELECT lower(condition_id) AS cid_hex, tags, market_end_time, last_changed_at
     FROM polymarket_polygon.market_details
     WHERE condition_id IS NOT NULL
       AND lower(condition_id) IN (SELECT cid_hex FROM vol)
@@ -84,18 +101,31 @@ tagged AS (
     transform(
       COALESCE(TRY(CAST(json_parse(tags) AS ARRAY(VARCHAR))), split(COALESCE(tags, ''), ',')),
       x -> lower(trim(regexp_replace(x, '[\[\]"]', '')))
-    ) AS tags_norm
+    ) AS tags_norm,
+    -- v1.9: the venue's own close time, parsed defensively. TRY on both branches, so an unparseable value is NULL and
+    -- falls through to the tag proxy rather than becoming a date the venue never published.
+    COALESCE(
+      TRY(from_iso8601_timestamp(market_end_time)),
+      TRY(with_timezone(CAST(replace(replace(market_end_time, 'T', ' '), 'Z', '') AS TIMESTAMP), 'UTC'))
+    ) AS close_time
   FROM meta
 ),
 classified AS (
-  SELECT v.cid_hex, v.volume_24h_usdc, v.question_from_trades, t.tags
+  SELECT v.cid_hex, v.volume_24h_usdc, v.question_from_trades, t.tags, t.close_time,
+         CASE WHEN t.close_time IS NOT NULL THEN 'close time' ELSE 'v1.8 tag proxy' END AS close_basis
   FROM vol v
   JOIN tagged t ON t.cid_hex = v.cid_hex
+  -- v1.5 rule 1: a scan category, and none of the category exclusions. Applies whatever the close time says.
   WHERE cardinality(array_intersect(t.tags_norm, ARRAY['politics','elections','geopolitics','world','economy','fed','finance','crypto'])) > 0
-    AND cardinality(array_intersect(t.tags_norm, ARRAY['sports','esports','culture','entertainment','weather','recurring','up','down','5m','15m','1h','4h'])) = 0
+    AND cardinality(array_intersect(t.tags_norm, ARRAY['sports','esports','culture','entertainment','weather'])) = 0
+    -- v1.9: under 24h to the published close is out; with no published close, v1.8's tags stand in for it.
+    AND CASE
+          WHEN t.close_time IS NOT NULL THEN t.close_time >= now() + INTERVAL '24' HOUR
+          ELSE cardinality(array_intersect(t.tags_norm, ARRAY['recurring','up','down','5m','15m','1h','4h'])) = 0
+        END
 ),
 top AS (
-  SELECT cid_hex, volume_24h_usdc, question_from_trades, tags
+  SELECT cid_hex, volume_24h_usdc, question_from_trades, tags, close_time, close_basis
   FROM classified
   ORDER BY volume_24h_usdc DESC
   LIMIT {{n}}
@@ -128,7 +158,7 @@ from_trades AS (
 ),
 sides AS (
   SELECT
-    t.cid_hex, t.volume_24h_usdc, t.tags,
+    t.cid_hex, t.volume_24h_usdc, t.tags, t.close_time, t.close_basis,
     COALESCE(fd.question,     t.question_from_trades) AS question,
     COALESCE(fd.token_id_yes, ft.token_id_yes)        AS token_id_yes,
     COALESCE(fd.token_id_no,  ft.token_id_no)         AS token_id_no
@@ -149,7 +179,9 @@ SELECT
   s.token_id_no,
   s.volume_24h_usdc,
   ly.price           AS last_price_yes,
-  s.tags
+  s.tags,
+  s.close_time,
+  s.close_basis
 FROM sides s
 LEFT JOIN last_yes ly ON ly.cid_hex = s.cid_hex AND ly.rn = 1
 ORDER BY s.volume_24h_usdc DESC

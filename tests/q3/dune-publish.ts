@@ -8,7 +8,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { runDuneQuery, asPriceRow, duneKey, type DuneRow } from "./dune-client";
-import { poolTagsAdmit, POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE } from "./lib";
+import { poolCategoryAdmit, poolDurationAdmit, hoursToClose, POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE, POOL_MIN_HOURS_TO_CLOSE } from "./lib";
 const BASE = "https://api.dune.com/api/v1", CFG = "tests/q3/dune.json", Q = "tests/q3/queries";
 type Param = { key: string; value: string; type: "text" | "number" };
 const SPECS = {
@@ -44,8 +44,20 @@ async function checks(priceId: number, poolId: number) {
   console.log("checks");
   const pool = await runDuneQuery(poolId, { n: 5, exclude: "" }); const rows = pool.rows;
   need(rows.length === 5, `pool n=5 exclude="" → 5 rows (got ${rows.length})`);
-  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
-  for (const r of rows) need(poolTagsAdmit(r.tags), `pool row ${String(r.condition_id).slice(0, 12)}… admitted by v1.5 rule 1 and not excluded by v1.8: tags=${String(r.tags).slice(0, 90)}`);
+  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags", "close_time", "close_basis"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
+  for (const r of rows) need(poolCategoryAdmit(r.tags), `pool row ${String(r.condition_id).slice(0, 12)}… admitted by v1.5 rule 1 and not category-excluded: tags=${String(r.tags).slice(0, 90)}`);
+  // v1.9 is re-checked HERE against the same shared matcher the venue-direct read uses, on the rows the SQL actually
+  // returned — so the query and the tooling cannot disagree about which markets the pool covers.
+  const asOf = new Date().toISOString();
+  for (const r of rows) {
+    const h = hoursToClose(r.close_time, asOf);
+    need(poolDurationAdmit(r.close_time, asOf, r.tags), `pool row ${String(r.condition_id).slice(0, 12)}… satisfies v1.9: ${h === null ? `no close time, admitted by the v1.8 tag proxy` : `closes in ${h.toFixed(1)}h ≥ ${POOL_MIN_HOURS_TO_CLOSE}h`}`);
+    need(r.close_basis === (r.close_time == null ? "v1.8 tag proxy" : "close time"), `pool row ${String(r.condition_id).slice(0, 12)}… close_basis '${r.close_basis}' agrees with its close_time`);
+  }
+  // A pool where market_end_time is never populated would pass every row above while the duration rule silently
+  // no-ops back to v1.8. Say so out loud rather than reporting a rule that is not running.
+  const byClose = rows.filter(r => r.close_time != null).length;
+  console.log(`  ..  v1.9 basis: ${byClose}/${rows.length} row(s) decided by the published close time, ${rows.length - byClose} by the v1.8 tag proxy${byClose === 0 ? " — market_end_time is NOT populated on any returned row; the duration rule is a no-op on this pool and only the proxy is running" : ""}`);
   need(rows.every(r => Number(r.volume_24h_usdc) > 0), "pool volume_24h_usdc > 0 on every row (SUM(shares), $1 notional per share)");
   need(rows.every(r => /^\d+$/.test(String(r.token_id_yes))), "pool token_id_yes is a decimal string on every row");
   const ex = await runDuneQuery(poolId, { n: 5, exclude: String(rows[0].condition_id) });
