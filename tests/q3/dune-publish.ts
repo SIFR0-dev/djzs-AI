@@ -68,8 +68,10 @@ async function checks(priceId: number, poolId: number) {
   for (const c of ["vwap", "trade_count", "volume_usdc", "window_start", "window_end", "volume_24h", "volume_total"]) need(c in empty.rows[0], `price column '${c}' present on the empty-window row`);
   // v1.7(a): the CASE exists so an UNRESOLVABLE token yields NULL, never 0 — "unknown" and "none" are different answers.
   // The empty-window probe above does NOT exercise it: that token resolves in market_details, so it takes the 0 branch.
-  const unresolved = await runDuneQuery(priceId, { token_id: "0", captured_at: now, window_min: 60 });
-  need(unresolved.rows.length === 1, `price on an unresolvable token_id → still exactly one row (got ${unresolved.rows.length})`);
+  // An EARLY captured_at keeps both block_month bounds pruned, so this probe is cheap: the market CTE is empty, and
+  // mkt_trades would otherwise carry an unbounded-below scan on every republish.
+  const unresolved = await runDuneQuery(priceId, { token_id: "0", captured_at: "2020-01-01T00:00:00Z", window_min: 1 });
+  need(unresolved.rows.length === 1 && Number(unresolved.rows[0].trade_count) === 0, `price on an unresolvable token_id → exactly one row, trade_count 0 (got ${unresolved.rows.length} row(s), trade_count ${unresolved.rows[0]?.trade_count})`);
   need(unresolved.rows[0].volume_24h === null && unresolved.rows[0].volume_total === null, `v1.7a unresolvable token_id → volume_24h and volume_total are NULL, never 0 (got ${unresolved.rows[0].volume_24h}, ${unresolved.rows[0].volume_total})`);
 }
 (async () => {
