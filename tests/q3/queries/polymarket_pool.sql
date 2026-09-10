@@ -9,11 +9,13 @@
 --   Sum(price*size) lands at 0.027-0.494 because premium tracks the price. The output column keeps the name
 --   volume_24h_usdc for contract stability; a share settles at $1, so the count IS the USD notional.
 --
--- TAGS are matched by ARRAY CONTAINMENT on whole tags, both sides lower-cased — never by regex over a flattened string.
---   The tag set is non-positional, mixed case, 3-7 per market, and contains non-ASCII, so a substring or word-boundary
---   regex is both fragile and wrong at the edges: v1.8's exclusions include the bare tags Up, Down, 1H, which a
---   boundary regex would fire on inside unrelated text. `tags` is read as a JSON array where it parses and as a
---   comma-delimited list otherwise, so the match holds under either stored form.
+-- TAGS are ARRAY(VARCHAR) at source, so there is nothing to parse: no json_parse, no split, no bracket/quote
+--   stripping. json_parse(tags) was not a wrong answer, it was a TYPE ERROR — json_parse takes VARCHAR — and TRY does
+--   not swallow analysis-time type failures, so the query could not have compiled. Matching is ARRAY CONTAINMENT on
+--   whole tags, both sides lower-cased: the set is non-positional, mixed case, 3-7 per market and contains non-ASCII,
+--   and v1.8's exclusions include the bare tags Up, Down, 1H, which a substring or word-boundary regex would fire on
+--   inside unrelated text. A NULL tag array is coerced to an empty array, which no INCLUDE label intersects, so an
+--   untagged market is excluded by the same rule that excludes an out-of-category one rather than by an error.
 --   INCLUDE (any one admits): Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto
 --   EXCLUDE, CATEGORY (any one rejects, always):   Sports · Esports · Culture · entertainment · Weather   [v1.5]
 --   EXCLUDE, RECURRENCE (fallback proxy only):     Recurring · Up · Down · 5M · 15M · 1H · 4H             [v1.8]
@@ -29,6 +31,13 @@
 --   Where close_time IS NULL the v1.8 recurrence tags decide, exactly as they did before this amendment. Where it is
 --   present it GOVERNS in both directions: a market tagged 1H that closes in a week is admitted, and an untagged
 --   market that closes in an hour is excluded. The v1.5 category exclusions are unaffected and apply either way.
+--   GRANULARITY: market_end_time carries a time of day, but for a large share of markets that time is exactly
+--   00:00:00 — the venue publishing a DATE serialized with a zero clock (measured on the same field via Gamma
+--   2026-09-10: 1395/1395 markets carry T##:##, and 597 of those are exactly T00:00:00Z). The zero time is taken AS
+--   PUBLISHED and never rounded up to end-of-day, because rounding would invent a close the venue did not state. The
+--   error is therefore bounded by 24h and ONE-DIRECTIONAL: the interval can only be understated, so the rule may
+--   exclude a market that truly has 24-48h left, and can never admit one that truly has under 24h. That is the safe
+--   direction for the pool's ground. See SCAN_SPEC §1.
 --   close_time and close_basis are returned so a re-run shows WHICH test admitted each row; a pool whose rows all
 --   come back close_basis='v1.8 tag proxy' means market_end_time is not populated, which the publish check surfaces
 --   rather than letting the duration rule silently no-op.
@@ -43,11 +52,25 @@
 --   Both sides of `classified` are one row per market by construction, so the join cannot fan.
 --
 -- Sources: polymarket_polygon.market_trades (volume, last price) · polymarket_polygon.market_details (tags, question, outcome tokens)
+-- COLUMN RECONCILIATION against the 35-column market_details schema — every reference in this file, typed, so the
+-- next execution fails for a new reason or not at all:
+--   condition_id      VARCHAR        details side of the join; lower()-ed. VARBINARY on market_trades, hence the
+--                                    '0x' || to_hex() normalization — the two sides are genuinely different types.
+--   tags              ARRAY(VARCHAR) consumed by transform/array_intersect directly. NOT a JSON string.
+--   market_end_time   VARCHAR        parsed to a timestamp with TRY; see DURATION above.
+--   token_id          UINT256        CAST to VARCHAR before comparison and output (a UINT256 does not survive JSON).
+--   outcome_index     INTEGER        compared to bare 0 / 1, no cast.
+--   question          VARCHAR        MAX() for the collapse to one row per condition.
+--   polymarket_link   VARCHAR        returned as the recurrence oracle, never filtered on.
+--   last_changed_at   TIMESTAMP      max_by / ORDER BY key for picking the freshest snapshot.
 -- Params (text params are substituted RAW by Dune — quote them in SQL as '{{param}}'; number params unquoted):
 --   n        number  pool size, default 5
 --   exclude  text    comma-separated 0x condition_ids already recorded; may be empty ("")
 -- Output columns: condition_id · question · token_id_yes · token_id_no · volume_24h_usdc · last_price_yes · tags ·
---                 close_time · close_basis
+--                 close_time · close_basis · polymarket_link
+--   polymarket_link is returned ONLY as an ORACLE for the publish check: a venue-native recurrence market names
+--   itself in its own URL (updown-<n>m / updown-<n>h), so the check can assert the duration rule excluded it WITHOUT
+--   the query ever matching on a slug. The slug is never a criterion here — nothing in this file filters on it.
 --   tags is returned so a re-run shows WHY each row qualified (the publish check asserts on it).
 --   token ids are returned as decimal STRINGS (UINT256 does not survive a JSON number).
 --   YES/NO are POSITIONAL (market_details.outcome_index 0 / 1), per Dune's note that labels are not reliable.
@@ -98,12 +121,11 @@ tagged AS (
   SELECT
     cid_hex,
     tags,
-    transform(
-      COALESCE(TRY(CAST(json_parse(tags) AS ARRAY(VARCHAR))), split(COALESCE(tags, ''), ',')),
-      x -> lower(trim(regexp_replace(x, '[\[\]"]', '')))
-    ) AS tags_norm,
-    -- v1.9: the venue's own close time, parsed defensively. TRY on both branches, so an unparseable value is NULL and
-    -- falls through to the tag proxy rather than becoming a date the venue never published.
+    transform(COALESCE(tags, CAST(ARRAY[] AS ARRAY(VARCHAR))), x -> lower(trim(x))) AS tags_norm,
+    -- v1.9: market_end_time is a plain VARCHAR column on market_details — read straight off the row, no metadata
+    -- blob and no extraction. Only the VARCHAR-to-timestamp parse is defensive: TRY on both branches, so a value the
+    -- venue never published, or published unparseably, becomes NULL and falls through to the tag proxy rather than
+    -- becoming a date. NOTE the granularity caveat in the DURATION block above.
     COALESCE(
       TRY(from_iso8601_timestamp(market_end_time)),
       TRY(with_timezone(CAST(replace(replace(market_end_time, 'T', ' '), 'Z', '') AS TIMESTAMP), 'UTC'))
@@ -134,7 +156,7 @@ details AS (
   SELECT
     lower(condition_id)         AS cid_hex,
     CAST(token_id AS VARCHAR)   AS token_id,
-    outcome_index, question,
+    outcome_index, question, polymarket_link,
     row_number() OVER (PARTITION BY token_id ORDER BY last_changed_at DESC) AS rn
   FROM polymarket_polygon.market_details
   WHERE lower(condition_id) IN (SELECT cid_hex FROM top)
@@ -143,7 +165,8 @@ from_details AS (
   SELECT cid_hex,
     MAX(CASE WHEN outcome_index = 0 THEN token_id END) AS token_id_yes,
     MAX(CASE WHEN outcome_index = 1 THEN token_id END) AS token_id_no,
-    MAX(question)                                       AS question
+    MAX(question)                                       AS question,
+    MAX(polymarket_link)                                AS polymarket_link
   FROM details
   WHERE rn = 1
   GROUP BY cid_hex
@@ -160,6 +183,7 @@ sides AS (
   SELECT
     t.cid_hex, t.volume_24h_usdc, t.tags, t.close_time, t.close_basis,
     COALESCE(fd.question,     t.question_from_trades) AS question,
+    fd.polymarket_link,
     COALESCE(fd.token_id_yes, ft.token_id_yes)        AS token_id_yes,
     COALESCE(fd.token_id_no,  ft.token_id_no)         AS token_id_no
   FROM top t
@@ -181,7 +205,8 @@ SELECT
   ly.price           AS last_price_yes,
   s.tags,
   s.close_time,
-  s.close_basis
+  s.close_basis,
+  s.polymarket_link
 FROM sides s
 LEFT JOIN last_yes ly ON ly.cid_hex = s.cid_hex AND ly.rn = 1
 ORDER BY s.volume_24h_usdc DESC

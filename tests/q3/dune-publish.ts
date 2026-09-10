@@ -8,7 +8,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { runDuneQuery, asPriceRow, duneKey, type DuneRow } from "./dune-client";
-import { poolCategoryAdmit, poolDurationAdmit, hoursToClose, POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE, POOL_MIN_HOURS_TO_CLOSE } from "./lib";
+import { poolCategoryAdmit, poolDurationAdmit, hoursToClose, slugNamesRecurrence, RECURRENCE_SLUG_ORACLE, POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE, POOL_MIN_HOURS_TO_CLOSE } from "./lib";
 const BASE = "https://api.dune.com/api/v1", CFG = "tests/q3/dune.json", Q = "tests/q3/queries";
 type Param = { key: string; value: string; type: "text" | "number" };
 const SPECS = {
@@ -44,7 +44,10 @@ async function checks(priceId: number, poolId: number) {
   console.log("checks");
   const pool = await runDuneQuery(poolId, { n: 5, exclude: "" }); const rows = pool.rows;
   need(rows.length === 5, `pool n=5 exclude="" → 5 rows (got ${rows.length})`);
-  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags", "close_time", "close_basis"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
+  for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags", "close_time", "close_basis", "polymarket_link"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
+  // tags is ARRAY(VARCHAR) at source, so the API hands it back as a real array. Assert the shape rather than assume
+  // it: if this ever arrives as a string again, the matcher's legacy branches would quietly paper over a schema change.
+  need(rows.every(r => Array.isArray(r.tags)), `pool tags arrives as an array on every row (ARRAY(VARCHAR) at source), got ${JSON.stringify(rows[0]?.tags)?.slice(0, 60)}`);
   for (const r of rows) need(poolCategoryAdmit(r.tags), `pool row ${String(r.condition_id).slice(0, 12)}… admitted by v1.5 rule 1 and not category-excluded: tags=${String(r.tags).slice(0, 90)}`);
   // v1.9 is re-checked HERE against the same shared matcher the venue-direct read uses, on the rows the SQL actually
   // returned — so the query and the tooling cannot disagree about which markets the pool covers.
@@ -60,6 +63,27 @@ async function checks(priceId: number, poolId: number) {
   console.log(`  ..  v1.9 basis: ${byClose}/${rows.length} row(s) decided by the published close time, ${rows.length - byClose} by the v1.8 tag proxy${byClose === 0 ? " — market_end_time is NOT populated on any returned row; the duration rule is a no-op on this pool and only the proxy is running" : ""}`);
   need(rows.every(r => Number(r.volume_24h_usdc) > 0), "pool volume_24h_usdc > 0 on every row (SUM(shares), $1 notional per share)");
   need(rows.every(r => /^\d+$/.test(String(r.token_id_yes))), "pool token_id_yes is a decimal string on every row");
+  // THE RECURRENCE ORACLE, exercised where its rows actually live. A venue-native recurrence market names itself in
+  // polymarket_link (updown-<n>m / updown-<n>h); the query never filters on that, so this checks v1.9's mechanical
+  // rule against a fact the rule never saw. Run over a WIDE pool, not the top 5 — the top 5 are long-dated by
+  // construction, so asking them would be asking a question whose answer is already known.
+  const wide = await runDuneQuery(poolId, { n: 500, exclude: "" });
+  const survivors = wide.rows.filter(r => slugNamesRecurrence(r.polymarket_link));
+  if (survivors.length) {
+    throw new Error(`CHECK FAILED: ${survivors.length} market(s) whose own URL names them as recurrence survived v1.9: ${survivors.slice(0, 3).map(r => `${r.polymarket_link} close_time=${r.close_time}`).join(" · ")}`);
+  }
+  // Non-vacuity: the query returns only ADMITTED rows, so zero survivors is the pass — but it is also what a broken
+  // oracle looks like. Prove the pattern can still match something by running it against the venue directly.
+  let oracleLive = 0;
+  try {
+    for (let off = 0; off < 400; off += 100) {
+      const evs = await (await fetch(`https://gamma-api.polymarket.com/events?order=volume24hr&ascending=false&closed=false&active=true&limit=100&offset=${off}`)).json();
+      if (!Array.isArray(evs) || !evs.length) break;
+      for (const e of evs) for (const m of e.markets ?? []) if (slugNamesRecurrence(`https://polymarket.com/event/${e.slug}/${m.slug ?? ""}`)) oracleLive++;
+    }
+  } catch { /* venue unreachable — reported below, never silently treated as a pass */ }
+  need(oracleLive > 0, `recurrence oracle ${RECURRENCE_SLUG_ORACLE} still matches live markets (${oracleLive} found) — so "0 survivors in the pool" is a real exclusion, not a pattern that stopped matching`);
+  console.log(`  ok  0 of ${wide.rows.length} admitted pool rows are named as recurrence by their own URL, while the pattern matches ${oracleLive} live market(s) at the venue`);
   const ex = await runDuneQuery(poolId, { n: 5, exclude: String(rows[0].condition_id) });
   need(ex.rows.length === 5 && !ex.rows.some(r => r.condition_id === rows[0].condition_id), `pool exclude=${String(rows[0].condition_id).slice(0, 12)}… drops that market and still returns 5 rows`);
   const now = new Date().toISOString(); let live: DuneRow[] | null = null, liveTok = "";

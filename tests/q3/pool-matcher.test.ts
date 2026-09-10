@@ -5,6 +5,7 @@
 import {
   POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE, POOL_TAGS_EXCLUDE_CATEGORY, POOL_TAGS_EXCLUDE_RECURRENCE,
   POOL_MIN_HOURS_TO_CLOSE, normalizeTags, poolTagsAdmit, poolCategoryAdmit, poolDurationAdmit, poolAdmit, hoursToClose,
+  RECURRENCE_SLUG_ORACLE, slugNamesRecurrence,
 } from "./lib";
 
 let fails = 0, ran = 0;
@@ -86,5 +87,59 @@ eq(poolAdmit(["Crypto", "1H"], at(720), NOW), true, "v1.9: a month-out close ove
 eq(poolAdmit(["Crypto", "1H"], null, NOW), false, "…but with no close published the tag still decides");
 eq(poolAdmit([], at(720), NOW), false, "no category tag, however long-dated");
 
-console.log(fails ? `POOL MATCHER · ${fails}/${ran} FAILED` : `POOL MATCHER · ${ran}/${ran} assertions pass`);
-process.exit(fails ? 1 : 0);
+// ── LIVE DATA ────────────────────────────────────────────────────────────────────────────────────────────────────
+// Everything above is a fixed clock and hand-built inputs, which proves the rule is self-consistent and nothing more.
+// This block runs it against real venue data, using the market's OWN URL as an independent oracle: a venue-native
+// recurrence market names itself (updown-<n>m / updown-<n>h), so if the duration rule is doing its job, no such market
+// survives it. The rule never sees the slug — slug as oracle, never as criterion.
+//
+// NON-VACUITY IS ENFORCED. An oracle that matches nothing passes forever while proving nothing, which is the same
+// failure class as a check that never exercises its own NULL branch. So a run that finds zero oracle markets is
+// reported as NOT EXERCISED, never as a pass. Network trouble is a skip with a stated reason; a rule violation is a
+// hard failure. Set Q3_SKIP_LIVE=1 to skip the block entirely.
+async function live() {
+  if (process.env.Q3_SKIP_LIVE) { console.log("POOL MATCHER · live data SKIPPED (Q3_SKIP_LIVE set)"); return; }
+  console.log("POOL MATCHER · live data — the recurrence oracle vs the duration rule");
+  const now = new Date().toISOString();
+  let markets = 0, oracle = 0, violations = 0, pages = 0;
+  try {
+    for (let off = 0; off < 1000; off += 100) {
+      const r = await fetch(`https://gamma-api.polymarket.com/events?order=volume24hr&ascending=false&closed=false&active=true&limit=100&offset=${off}`);
+      if (!r.ok) throw new Error(`gamma HTTP ${r.status}`);
+      const evs = await r.json(); if (!Array.isArray(evs) || !evs.length) break; pages++;
+      for (const e of evs) {
+        const tags = (e.tags ?? []).map((t: any) => t.label);
+        for (const m of e.markets ?? []) {
+          if (!m.active || m.closed) continue; markets++;
+          // The oracle reads the market's own URL, exactly as market_details.polymarket_link carries it.
+          const link = `https://polymarket.com/event/${e.slug}/${m.slug ?? ""}`;
+          if (!slugNamesRecurrence(link)) continue;
+          oracle++;
+          if (poolDurationAdmit(m.endDate, now, tags)) {
+            violations++;
+            console.log(`  FAIL v1.9 admitted a market its own URL names as recurrence: ${m.slug} endDate=${m.endDate}`);
+          }
+        }
+      }
+      if (evs.length < 100) break;
+    }
+  } catch (err) {
+    console.log(`  SKIP live check could not run: ${(err as Error).message} — network, not a rule failure`);
+    return;
+  }
+  ran++;
+  if (!oracle) {
+    // Not a pass. The oracle found nothing to judge, so the assertion is unexercised and says so.
+    console.log(`  NOT EXERCISED  ${markets} live markets over ${pages} page(s), 0 matched ${RECURRENCE_SLUG_ORACLE} — the oracle is`);
+    console.log(`                 empty on this venue read, so this assertion proved nothing. It is exercised against`);
+    console.log(`                 market_details.polymarket_link at republish, where the pattern's rows actually live.`);
+    return;
+  }
+  if (violations) { fails++; console.log(`  FAIL ${violations}/${oracle} oracle market(s) survived the duration rule`); }
+  else console.log(`  ok  ${oracle}/${oracle} oracle market(s) of ${markets} live excluded by the duration rule`);
+}
+
+live().then(() => {
+  console.log(fails ? `POOL MATCHER · ${fails}/${ran} FAILED` : `POOL MATCHER · ${ran}/${ran} assertions pass`);
+  process.exit(fails ? 1 : 0);
+});

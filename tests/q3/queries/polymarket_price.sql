@@ -3,6 +3,17 @@
 -- PLUS the bound market's traded volume at audit (v1.7a) — both from THIS ONE EXECUTION, which is why v1.7(a)
 -- adds no additional Dune executions.
 -- Source: polymarket_polygon.market_trades · polymarket_polygon.market_details (Dune curated).
+-- COLUMN RECONCILIATION against the 35-column market_details schema. This query touches THREE of its columns and all
+-- three already agree with it, so nothing here changed in the v1.9 pass — recorded so that is a checked fact rather
+-- than an untested assumption:
+--   condition_id     VARCHAR    selected and lower()-ed in `market`, then joined to market_trades.condition_id, which
+--                               is VARBINARY — hence '0x' || lower(to_hex(...)) on the trades side. The two columns
+--                               share a name and not a type; comparing them directly is the silent-failure mode.
+--   token_id         UINT256    CAST(token_id AS VARCHAR) before comparing to the {{token_id}} param, which arrives
+--                               as a decimal string. Never compared as a number.
+--   last_changed_at  TIMESTAMP  ORDER BY key selecting the freshest snapshot for the token.
+-- It reads NEITHER tags NOR market_end_time, so the two v1.9 corrections to polymarket_pool.sql have no counterpart
+-- here and this file's output contract is unchanged.
 -- Params (text params are substituted RAW by Dune — quote them in SQL as '{{param}}'; number params unquoted):
 --   token_id    text    ERC-1155 outcome token id as a decimal string (market_trades.asset_id, UINT256)
 --   captured_at text    ISO-8601 UTC, e.g. 2026-09-03T14:37:00.000Z (equals the record's posted_at, v1.2.1)

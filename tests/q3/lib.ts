@@ -32,10 +32,21 @@ export const POOL_TAGS_EXCLUDE_RECURRENCE = ["Recurring", "Up", "Down", "5M", "1
 export const POOL_TAGS_EXCLUDE = [...POOL_TAGS_EXCLUDE_CATEGORY, ...POOL_TAGS_EXCLUDE_RECURRENCE];
 /** v1.9: a pool candidate is excluded when the interval from the read to its scheduled resolution is under 24h. */
 export const POOL_MIN_HOURS_TO_CLOSE = 24;
-/** Tags reach us three ways: a real array of labels or {label} objects (Gamma), a JSON-array string, or a
- *  comma-delimited string (Dune). Normalise all three to lower-cased WHOLE tags. Matching is containment, never
- *  substring: v1.8 excludes the bare tags Up, Down and 1H, which a boundary regex would fire on inside other text,
- *  and the set is mixed case with non-ASCII present. */
+/** ORACLE, NOT CRITERION. A venue-native recurrence market names itself in its own URL. Nothing in the pool query or
+ *  the venue reads filters on this — v1.9's rule is the published close time alone. It exists so a check can assert,
+ *  from a fact the rule never saw, that the rule excluded what it should have. Inverting that (filtering on the slug)
+ *  would make pool membership a naming judgement, which is exactly what §3 removes. */
+export const RECURRENCE_SLUG_ORACLE = /updown-\d+[mh]/i;
+/** True iff a venue URL names the market as a recurrence contract. Accepts the whole link or a bare slug. */
+export function slugNamesRecurrence(link: unknown): boolean {
+  return RECURRENCE_SLUG_ORACLE.test(String(link ?? ""));
+}
+/** Tags reach us as a real array of labels or {label} objects (Gamma) or as ARRAY(VARCHAR) through the Dune API —
+ *  both arrive here as arrays. The JSON-array-string and comma-string branches below are kept as tolerated legacy
+ *  shapes, not live ones: market_details.tags is ARRAY(VARCHAR) at source, which is why polymarket_pool.sql no
+ *  longer json_parses it. Normalise every shape to lower-cased WHOLE tags. Matching is containment, never substring:
+ *  v1.8 excludes the bare tags Up, Down and 1H, which a boundary regex would fire on inside other text, and the set
+ *  is mixed case with non-ASCII present. */
 export function normalizeTags(tags: unknown): string[] {
   let arr: unknown[];
   if (Array.isArray(tags)) arr = tags;
