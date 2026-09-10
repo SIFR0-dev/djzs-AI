@@ -12,8 +12,23 @@
 --   token_id         UINT256    CAST(token_id AS VARCHAR) before comparing to the {{token_id}} param, which arrives
 --                               as a decimal string. Never compared as a number.
 --   last_changed_at  TIMESTAMP  ORDER BY key selecting the freshest snapshot for the token.
--- It reads NEITHER tags NOR market_end_time, so the two v1.9 corrections to polymarket_pool.sql have no counterpart
--- here and this file's output contract is unchanged.
+-- It reads NEITHER tags NOR market_end_time, so the v1.9 corrections to polymarket_pool.sql have no counterpart here
+-- and this file's output contract is unchanged.
+-- COERCION SWEEP (the class: a defensive parse or cast on a column that is already the right type). This file
+-- contains NO member of that class. Every coercion in it converts between genuinely different types, or acts on a
+-- PARAM rather than a column:
+--   from_iso8601_timestamp('{{captured_at}}')  parses a PARAM STRING. Dune substitutes text params raw, so this
+--                                              really is a string and really must be parsed. Not a column.
+--   ... AT TIME ZONE 'UTC' AS TIMESTAMP        drops the zone to match market_trades.block_time. A conversion
+--                                              between differing types, not a redundant one.
+--   CAST({{window_min}} AS BIGINT)             number param -> the type date_add expects.
+--   CAST(t.asset_id AS VARCHAR)                UINT256 -> decimal string, to compare with the token_id param.
+--   CAST(token_id AS VARCHAR)                  same, on the market_details side.
+--   CAST(date_trunc(...) AS DATE)              date_trunc yields a timestamp; block_month is a DATE.
+--   '0x' || lower(to_hex(t.condition_id))      trades' VARBINARY -> details' VARCHAR hex.
+--   COALESCE(SUM(...), 0e0)                    SUM over no rows is NULL and the contract says 0. Semantics, not a cast.
+-- Worth stating plainly: unlike the pool query, THIS query has executed live many times and its VWAP has been
+-- verified against sealed records, so these coercions are empirically correct rather than merely argued.
 -- Params (text params are substituted RAW by Dune — quote them in SQL as '{{param}}'; number params unquoted):
 --   token_id    text    ERC-1155 outcome token id as a decimal string (market_trades.asset_id, UINT256)
 --   captured_at text    ISO-8601 UTC, e.g. 2026-09-03T14:37:00.000Z (equals the record's posted_at, v1.2.1)

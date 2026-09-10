@@ -8,7 +8,7 @@ import {
   RECURRENCE_SLUG_ORACLE, slugNamesRecurrence,
 } from "./lib";
 
-let fails = 0, ran = 0;
+let fails = 0, ran = 0, unexercised = 0;
 function eq(got: unknown, want: unknown, what: string) {
   ran++;
   const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -127,19 +127,24 @@ async function live() {
     console.log(`  SKIP live check could not run: ${(err as Error).message} — network, not a rule failure`);
     return;
   }
-  ran++;
   if (!oracle) {
-    // Not a pass. The oracle found nothing to judge, so the assertion is unexercised and says so.
+    // Not a pass, and deliberately NOT counted as one: the oracle found nothing to judge. Counting it would inflate
+    // the pass total with an assertion that never ran, which is the very thing this block exists to prevent.
+    unexercised++;
     console.log(`  NOT EXERCISED  ${markets} live markets over ${pages} page(s), 0 matched ${RECURRENCE_SLUG_ORACLE} — the oracle is`);
     console.log(`                 empty on this venue read, so this assertion proved nothing. It is exercised against`);
     console.log(`                 market_details.polymarket_link at republish, where the pattern's rows actually live.`);
+    console.log(`                 These ladders are short-lived by nature — 3 matched at 04:29Z on 2026-09-10 and none`);
+    console.log(`                 3h later — so an empty read here is expected, not a defect.`);
     return;
   }
+  ran++;
   if (violations) { fails++; console.log(`  FAIL ${violations}/${oracle} oracle market(s) survived the duration rule`); }
   else console.log(`  ok  ${oracle}/${oracle} oracle market(s) of ${markets} live excluded by the duration rule`);
 }
 
 live().then(() => {
-  console.log(fails ? `POOL MATCHER · ${fails}/${ran} FAILED` : `POOL MATCHER · ${ran}/${ran} assertions pass`);
+  const tail = unexercised ? ` · ${unexercised} NOT EXERCISED (see above — not counted as passing)` : "";
+  console.log(fails ? `POOL MATCHER · ${fails}/${ran} FAILED${tail}` : `POOL MATCHER · ${ran}/${ran} assertions pass${tail}`);
   process.exit(fails ? 1 : 0);
 });

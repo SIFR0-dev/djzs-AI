@@ -25,19 +25,16 @@
 -- DURATION (v1.9), which supersedes the recurrence tags wherever the venue publishes a close time:
 --   A candidate is excluded when the interval from THIS EXECUTION to its scheduled resolution is under 24 hours,
 --   computed from market_details.market_end_time — the venue's own published number, not an inference from tags.
---   market_end_time is a VARCHAR, so it is parsed with TRY: ISO-8601 first (from_iso8601_timestamp handles the 'Z'
---   and any offset), then a space-separated fallback pinned to UTC. Anything that does not parse is NULL, never a
---   date — an unparseable value must not exclude or admit a market on an interval nobody published.
+--   market_end_time is timestamp(3) with time zone, the SAME type now() returns, so the test is a direct comparison:
+--   no parse, no cast, no TRY. There is no unparseable case to defend against, only a NULL one — a market for which
+--   the venue published no close at all, which is the only thing that falls through to the v1.8 tag proxy.
 --   Where close_time IS NULL the v1.8 recurrence tags decide, exactly as they did before this amendment. Where it is
 --   present it GOVERNS in both directions: a market tagged 1H that closes in a week is admitted, and an untagged
 --   market that closes in an hour is excluded. The v1.5 category exclusions are unaffected and apply either way.
---   GRANULARITY: market_end_time carries a time of day, but for a large share of markets that time is exactly
---   00:00:00 — the venue publishing a DATE serialized with a zero clock (measured on the same field via Gamma
---   2026-09-10: 1395/1395 markets carry T##:##, and 597 of those are exactly T00:00:00Z). The zero time is taken AS
---   PUBLISHED and never rounded up to end-of-day, because rounding would invent a close the venue did not state. The
---   error is therefore bounded by 24h and ONE-DIRECTIONAL: the interval can only be understated, so the rule may
---   exclude a market that truly has 24-48h left, and can never admit one that truly has under 24h. That is the safe
---   direction for the pool's ground. See SCAN_SPEC §1.
+--   GRANULARITY: a real timestamp, so a midnight value is a MIDNIGHT CLOSE, not a date that lost its clock. Roughly
+--   43% of open markets close at exactly 00:00:00Z (measured on the same field via Gamma 2026-09-10: 597 of 1395),
+--   which is a venue scheduling convention and nothing more. The value is used exactly as published and never rounded
+--   to end-of-day. There is no rounding error and no directional bias in the duration test. See SCAN_SPEC §1.
 --   close_time and close_basis are returned so a re-run shows WHICH test admitted each row; a pool whose rows all
 --   come back close_basis='v1.8 tag proxy' means market_end_time is not populated, which the publish check surfaces
 --   rather than letting the duration rule silently no-op.
@@ -57,12 +54,23 @@
 --   condition_id      VARCHAR        details side of the join; lower()-ed. VARBINARY on market_trades, hence the
 --                                    '0x' || to_hex() normalization — the two sides are genuinely different types.
 --   tags              ARRAY(VARCHAR) consumed by transform/array_intersect directly. NOT a JSON string.
---   market_end_time   VARCHAR        parsed to a timestamp with TRY; see DURATION above.
+--   market_end_time   timestamp(3) with time zone — compared to now() directly. NOT parsed, NOT cast.
 --   token_id          UINT256        CAST to VARCHAR before comparison and output (a UINT256 does not survive JSON).
 --   outcome_index     INTEGER        compared to bare 0 / 1, no cast.
 --   question          VARCHAR        MAX() for the collapse to one row per condition.
 --   polymarket_link   VARCHAR        returned as the recurrence oracle, never filtered on.
 --   last_changed_at   TIMESTAMP      max_by / ORDER BY key for picking the freshest snapshot.
+-- COERCIONS THAT REMAIN, and why each is a real conversion between genuinely different types rather than a defensive
+-- one on an already-correct column — the class this file no longer contains:
+--   '0x' || lower(to_hex(condition_id))   trades' VARBINARY -> details' VARCHAR hex. Different types; required.
+--   CAST(asset_id AS VARCHAR)             UINT256 -> decimal string (a UINT256 does not survive JSON). Required.
+--   CAST(token_id AS VARCHAR)             same, on the details side.
+--   CAST(date_trunc(...) AS DATE)         date_trunc returns a timestamp; block_month is a DATE. Required.
+--   lower(trim(x)) on the {{exclude}} arg operates on a PARAM string, not a column, so normalizing it is the point.
+--   lower(condition_id) on the details side is case NORMALIZATION for the join, not a type coercion, and is the
+--     ruled-correct form of the join.
+--   COALESCE(tags, ARRAY[]) guards a NULL VALUE, not a wrong type: it makes an untagged market fail the INCLUDE
+--     intersect explicitly instead of relying on NULL propagation through cardinality().
 -- Params (text params are substituted RAW by Dune — quote them in SQL as '{{param}}'; number params unquoted):
 --   n        number  pool size, default 5
 --   exclude  text    comma-separated 0x condition_ids already recorded; may be empty ("")
@@ -72,6 +80,7 @@
 --   itself in its own URL (updown-<n>m / updown-<n>h), so the check can assert the duration rule excluded it WITHOUT
 --   the query ever matching on a slug. The slug is never a criterion here — nothing in this file filters on it.
 --   tags is returned so a re-run shows WHY each row qualified (the publish check asserts on it).
+--   close_time is returned as the timestamp it is; a NULL there means the venue published no close for that market.
 --   token ids are returned as decimal STRINGS (UINT256 does not survive a JSON number).
 --   YES/NO are POSITIONAL (market_details.outcome_index 0 / 1), per Dune's note that labels are not reliable.
 --   last_price_yes = price of the latest taker trade on token_id_yes in the window (NULL if the YES token did not trade).
@@ -122,14 +131,10 @@ tagged AS (
     cid_hex,
     tags,
     transform(COALESCE(tags, CAST(ARRAY[] AS ARRAY(VARCHAR))), x -> lower(trim(x))) AS tags_norm,
-    -- v1.9: market_end_time is a plain VARCHAR column on market_details — read straight off the row, no metadata
-    -- blob and no extraction. Only the VARCHAR-to-timestamp parse is defensive: TRY on both branches, so a value the
-    -- venue never published, or published unparseably, becomes NULL and falls through to the tag proxy rather than
-    -- becoming a date. NOTE the granularity caveat in the DURATION block above.
-    COALESCE(
-      TRY(from_iso8601_timestamp(market_end_time)),
-      TRY(with_timezone(CAST(replace(replace(market_end_time, 'T', ' '), 'Z', '') AS TIMESTAMP), 'UTC'))
-    ) AS close_time
+    -- v1.9: market_end_time IS the close time. It is timestamp(3) with time zone on the table, and now() is the same
+    -- type, so it is compared as-is in `classified` with no parse, no cast and no TRY. NULL means the venue published
+    -- no close for this market, which is the ONLY case that falls through to the v1.8 tag proxy.
+    market_end_time AS close_time
   FROM meta
 ),
 classified AS (
