@@ -28,7 +28,11 @@ export const POOL_TAGS_INCLUDE = ["Politics", "Elections", "Geopolitics", "World
  *  category exclusions always apply, while the v1.8 recurrence tags are only a PROXY for a duration the venue may
  *  publish directly. Concatenated in this order the union is byte-identical to the pre-v1.9 constant. */
 export const POOL_TAGS_EXCLUDE_CATEGORY = ["Sports", "Esports", "Culture", "entertainment", "Weather"];
-export const POOL_TAGS_EXCLUDE_RECURRENCE = ["Recurring", "Up", "Down", "5M", "15M", "1H", "4H"];
+/** "Up or Down" is ONE tag, not two. PROTOCOL v1.8 reads "Recurring, Up or Down, or an interval tag (5M, 15M, 1H,
+ *  4H)" and the pre-registered text was right: the venue publishes a single label `Up or Down` (confirmed live
+ *  2026-09-10, x12 across 600 events), and standalone `Up` / `Down` tags DO NOT EXIST. Listing them separately meant
+ *  the recurrence proxy could never fire on any market, so the v1.8 fallback was dead code from the day it landed. */
+export const POOL_TAGS_EXCLUDE_RECURRENCE = ["Recurring", "Up or Down", "5M", "15M", "1H", "4H"];
 export const POOL_TAGS_EXCLUDE = [...POOL_TAGS_EXCLUDE_CATEGORY, ...POOL_TAGS_EXCLUDE_RECURRENCE];
 /** v1.9: a pool candidate is excluded when the interval from the read to its scheduled resolution is under 24h. */
 export const POOL_MIN_HOURS_TO_CLOSE = 24;
@@ -45,8 +49,10 @@ export function slugNamesRecurrence(link: unknown): boolean {
  *  both arrive here as arrays. The JSON-array-string and comma-string branches below are kept as tolerated legacy
  *  shapes, not live ones: market_details.tags is ARRAY(VARCHAR) at source, which is why polymarket_pool.sql no
  *  longer json_parses it. Normalise every shape to lower-cased WHOLE tags. Matching is containment, never substring:
- *  v1.8 excludes the bare tags Up, Down and 1H, which a boundary regex would fire on inside other text, and the set
- *  is mixed case with non-ASCII present. */
+ *  v1.8's set still includes the bare interval tags 5M, 15M, 1H and 4H, which a substring or boundary regex would
+ *  fire on inside other text, and the set is mixed case with non-ASCII present. (The Up/Down example this comment
+ *  used to give was wrong twice over: the tag is the single label "Up or Down", and the live vocabulary also carries
+ *  an unrelated "Finance Updown" that a substring match would wrongly catch.) */
 export function normalizeTags(tags: unknown): string[] {
   let arr: unknown[];
   if (Array.isArray(tags)) arr = tags;

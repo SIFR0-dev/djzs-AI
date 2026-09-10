@@ -22,7 +22,7 @@ const at = (h: number) => new Date(Date.parse(NOW) + h * 3_600_000).toISOString(
 console.log("POOL MATCHER · tag vocabulary");
 // The union is what every pre-v1.9 caller matched on; splitting it must not have reordered or dropped a label.
 eq(POOL_TAGS_EXCLUDE, [...POOL_TAGS_EXCLUDE_CATEGORY, ...POOL_TAGS_EXCLUDE_RECURRENCE], "exclude union = category ++ recurrence");
-eq(POOL_TAGS_EXCLUDE, ["Sports", "Esports", "Culture", "entertainment", "Weather", "Recurring", "Up", "Down", "5M", "15M", "1H", "4H"], "exclude union byte-identical to v1.8");
+eq(POOL_TAGS_EXCLUDE, ["Sports", "Esports", "Culture", "entertainment", "Weather", "Recurring", "Up or Down", "5M", "15M", "1H", "4H"], "exclude union matches PROTOCOL v1.8's literal text");
 eq(POOL_TAGS_INCLUDE.length, 8, "include set size");
 eq(POOL_MIN_HOURS_TO_CLOSE, 24, "v1.9 threshold is 24h");
 
@@ -40,7 +40,14 @@ eq(poolTagsAdmit([]), false, "no category tag at all");
 eq(poolTagsAdmit(["Sports", "Politics"]), false, "v1.5 exclusion beats inclusion");
 eq(poolTagsAdmit(["Crypto", "Recurring"]), false, "v1.8 Recurring");
 eq(poolTagsAdmit(["Crypto", "1H"]), false, "v1.8 interval tag");
-eq(poolTagsAdmit(["Economy", "Up"]), false, "v1.8 Up");
+// THE CORRECTION, pinned in both directions. v1.8's text is "Recurring, Up or Down, or an interval tag" — one label,
+// not two. Live vocabulary (2026-09-10, 600 events): "Up or Down" x12, standalone "Up"/"Down" ZERO. Implementing it
+// as two tags meant the recurrence proxy could never fire on any real market.
+eq(poolTagsAdmit(["Economy", "Up or Down"]), false, "v1.8 'Up or Down' — the single real tag — excludes");
+eq(poolTagsAdmit(["Economy", "UP OR DOWN"]), false, "…case-normalized");
+eq(poolTagsAdmit(["Economy", "Up"]), true, "bare 'Up' is NOT a venue tag and must not exclude on its own");
+eq(poolTagsAdmit(["Economy", "Down"]), true, "…nor bare 'Down'");
+eq(poolTagsAdmit(["Economy", "Finance Updown"]), true, "'Finance Updown' is a real, unrelated live tag — containment must not catch it");
 // Containment, not substring: a boundary regex fires on "Up" inside "Blow Up" and would silently drop the market.
 eq(poolTagsAdmit(["Blow Up", "Politics"]), true, "whole-tag containment, not substring");
 eq(poolTagsAdmit(["POLITICS", "rEcUrRiNg"]), false, "case-normalized both sides");
@@ -69,6 +76,7 @@ eq(poolDurationAdmit(at(120), NOW, ["Crypto", "1H"]), true, "1H tag overridden b
 eq(poolDurationAdmit(at(2), NOW, ["Politics"]), false, "clean tags do NOT rescue a 2h close");
 console.log("POOL MATCHER · v1.9 — the v1.8 tag set is the fallback where no close time is published");
 eq(poolDurationAdmit(null, NOW, ["Crypto", "Recurring"]), false, "no close, recurrence tag → proxy excludes");
+eq(poolDurationAdmit(null, NOW, ["Crypto", "Up or Down"]), false, "no close, 'Up or Down' → proxy excludes (this is what the two-tag bug broke)");
 eq(poolDurationAdmit(null, NOW, ["Crypto"]), true, "no close, clean tags → proxy admits");
 eq(poolDurationAdmit("not a date", NOW, ["Crypto", "4H"]), false, "unparseable close falls back to the proxy");
 eq(poolDurationAdmit(null, NOW), true, "no close and no tags → admitted; the caller must COUNT this case");
@@ -85,6 +93,7 @@ eq(poolAdmit(["Sports"], at(720), NOW), false, "v1.5 exclusion beats any duratio
 eq(poolAdmit(["Sports", "Politics"], at(720), NOW), false, "…even alongside a category tag");
 eq(poolAdmit(["Crypto", "1H"], at(720), NOW), true, "v1.9: a month-out close overrides the 1H tag");
 eq(poolAdmit(["Crypto", "1H"], null, NOW), false, "…but with no close published the tag still decides");
+eq(poolAdmit(["Crypto", "Up or Down"], null, NOW), false, "…same for the 'Up or Down' ladder tag");
 eq(poolAdmit([], at(720), NOW), false, "no category tag, however long-dated");
 
 // ── LIVE DATA ────────────────────────────────────────────────────────────────────────────────────────────────────

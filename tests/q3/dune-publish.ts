@@ -40,6 +40,11 @@ async function ensurePublic(id: number, s: typeof SPECS.price) {
 // v1.5 rule 1 + v1.8 label sets come from tests/q3/lib.ts, the same definition polymarket_pool.sql documents and
 // tape/discover.ts uses, so this check cannot pass a query whose vocabulary has drifted from the tooling.
 const need = (cond: unknown, msg: string) => { if (!cond) throw new Error(`CHECK FAILED: ${msg}`); console.log(`  ok  ${msg}`); };
+/** OUTAGE OR ABSENCE WARNS, MISMATCH FAILS — the same rule q3-verify applies to Irys 5xx and Dune 402. A check that
+ *  could not be exercised has returned UNKNOWN, not WRONG, and failing the run on unknown makes a scheduled republish
+ *  fail at random on conditions nothing in this repo controls. A check that WAS exercised and disagreed still throws. */
+const warns: string[] = [];
+const warn = (msg: string) => { warns.push(msg); console.log(`  WARN ${msg}`); };
 async function checks(priceId: number, poolId: number) {
   console.log("checks");
   const pool = await runDuneQuery(poolId, { n: 5, exclude: "" }); const rows = pool.rows;
@@ -72,18 +77,30 @@ async function checks(priceId: number, poolId: number) {
   if (survivors.length) {
     throw new Error(`CHECK FAILED: ${survivors.length} market(s) whose own URL names them as recurrence survived v1.9: ${survivors.slice(0, 3).map(r => `${r.polymarket_link} close_time=${r.close_time}`).join(" · ")}`);
   }
-  // Non-vacuity: the query returns only ADMITTED rows, so zero survivors is the pass — but it is also what a broken
-  // oracle looks like. Prove the pattern can still match something by running it against the venue directly.
-  let oracleLive = 0;
+  // Zero survivors is the RESULT WE WANT, but on its own it is not evidence: the query returns only admitted rows, so
+  // "0 survivors" looks identical whether the rule excluded them or the pattern simply stopped matching anything.
+  // Probe the venue to tell those apart. The probe DECIDES NOTHING about the pool — it only says whether the check
+  // above was exercised, which is why every outcome of it short of a mismatch is a WARN.
+  let oracleLive = 0, probeError = "";
   try {
     for (let off = 0; off < 400; off += 100) {
-      const evs = await (await fetch(`https://gamma-api.polymarket.com/events?order=volume24hr&ascending=false&closed=false&active=true&limit=100&offset=${off}`)).json();
+      const r = await fetch(`https://gamma-api.polymarket.com/events?order=volume24hr&ascending=false&closed=false&active=true&limit=100&offset=${off}`);
+      if (!r.ok) throw new Error(`gamma HTTP ${r.status}`);
+      const evs = await r.json();
       if (!Array.isArray(evs) || !evs.length) break;
       for (const e of evs) for (const m of e.markets ?? []) if (slugNamesRecurrence(`https://polymarket.com/event/${e.slug}/${m.slug ?? ""}`)) oracleLive++;
     }
-  } catch { /* venue unreachable — reported below, never silently treated as a pass */ }
-  need(oracleLive > 0, `recurrence oracle ${RECURRENCE_SLUG_ORACLE} still matches live markets (${oracleLive} found) — so "0 survivors in the pool" is a real exclusion, not a pattern that stopped matching`);
-  console.log(`  ok  0 of ${wide.rows.length} admitted pool rows are named as recurrence by their own URL, while the pattern matches ${oracleLive} live market(s) at the venue`);
+  } catch (e) { probeError = (e as Error).message; }
+  if (probeError) {
+    warn(`recurrence oracle NOT EXERCISED — the venue probe could not run (${probeError}). 0 of ${wide.rows.length} admitted pool rows are named as recurrence by their own URL, but with the venue unreachable that cannot be told apart from a pattern matching nothing. Outage is not mismatch.`);
+  } else if (oracleLive === 0) {
+    // Not inverted: state what was actually observed. Zero live matches means the oracle has nothing to judge RIGHT
+    // NOW — these ladders open and resolve within minutes, so an empty read is the normal state a good fraction of
+    // the time, and a scheduled republish must not fail on it.
+    warn(`recurrence oracle NOT EXERCISED — ${RECURRENCE_SLUG_ORACLE} matched 0 live markets at the venue, so the pattern currently has nothing to match and "0 survivors in the pool" proves nothing this run. These ladders roll every few minutes; an empty oracle is UNKNOWN, not a rule failure. A market that DOES match and survives the filter is still a hard FAIL above.`);
+  } else {
+    console.log(`  ok  recurrence oracle exercised: ${RECURRENCE_SLUG_ORACLE} matches ${oracleLive} live market(s) at the venue, and 0 of ${wide.rows.length} admitted pool rows are named as recurrence by their own URL — a real exclusion, not a pattern that stopped matching`);
+  }
   const ex = await runDuneQuery(poolId, { n: 5, exclude: String(rows[0].condition_id) });
   need(ex.rows.length === 5 && !ex.rows.some(r => r.condition_id === rows[0].condition_id), `pool exclude=${String(rows[0].condition_id).slice(0, 12)}… drops that market and still returns 5 rows`);
   const now = new Date().toISOString(); let live: DuneRow[] | null = null, liveTok = "";
@@ -124,5 +141,8 @@ async function checks(priceId: number, poolId: number) {
   if (mode === "update") { console.log("update"); for (const [k, s] of Object.entries(SPECS)) await update(ids[k], s); }
   if (mode !== "test") for (const [k, s] of Object.entries(SPECS)) await ensurePublic(ids[k], s);
   await checks(ids.price, ids.pool);
-  console.log("PASS — now: npx tsx tests/q3/q3-verify.ts && git add tests/q3 && git commit");
+  console.log(warns.length
+    ? `PASS with ${warns.length} WARNING(S) — nothing disagreed; ${warns.length} check(s) could not be exercised this run (listed above). Re-run later to exercise them.`
+    : "PASS");
+  console.log("now: npx tsx tests/q3/q3-verify.ts && git add tests/q3 && git commit");
 })().catch(e => { console.error(String((e as Error).message ?? e)); process.exit(1); });

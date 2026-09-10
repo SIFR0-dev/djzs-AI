@@ -13,12 +13,14 @@
 --   stripping. json_parse(tags) was not a wrong answer, it was a TYPE ERROR — json_parse takes VARCHAR — and TRY does
 --   not swallow analysis-time type failures, so the query could not have compiled. Matching is ARRAY CONTAINMENT on
 --   whole tags, both sides lower-cased: the set is non-positional, mixed case, 3-7 per market and contains non-ASCII,
---   and v1.8's exclusions include the bare tags Up, Down, 1H, which a substring or word-boundary regex would fire on
---   inside unrelated text. A NULL tag array is coerced to an empty array, which no INCLUDE label intersects, so an
+--   and v1.8's exclusions include the bare interval tags 5M/15M/1H/4H, which a substring or word-boundary regex
+--   would fire on inside unrelated text (the live vocabulary also carries an unrelated 'Finance Updown'). A NULL tag array is coerced to an empty array, which no INCLUDE label intersects, so an
 --   untagged market is excluded by the same rule that excludes an out-of-category one rather than by an error.
 --   INCLUDE (any one admits): Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto
 --   EXCLUDE, CATEGORY (any one rejects, always):   Sports · Esports · Culture · entertainment · Weather   [v1.5]
---   EXCLUDE, RECURRENCE (fallback proxy only):     Recurring · Up · Down · 5M · 15M · 1H · 4H             [v1.8]
+--   EXCLUDE, RECURRENCE (fallback proxy only):     Recurring · `Up or Down` · 5M · 15M · 1H · 4H        [v1.8]
+--     NOTE `Up or Down` is ONE tag. It was implemented as two ('up','down'), which no market carries, so this
+--     fallback could never fire. PROTOCOL v1.8's wording was correct; the implementation misread it.
 --   A market with NO market_details row has no tags and cannot be classified; it is NOT in the pool until the API
 --   snapshot catches up, because showing it as in-category would be an assertion.
 --
@@ -148,7 +150,7 @@ classified AS (
     -- v1.9: under 24h to the published close is out; with no published close, v1.8's tags stand in for it.
     AND CASE
           WHEN t.close_time IS NOT NULL THEN t.close_time >= now() + INTERVAL '24' HOUR
-          ELSE cardinality(array_intersect(t.tags_norm, ARRAY['recurring','up','down','5m','15m','1h','4h'])) = 0
+          ELSE cardinality(array_intersect(t.tags_norm, ARRAY['recurring','up or down','5m','15m','1h','4h'])) = 0
         END
 ),
 top AS (
