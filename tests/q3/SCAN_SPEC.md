@@ -164,3 +164,37 @@ Four of the five Polymarket rows are strikes of one event (Fed Decision in Septe
 **Surfaced as an open question, and ruled the same day.** Kalshi rank 5, `KXBALANCEPOWERCOMBO-27FEB-RR` ("House Control Republican **AND** Senate Control Republican"), is a conjunction that §1's operational combo rule admits: no `mve_collection_ticker`, `market_type: binary`. **The operator ruled that it stays in the pool** — membership is mechanical per PROTOCOL §3 and no semantic conjunction filter is added. The ruling is recorded as a decision in §1; nothing in the code changed, because the code was already correct.
 
 **Not done, deliberately: no Phase A record was created from this pool.** Standing instruction — pool records wait until Dune is confirmed to have budget, because a venue record needs `price_at_audit` from the priced path and v1.3.1 prohibits an operator-typed price. The Dune republish of query 8601185 (§4) is also still owed, so Polymarket membership above is the Gamma print, not the confirmed pool.
+
+### 2026-09-10 — pool day, post-merge of #149 (v1.5 · v1.6 · v1.8 · v1.9 all live; venue-direct, Surf not run — no CLI in this container). Discovery JSON: `tests/q3/discovery/2026-09-10.json`
+
+This is the first pool day run with the full amendment stack in force and with the Dune pool query republished and paid. The Polymarket ranking below was produced by the venue-direct Gamma read; the operator's independent run of Dune query 8601185 returned **the same five September FOMC strikes**, so the two paths agree on day one's Polymarket pool.
+
+
+**Kalshi** — 13,139 open events enumerated, 25,665 in-category markets. Ranking metric: 24h contracts. v1.9 dropped **5,545** market(s) closing inside 24h. Book exclusions: 0 id(s), 0 market(s) dropped.
+
+| # | id | category | 24h volume | last | market |
+|---|---|---|---|---|---|
+| 1 | `KXFEDDECISION-26SEP-H0` | Economics | 1,556,524 | 0.36 | Will the Federal Reserve Hike rates by 0bps at their September 2026 meeting? |
+| 2 | `KXFEDDECISION-26SEP-H25` | Economics | 810,557 | 0.64 | Will the Federal Reserve Hike rates by 25bps at their September 2026 meeting? |
+| 3 | `SENATEME-26-D` | Elections | 568,978 | 0.68 | Will Democratics win the Senate race in Maine? |
+| 4 | `SENATEOHS-26-D` | Elections | 354,979 | 0.51 | Will Democratics win the Senate race in Ohio? |
+| 5 | `SENATEIA-26-D` | Elections | 336,274 | 0.37 | Will Democratics win the Senate race in Iowa? |
+
+**Polymarket** — 1,000 open events enumerated, 3,106 in-category markets. Ranking metric: 24h USD (gamma). v1.9 dropped **210** market(s) closing inside 24h; **29** admitted with no published close time (counted, not silently waved through). Book exclusions: 0 id(s), 0 market(s) dropped.
+
+| # | id | category | 24h volume | last | market |
+|---|---|---|---|---|---|
+| 1 | `0xa3b36b2d6104d34a…` | fomc, Economic Policy, Fed Rates,  | 1,928,965 | 0.355 | Will there be no change in Fed interest rates after the September 2026 meeting |
+| 2 | `0x876506d8b2bd7a0d…` | fomc, Economic Policy, Fed Rates,  | 1,697,828 | 0.635 | Will the Fed increase interest rates by 25 bps after the September 2026 meetin |
+| 3 | `0x2e4b58fc18dbffd7…` | fomc, Economic Policy, Fed Rates,  | 920,646 | 0.0085 | Will the Fed increase interest rates by 50+ bps after the September 2026 meeti |
+| 4 | `0xac02cbb049e46d6a…` | fomc, Economic Policy, Fed Rates,  | 824,892 | 0.0035 | Will the Fed decrease interest rates by 25 bps after the September 2026 meetin |
+| 5 | `0x5e464d85eb49f22d…` | fomc, Economic Policy, Fed Rates,  | 744,388 | 0.0015 | Will the Fed decrease interest rates by 50+ bps after the September 2026 meeti |
+
+**OBSERVATION, NOT A RULE — day one's pool is dominated by one event, and the records are therefore correlated.** All five Polymarket rows are strikes on the **September 2026 FOMC decision**, and so are Kalshi ranks 1 and 2. **Seven of the ten records this day produces bind the same underlying event**, across two venues and across mutually exclusive strikes of one outcome distribution. Three consequences, recorded so §6 cannot silently assume otherwise:
+
+1. **These are not ten independent observations.** §6 must not pool them into any statistic that assumes independence — a base rate, a hit rate, a confidence interval, a significance test. The effective n for this day is far below ten and is closer to *one event observed ten ways*.
+2. **The correlation is structural, not incidental.** Strikes on one distribution are mutually exclusive by construction: exactly one of the five Polymarket rows resolves YES. Their outcomes are not merely correlated, they are *deterministically linked*, so errors made on them will also be linked.
+3. **Nothing is filtered.** §3's pool is mechanical — top-N by 24h volume within the categories — and a concentrated day is a fact about the venues that day, not a defect to correct. No record is dropped, re-weighted or re-ranked because of this note. It is recorded so the analysis can stratify or cluster by underlying event, which is a §6 decision and is not taken here.
+
+This is expected to recur: a scheduled macro event drives volume on both venues at once, so pool days near an FOMC, CPI or election date will concentrate. Recording the underlying event per record — rather than reconstructing it later from questions — is the cheap way to make clustering possible, and is worth considering before the sample grows.
+
