@@ -58,26 +58,50 @@ The Polymarket venue-direct read pages the top **1,000 open events by 24h volume
 
 `npx tsx tests/q3/dune-publish.ts --update` PATCHes the committed SQL onto 8601185, verifies the published text equals the file, and runs the contract checks: five rows, seven columns (`tags` added in v1.5), decimal token ids, the exclude path, and — new — **every row's `tags` satisfies §1**. Needs `DUNE_API_KEY` (Analyst plan). The first republish after the v1.5 SQL also confirms the stored format of `market_details.tags` (documented by Dune only as "Market category tags from the API"); the whole-word match was written to hold under either format, and the check is what proves it.
 
-## 5. Liquidity at audit — v1.7(a) sources per venue
+## 5. Liquidity at audit — v1.7(a) unit convention, sources, and schedules
 
 v1.7(a) puts the bound market's traded volume on every record sealed after the amendment, alongside `price_at_audit`: `volume_24h` (traded USD notional in the 24 hours ending at `posted_at`) and `volume_total` (cumulative traded USD notional to `posted_at`). Both come from the same trade data and the same source tier as the VWAP, so a verifier reproduces them exactly as it reproduces the price.
 
-| venue | source | unit and definition | reproduced by |
+### The unit, stated explicitly: $1 of notional per contract or share
+
+**One convention on both venues.** A Kalshi contract and a Polymarket share each settle at $1, so the count of contracts or shares traded **is** the traded USD notional. Kalshi fixes this itself — the market object carries `notional_value_dollars: "1.0000"`. This is the number both venues publish as their volume, and it is the number the §3 pool ranks on, which matters because v1.7(b) calibrates its 25,000 USD threshold by observing that the pool "has sat entirely above it".
+
+**It is not premium.** Premium, Σ(price × size), is a different quantity: it is the cash that changed hands, and it scales with the price level. Measured 2026-09-10 against each venue's own published figure:
+
+| venue | our number | venue-published | ratio |
 |---|---|---|---|
-| Polymarket | the **same** execution of the price query (`dune.json.price_query_id`) that returns the VWAP — v1.7(a) adds no additional Dune executions | `SUM(amount)` over taker legs on the market's `condition_id`: Dune's documented single-counted USDC volume, the measure `polymarket_pool.sql` also ranks on | re-running the public query with the record's `price_source.query_params` |
-| Kalshi | the public trades endpoint, the same per-fill history the VWAP is computed from (`kalshiVolumes` in `kalshi-client.ts`) | Σ(taker-side price × `count`) over fills: the USD that changed hands on the leg the taker traded, read from each fill's `taker_outcome_side`. A fill whose side or price cannot be read makes the whole answer null rather than defaulting a leg | re-fetching the same ticker and window and recomputing |
+| Kalshi `KXFEDDECISION-26SEP-H26` (YES 0.01) | 244,200 | `volume_24h_fp` 244,311 | 1.000 |
+| Kalshi `KXFEDDECISION-26SEP-H0` (near even) | 891,898 | `volume_24h_fp` 889,400 | 1.003 |
+| Polymarket Fed +50bps (YES 0.007) | Σ(size) 1,110,705 | `volume24hr` 1,110,705 | 1.000 |
+| Polymarket Fed no-change (YES 0.46) | Σ(size) 1,394,891 | `volume24hr` 1,362,945 | 1.023 |
+| Polymarket LAPTOP FDV (YES 0.32) | Σ(size) 1,088,898 | `volume24hr` 1,093,041 | 0.996 |
+
+Σ(price × size) on the same three Polymarket markets came to ratios of 0.027, 0.494 and 0.391 against the published figure — it tracks the price, as a premium measure does, and is not what either venue means by volume. Two further reasons the notional convention is the right one here: a premium number is monotone in price level, so v1.7(b)'s thin stratum would be partly a restatement of the quote it exists to control for; and a premium number would put a lopsided strike below the threshold purely because its quote is a penny, while the venue reports it as deep.
+
+### Sources per venue
+
+| venue | source | computed as | reproduced by |
+|---|---|---|---|
+| Polymarket | the **same** execution of the price query that returns the VWAP — v1.7(a) adds no additional Dune executions | `SUM(shares)` over taker legs on the market's `condition_id`, resolved from `token_id` through `market_details` | re-running the public query with the record's `price_source.query_params` |
+| Kalshi | the public trades endpoint, the same per-fill history the VWAP is computed from (`kalshiVolumes` in `kalshi-client.ts`) | Σ(`count_fp`) over fills | re-fetching the same ticker and window and recomputing |
 | series | none — a series binding names no venue market | `null`, per v1.7(a) | n/a |
 
-Decisions this implementation makes, recorded because the amendment leaves them to the tooling:
+### Two schedules, on purpose
 
-- **One basis on both venues: the USD that changed hands on the taker leg, single-counted.** Polymarket is `SUM(amount)` over `is_taker_side` legs on the condition; Kalshi is Σ(taker-side price × `count`) over fills. Matching them is what makes v1.7(b) one 25,000 USD threshold rather than two, and it is the same measure the §3 pool ranks on. Valuing every Kalshi fill at the YES price instead would understate a lopsided strike by 1/p: measured live on 2026-09-10, `KXFEDDECISION-26SEP-H26` (YES 0.01) carried 64,153 USD of 24h taker-leg volume against 4,475 USD on a YES basis, which is the difference between sitting above v1.7(b)'s thin line and below it, while near-even strikes moved under 5%. Residual, stated rather than hidden: a seller of YES appears on Polymarket as a low-priced YES leg while the same economic trade on Kalshi is a NO taker at the complement, so the conventions are matched, not identical.
-- **Scope is the market, not the audited side.** Polymarket sums both outcome tokens by resolving `token_id` to its `condition_id`; Kalshi sums every fill on the ticker. Two records on opposite sides of one market therefore carry the same volume, which is what "the bound market's traded volume" means.
-- **A number is never fabricated to fill the field, and a zero that cannot be true is treated as a missing one.** Phase B *refuses to seal* rather than write a wrong or ambiguous volume. On Polymarket that covers a token `market_details` cannot resolve (the query returns NULL, not 0) and a market-wide total of zero while the audited token just traded, which can only mean the `condition_id` join matched nothing. On Kalshi it covers a truncated page walk, an empty fill history, a fill whose taker side or price cannot be read, and a total that sums to zero — the price gate has already proven fills exist in a window inside the same range, so zero is not a possible true answer. Every refusal names its cause and leaves the record unsealed for a rerun. `null` stays reserved for series bindings and for records sealed before v1.7.
+- **`volume_24h` keeps the price's schedule.** It rides the price re-fetch: the Dune column arrives with the price execution, and the Kalshi 24-hour window is one page.
+- **`volume_total` is checked at seal and on its first weekly pass only.** Its window ends at `posted_at` over settled trades, so it is immutable once `posted_at` is past, and it is sealed in `record_hash`. Re-running it weekly re-answers a settled question. The check fires on the commit that adds the record (records changed, so the re-verification is forced) and then once more on the first weekly full pass, bounded by an 8-day window — the weekly cadence plus a margin, so exactly one scheduled run catches a given record and none after it. On Kalshi this skips the full-history page walk outright: measured on a live market, 25 pages and 24,915 fills drop to 1 page and 886 fills, with `volume_24h` unchanged. On Dune the column rides the price execution either way, so the saving there is nil and the rule is applied only so there is one rule rather than two.
+
+### Decisions this implementation makes
+
+- **Scope is the market, not the audited side.** Polymarket sums both outcome tokens by resolving `token_id` to its `condition_id`; Kalshi sums every fill on the ticker. The notional convention is price- and side-neutral by construction, so two records on opposite sides of one market carry the same volume, which is what "the bound market's traded volume" means.
+- **A number is never fabricated to fill the field, and a zero that cannot be true is treated as a missing one.** Phase B *refuses to seal* rather than write a wrong or ambiguous volume. On Polymarket that covers a token `market_details` cannot resolve (the query returns NULL, not 0) and a market-wide total of zero while the audited token just traded, which can only mean the `condition_id` join matched nothing. On Kalshi it covers a truncated page walk, an empty fill history, a fill whose size cannot be read, and a total that sums to zero — the price gate has already proven fills exist in a window inside the same range, so zero is not a possible true answer. Every refusal names its cause and leaves the record unsealed for a rerun. `null` stays reserved for series bindings and for records sealed before v1.7.
 - **Absence is not a verification failure, but a null on a post-amendment record is.** Records sealed before the amendment carry neither field, and sealed records are immutable, so `q3-verify` skips them. A record that *does* carry the keys is held to v1.7(a) categorically: a sealed venue record must have both non-null, a sealed series record must have both null. On re-check, a numeric disagreement fails; a recomputation that returns NULL warns, on the outage-is-not-mismatch rule the price side uses; and a query that no longer returns the column at all fails, because that is a contract break rather than a known unknown.
 - **Hashing.** The two fields are sealed at Phase B, so they sit inside `record_hash` and are excluded from `phase_a_hash` exactly as `price_at_audit` is. Adding their names to `PHASE_A_EXCLUDE` cannot disturb an existing hash: `strip()` removes keys by name, and a record that never carried the key canonicalises identically either way.
 - **An invariant worth asserting.** `volume_total >= volume_24h` always, since the total is cumulative to the same instant the 24-hour window ends at. The verifier and the publish check both assert it.
 
 **No volume filter exists anywhere, and none may be added here.** v1.7 is explicit: liquidity is recorded and stratified, never filtered; §3's coverage pool is unchanged and scan bindings stay unconstrained by volume. The 25,000 USD threshold in v1.7(b) is an **analysis** stratum for §6 of the protocol, not a selection rule — nothing in `discover.ts`, the pool query, or Phase A reads it. A filter added mid-study would change what the study covers, and coverage was pre-registered.
+
+**Owed at the next republish, and cheap.** `polymarket_pool.sql` ranks the §3 pool on `SUM(amount)`, a column whose semantics this repo has never executed against. If `amount` is premium rather than shares, the pool ranks on a different measure from both the record's `volume_24h` and Gamma's published `volume24hr`, which would matter because v1.7(b)'s calibration is stated against the pool's own selection metric. One query settles it: run the pool for a lopsided market and compare `SUM(amount)` with `SUM(shares)`. The record fields do not depend on the answer — they use `SUM(shares)` explicitly for exactly this reason.
 
 ## 6. First pool day log
 

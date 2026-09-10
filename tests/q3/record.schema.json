@@ -391,7 +391,7 @@
         "null"
       ],
       "minimum": 0,
-      "description": "v1.7(a): traded USD notional on the bound market in the 24h ending at posted_at. null for series bindings and for records sealed before v1.7."
+      "description": "v1.7(a): traded USD notional on the bound market in the 24h ending at posted_at. $1 of notional per contract (Kalshi) or per share (Polymarket) — the convention both venues publish and the §3 pool ranks on. null for series bindings and for records sealed before v1.7."
     },
     "volume_total": {
       "type": [
@@ -399,7 +399,7 @@
         "null"
       ],
       "minimum": 0,
-      "description": "v1.7(a): cumulative traded USD notional on the bound market to posted_at. null for series bindings and for records sealed before v1.7."
+      "description": "v1.7(a): cumulative traded USD notional on the bound market to posted_at, same $1-notional convention as volume_24h. Immutable once posted_at is past. null for series bindings and for records sealed before v1.7."
     },
     "record_hash": {
       "type": [

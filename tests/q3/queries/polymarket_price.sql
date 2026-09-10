@@ -15,8 +15,14 @@
 --   SCOPE is the whole MARKET (both outcome tokens), not just the audited token — v1.7 says "the bound market's
 --     traded volume". token_id resolves to its condition_id through market_details (latest snapshot), and the sums
 --     run over taker legs on that condition. Two records on opposite sides of one market get the same volume.
---   UNIT is SUM(amount): Dune's documented single-counted USDC volume, the same measure polymarket_pool.sql ranks on.
---     volume_usdc above keeps its v1.2 definition (SUM(price*shares) over the VWAP window) and is unchanged.
+--   UNIT is SUM(shares): $1 of notional per share, single-counted over taker legs. A Polymarket share and a Kalshi
+--     contract both settle at $1, so shares traded IS the traded USD notional, and it is what BOTH venues publish as
+--     their volume. Measured 2026-09-10 against Gamma's own volume24hr on three markets spanning the price range:
+--     Sum(size) matched at ratio 0.996-1.023, while Sum(price*size) came in at 0.027-0.494 — it tracks the price,
+--     as a premium measure does. Premium weighting would also make the number monotone in price level, so v1.7(b)'s
+--     thin stratum would be partly a restatement of the quote it exists to control for.
+--     volume_usdc above keeps its v1.2 definition (SUM(price*shares) over the VWAP window, i.e. premium) and is unchanged;
+--     it answers a different question and is not comparable to these two columns.
 --   volume_24h   = taker-leg amount over [captured_at - 24h, captured_at)   — the 24 hours ending at posted_at.
 --   volume_total = taker-leg amount over every trade before captured_at     — cumulative to the audit moment.
 --   A market that resolves but has not traded yields 0; a token_id that resolves to NO market yields NULL for both,
@@ -56,18 +62,19 @@ resolved AS (
   SELECT count(*) AS n FROM market
 ),
 mkt_trades AS (
-  SELECT t.amount, t.block_time
+  SELECT t.shares, t.block_time
   FROM polymarket_polygon.market_trades t
   CROSS JOIN bounds b
   JOIN market m ON '0x' || lower(to_hex(t.condition_id)) = m.cid_hex
   WHERE t.block_month <= CAST(date_trunc('month', b.window_end) AS DATE)
     AND t.block_time  <  b.window_end
     AND t.is_taker_side
+    AND t.shares > 0
 ),
 vols AS (
   SELECT
-    COALESCE(SUM(CASE WHEN mt.block_time >= b.vol24_start THEN mt.amount END), 0e0) AS v24,
-    COALESCE(SUM(mt.amount), 0e0)                                                   AS vtot
+    COALESCE(SUM(CASE WHEN mt.block_time >= b.vol24_start THEN mt.shares END), 0e0) AS v24,
+    COALESCE(SUM(mt.shares), 0e0)                                                   AS vtot
   FROM mkt_trades mt
   CROSS JOIN bounds b
 )
