@@ -28,10 +28,16 @@ export async function runDuneQuery(queryId: number, params: Record<string, strin
   }
   throw new Error(`dune execution ${execution_id} timed out`);
 }
-/** Output contract the price query MUST satisfy (one row). Column names are fixed here; the SQL adapts to them. */
-export interface PriceRow { vwap: number; trade_count: number; volume_usdc: number; window_start: string; window_end: string }
+/** Output contract the price query MUST satisfy (one row). Column names are fixed here; the SQL adapts to them.
+ *  volume_24h / volume_total (v1.7a) ride the SAME execution as the price — the amendment adds no extra Dune runs.
+ *  They are optional on the interface so a pre-v1.7 published query still parses; the publish check is what asserts them. */
+// undefined and null differ and must not be conflated: undefined = the query no longer returns the column at all (a
+// contract break, since the SQL aliases both explicitly), null = the column exists and the SQL returned NULL for it.
+export interface PriceRow { vwap: number; trade_count: number; volume_usdc: number; window_start: string; window_end: string; volume_24h: number | null | undefined; volume_total: number | null | undefined }
 export function asPriceRow(rows: DuneRow[]): PriceRow {
   if (rows.length !== 1) throw new Error(`price query must return exactly 1 row, got ${rows.length}`);
   const r = rows[0]; for (const k of ["vwap", "trade_count", "volume_usdc", "window_start", "window_end"]) if (!(k in r)) throw new Error(`price query row missing column '${k}'`);
-  return { vwap: Number(r.vwap), trade_count: Number(r.trade_count), volume_usdc: Number(r.volume_usdc), window_start: String(r.window_start), window_end: String(r.window_end) };
+  const num = (v: unknown) => v === null || v === undefined ? null : Number(v);
+  const opt = (k: string) => k in r ? num(r[k]) : undefined; // key presence separates "column gone" from "column NULL"
+  return { vwap: Number(r.vwap), trade_count: Number(r.trade_count), volume_usdc: Number(r.volume_usdc), window_start: String(r.window_start), window_end: String(r.window_end), volume_24h: opt("volume_24h"), volume_total: opt("volume_total") };
 }

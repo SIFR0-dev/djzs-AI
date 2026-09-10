@@ -1,8 +1,8 @@
-# Q3 Dune queries — output contracts (protocol v1.2)
+# Q3 Dune queries — output contracts (protocol v1.7)
 
 Both queries are **saved, public** Dune queries over `polymarket_polygon.market_trades`. Their IDs go in `tests/q3/dune.json`; their SQL is committed here verbatim (`polymarket_price.sql`, `polymarket_pool.sql`). Column names inside the SQL are the scan instance's concern (it can see the schema); the **output** columns below are fixed and the tooling depends on them exactly.
 
-## `polymarket_price` — `price_at_audit` for a Polymarket record
+## `polymarket_price` — `price_at_audit` and the v1.7(a) volumes for a Polymarket record
 
 Parameters (Dune `{{param}}` syntax — **text params are substituted raw; the SQL quotes them as `'{{param}}'`**):
 - `token_id` (text) — the outcome token of the audited side (`market.token_id` on the record)
@@ -17,8 +17,12 @@ Must return **exactly one row** with columns:
 | `volume_usdc` | double | Σ(price × shares) in the window |
 | `window_start` | timestamp | inclusive |
 | `window_end` | timestamp | exclusive |
+| `volume_24h` | double | v1.7(a). Traded USD notional on the **bound market** in `[captured_at − 24h, captured_at)`: `SUM(amount)` over taker legs on the market's `condition_id`, resolved from `token_id` through `market_details`. |
+| `volume_total` | double | v1.7(a). The same sum over every trade before `captured_at` — cumulative to the audit moment. |
 
 If `trade_count = 0` the row is still returned with `vwap = NULL`; the tooling refuses to price the record and says so.
+
+The two volume columns ride **this same execution**, which is how v1.7(a) adds no additional Dune executions. They are scoped to the market (both outcome tokens), not to the audited token, so two records on opposite sides of one market carry the same volume. A `token_id` that resolves to no market yields `NULL` for both, never `0`: "unknown" and "none" are different answers and a fabricated zero would enter a sealed, Merkle-anchored record. `volume_total >= volume_24h` always, and the publish check asserts it along with a non-zero total on a token selected for having traded.
 
 ## `polymarket_pool` — the §3 coverage pool (v1.5: scan categories only)
 

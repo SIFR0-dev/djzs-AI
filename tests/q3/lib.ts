@@ -25,7 +25,10 @@ export function devVar(name: string): string | undefined {
   try { for (const l of readFileSync("djzs-trust-mcp/.dev.vars", "utf8").split("\n")) { const m = l.match(new RegExp(`^\\s*${name}\\s*=\\s*"?([^"\\n]+)"?\\s*$`)); if (m) return m[1].trim(); } } catch {}
   return undefined;
 }
-/** Fields hashed in Phase A: everything the operator + engine wrote before the price was looked up. */
-export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "record_hash", "outcome"]);
+/** Fields hashed in Phase A: everything the operator + engine wrote before the price was looked up.
+ *  volume_24h / volume_total (v1.7a) are sealed at Phase B alongside the price, so they are excluded here for the same
+ *  reason price_at_audit is. Adding a name to this set cannot change any existing hash: strip() removes keys by name,
+ *  and a record that never carried the key canonicalises identically either way. */
+export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "volume_24h", "volume_total", "record_hash", "outcome"]);
 export const PHASE_B_EXCLUDE = new Set(["record_hash", "outcome"]);
 export function strip(rec: Record<string, unknown>, ex: Set<string>) { const o: Record<string, unknown> = {}; for (const k of Object.keys(rec)) if (!ex.has(k)) o[k] = rec[k]; return o; }

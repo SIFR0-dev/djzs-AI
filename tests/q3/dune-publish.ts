@@ -11,8 +11,8 @@ import { runDuneQuery, asPriceRow, duneKey, type DuneRow } from "./dune-client";
 const BASE = "https://api.dune.com/api/v1", CFG = "tests/q3/dune.json", Q = "tests/q3/queries";
 type Param = { key: string; value: string; type: "text" | "number" };
 const SPECS = {
-  price: { name: "DJZS Q3 · polymarket_price (VWAP, protocol v1.2)", file: `${Q}/polymarket_price.sql`, idKey: "price_query_id",
-    description: "VWAP of on-chain trades on one Polymarket outcome token in [captured_at - window_min, captured_at). SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
+  price: { name: "DJZS Q3 · polymarket_price (VWAP + volume at audit, protocol v1.7)", file: `${Q}/polymarket_price.sql`, idKey: "price_query_id",
+    description: "VWAP of on-chain trades on one Polymarket outcome token in [captured_at - window_min, captured_at), plus the bound market volume_24h and volume_total at captured_at (v1.7a, same execution). SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
     params: [{ key: "token_id", value: "0", type: "text" }, { key: "captured_at", value: "2026-01-01T00:00:00Z", type: "text" }, { key: "window_min", value: "60", type: "number" }] as Param[] },
   pool: { name: "DJZS Q3 · polymarket_pool (top-N by 24h volume in scan categories, protocol v1.5)", file: `${Q}/polymarket_pool.sql`, idKey: "pool_query_id",
     description: "Top-n Polymarket markets by single-counted 24h on-chain volume within the scan categories (v1.5 rule 1; labels in the SQL header, matched on market_details.tags), excluding condition_ids already recorded. SQL + contract: github.com/SIFR0-dev/djzs-AI tests/q3/queries",
@@ -54,12 +54,23 @@ async function checks(priceId: number, poolId: number) {
     if (run.rows.length === 1 && Number(run.rows[0].trade_count) > 0) { live = run.rows; liveTok = tok; }
   }
   need(live, "price on a live token, captured_at=now−3h (table lags ~1h), window_min=60 → trade_count > 0 (tried YES/NO tokens of the top-5 pool)");
-  const pr = asPriceRow(live!); need(Number.isFinite(pr.vwap) && pr.vwap > 0 && pr.vwap < 1, `price live token ${liveTok.slice(0, 10)}…: one row, five columns, vwap ${pr.vwap} over ${pr.trade_count} trades, ${pr.volume_usdc.toFixed(2)} USDC`);
+  const pr = asPriceRow(live!); need(Number.isFinite(pr.vwap) && pr.vwap > 0 && pr.vwap < 1, `price live token ${liveTok.slice(0, 10)}…: one row, vwap ${pr.vwap} over ${pr.trade_count} trades, ${pr.volume_usdc.toFixed(2)} USDC`);
+  // v1.7(a): the two volume columns must ride this SAME execution — the amendment adds no additional Dune runs.
+  need(pr.volume_24h != null && pr.volume_total != null, `v1.7a volume columns present and non-NULL on a live token (24h ${pr.volume_24h}, total ${pr.volume_total})`);
+  need((pr.volume_24h as number) >= 0 && (pr.volume_total as number) >= 0, "v1.7a volumes are non-negative");
+  need((pr.volume_total as number) >= (pr.volume_24h as number), `v1.7a volume_total ${pr.volume_total} >= volume_24h ${pr.volume_24h} (a cumulative total cannot be smaller than its own last 24h)`);
+  // This probe was selected for trade_count > 0, so a zero here is a systematic condition_id join break, not an idle market.
+  need((pr.volume_total as number) > 0, `v1.7a volume_total > 0 on a token with ${pr.trade_count} trades in-window (a zero means the condition_id join matched nothing)`);
   need(pr.window_start < pr.window_end, `window_start ${pr.window_start} < window_end ${pr.window_end}`);
   const empty = await runDuneQuery(priceId, { token_id: liveTok, captured_at: "2020-01-01T00:00:00Z", window_min: 1 });
   need(empty.rows.length === 1, `price on an empty window (pre-launch captured_at, window_min=1) → still exactly one row (got ${empty.rows.length})`);
   need(empty.rows[0].vwap === null && Number(empty.rows[0].trade_count) === 0, `empty window → vwap NULL, trade_count 0 (got vwap=${empty.rows[0].vwap}, trade_count=${empty.rows[0].trade_count})`);
-  for (const c of ["vwap", "trade_count", "volume_usdc", "window_start", "window_end"]) need(c in empty.rows[0], `price column '${c}' present on the NULL-path row`);
+  for (const c of ["vwap", "trade_count", "volume_usdc", "window_start", "window_end", "volume_24h", "volume_total"]) need(c in empty.rows[0], `price column '${c}' present on the empty-window row`);
+  // v1.7(a): the CASE exists so an UNRESOLVABLE token yields NULL, never 0 — "unknown" and "none" are different answers.
+  // The empty-window probe above does NOT exercise it: that token resolves in market_details, so it takes the 0 branch.
+  const unresolved = await runDuneQuery(priceId, { token_id: "0", captured_at: now, window_min: 60 });
+  need(unresolved.rows.length === 1, `price on an unresolvable token_id → still exactly one row (got ${unresolved.rows.length})`);
+  need(unresolved.rows[0].volume_24h === null && unresolved.rows[0].volume_total === null, `v1.7a unresolvable token_id → volume_24h and volume_total are NULL, never 0 (got ${unresolved.rows[0].volume_24h}, ${unresolved.rows[0].volume_total})`);
 }
 (async () => {
   const mode = process.argv.includes("--test") ? "test" : process.argv.includes("--update") ? "update" : "create";
