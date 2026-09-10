@@ -1,31 +1,42 @@
--- Q3 protocol v1.5 · polymarket_pool
--- Top-{{n}} Polymarket markets by single-counted 24h on-chain volume WITHIN THE SCAN'S CATEGORIES (v1.5 rule 1), excluding
--- condition_ids already in the book (§3 coverage pool). Rule 2: the exact venue labels are committed here, not asserted.
+-- Q3 protocol v1.8 · polymarket_pool
+-- Top-{{n}} Polymarket markets by 24h traded notional WITHIN THE SCAN'S CATEGORIES (v1.5 rule 1), excluding venue-native
+-- recurrence markets (v1.8) and condition_ids already in the book (§3 coverage pool). Rule 2: the exact venue labels are
+-- committed here and in tests/q3/lib.ts (POOL_TAGS_INCLUDE / POOL_TAGS_EXCLUDE), not asserted.
 --
--- CATEGORY FIELD: polymarket_polygon.market_details.tags (VARCHAR, "Market category tags from the API" — the Polymarket
---   Gamma event tags, several labels per market). Matched as whole words (case-insensitive) on the tags string, so the
---   match is the same whether Dune stores the list as a JSON array or as a delimited string. Labels are Polymarket's own
---   (verified against gamma-api.polymarket.com/tags/slug/<slug> on 2026-09-09):
---   INCLUDE (scan categories — economics, rates/central banks, crypto, domestic politics, geopolitics; financials per
---     tape/config.json):  Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto
---   EXCLUDE (wins over any include on the same market): Sports · Esports · Culture · entertainment · Weather
---     ("Culture" is the label of slug pop-culture; "entertainment" is lowercase at the venue.)
---   A market with NO market_details row yet (API snapshot behind chain) has no tags and cannot be classified; it is NOT
---   in the pool until the snapshot catches up — an unclassifiable market must not be shown as in-category.
---   Word-boundary matching keeps "Esports" from matching "Sports" and "Fed Rates" matching "Fed"; "World Series"/"World Cup"
---   markets carry "Sports" and are excluded by the exclude-wins rule.
+-- UNIT: SUM(shares) — $1 of notional per share, which is what Polymarket publishes as its volume. Measured 2026-09-10,
+--   Gamma's volume24hr equals Sum(size) at ratio 0.996-1.023 across three markets from 0.007 to 0.46, while
+--   Sum(price*size) lands at 0.027-0.494 because premium tracks the price. The output column keeps the name
+--   volume_24h_usdc for contract stability; a share settles at $1, so the count IS the USD notional.
+--
+-- TAGS are matched by ARRAY CONTAINMENT on whole tags, both sides lower-cased — never by regex over a flattened string.
+--   The tag set is non-positional, mixed case, 3-7 per market, and contains non-ASCII, so a substring or word-boundary
+--   regex is both fragile and wrong at the edges: v1.8's exclusions include the bare tags Up, Down, 1H, which a
+--   boundary regex would fire on inside unrelated text. `tags` is read as a JSON array where it parses and as a
+--   comma-delimited list otherwise, so the match holds under either stored form.
+--   INCLUDE (any one admits): Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto
+--   EXCLUDE (any one rejects, and exclusion wins): Sports · Esports · Culture · entertainment · Weather   [v1.5]
+--                                                  Recurring · Up · Down · 5M · 15M · 1H · 4H             [v1.8]
+--   A market with NO market_details row has no tags and cannot be classified; it is NOT in the pool until the API
+--   snapshot catches up, because showing it as in-category would be an assertion.
+--
+-- THE JOIN between the two tables, stated because getting it wrong is silent:
+--   market_trades.condition_id is VARBINARY; market_details.condition_id is a 0x-prefixed lowercase hex VARCHAR.
+--   The only correct comparison is  lower(md.condition_id) = '0x' || lower(to_hex(t.condition_id)).
+--   market_details is ONE ROW PER OUTCOME TOKEN, so joining trades to it directly fans every trade x2 on a binary and
+--   xN on a multi-outcome market — which would inflate pool volume non-uniformly BY OUTCOME COUNT, a selection bias
+--   rather than a rounding error. Trades are therefore pre-aggregated to one row per condition (`vol`) BEFORE any join,
+--   and market_details is collapsed to one row per condition (`meta`, max_by on last_changed_at) before being joined.
+--   Both sides of `classified` are one row per market by construction, so the join cannot fan.
 --
 -- Sources: polymarket_polygon.market_trades (volume, last price) · polymarket_polygon.market_details (tags, question, outcome tokens)
 -- Params (text params are substituted RAW by Dune — quote them in SQL as '{{param}}'; number params unquoted):
 --   n        number  pool size, default 5
 --   exclude  text    comma-separated 0x condition_ids already recorded; may be empty ("")
 -- Output columns: condition_id · question · token_id_yes · token_id_no · volume_24h_usdc · last_price_yes · tags
---   tags is returned so a re-run shows WHY each row is in-category (the publish check asserts on it).
+--   tags is returned so a re-run shows WHY each row qualified (the publish check asserts on it).
 --   token ids are returned as decimal STRINGS (UINT256 does not survive a JSON number).
---   YES/NO are POSITIONAL (market_details.outcome_index 0 / 1), per Dune's note that labels (Yes/No, Up/Down, team names) are not
---   reliable; the trades' Yes/No labels remain a fallback for token ids only (every pool row has a market_details row by construction).
---   volume_24h_usdc = SUM(amount) over taker legs (is_taker_side) in the trailing 24h — the documented single-counted volume.
---   last_price_yes  = price of the latest taker trade on token_id_yes in that window (NULL if the YES token did not trade).
+--   YES/NO are POSITIONAL (market_details.outcome_index 0 / 1), per Dune's note that labels are not reliable.
+--   last_price_yes = price of the latest taker trade on token_id_yes in the window (NULL if the YES token did not trade).
 WITH parts AS (
   SELECT split('{{exclude}}', ',') AS arr
 ),
@@ -40,33 +51,48 @@ recent AS (
     '0x' || lower(to_hex(condition_id)) AS cid_hex,
     question,
     CAST(asset_id AS VARCHAR)           AS token_id,
-    token_outcome, price, amount, block_time, evt_index
+    token_outcome, price, shares, block_time, evt_index
   FROM polymarket_polygon.market_trades
   WHERE block_month >= CAST(date_trunc('month', now() - INTERVAL '24' HOUR) AS DATE)
     AND block_time  >= now() - INTERVAL '24' HOUR
     AND is_taker_side
     AND condition_id IS NOT NULL
+    AND shares > 0
 ),
 vol AS (
-  SELECT cid_hex, SUM(amount) AS volume_24h_usdc, MAX(question) AS question_from_trades
+  -- ONE ROW PER MARKET, computed before any contact with market_details so no join can fan the trades.
+  SELECT cid_hex, SUM(shares) AS volume_24h_usdc, MAX(question) AS question_from_trades
   FROM recent
   WHERE cid_hex NOT IN (SELECT cid_hex FROM excluded)
   GROUP BY cid_hex
 ),
 meta AS (
+  -- ONE ROW PER MARKET: market_details carries a row per outcome token per snapshot; take the freshest snapshot's tags.
+  SELECT cid_hex, max_by(tags, last_changed_at) AS tags
+  FROM (
+    SELECT lower(condition_id) AS cid_hex, tags, last_changed_at
+    FROM polymarket_polygon.market_details
+    WHERE condition_id IS NOT NULL
+      AND lower(condition_id) IN (SELECT cid_hex FROM vol)
+  )
+  GROUP BY cid_hex
+),
+tagged AS (
   SELECT
-    lower(condition_id) AS cid_hex,
+    cid_hex,
     tags,
-    row_number() OVER (PARTITION BY lower(condition_id) ORDER BY last_changed_at DESC) AS rn
-  FROM polymarket_polygon.market_details
-  WHERE lower(condition_id) IN (SELECT cid_hex FROM vol)
+    transform(
+      COALESCE(TRY(CAST(json_parse(tags) AS ARRAY(VARCHAR))), split(COALESCE(tags, ''), ',')),
+      x -> lower(trim(regexp_replace(x, '[\[\]"]', '')))
+    ) AS tags_norm
+  FROM meta
 ),
 classified AS (
-  SELECT v.cid_hex, v.volume_24h_usdc, v.question_from_trades, m.tags
+  SELECT v.cid_hex, v.volume_24h_usdc, v.question_from_trades, t.tags
   FROM vol v
-  JOIN meta m ON m.cid_hex = v.cid_hex AND m.rn = 1
-  WHERE regexp_like(lower(m.tags), '(^|[^a-z0-9])(politics|elections|geopolitics|world|economy|fed|finance|crypto)([^a-z0-9]|$)')
-    AND NOT regexp_like(lower(m.tags), '(^|[^a-z0-9])(sports|esports|culture|entertainment|weather)([^a-z0-9]|$)')
+  JOIN tagged t ON t.cid_hex = v.cid_hex
+  WHERE cardinality(array_intersect(t.tags_norm, ARRAY['politics','elections','geopolitics','world','economy','fed','finance','crypto'])) > 0
+    AND cardinality(array_intersect(t.tags_norm, ARRAY['sports','esports','culture','entertainment','weather','recurring','up','down','5m','15m','1h','4h'])) = 0
 ),
 top AS (
   SELECT cid_hex, volume_24h_usdc, question_from_trades, tags

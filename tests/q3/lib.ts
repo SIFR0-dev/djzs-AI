@@ -20,6 +20,31 @@ export function renderIntentText(i: unknown): string {
   const o = i as Record<string, unknown>;
   return Object.keys(o).sort().map(k => { const v = o[k]; return `${k}: ${typeof v === "string" ? v : (typeof v === "number" || typeof v === "boolean") ? String(v) : JSON.stringify(v)}`; }).join("\n");
 }
+/** §3 pool tag vocabulary — v1.5 rule 1 (categories) plus v1.8 (venue-native recurrence). ONE definition, consumed by
+ *  the venue-direct read, the Dune publish check and the day's JSON; queries/polymarket_pool.sql carries the same
+ *  strings in its header and matches them the same way, so the three cannot drift apart. */
+export const POOL_TAGS_INCLUDE = ["Politics", "Elections", "Geopolitics", "World", "Economy", "Fed", "Finance", "Crypto"];
+export const POOL_TAGS_EXCLUDE = ["Sports", "Esports", "Culture", "entertainment", "Weather", "Recurring", "Up", "Down", "5M", "15M", "1H", "4H"];
+/** Tags reach us three ways: a real array of labels or {label} objects (Gamma), a JSON-array string, or a
+ *  comma-delimited string (Dune). Normalise all three to lower-cased WHOLE tags. Matching is containment, never
+ *  substring: v1.8 excludes the bare tags Up, Down and 1H, which a boundary regex would fire on inside other text,
+ *  and the set is mixed case with non-ASCII present. */
+export function normalizeTags(tags: unknown): string[] {
+  let arr: unknown[];
+  if (Array.isArray(tags)) arr = tags;
+  else { const s = String(tags ?? ""); let parsed: unknown = null; try { parsed = JSON.parse(s); } catch {}
+    arr = Array.isArray(parsed) ? parsed : s.split(","); }
+  return arr
+    .map(x => (x && typeof x === "object" ? String((x as Record<string, unknown>).label ?? "") : String(x ?? "")))
+    .map(x => x.replace(/[\[\]"]/g, "").trim().toLowerCase())
+    .filter(Boolean);
+}
+/** True iff the tag set carries a scan category and none of the excluded ones. Exclusion wins over inclusion. */
+export function poolTagsAdmit(tags: unknown): boolean {
+  const t = new Set(normalizeTags(tags));
+  const has = (labels: string[]) => labels.some(l => t.has(l.toLowerCase()));
+  return has(POOL_TAGS_INCLUDE) && !has(POOL_TAGS_EXCLUDE);
+}
 export function devVar(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
   try { for (const l of readFileSync("djzs-trust-mcp/.dev.vars", "utf8").split("\n")) { const m = l.match(new RegExp(`^\\s*${name}\\s*=\\s*"?([^"\\n]+)"?\\s*$`)); if (m) return m[1].trim(); } } catch {}

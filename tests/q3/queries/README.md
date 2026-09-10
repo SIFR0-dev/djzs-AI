@@ -28,7 +28,11 @@ The two volume columns ride **this same execution**, which is how v1.7(a) adds n
 
 Parameters: `n` (integer, default 5) · `exclude` (text, comma-separated `condition_id`s already in the book, may be empty)
 
-Returns `n` rows ordered by `volume_24h_usdc` desc, columns: `condition_id`, `question`, `token_id_yes`, `token_id_no`, `volume_24h_usdc`, `last_price_yes`, `tags`. Since v1.5 rule 1 the ranking is restricted to markets whose `market_details.tags` carry a scan-category label (Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto) and none of the excluded ones (Sports · Esports · Culture · entertainment · Weather); the exact strings and the matching rule are the header of `polymarket_pool.sql`, and `tags` is returned so every row shows why it qualified. The publish check asserts it on every row. Operating rules: `tests/q3/SCAN_SPEC.md`.
+Returns `n` rows ordered by `volume_24h_usdc` desc, columns: `condition_id`, `question`, `token_id_yes`, `token_id_no`, `volume_24h_usdc`, `last_price_yes`, `tags`.
+
+`volume_24h_usdc` is **`SUM(shares)`** over single-counted taker legs — $1 of notional per share, the convention Polymarket itself publishes (Gamma's `volume24hr` equals Σ(size), measured at ratio 0.996–1.023). It was `SUM(amount)` (premium) until v1.8; the column name is kept for contract stability.
+
+Since v1.5 rule 1 the ranking is restricted to markets whose `market_details.tags` carry a scan-category tag (Politics · Elections · Geopolitics · World · Economy · Fed · Finance · Crypto) and none of the excluded ones (v1.5: Sports · Esports · Culture · entertainment · Weather; v1.8: Recurring · Up · Down · 5M · 15M · 1H · 4H). Tags are matched by **array containment on whole tags, both sides lower-cased** — not by regex, because v1.8's exclusions include the bare tags `Up`, `Down` and `1H`. The vocabulary and matcher live in `tests/q3/lib.ts` and the SQL header carries the same strings; `tags` is returned so every row shows why it qualified, and the publish check asserts it on every row. Operating rules: `tests/q3/SCAN_SPEC.md`.
 
 ## Reproducibility
 

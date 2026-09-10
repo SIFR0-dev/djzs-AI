@@ -8,6 +8,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { runDuneQuery, asPriceRow, duneKey, type DuneRow } from "./dune-client";
+import { poolTagsAdmit, POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE } from "./lib";
 const BASE = "https://api.dune.com/api/v1", CFG = "tests/q3/dune.json", Q = "tests/q3/queries";
 type Param = { key: string; value: string; type: "text" | "number" };
 const SPECS = {
@@ -36,15 +37,16 @@ async function ensurePublic(id: number, s: typeof SPECS.price) {
   if (String(q.query_sql ?? "").trim() !== readFileSync(s.file, "utf8").trim()) throw new Error(`query ${id}: published SQL ≠ ${s.file}`);
   console.log(`  ${s.idKey} = ${id} · public · SQL matches ${s.file} · https://dune.com/queries/${id}`);
 }
-/** v1.5 rule 1 label sets — MUST equal the regexes in polymarket_pool.sql and tests/q3/tape/discover.ts (the SQL header is the committed source). */
-const POOL_INCLUDE = /(^|[^a-z0-9])(politics|elections|geopolitics|world|economy|fed|finance|crypto)([^a-z0-9]|$)/, POOL_EXCLUDE = /(^|[^a-z0-9])(sports|esports|culture|entertainment|weather)([^a-z0-9]|$)/;
+// v1.5 rule 1 + v1.8 label sets come from tests/q3/lib.ts, the same definition polymarket_pool.sql documents and
+// tape/discover.ts uses, so this check cannot pass a query whose vocabulary has drifted from the tooling.
 const need = (cond: unknown, msg: string) => { if (!cond) throw new Error(`CHECK FAILED: ${msg}`); console.log(`  ok  ${msg}`); };
 async function checks(priceId: number, poolId: number) {
   console.log("checks");
   const pool = await runDuneQuery(poolId, { n: 5, exclude: "" }); const rows = pool.rows;
   need(rows.length === 5, `pool n=5 exclude="" → 5 rows (got ${rows.length})`);
   for (const c of ["condition_id", "question", "token_id_yes", "token_id_no", "volume_24h_usdc", "last_price_yes", "tags"]) need(rows.every(r => c in r), `pool column '${c}' present on every row`);
-  for (const r of rows) { const t = String(r.tags ?? "").toLowerCase(); need(POOL_INCLUDE.test(t) && !POOL_EXCLUDE.test(t), `pool row ${String(r.condition_id).slice(0, 12)}… in-category (v1.5 rule 1): tags=${String(r.tags).slice(0, 80)}`); }
+  for (const r of rows) need(poolTagsAdmit(r.tags), `pool row ${String(r.condition_id).slice(0, 12)}… admitted by v1.5 rule 1 and not excluded by v1.8: tags=${String(r.tags).slice(0, 90)}`);
+  need(rows.every(r => Number(r.volume_24h_usdc) > 0), "pool volume_24h_usdc > 0 on every row (SUM(shares), $1 notional per share)");
   need(rows.every(r => /^\d+$/.test(String(r.token_id_yes))), "pool token_id_yes is a decimal string on every row");
   const ex = await runDuneQuery(poolId, { n: 5, exclude: String(rows[0].condition_id) });
   need(ex.rows.length === 5 && !ex.rows.some(r => r.condition_id === rows[0].condition_id), `pool exclude=${String(rows[0].condition_id).slice(0, 12)}… drops that market and still returns 5 rows`);

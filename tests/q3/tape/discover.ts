@@ -9,18 +9,19 @@
  *  volume is CONTRACTS (volume_24h_fp); Polymarket 24h volume is Gamma's USD volume24hr (Dune's single-counted taker volume decides the record). */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { surf, surfAvailable, CFG, journalCredits } from "./surf";
+import { POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE, poolTagsAdmit } from "../lib";
 
 /** KALSHI — exact `event.category` strings (one per event; markets inherit it). Verified live 2026-09-09 (KXFED/KXCPI → Economics,
  *  KXINX → Financials, KXBTCD/KXETHD → Crypto). Financials (index contracts) admitted per tape/config.json + index-bind precedent. */
 export const KALSHI_POOL_CATEGORIES = ["Economics", "Financials", "Crypto", "Politics", "Elections", "World"];
 /** Open-event categories observed the same day and NOT in the pool (recorded so the exclusion is inspectable, v1.5 rule 1):
  *  Sports · Entertainment · Climate and Weather · Companies · Science and Technology · Mentions · Health · Social · AI · Transportation · Business */
-/** POLYMARKET — Gamma event tag labels (several per market), matched as whole words, case-insensitive, on the joined tag string —
- *  the SAME regexes as tests/q3/queries/polymarket_pool.sql so the venue read and the Dune query classify identically. Exclude wins. */
-export const POLYMARKET_POOL_TAGS = { include: ["Politics", "Elections", "Geopolitics", "World", "Economy", "Fed", "Finance", "Crypto"], exclude: ["Sports", "Esports", "Culture", "entertainment", "Weather"] };
-const wordRe = (labels: string[]) => new RegExp(`(^|[^a-z0-9])(${labels.map(l => l.toLowerCase()).join("|")})([^a-z0-9]|$)`);
-export const POLYMARKET_INCLUDE_RE = wordRe(POLYMARKET_POOL_TAGS.include), POLYMARKET_EXCLUDE_RE = wordRe(POLYMARKET_POOL_TAGS.exclude);
-export const polymarketInCategory = (tags: string) => POLYMARKET_INCLUDE_RE.test(tags.toLowerCase()) && !POLYMARKET_EXCLUDE_RE.test(tags.toLowerCase());
+/** POLYMARKET — Gamma event tag labels (several per market). The vocabulary and the matcher live in tests/q3/lib.ts so
+ *  this read, the Dune publish check and queries/polymarket_pool.sql share ONE definition. Matching is array
+ *  containment on whole tags, case-normalized both sides — never substring, because v1.8 excludes the bare tags
+ *  Up, Down and 1H. Exclusion wins over inclusion. */
+export const POLYMARKET_POOL_TAGS = { include: POOL_TAGS_INCLUDE, exclude: POOL_TAGS_EXCLUDE };
+export const polymarketInCategory = poolTagsAdmit;
 
 const today = new Date().toISOString().slice(0, 10); const args = process.argv.slice(2);
 const platforms = args.includes("--kalshi-only") ? ["kalshi"] : args.includes("--polymarket-only") ? ["polymarket"] : ["kalshi", "polymarket"];
@@ -90,7 +91,7 @@ async function polymarketPool(exclude: Set<string>) {
   for (let offset = 0; offset < 1000; offset += 100) {
     const evs = await getJson(`https://gamma-api.polymarket.com/events?order=volume24hr&ascending=false&closed=false&active=true&limit=100&offset=${offset}`);
     if (!Array.isArray(evs) || !evs.length) break;
-    for (const e of evs) { events++; const tags = (e.tags ?? []).map((t: any) => t.label); if (!polymarketInCategory(tags.join(","))) continue;
+    for (const e of evs) { events++; const tags = (e.tags ?? []).map((t: any) => t.label); if (!polymarketInCategory(tags)) continue;
       for (const m of e.markets ?? []) { const cid = String(m.conditionId ?? "").toLowerCase(); if (!m.active || m.closed || !cid) continue;
         const mslug = String(m.slug ?? "").trim().toLowerCase(); // the MARKET slug (e.slug is the event's — never compared)
         if (exclude.has(cid) || (mslug && exclude.has(mslug))) { dropped.push(cid); continue; }
