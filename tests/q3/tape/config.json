@@ -5,6 +5,7 @@
   "excluded_categories": ["sports", "culture", "stem"],
   "declared_venue": { "exchange": "coinbase", "quote": "USD" },
   "perp_reference": { "exchange": "binance", "quote": "USDT" },
+  "venue_direct_exchanges": { "hyperliquid": { "api": "https://api.hyperliquid.xyz/info", "auth": "none", "credits": 0, "funding_interval": "1h", "note": "Venue-direct tier (as Kalshi is for prediction markets). May back Gate 2 mechanics and, if a perp study is ever pre-registered, HL price/settlement. Never a substitute for Binance/Coinbase figures: HL data describes HL only." } },
   "macro_chain_queries": ["oil price rate hike bitcoin", "jobs report fed hike crypto", "yields treasury bitcoin selloff", "inflation print fed bitcoin", "tariff risk-off crypto"],
   "ledger_dir": "tests/q3/tape/ledger",
   "journal": "tests/q3/tape-journal.md"
