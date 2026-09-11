@@ -235,7 +235,7 @@ Ten records, **four** `event_key`s:
 | `FOMC-2026-09-16` | Kalshi | `KXFEDDECISION-26SEP` | 2 |
 | `FOMC-2026-09-16` | Polymarket | `fed-decision-in-september-762` | 5 |
 | `US-SENATE-ME-2026` | Kalshi | `SENATEME-26` | 1 |
-| `US-SENATE-OH-2026` | Kalshi | `SENATEOHS-26` | 1 |
+| `US-SENATE-OH-SPECIAL-2026` | Kalshi | `SENATEOHS-26` | 1 |
 | `US-SENATE-IA-2026` | Kalshi | `SENATEIA-26` | 1 |
 
 Seven records now form **one** cluster, across both venues, as intended.
@@ -262,10 +262,7 @@ So Ohio's *regular* Senate race is a **2028** event and the only Ohio Senate ele
 
 **But the key form is still weak, for a reason the search turned up rather than the one I raised.** Kalshi lists further open markets that resolve on *the same real-world election*: `KXMIDTERMMOV-OHSEND` and `KXMIDTERMMOV-OHSENR` ("Ohio Senate margin of victory", sub *"On November 3, 2026"*) and `KXMIDTERMVOTETURN-OHSEN` ("Ohio Senate General Election: voter turnout"). If any of those ever enters the pool it must share the Ohio record's `event_key`, or §6 will treat two views of one election as independent — the v1.11 defect again, this time within a single venue. A key that reads as "the Ohio Senate seat contested in 2026" needs to cover the winner, the margin and the turnout alike. The same shape applies to Maine and Iowa; only Ohio was searched.
 
-**Proposed form, not assigned** — the assignment is the operator's:
-
-- `US-SENATE-OH-SPECIAL-2026` for the special, leaving `US-SENATE-OH-2028` free for the regular seat without either having to be renamed later. Naming the election *type* is what makes the two distinguishable in advance rather than after a collision.
-- Maine and Iowa keep their current form (`US-SENATE-ME-2026`, `US-SENATE-IA-2026`) unless the same search finds a special there too; it has not been run.
+**ASSIGNED 2026-09-11: `US-SENATE-OH-SPECIAL-2026`.** Naming the election *type* leaves `US-SENATE-OH-2028` free for the regular seat, so neither key has to be renamed after a collision instead of before one.
 
 **One date note, reported and deliberately not acted on.** `KXMIDTERMMOV-OHSEN*` carries the sub-title *"On November 3, 2026"*, which matches the computed general-election day and contradicts the `2027-11-03` `close_time` on `SENATEOHS-26`. It raises confidence that the election is 2026-11-03 — but it is still **Kalshi**, and §7.3 says a second field, or a second series, from the same venue is not a second source. So it does not meet the independence bar and the cycle form stands.
 
@@ -304,3 +301,47 @@ Both sit inside the `phase_a_hash` preimage; the four hash properties are proven
 v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
 
 **Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.
+
+
+### 7.4 Standing rule — sibling search before an `event_key` is assigned
+
+**Before an `event_key` is assigned, the venue's series metadata is searched for other listings that resolve on the same real-world event. Any found are recorded against the key below, so a later pool day assigns them the same one rather than minting a second key for an event already covered.**
+
+Without this, the v1.11 defect returns by a different route: not two venues splitting one event, but one venue's several listings on one event splitting into several clusters. §6 would then read a margin-of-victory market and a winner market as independent evidence about the same election.
+
+**Search method — series-targeted, not a corpus walk.** Enumerate `GET /events?series_ticker=…&status=open` per candidate series and page it to exhaustion. Do **not** rely on walking the whole open-event corpus: see the methodology note below.
+
+#### Registry (as of 2026-09-11, Kalshi; every enumeration below returned complete)
+
+| `event_key` | pooled listing | other listings on the SAME event |
+|---|---|---|
+| `FOMC-2026-09-16` | `KXFEDDECISION-26SEP`, Polymarket `fed-decision-in-september-762` | **`KXFED-26SEP`** *"On Sep 16, 2026"* — a second Kalshi series on the same decision |
+| `US-SENATE-ME-2026` | `SENATEME-26` | `KXMIDTERMMOV-MESEND`, `KXMIDTERMMOV-MESENR` *"On November 3, 2026"*; `KXMIDTERMVOTETURN-MESEN`; `KXMESENOUTCOME-27JAN` |
+| `US-SENATE-IA-2026` | `SENATEIA-26` | `KXMIDTERMMOV-IASEND`, `KXMIDTERMMOV-IASENR`; `KXMIDTERMVOTETURN-IASEN` |
+| `US-SENATE-OH-SPECIAL-2026` | `SENATEOHS-26` | `KXMIDTERMMOV-OHSEND`, `KXMIDTERMMOV-OHSENR`; `KXMIDTERMVOTETURN-OHSEN` |
+
+#### What the Maine and Iowa search found
+
+Both keys previously rested on a search that had not been run. It has now been run and **both hold**, for different reasons worth recording:
+
+- **Maine** — no special-election series exists (`SENATEMES` absent), and `SENATEME` carries exactly **one** open event, `SENATEME-26`. `US-SENATE-ME-2026` is unambiguous.
+- **Iowa** — no special either, but `SENATEIA` carries **two** open events, `SENATEIA-26` *and* `SENATEIA-28`. So for Iowa the cycle component is doing real disambiguating work rather than being decorative; a bare `US-SENATE-IA` would have collided two different elections.
+- **Ohio** — `SENATEOH-28` (regular, 2028) and `SENATEOHS-26` (special, 2026), as already recorded.
+
+#### A stronger corroboration for the FOMC date, found by the same search
+
+`KXFEDDECISION-26SEP` carries the venue sub-title **"On Sep 16, 2026"** — Kalshi stating the decision date outright rather than implying it through a `close_time`. `KXFED-26SEP` says the same. This is better evidence than the close times already recorded, though it is still one venue; the Polymarket `endDate` of `2026-09-16T00:00:00Z` remains the independent half that satisfies §7.3.
+
+#### Out of scope for a single key: combination markets
+
+`KXMESENGOVCOMBO-26NOV`, `KXIASENGOVCOMBO-26NOV`, `KXOHSENGOVCOMBO-26NOV` and `KXMETXCOMBO-26NOV` resolve on a Senate race **and** another race jointly. They do not resolve on one event, so they cannot take one `event_key` without misstating what they are, and they are deliberately **not** in the registry. If such a market ever enters the pool it needs a ruling of its own — it belongs to two clusters at once, which nothing in v1.10–v1.12 contemplates. Flagged, not resolved.
+
+#### Methodology note — why the corpus walk is not trusted
+
+The first sibling search was run by walking every open event. That walk is **not reliable**: the Kalshi events endpoint returns **HTTP 429** partway through, and a walk that swallows the error returns a partial corpus that looks complete. Measured directly — successive full walks returned 4,400, then 3,200, then 3,400 events, and one aborted at page 1 with 200. On the truncated pass `KXFEDDECISION-26SEP` itself was missing, which is how the problem was noticed: a series known to be open did not appear.
+
+Every finding above was therefore re-derived by series-targeted enumeration, each of which reported completion.
+
+**`tape/discover.ts` is not affected.** Its `getJson` throws on any non-OK response, so a 429 during the pool read aborts the run loudly instead of silently producing a short pool. The 2026-09-10 pool day's counts stand.
+
+*One correction to my own first pass:* the regex used in that walk matched `KXAUSTRALIASENATE-28` and `KXNIGERIASENATE-27` as Iowa results — `IASEN` occurs inside *austral-IASEN-ate* and *niger-IASEN-ate*. They are unrelated and were never Iowa listings. Noted because the same substring trap is what array-containment matching was adopted to avoid on the tag side.
