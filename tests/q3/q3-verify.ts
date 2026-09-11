@@ -15,10 +15,16 @@ const ORIGINS = new Set(["scan", "pool"]), BIND = new Set(["venue", "series", "u
 const REQ = ["id", "protocol_version", "posted_at", "origin", "scan_ref", "source", "market", "binding", "prescreen", "intent", "criterion", "engine", "intent_sha256", "phase_a_hash"];
 const HEX = /^0x[0-9a-f]{64}$/;
 let fails: string[] = [], warns: string[] = [], n = 0, sealed = 0, deviated = 0, graded = 0;
-/** v1.10: every record carries event_key. Gated on posted_at, NOT on key presence — the v1.7(a) trick of treating an
- *  absent key as "sealed before the amendment" cannot work for a rule that says EVERY record carries the field: a new
- *  record that simply forgot it would look pre-v1.10 and pass. Records posted before this instant are the three
- *  sealed, anchored, immutable ones, which cannot acquire the field without breaking their hashes and their anchor. */
+/** v1.10 + v1.11: every record carries BOTH event_key and venue_event_key. Gated on posted_at, NOT on key presence —
+ *  the v1.7(a) trick of treating an absent key as "sealed before the amendment" cannot work for a rule that says EVERY
+ *  record carries the field: a new record that simply forgot it would look pre-amendment and pass. Records posted
+ *  before this instant are the three sealed, anchored, immutable ones, which cannot acquire either field without
+ *  breaking their hashes and their anchor.
+ *  The two fields are checked DIFFERENTLY, because v1.11 gives them different contracts:
+ *    event_key        must be a NON-EMPTY STRING. Operator-assigned, venue-independent, the clustering key.
+ *    venue_event_key  the KEY must be PRESENT; its VALUE may legitimately be null, which is what a venue that
+ *                     publishes no event identifier looks like. Testing its value for truthiness would silently
+ *                     accept a record that omitted the field entirely. */
 const V110_FROM = Date.parse("2026-09-10T00:00:00Z");
 const eventKeys = new Map<string, string[]>();
 /** v1.7(a) volume re-check. Both windows end at posted_at over immutable trades, so re-execution reproduces them;
@@ -45,12 +51,19 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     if (sha256hex(canonical(strip(r, PHASE_A_EXCLUDE))) !== r.phase_a_hash) fails.push(`${id}: phase_a_hash does not recompute`);
     // v1.10, checked on every record and not only sealed ones: the field is operator-authored at Phase A, so a record
     // can be wrong about it before it is ever sealed and that is the cheapest moment to say so.
+    const rec = r as Record<string, unknown>;
     if (Date.parse(String(r.posted_at)) >= V110_FROM) {
-      const ek = (r as Record<string, unknown>).event_key;
-      if (typeof ek !== "string" || !ek.trim()) fails.push(`${id}: v1.10 requires event_key on every record posted after the amendment (got ${JSON.stringify(ek)})`);
+      const ek = rec.event_key;
+      if (typeof ek !== "string" || !ek.trim()) fails.push(`${id}: v1.10/v1.11 require a non-empty operator-assigned event_key on every record posted after the amendment (got ${JSON.stringify(ek)})`);
       else eventKeys.set(ek, [...(eventKeys.get(ek) ?? []), id]);
-    } else if ("event_key" in (r as Record<string, unknown>)) {
-      fails.push(`${id}: carries event_key but was posted before v1.10 — a record sealed before the amendment is immutable and anchored, so the field cannot be backfilled into it`);
+      if (!("venue_event_key" in rec)) fails.push(`${id}: v1.11 requires venue_event_key on every record posted after the amendment — present, verbatim from the venue, or explicitly null where the venue publishes none. Omitting the key is not the same as recording that there is none`);
+      else { const vk = rec.venue_event_key;
+        if (vk !== null && (typeof vk !== "string" || !vk.trim())) fails.push(`${id}: venue_event_key must be the venue's published identifier verbatim, or null — got ${JSON.stringify(vk)}`);
+        // v1.11 exists because the venue identifier is NOT the cluster key. Catch the regression directly.
+        if (typeof vk === "string" && typeof ek === "string" && vk === ek) warns.push(`${id}: event_key equals venue_event_key (${ek}) — v1.11 makes event_key operator-assigned and venue-INDEPENDENT, so a venue ticker used as the cluster key is the exact defect v1.11 corrected. Legitimate only if the operator key genuinely coincides with the venue's string`);
+      }
+    } else {
+      for (const k of ["event_key", "venue_event_key"]) if (k in rec) fails.push(`${id}: carries ${k} but was posted before the amendment — a record sealed before it is immutable and anchored, so the field cannot be backfilled into it`);
     }
     if (r.record_hash) { sealed++; if (!HEX.test(r.record_hash)) fails.push(`${id}: record_hash format`); if (sha256hex(canonical(strip(r, PHASE_B_EXCLUDE))) !== r.record_hash) fails.push(`${id}: record_hash does not recompute`); dayHashes.push(r.record_hash);
       if (r.binding?.type === "venue" && (r.price_at_audit == null)) fails.push(`${id}: venue record sealed without price_at_audit`); }

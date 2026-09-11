@@ -155,12 +155,16 @@
       }
     },
     "event_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "v1.10, identifier clause corrected by v1.11. OPERATOR-ASSIGNED identifier for the real-world event this market resolves on, INDEPENDENT OF VENUE: resolving authority, the decision or measurement, and its scheduled date, in a form stable across venues and listings (e.g. FOMC-2026-09-16). §6 clusters on this and never on venue_event_key. Sealed at Phase A. Not in `required` only because records sealed before v1.10 are immutable; q3-verify enforces it on every record posted on or after 2026-09-10."
+    },
+    "venue_event_key": {
       "type": [
         "string",
         "null"
       ],
-      "minLength": 1,
-      "description": "v1.10. Stable identifier for the underlying real-world event this market resolves on: the venue's own event ticker where one is published, otherwise an operator-assigned key naming the resolution source and date. Records sharing an event_key are ONE CLUSTER in §6 and are never independent observations. Optional here only because records sealed before v1.10 are immutable; q3-verify enforces presence on every record sealed after it."
+      "description": "v1.11. The VENUE'S OWN published event identifier, verbatim where one exists and null where none does — e.g. a Kalshi event ticker or a Polymarket Gamma event slug. Kept so the venue's listing stays auditable; it is NEVER the clustering key. Sealed at Phase A. Required to be PRESENT (the key itself) on every record posted on or after 2026-09-10; its value may legitimately be null."
     },
     "prescreen": {
       "type": "object",

@@ -91,7 +91,7 @@ async function kalshiPool(exclude: Set<string>) {
         const h = hoursToClose(m.close_time, readAt);
         if (h === null) noClose.push(m.ticker);
         else if (h < POOL_MIN_HOURS_TO_CLOSE) { shortDated.push({ id: m.ticker, close_time: m.close_time, hours_to_close: Number(h.toFixed(2)) }); continue; }
-        rows.push({ id: m.ticker, category: e.category, event: e.event_ticker, event_key: e.event_ticker, question: m.title, volume_1d: Number(m.volume_24h_fp ?? m.volume_24h ?? 0), volume_unit: "contracts", price: m.last_price_dollars != null ? Number(m.last_price_dollars) : null, close_time: m.close_time, link: `https://kalshi.com/markets/${String(e.series_ticker ?? "").toLowerCase()}/${String(e.event_ticker).toLowerCase()}` }); } }
+        rows.push({ id: m.ticker, category: e.category, event: e.event_ticker, venue_event_key: e.event_ticker, question: m.title, volume_1d: Number(m.volume_24h_fp ?? m.volume_24h ?? 0), volume_unit: "contracts", price: m.last_price_dollars != null ? Number(m.last_price_dollars) : null, close_time: m.close_time, link: `https://kalshi.com/markets/${String(e.series_ticker ?? "").toLowerCase()}/${String(e.event_ticker).toLowerCase()}` }); } }
     cursor = j.cursor; if (!cursor) break;
   }
   return { rows: rows.sort((x, y) => y.volume_1d - x.volume_1d), events_scanned: events, dropped_by_book: dropped, read_at: readAt, dropped_by_duration: shortDated, no_close_time: noClose };
@@ -115,7 +115,7 @@ async function polymarketPool(exclude: Set<string>) {
         if (h === null) { if (!poolDurationAdmit(m.endDate, readAt, tags)) { shortDated.push({ id: cid, close_time: null, hours_to_close: null, by: "v1.8 tag proxy" }); continue; } noClose.push(cid); }
         else if (h < POOL_MIN_HOURS_TO_CLOSE) { shortDated.push({ id: cid, close_time: m.endDate, hours_to_close: Number(h.toFixed(2)), by: "close time" }); continue; }
         let p: number | null = null; try { p = Number(JSON.parse(m.outcomePrices ?? "[]")[0]); } catch {}
-        rows.push({ id: cid, category: tags.join(", "), event: e.slug, event_key: e.slug, question: m.question, volume_1d: Number(m.volume24hr ?? 0), volume_unit: "usd (gamma; dune single-counted decides)", price: Number.isFinite(p) ? p : null, end_date: m.endDate, link: `https://polymarket.com/event/${e.slug}` }); } }
+        rows.push({ id: cid, category: tags.join(", "), event: e.slug, venue_event_key: e.slug, question: m.question, volume_1d: Number(m.volume24hr ?? 0), volume_unit: "usd (gamma; dune single-counted decides)", price: Number.isFinite(p) ? p : null, end_date: m.endDate, link: `https://polymarket.com/event/${e.slug}` }); } }
     if (evs.length < 100) break;
   }
   return { rows: rows.sort((x, y) => y.volume_1d - x.volume_1d), events_scanned: events, dropped_by_book: dropped, read_at: readAt, dropped_by_duration: shortDated, no_close_time: noClose, page_cap: 1000, capped: events >= 1000 };
