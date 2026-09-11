@@ -48,7 +48,28 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     const mk = rec.market as Record<string, unknown>; const bt = (rec.binding as Record<string, unknown>)?.type;
     if (bt === "venue" && mk.venue === "kalshi") { const vr = await fetch(`https://api.elections.kalshi.com/trade-api/v2/markets/${encodeURIComponent(String(mk.ticker))}`); if (vr.status === 404) { console.error(`Phase A ABORT: kalshi ticker ${mk.ticker} not found — check the strike suffix (e.g. -H25)`); process.exit(1); } if (!vr.ok) console.error(`  warn: kalshi HTTP ${vr.status} validating ticker; continuing`); }
     if (bt === "venue" && mk.venue === "polymarket") { const slug = String(mk.ticker).replace(/^polymarket:/, ""); const vr = await fetch(`https://gamma-api.polymarket.com/markets?slug=${encodeURIComponent(slug)}`); const arr = vr.ok ? await vr.json() as unknown[] : []; if (vr.ok && arr.length === 0) { console.error(`Phase A ABORT: polymarket slug ${slug} not found`); process.exit(1); } }
-    const intent = rec.intent as Record<string, unknown>; const text = renderIntentText(intent);
+    // v1.12: a pooled market with no dominant public case is audited, not skipped and not deviated. Validate the
+    // shape BEFORE anything is hashed — a record that cannot be sealed correctly must never be sealed at all.
+    const intent = rec.intent as Record<string, unknown>;
+    const ts = rec.thesis_state;
+    if (ts !== undefined && ts !== null && ts !== "no_public_case") { console.error(`Phase A: thesis_state must be "no_public_case" or absent — the protocol defines no other value (got ${JSON.stringify(ts)})`); process.exit(1); }
+    if (ts === "no_public_case") {
+      if (intent.thesis !== null) { console.error(`Phase A: thesis_state "no_public_case" requires intent.thesis null — v1.12 forbids writing, paraphrasing or reconstructing a thesis from the market's own question, price or structure`); process.exit(1); }
+      if (rec.deviated === true) { console.error(`Phase A: a no_public_case record is primary-eligible and is NEVER deviated (v1.12)`); process.exit(1); }
+      const sr = rec.search_record as Record<string, unknown> | undefined | null;
+      const bad = !sr || typeof sr !== "object"
+        || !Array.isArray(sr.sources_consulted) || !sr.sources_consulted.length
+        || !Array.isArray(sr.queries) || !sr.queries.length
+        || !sr.window || typeof sr.window !== "object" || !(sr.window as Record<string, unknown>).from || !(sr.window as Record<string, unknown>).to
+        || typeof sr.searched_at !== "string" || !Number.isFinite(Date.parse(sr.searched_at));
+      if (bad) { console.error(`Phase A: thesis_state "no_public_case" requires a non-empty search_record {sources_consulted[], queries[], window{from,to}, searched_at} — the absence must be evidenced, not asserted`); process.exit(1); }
+    } else if (typeof intent.thesis !== "string" || !intent.thesis.trim()) {
+      console.error(`Phase A: intent.thesis must be the verbatim sourced public case (§3), or the record must declare thesis_state "no_public_case" (v1.12)`); process.exit(1);
+    }
+    // renderIntentText omits null fields, so a no_public_case intent reaches extraction with the thesis genuinely
+    // ABSENT rather than as the literal token "null". The engine is NOT special-cased: v1.12 says its verdict on such
+    // an input is a finding about the market, not a defect in the record.
+    const text = renderIntentText(intent);
     const model = args.includes("--stub") ? stubModel : anthropicModel();
     const x = await extractAuditInputConsensus(text, model, 3);
     let engine: Record<string, unknown>;

@@ -251,7 +251,23 @@ Seven records now form **one** cluster, across both venues, as intended.
 
 The sole corroboration is the Kalshi ticker suffix `-26` (repeated in the series slug in the same listing, which is not a second source). Under §7.3 below that is enough to name a **cycle** and would not be enough to name a **date** — which is exactly why the cycle form was chosen. Recorded so the basis is not overstated later. Independent corroboration is available if wanted (which Senate class each seat sits in) and has not been done.
 
-**One open question on the Ohio key.** `SENATEOHS-26` carries an `S` the other two do not, which reads like *special*. If Ohio has both a special and a regular Senate election in the 2026 cycle, `US-SENATE-OH-2026` is ambiguous between two different races — and two different races colliding on one key is precisely the failure `event_key` exists to prevent, in the opposite direction from the venue-scoped one v1.11 fixed. Not resolved here; flagged before any Ohio record is sealed.
+**The Ohio key — investigated 2026-09-11, findings below, key NOT reassigned.** The `S` does mean *special*, confirmed from Kalshi's own series metadata:
+
+| series | venue title | open event |
+|---|---|---|
+| `SENATEOHS` | **"Special Senate election in Ohio"** | `SENATEOHS-26` — "Ohio Senate winner?", sub *"In 2026"* |
+| `SENATEOH` | "Ohio Senate race" | `SENATEOH-28` — "Ohio Senate winner? (2028)" |
+
+So Ohio's *regular* Senate race is a **2028** event and the only Ohio Senate election in the 2026 cycle is the special. **`US-SENATE-OH-2026` is therefore not ambiguous today** — there is no regular 2026 Ohio Senate race to collide with. The collision I flagged does not exist in the data.
+
+**But the key form is still weak, for a reason the search turned up rather than the one I raised.** Kalshi lists further open markets that resolve on *the same real-world election*: `KXMIDTERMMOV-OHSEND` and `KXMIDTERMMOV-OHSENR` ("Ohio Senate margin of victory", sub *"On November 3, 2026"*) and `KXMIDTERMVOTETURN-OHSEN` ("Ohio Senate General Election: voter turnout"). If any of those ever enters the pool it must share the Ohio record's `event_key`, or §6 will treat two views of one election as independent — the v1.11 defect again, this time within a single venue. A key that reads as "the Ohio Senate seat contested in 2026" needs to cover the winner, the margin and the turnout alike. The same shape applies to Maine and Iowa; only Ohio was searched.
+
+**Proposed form, not assigned** — the assignment is the operator's:
+
+- `US-SENATE-OH-SPECIAL-2026` for the special, leaving `US-SENATE-OH-2028` free for the regular seat without either having to be renamed later. Naming the election *type* is what makes the two distinguishable in advance rather than after a collision.
+- Maine and Iowa keep their current form (`US-SENATE-ME-2026`, `US-SENATE-IA-2026`) unless the same search finds a special there too; it has not been run.
+
+**One date note, reported and deliberately not acted on.** `KXMIDTERMMOV-OHSEN*` carries the sub-title *"On November 3, 2026"*, which matches the computed general-election day and contradicts the `2027-11-03` `close_time` on `SENATEOHS-26`. It raises confidence that the election is 2026-11-03 — but it is still **Kalshi**, and §7.3 says a second field, or a second series, from the same venue is not a second source. So it does not meet the independence bar and the cycle form stands.
 
 ### 7.3 Standing rule — when an `event_key` may name a date
 
@@ -260,3 +276,31 @@ The sole corroboration is the Kalshi ticker suffix `-26` (repeated in the series
 A listing is not independent of itself: a ticker suffix, a series slug, an event slug, a `close_time`, an `endDate`, or a question string are all the venue talking, and a second field from the same venue is not a second source. Independent corroboration means the resolving authority's own published schedule, or a second venue agreeing on the same instant.
 
 *The observation that prompted the rule:* Kalshi published `close_time` `2027-11-03T15:00:00Z` on the three 2026-cycle Senate markets — a year after the election the tickers name. Had the key been built from that close it would have named the wrong year; had it been built from the computed election day it would have rested on a date no source actually published for these markets. Both routes produce a permanent identifier asserting something the evidence did not support. The FOMC key is the contrasting case and shows the rule is not merely cautious: `FOMC-2026-09-16` is kept precisely *because* two independent venues published closes on that day, to the minute.
+
+
+## 8. v1.12 — the no-public-case record
+
+**Implementation.** Two sealed Phase A fields:
+
+| field | contract |
+|---|---|
+| `thesis_state` | absent/`null` normally; exactly `"no_public_case"` otherwise. The protocol defines **one** value, so any other string is a typo rather than a new state, and is rejected as such. |
+| `search_record` | required and non-empty when `thesis_state` is `"no_public_case"`: `sources_consulted[]`, `queries[]`, `window{from,to}`, `searched_at`. |
+
+Both sit inside the `phase_a_hash` preimage; the four hash properties are proven for each, plus that `search_record` is hashed **deeply** — changing one nested element of the query list changes the hash, so the evidence of absence cannot be edited after sealing.
+
+**The engine is not special-cased.** v1.12 says the verdict on a thesis-absent input "is a finding about the market, not a defect in the record", so Phase A runs the same extraction and the same deterministic engine, and records whatever comes back.
+
+**An absent field is now genuinely absent from the extraction input.** `renderIntentText` previously rendered a `null` field as the literal token `null`, which would have handed the extractor a string to read as content — the opposite of absence, and it would have made the v1.12 verdict an artifact of the renderer. It now omits null and undefined fields, which also matches §3's own wording that an unstated basis or invalidation is *omitted*. Proven hash-neutral: all three pre-v1.12 records recompute their `intent_sha256` unchanged, because none carries a null inside `intent`.
+
+**Enforcement** is at Phase A *and* in the verifier, gated on `posted_at >= 2026-09-10` like the v1.10/v1.11 fields. Phase A validates **before anything is hashed** — a record that cannot be sealed correctly must never be sealed at all. Six failure branches proven to fire with temporary synthetic records (thesis present alongside `no_public_case`; missing `search_record`; empty `queries`; unparseable `searched_at`; `deviated: true`; a typo'd state), and a valid no-case record proven to pass clean. All synthetics deleted; `records/` byte-unchanged.
+
+### 8.1 Why not `deviated: true` — considered and rejected
+
+`deviated: true` was the only pre-existing mechanism that fit mechanically, and §3 pairs it with `inclusion_note` for exactly this sort of exception. **It was rejected, and v1.12 forbids it outright** (*"never skipped and never deviated"*), for a reason worth keeping written down:
+
+§3 says a deviated record is **excluded from primary**. So routing no-public-case markets through it would quietly remove them from the primary analysis — and they are not a random subset. A market with no dominant public case is plausibly quieter, more mechanical, less narrated, or simply less interesting to commentators than one with a loud case. Draining that class out of the primary reinstates the selection bias the coverage pool exists to remove, in inverted form: instead of an operator choosing which markets to audit, the *availability of commentary* chooses, which is worse because it is invisible and correlated with the very thing under study.
+
+v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
+
+**Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.

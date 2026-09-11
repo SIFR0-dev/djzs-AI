@@ -56,6 +56,27 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
       const ek = rec.event_key;
       if (typeof ek !== "string" || !ek.trim()) fails.push(`${id}: v1.10/v1.11 require a non-empty operator-assigned event_key on every record posted after the amendment (got ${JSON.stringify(ek)})`);
       else eventKeys.set(ek, [...(eventKeys.get(ek) ?? []), id]);
+      // v1.12: the no-public-case path. Checked on every record, not only sealed ones — these are operator-authored
+      // at Phase A, so a record can be wrong before it is ever sealed and that is the cheapest moment to say so.
+      const ts = rec.thesis_state, th = (rec.intent as Record<string, unknown> | undefined)?.thesis;
+      if (ts !== undefined && ts !== null && ts !== "no_public_case") fails.push(`${id}: thesis_state must be "no_public_case" or absent — v1.12 defines no other value, so ${JSON.stringify(ts)} is a typo, not a new state`);
+      if (ts === "no_public_case") {
+        if (th !== null) fails.push(`${id}: thesis_state "no_public_case" requires intent.thesis null — v1.12 forbids a thesis written, paraphrased or reconstructed from the market's own question, price or structure`);
+        if (rec.deviated === true) fails.push(`${id}: a no_public_case record is primary-eligible and is NEVER deviated (v1.12) — deviating it would drain exactly this class out of the primary`);
+        const sr = rec.search_record as Record<string, unknown> | null | undefined;
+        const w = sr && typeof sr === "object" ? sr.window as Record<string, unknown> | undefined : undefined;
+        if (!sr || typeof sr !== "object") fails.push(`${id}: thesis_state "no_public_case" requires a search_record — v1.12 requires the absence be EVIDENCED, not asserted`);
+        else {
+          if (!Array.isArray(sr.sources_consulted) || !sr.sources_consulted.length) fails.push(`${id}: search_record.sources_consulted must be a non-empty list of the sources searched`);
+          if (!Array.isArray(sr.queries) || !sr.queries.length) fails.push(`${id}: search_record.queries must be a non-empty list of the queries used`);
+          if (!w || !w.from || !w.to) fails.push(`${id}: search_record.window must carry from and to`);
+          if (typeof sr.searched_at !== "string" || !Number.isFinite(Date.parse(sr.searched_at))) fails.push(`${id}: search_record.searched_at must be a parseable timestamp (got ${JSON.stringify(sr?.searched_at)})`);
+        }
+      } else if (typeof th === "string" && th.trim()) {
+        // The converse, which is the direction a mislabel would actually take: a record that HAS a case must not
+        // claim there is none, or the no-case stratum inflates and §6's proportion — itself a result — is wrong.
+        if (ts === "no_public_case") fails.push(`${id}: carries a thesis but declares thesis_state "no_public_case"`);
+      }
       if (!("venue_event_key" in rec)) fails.push(`${id}: v1.11 requires venue_event_key on every record posted after the amendment — present, verbatim from the venue, or explicitly null where the venue publishes none. Omitting the key is not the same as recording that there is none`);
       else { const vk = rec.venue_event_key;
         if (vk !== null && (typeof vk !== "string" || !vk.trim())) fails.push(`${id}: venue_event_key must be the venue's published identifier verbatim, or null — got ${JSON.stringify(vk)}`);
