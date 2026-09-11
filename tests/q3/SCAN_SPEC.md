@@ -234,12 +234,29 @@ Ten records, **four** `event_key`s:
 |---|---|---|---|
 | `FOMC-2026-09-16` | Kalshi | `KXFEDDECISION-26SEP` | 2 |
 | `FOMC-2026-09-16` | Polymarket | `fed-decision-in-september-762` | 5 |
-| `US-SENATE-ME-2026-11-03` | Kalshi | `SENATEME-26` | 1 |
-| `US-SENATE-OH-2026-11-03` | Kalshi | `SENATEOHS-26` | 1 |
-| `US-SENATE-IA-2026-11-03` | Kalshi | `SENATEIA-26` | 1 |
+| `US-SENATE-ME-2026` | Kalshi | `SENATEME-26` | 1 |
+| `US-SENATE-OH-2026` | Kalshi | `SENATEOHS-26` | 1 |
+| `US-SENATE-IA-2026` | Kalshi | `SENATEIA-26` | 1 |
 
 Seven records now form **one** cluster, across both venues, as intended.
 
 **The FOMC date is corroborated, not taken on trust.** Both venues' own published close times agree with `2026-09-16`: Polymarket `endDate` `2026-09-16T00:00:00Z` on all five strikes, Kalshi `close_time` `2026-09-16T17:59:00Z` on both.
 
-**The Senate dates are NOT corroborated, and this needs checking before any of those three records is sealed.** `2026-11-03` is the US general election day for the 2026 cycle, computed (first Tuesday after the first Monday in November 2026), and matches the `-26` in each ticker. But **Kalshi publishes `close_time` `2027-11-03T15:00:00Z` on all three — a year later.** That is most likely a far-out trading close for markets that settle on certification rather than a claim about when the race is decided, but it has not been confirmed, and a key that names a date must name the right one. If the resolving event is genuinely a 2027 date, these three keys are wrong. No record is sealed, so the assignment is a recorded intention and costs nothing to correct now; sealing first would make it permanent.
+**The Senate keys name the cycle, not a day — ruled 2026-09-11.** The earlier draft of this table assigned `…-2026-11-03`. Kalshi publishes `close_time` `2027-11-03T15:00:00Z` on all three, a year after that. It is most likely a certification-window close rather than election day, but "most likely" is not a basis for a permanent sealed identifier, and a date taken from one venue's close is not stable across listings — which is what v1.11 requires of `event_key`. Clustering needs only that records on the same race collide and records on different races do not; the calendar day does no work there. So the keys name the cycle.
+
+**What actually corroborates `2026`, stated precisely, because the obvious claim is wrong.** It is *not* "in both venues' tickers and in the market question":
+
+- Only **Kalshi** lists these three in day one's pool — Polymarket's top five is entirely FOMC, so there is no second venue ticker to agree with.
+- The question text carries **no year**: `"Will Democratics win the Senate race in Maine?"`, and the same for Ohio and Iowa.
+
+The sole corroboration is the Kalshi ticker suffix `-26` (repeated in the series slug in the same listing, which is not a second source). Under §7.3 below that is enough to name a **cycle** and would not be enough to name a **date** — which is exactly why the cycle form was chosen. Recorded so the basis is not overstated later. Independent corroboration is available if wanted (which Senate class each seat sits in) and has not been done.
+
+**One open question on the Ohio key.** `SENATEOHS-26` carries an `S` the other two do not, which reads like *special*. If Ohio has both a special and a regular Senate election in the 2026 cycle, `US-SENATE-OH-2026` is ambiguous between two different races — and two different races colliding on one key is precisely the failure `event_key` exists to prevent, in the opposite direction from the venue-scoped one v1.11 fixed. Not resolved here; flagged before any Ohio record is sealed.
+
+### 7.3 Standing rule — when an `event_key` may name a date
+
+**An `event_key` names a date only when that date is corroborated by a source independent of the listing. Otherwise it names the cycle or period.**
+
+A listing is not independent of itself: a ticker suffix, a series slug, an event slug, a `close_time`, an `endDate`, or a question string are all the venue talking, and a second field from the same venue is not a second source. Independent corroboration means the resolving authority's own published schedule, or a second venue agreeing on the same instant.
+
+*The observation that prompted the rule:* Kalshi published `close_time` `2027-11-03T15:00:00Z` on the three 2026-cycle Senate markets — a year after the election the tickers name. Had the key been built from that close it would have named the wrong year; had it been built from the computed election day it would have rested on a date no source actually published for these markets. Both routes produce a permanent identifier asserting something the evidence did not support. The FOMC key is the contrasting case and shows the rule is not merely cautious: `FOMC-2026-09-16` is kept precisely *because* two independent venues published closes on that day, to the minute.
