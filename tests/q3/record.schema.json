@@ -154,6 +154,14 @@
         }
       }
     },
+    "event_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "description": "v1.10. Stable identifier for the underlying real-world event this market resolves on: the venue's own event ticker where one is published, otherwise an operator-assigned key naming the resolution source and date. Records sharing an event_key are ONE CLUSTER in §6 and are never independent observations. Optional here only because records sealed before v1.10 are immutable; q3-verify enforces presence on every record sealed after it."
+    },
     "prescreen": {
       "type": "object",
       "required": [

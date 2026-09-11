@@ -15,6 +15,12 @@ const ORIGINS = new Set(["scan", "pool"]), BIND = new Set(["venue", "series", "u
 const REQ = ["id", "protocol_version", "posted_at", "origin", "scan_ref", "source", "market", "binding", "prescreen", "intent", "criterion", "engine", "intent_sha256", "phase_a_hash"];
 const HEX = /^0x[0-9a-f]{64}$/;
 let fails: string[] = [], warns: string[] = [], n = 0, sealed = 0, deviated = 0, graded = 0;
+/** v1.10: every record carries event_key. Gated on posted_at, NOT on key presence — the v1.7(a) trick of treating an
+ *  absent key as "sealed before the amendment" cannot work for a rule that says EVERY record carries the field: a new
+ *  record that simply forgot it would look pre-v1.10 and pass. Records posted before this instant are the three
+ *  sealed, anchored, immutable ones, which cannot acquire the field without breaking their hashes and their anchor. */
+const V110_FROM = Date.parse("2026-09-10T00:00:00Z");
+const eventKeys = new Map<string, string[]>();
 /** v1.7(a) volume re-check. Both windows end at posted_at over immutable trades, so re-execution reproduces them;
  *  the tolerance exists only for summation order, not for drift. Absence is never a failure: records sealed before
  *  v1.7 carry no volume, and sealed records are immutable. A recomputation that comes back null (a market_details
@@ -37,6 +43,15 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     if (!VERD.has(r.prescreen?.verdict)) fails.push(`${id}: prescreen.verdict ${r.prescreen?.verdict}`);
     if (!HEX.test(r.phase_a_hash ?? "")) fails.push(`${id}: phase_a_hash format`);
     if (sha256hex(canonical(strip(r, PHASE_A_EXCLUDE))) !== r.phase_a_hash) fails.push(`${id}: phase_a_hash does not recompute`);
+    // v1.10, checked on every record and not only sealed ones: the field is operator-authored at Phase A, so a record
+    // can be wrong about it before it is ever sealed and that is the cheapest moment to say so.
+    if (Date.parse(String(r.posted_at)) >= V110_FROM) {
+      const ek = (r as Record<string, unknown>).event_key;
+      if (typeof ek !== "string" || !ek.trim()) fails.push(`${id}: v1.10 requires event_key on every record posted after the amendment (got ${JSON.stringify(ek)})`);
+      else eventKeys.set(ek, [...(eventKeys.get(ek) ?? []), id]);
+    } else if ("event_key" in (r as Record<string, unknown>)) {
+      fails.push(`${id}: carries event_key but was posted before v1.10 — a record sealed before the amendment is immutable and anchored, so the field cannot be backfilled into it`);
+    }
     if (r.record_hash) { sealed++; if (!HEX.test(r.record_hash)) fails.push(`${id}: record_hash format`); if (sha256hex(canonical(strip(r, PHASE_B_EXCLUDE))) !== r.record_hash) fails.push(`${id}: record_hash does not recompute`); dayHashes.push(r.record_hash);
       if (r.binding?.type === "venue" && (r.price_at_audit == null)) fails.push(`${id}: venue record sealed without price_at_audit`); }
     if (r.deviated) deviated++;
@@ -151,6 +166,13 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
     } catch (e) { const m = (e as Error).message;
       // Budget (402), rate limit (429), outage (5xx), network: the record is NOT wrong, it is NOT VERIFIED THIS RUN → WARN. Anything else is a real failure.
       if (/HTTP (402|429|5\d\d)|fetch failed|ECONN|ETIMEDOUT|UND_ERR/.test(m)) warns.push(`${pc.id}: Dune unavailable (${m.slice(0, 90)}) — price NOT re-verified this run`); else fails.push(`${pc.id}: Dune re-execution failed — ${m}`); } }
+  }
+  // v1.10 requires any statistic over records to state the number of DISTINCT EVENTS alongside the number of records.
+  // The verifier is not §6, but it is where the counts are already computed, so it reports the pair and names any
+  // cluster carrying more than one record — the shape §6 must not silently treat as independent.
+  if (eventKeys.size) {
+    const multi = [...eventKeys.entries()].filter(([, ids]) => ids.length > 1);
+    console.log(`q3-verify · v1.10 clusters: ${[...eventKeys.values()].reduce((a, b) => a + b.length, 0)} record(s) over ${eventKeys.size} distinct event(s)` + (multi.length ? ` · ${multi.length} event(s) carry more than one record: ${multi.map(([k, ids]) => `${k} x${ids.length}`).join(", ")}` : ""));
   }
   console.log(`q3-verify · ${n} records (${sealed} sealed, ${deviated} pilot/deviated, ${graded} graded) · ${anchors.length} anchor(s)`);
   for (const w of warns) console.log("  WARN", w);

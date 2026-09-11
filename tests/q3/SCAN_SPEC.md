@@ -198,3 +198,38 @@ This is the first pool day run with the full amendment stack in force and with t
 
 This is expected to recur: a scheduled macro event drives volume on both venues at once, so pool days near an FOMC, CPI or election date will concentrate. Recording the underlying event per record — rather than reconstructing it later from questions — is the cheap way to make clustering possible, and is worth considering before the sample grows.
 
+
+## 7. v1.10 — `event_key` and clustering
+
+**Implementation.** `event_key` is a top-level record field, written by the operator at Phase A alongside `market` and `binding`, and **inside the `phase_a_hash` preimage** — it is sealed, not decorative. Proven mechanically, not asserted: adding the field changes `phase_a_hash`, a *different* key gives a different `phase_a_hash`, and a record that never carried the key hashes exactly as before (so the three pre-v1.10 records are untouched).
+
+**Enforcement is gated on `posted_at`, deliberately not on key presence.** v1.7(a) could treat an absent key as "sealed before the amendment" because it said records sealed earlier carry neither. v1.10 says *every* record carries `event_key`, so the same trick would be a hole: a new record that simply forgot the field would look pre-v1.10 and pass. `q3-verify` therefore fails any record with `posted_at >= 2026-09-10T00:00:00Z` that lacks a non-empty `event_key`, and separately fails any record posted *before* that which carries one — a record sealed and anchored before the amendment cannot acquire the field without breaking its own hash and its Irys anchor. Proven by a temporary synthetic record, which was deleted; `records/` is unchanged.
+
+The verifier also reports `records over distinct events`, naming every cluster carrying more than one record. It is not §6, but it is where the counts already exist, and v1.10 requires the pair to be stated wherever records are counted.
+
+### 7.1 OPEN — the literal rule does not cluster across venues, which is the case that prompted it
+
+**This needs an operator ruling and is not resolved here.** v1.10 derives `event_key` from "the venue's own event ticker where one is published". Both venues publish one, so day one's ten records key as:
+
+| event_key | source | records |
+|---|---|---|
+| `KXFEDDECISION-26SEP` | Kalshi event ticker | 2 |
+| `fed-decision-in-september-762` | Polymarket Gamma event slug | 5 |
+| `SENATEME-26` · `SENATEOHS-26` · `SENATEIA-26` | Kalshi event tickers | 1 each |
+
+That is **5 distinct `event_key`s over 10 records**. The underlying reality is **4 distinct real-world events**: the September 2026 FOMC decision, and three Senate races. The seven FOMC records split into clusters of 2 and 5 rather than forming one cluster of 7 — and Kalshi's and Polymarket's quotes on the same FOMC decision are about as far from independent as two observations get.
+
+So applied literally, v1.10 under-clusters exactly the composition its own disclosure names ("seven of ten records on the September FOMC decision"). The mechanism is venue-scoped; the concept is not. Left unresolved, §6 would report "4 events" where the truth is 4 and the clustering says 5, and would treat two venues' views of one Fed decision as independent evidence.
+
+Two further wrinkles worth recording while this is open:
+
+- **The Polymarket slug carries a listing suffix** (`-762`). It is what the venue publishes, but a slug with an incrementing suffix is a weaker claim to "stable identifier" than a Kalshi event ticker, and a re-listed event could produce a different slug for the same real-world event.
+- **Only the Polymarket five are a mutually exclusive ladder.** v1.10 requires that fact stated wherever their outcomes are reported. The two Kalshi FOMC strikes are *also* mutually exclusive with each other, and with the Polymarket ladder in substance — so the exclusivity, like the clustering, does not respect venue boundaries either.
+
+**Not decided here, and deliberately not worked around in code.** Inventing a cross-venue mapping would be re-writing a pre-registered amendment from the implementation side, which is the thing §3 rule 2 and the whole append-only discipline exist to prevent. The field is implemented exactly as v1.10 words it. The options, for the record:
+
+1. An amendment allowing an operator-assigned key to *override* the venue ticker where one real-world event is traded on more than one venue (closest to v1.10's own "otherwise" clause, and its stated intent).
+2. A second field — `venue_event_key` kept as published, `event_key` always operator-assigned — which keeps the venue's own identifier auditable while making the cluster key the real-world event.
+3. Accept venue-scoped clusters and have §6 additionally report a coarser grouping, disclosed as such.
+
+Until one is ruled, `event_key` carries the venue ticker verbatim and this section is the disclosure.
