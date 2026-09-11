@@ -275,34 +275,6 @@ A listing is not independent of itself: a ticker suffix, a series slug, an event
 *The observation that prompted the rule:* Kalshi published `close_time` `2027-11-03T15:00:00Z` on the three 2026-cycle Senate markets — a year after the election the tickers name. Had the key been built from that close it would have named the wrong year; had it been built from the computed election day it would have rested on a date no source actually published for these markets. Both routes produce a permanent identifier asserting something the evidence did not support. The FOMC key is the contrasting case and shows the rule is not merely cautious: `FOMC-2026-09-16` is kept precisely *because* two independent venues published closes on that day, to the minute.
 
 
-## 8. v1.12 — the no-public-case record
-
-**Implementation.** Two sealed Phase A fields:
-
-| field | contract |
-|---|---|
-| `thesis_state` | absent/`null` normally; exactly `"no_public_case"` otherwise. The protocol defines **one** value, so any other string is a typo rather than a new state, and is rejected as such. |
-| `search_record` | required and non-empty when `thesis_state` is `"no_public_case"`: `sources_consulted[]`, `queries[]`, `window{from,to}`, `searched_at`. |
-
-Both sit inside the `phase_a_hash` preimage; the four hash properties are proven for each, plus that `search_record` is hashed **deeply** — changing one nested element of the query list changes the hash, so the evidence of absence cannot be edited after sealing.
-
-**The engine is not special-cased.** v1.12 says the verdict on a thesis-absent input "is a finding about the market, not a defect in the record", so Phase A runs the same extraction and the same deterministic engine, and records whatever comes back.
-
-**An absent field is now genuinely absent from the extraction input.** `renderIntentText` previously rendered a `null` field as the literal token `null`, which would have handed the extractor a string to read as content — the opposite of absence, and it would have made the v1.12 verdict an artifact of the renderer. It now omits null and undefined fields, which also matches §3's own wording that an unstated basis or invalidation is *omitted*. Proven hash-neutral: all three pre-v1.12 records recompute their `intent_sha256` unchanged, because none carries a null inside `intent`.
-
-**Enforcement** is at Phase A *and* in the verifier, gated on `posted_at >= 2026-09-10` like the v1.10/v1.11 fields. Phase A validates **before anything is hashed** — a record that cannot be sealed correctly must never be sealed at all. Six failure branches proven to fire with temporary synthetic records (thesis present alongside `no_public_case`; missing `search_record`; empty `queries`; unparseable `searched_at`; `deviated: true`; a typo'd state), and a valid no-case record proven to pass clean. All synthetics deleted; `records/` byte-unchanged.
-
-### 8.1 Why not `deviated: true` — considered and rejected
-
-`deviated: true` was the only pre-existing mechanism that fit mechanically, and §3 pairs it with `inclusion_note` for exactly this sort of exception. **It was rejected, and v1.12 forbids it outright** (*"never skipped and never deviated"*), for a reason worth keeping written down:
-
-§3 says a deviated record is **excluded from primary**. So routing no-public-case markets through it would quietly remove them from the primary analysis — and they are not a random subset. A market with no dominant public case is plausibly quieter, more mechanical, less narrated, or simply less interesting to commentators than one with a loud case. Draining that class out of the primary reinstates the selection bias the coverage pool exists to remove, in inverted form: instead of an operator choosing which markets to audit, the *availability of commentary* chooses, which is worse because it is invisible and correlated with the very thing under study.
-
-v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
-
-**Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.
-
-
 ### 7.4 Standing rule — sibling search before an `event_key` is assigned
 
 **Before an `event_key` is assigned, the venue's series metadata is searched for other listings that resolve on the same real-world event. Any found are recorded against the key below, so a later pool day assigns them the same one rather than minting a second key for an event already covered.**
@@ -345,3 +317,54 @@ Every finding above was therefore re-derived by series-targeted enumeration, eac
 **`tape/discover.ts` is not affected.** Its `getJson` throws on any non-OK response, so a 429 during the pool read aborts the run loudly instead of silently producing a short pool. The 2026-09-10 pool day's counts stand.
 
 *One correction to my own first pass:* the regex used in that walk matched `KXAUSTRALIASENATE-28` and `KXNIGERIASENATE-27` as Iowa results — `IASEN` occurs inside *austral-IASEN-ate* and *niger-IASEN-ate*. They are unrelated and were never Iowa listings. Noted because the same substring trap is what array-containment matching was adopted to avoid on the tag side.
+
+## 8. v1.12 — the no-public-case record
+
+**Implementation.** Two sealed Phase A fields:
+
+| field | contract |
+|---|---|
+| `thesis_state` | absent/`null` normally; exactly `"no_public_case"` otherwise. The protocol defines **one** value, so any other string is a typo rather than a new state, and is rejected as such. |
+| `search_record` | required and non-empty when `thesis_state` is `"no_public_case"`: `sources_consulted[]`, `queries[]`, `window{from,to}`, `searched_at`. |
+
+Both sit inside the `phase_a_hash` preimage; the four hash properties are proven for each, plus that `search_record` is hashed **deeply** — changing one nested element of the query list changes the hash, so the evidence of absence cannot be edited after sealing.
+
+**The engine is not special-cased.** v1.12 says the verdict on a thesis-absent input "is a finding about the market, not a defect in the record", so Phase A runs the same extraction and the same deterministic engine, and records whatever comes back.
+
+**An absent field is now genuinely absent from the extraction input.** `renderIntentText` previously rendered a `null` field as the literal token `null`, which would have handed the extractor a string to read as content — the opposite of absence, and it would have made the v1.12 verdict an artifact of the renderer. It now omits null and undefined fields, which also matches §3's own wording that an unstated basis or invalidation is *omitted*. Proven hash-neutral: all three pre-v1.12 records recompute their `intent_sha256` unchanged, because none carries a null inside `intent`.
+
+**Enforcement** is at Phase A *and* in the verifier, gated on `posted_at >= 2026-09-10` like the v1.10/v1.11 fields. Phase A validates **before anything is hashed** — a record that cannot be sealed correctly must never be sealed at all. Six failure branches proven to fire with temporary synthetic records (thesis present alongside `no_public_case`; missing `search_record`; empty `queries`; unparseable `searched_at`; `deviated: true`; a typo'd state), and a valid no-case record proven to pass clean. All synthetics deleted; `records/` byte-unchanged.
+
+### 8.1 Why not `deviated: true` — considered and rejected
+
+`deviated: true` was the only pre-existing mechanism that fit mechanically, and §3 pairs it with `inclusion_note` for exactly this sort of exception. **It was rejected, and v1.12 forbids it outright** (*"never skipped and never deviated"*), for a reason worth keeping written down:
+
+§3 says a deviated record is **excluded from primary**. So routing no-public-case markets through it would quietly remove them from the primary analysis — and they are not a random subset. A market with no dominant public case is plausibly quieter, more mechanical, less narrated, or simply less interesting to commentators than one with a loud case. Draining that class out of the primary reinstates the selection bias the coverage pool exists to remove, in inverted form: instead of an operator choosing which markets to audit, the *availability of commentary* chooses, which is worse because it is invisible and correlated with the very thing under study.
+
+v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
+
+**Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.
+
+## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
+
+**Not an amendment and not a rule change. This section records a discrepancy and names the point at which it has to be addressed; it invents no threshold and changes nothing.**
+
+PROTOCOL §9 already supplies the floor below which no inference may be drawn — *"Anything before Stage 1 n is reached"* is listed under **What this study cannot show**, so the question of whether a stopping floor exists is settled and needed no amendment.
+
+The gap is in the **units** those floors are counted in:
+
+| clause | where | counts |
+|---|---|---|
+| `Stage 1 analysis runs once at n = 100 … first-audit records` | §6 | **records** |
+| `Binary analyses (H1, H2) require ≥ 25 records in each cell` | §6 | **records** |
+| statistics `computed over clusters, or reported with cluster-robust uncertainty` | v1.10 | **events** (clusters) |
+
+v1.10 and v1.11 changed how a statistic is *computed and reported* — clustered on `event_key`, with the number of distinct events stated alongside the number of records. **Neither restates the §6 thresholds.** So the uncertainty is cluster-aware while the gate deciding *when to report at all* still counts records, and **clustered records advance both floors faster than independent evidence does.** Day one is the shape of the problem: ten records over four events, seven of them on one Fed decision.
+
+Stated precisely, because the loose version overstates it: a single strike ladder does **not** reach n = 100, which sits far above any one ladder. The floor within reach of a handful of ladders is the **25-per-cell minimum** — that is where the discrepancy bites first, and it is the earlier of the two in any case.
+
+**Tripwire.** *Before any cell reaches 25 records*, one of two things happens: the minimum is restated in clusters, **or** the analysis reports both counts — records and distinct events — and justifies that cell's composition. Which of those, and any number attached to it, is the operator's to decide; recording the tripwire here is not choosing between them.
+
+This is currently inert: zero graded records exist, so no cell has any members and nothing is pending. It is written down now because the moment it stops being inert is the moment it is easiest to miss.
+
+**PROTOCOL.md is frozen at v1.12** until a guard actually breaks.
