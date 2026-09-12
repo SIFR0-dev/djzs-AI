@@ -15,6 +15,18 @@ const ORIGINS = new Set(["scan", "pool"]), BIND = new Set(["venue", "series", "u
 const REQ = ["id", "protocol_version", "posted_at", "origin", "scan_ref", "source", "market", "binding", "prescreen", "intent", "criterion", "engine", "intent_sha256", "phase_a_hash"];
 const HEX = /^0x[0-9a-f]{64}$/;
 let fails: string[] = [], warns: string[] = [], n = 0, sealed = 0, deviated = 0, graded = 0;
+/** v1.10 + v1.11: every record carries BOTH event_key and venue_event_key. Gated on posted_at, NOT on key presence —
+ *  the v1.7(a) trick of treating an absent key as "sealed before the amendment" cannot work for a rule that says EVERY
+ *  record carries the field: a new record that simply forgot it would look pre-amendment and pass. Records posted
+ *  before this instant are the three sealed, anchored, immutable ones, which cannot acquire either field without
+ *  breaking their hashes and their anchor.
+ *  The two fields are checked DIFFERENTLY, because v1.11 gives them different contracts:
+ *    event_key        must be a NON-EMPTY STRING. Operator-assigned, venue-independent, the clustering key.
+ *    venue_event_key  the KEY must be PRESENT; its VALUE may legitimately be null, which is what a venue that
+ *                     publishes no event identifier looks like. Testing its value for truthiness would silently
+ *                     accept a record that omitted the field entirely. */
+const V110_FROM = Date.parse("2026-09-10T00:00:00Z");
+const eventKeys = new Map<string, string[]>();
 /** v1.7(a) volume re-check. Both windows end at posted_at over immutable trades, so re-execution reproduces them;
  *  the tolerance exists only for summation order, not for drift. Absence is never a failure: records sealed before
  *  v1.7 carry no volume, and sealed records are immutable. A recomputation that comes back null (a market_details
@@ -37,6 +49,45 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     if (!VERD.has(r.prescreen?.verdict)) fails.push(`${id}: prescreen.verdict ${r.prescreen?.verdict}`);
     if (!HEX.test(r.phase_a_hash ?? "")) fails.push(`${id}: phase_a_hash format`);
     if (sha256hex(canonical(strip(r, PHASE_A_EXCLUDE))) !== r.phase_a_hash) fails.push(`${id}: phase_a_hash does not recompute`);
+    // v1.10, checked on every record and not only sealed ones: the field is operator-authored at Phase A, so a record
+    // can be wrong about it before it is ever sealed and that is the cheapest moment to say so.
+    const rec = r as Record<string, unknown>;
+    // SCAN_SPEC §10.2: draft-only, dropped at Phase A. Its presence in a record means a draft field was sealed.
+    if ("draft_captured_at" in rec) fails.push(`${id}: carries draft_captured_at — that field is draft-only and must be dropped at Phase A, never sealed (SCAN_SPEC §10.2)`);
+    if (Date.parse(String(r.posted_at)) >= V110_FROM) {
+      const ek = rec.event_key;
+      if (typeof ek !== "string" || !ek.trim()) fails.push(`${id}: v1.10/v1.11 require a non-empty operator-assigned event_key on every record posted after the amendment (got ${JSON.stringify(ek)})`);
+      else eventKeys.set(ek, [...(eventKeys.get(ek) ?? []), id]);
+      // v1.12: the no-public-case path. Checked on every record, not only sealed ones — these are operator-authored
+      // at Phase A, so a record can be wrong before it is ever sealed and that is the cheapest moment to say so.
+      const ts = rec.thesis_state, th = (rec.intent as Record<string, unknown> | undefined)?.thesis;
+      if (ts !== undefined && ts !== null && ts !== "no_public_case") fails.push(`${id}: thesis_state must be "no_public_case" or absent — v1.12 defines no other value, so ${JSON.stringify(ts)} is a typo, not a new state`);
+      if (ts === "no_public_case") {
+        if (th !== null) fails.push(`${id}: thesis_state "no_public_case" requires intent.thesis null — v1.12 forbids a thesis written, paraphrased or reconstructed from the market's own question, price or structure`);
+        if (rec.deviated === true) fails.push(`${id}: a no_public_case record is primary-eligible and is NEVER deviated (v1.12) — deviating it would drain exactly this class out of the primary`);
+        const sr = rec.search_record as Record<string, unknown> | null | undefined;
+        const w = sr && typeof sr === "object" ? sr.window as Record<string, unknown> | undefined : undefined;
+        if (!sr || typeof sr !== "object") fails.push(`${id}: thesis_state "no_public_case" requires a search_record — v1.12 requires the absence be EVIDENCED, not asserted`);
+        else {
+          if (!Array.isArray(sr.sources_consulted) || !sr.sources_consulted.length) fails.push(`${id}: search_record.sources_consulted must be a non-empty list of the sources searched`);
+          if (!Array.isArray(sr.queries) || !sr.queries.length) fails.push(`${id}: search_record.queries must be a non-empty list of the queries used`);
+          if (!w || !w.from || !w.to) fails.push(`${id}: search_record.window must carry from and to`);
+          if (typeof sr.searched_at !== "string" || !Number.isFinite(Date.parse(sr.searched_at))) fails.push(`${id}: search_record.searched_at must be a parseable timestamp (got ${JSON.stringify(sr?.searched_at)})`);
+        }
+      } else if (typeof th === "string" && th.trim()) {
+        // The converse, which is the direction a mislabel would actually take: a record that HAS a case must not
+        // claim there is none, or the no-case stratum inflates and §6's proportion — itself a result — is wrong.
+        if (ts === "no_public_case") fails.push(`${id}: carries a thesis but declares thesis_state "no_public_case"`);
+      }
+      if (!("venue_event_key" in rec)) fails.push(`${id}: v1.11 requires venue_event_key on every record posted after the amendment — present, verbatim from the venue, or explicitly null where the venue publishes none. Omitting the key is not the same as recording that there is none`);
+      else { const vk = rec.venue_event_key;
+        if (vk !== null && (typeof vk !== "string" || !vk.trim())) fails.push(`${id}: venue_event_key must be the venue's published identifier verbatim, or null — got ${JSON.stringify(vk)}`);
+        // v1.11 exists because the venue identifier is NOT the cluster key. Catch the regression directly.
+        if (typeof vk === "string" && typeof ek === "string" && vk === ek) warns.push(`${id}: event_key equals venue_event_key (${ek}) — v1.11 makes event_key operator-assigned and venue-INDEPENDENT, so a venue ticker used as the cluster key is the exact defect v1.11 corrected. Legitimate only if the operator key genuinely coincides with the venue's string`);
+      }
+    } else {
+      for (const k of ["event_key", "venue_event_key"]) if (k in rec) fails.push(`${id}: carries ${k} but was posted before the amendment — a record sealed before it is immutable and anchored, so the field cannot be backfilled into it`);
+    }
     if (r.record_hash) { sealed++; if (!HEX.test(r.record_hash)) fails.push(`${id}: record_hash format`); if (sha256hex(canonical(strip(r, PHASE_B_EXCLUDE))) !== r.record_hash) fails.push(`${id}: record_hash does not recompute`); dayHashes.push(r.record_hash);
       if (r.binding?.type === "venue" && (r.price_at_audit == null)) fails.push(`${id}: venue record sealed without price_at_audit`); }
     if (r.deviated) deviated++;
@@ -151,6 +202,13 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
     } catch (e) { const m = (e as Error).message;
       // Budget (402), rate limit (429), outage (5xx), network: the record is NOT wrong, it is NOT VERIFIED THIS RUN → WARN. Anything else is a real failure.
       if (/HTTP (402|429|5\d\d)|fetch failed|ECONN|ETIMEDOUT|UND_ERR/.test(m)) warns.push(`${pc.id}: Dune unavailable (${m.slice(0, 90)}) — price NOT re-verified this run`); else fails.push(`${pc.id}: Dune re-execution failed — ${m}`); } }
+  }
+  // v1.10 requires any statistic over records to state the number of DISTINCT EVENTS alongside the number of records.
+  // The verifier is not §6, but it is where the counts are already computed, so it reports the pair and names any
+  // cluster carrying more than one record — the shape §6 must not silently treat as independent.
+  if (eventKeys.size) {
+    const multi = [...eventKeys.entries()].filter(([, ids]) => ids.length > 1);
+    console.log(`q3-verify · v1.10 clusters: ${[...eventKeys.values()].reduce((a, b) => a + b.length, 0)} record(s) over ${eventKeys.size} distinct event(s)` + (multi.length ? ` · ${multi.length} event(s) carry more than one record: ${multi.map(([k, ids]) => `${k} x${ids.length}`).join(", ")}` : ""));
   }
   console.log(`q3-verify · ${n} records (${sealed} sealed, ${deviated} pilot/deviated, ${graded} graded) · ${anchors.length} anchor(s)`);
   for (const w of warns) console.log("  WARN", w);

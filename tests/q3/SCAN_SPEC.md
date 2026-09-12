@@ -164,3 +164,277 @@ Four of the five Polymarket rows are strikes of one event (Fed Decision in Septe
 **Surfaced as an open question, and ruled the same day.** Kalshi rank 5, `KXBALANCEPOWERCOMBO-27FEB-RR` ("House Control Republican **AND** Senate Control Republican"), is a conjunction that §1's operational combo rule admits: no `mve_collection_ticker`, `market_type: binary`. **The operator ruled that it stays in the pool** — membership is mechanical per PROTOCOL §3 and no semantic conjunction filter is added. The ruling is recorded as a decision in §1; nothing in the code changed, because the code was already correct.
 
 **Not done, deliberately: no Phase A record was created from this pool.** Standing instruction — pool records wait until Dune is confirmed to have budget, because a venue record needs `price_at_audit` from the priced path and v1.3.1 prohibits an operator-typed price. The Dune republish of query 8601185 (§4) is also still owed, so Polymarket membership above is the Gamma print, not the confirmed pool.
+
+### 2026-09-10 — pool day, post-merge of #149 (v1.5 · v1.6 · v1.8 · v1.9 all live; venue-direct, Surf not run — no CLI in this container). Discovery JSON: `tests/q3/discovery/2026-09-10.json`
+
+This is the first pool day run with the full amendment stack in force and with the Dune pool query republished and paid. The Polymarket ranking below was produced by the venue-direct Gamma read; the operator's independent run of Dune query 8601185 returned **the same five September FOMC strikes**, so the two paths agree on day one's Polymarket pool.
+
+
+**Kalshi** — 13,139 open events enumerated, 25,665 in-category markets. Ranking metric: 24h contracts. v1.9 dropped **5,545** market(s) closing inside 24h. Book exclusions: 0 id(s), 0 market(s) dropped.
+
+| # | id | category | 24h volume | last | market |
+|---|---|---|---|---|---|
+| 1 | `KXFEDDECISION-26SEP-H0` | Economics | 1,556,524 | 0.36 | Will the Federal Reserve Hike rates by 0bps at their September 2026 meeting? |
+| 2 | `KXFEDDECISION-26SEP-H25` | Economics | 810,557 | 0.64 | Will the Federal Reserve Hike rates by 25bps at their September 2026 meeting? |
+| 3 | `SENATEME-26-D` | Elections | 568,978 | 0.68 | Will Democratics win the Senate race in Maine? |
+| 4 | `SENATEOHS-26-D` | Elections | 354,979 | 0.51 | Will Democratics win the Senate race in Ohio? |
+| 5 | `SENATEIA-26-D` | Elections | 336,274 | 0.37 | Will Democratics win the Senate race in Iowa? |
+
+**Polymarket** — 1,000 open events enumerated, 3,106 in-category markets. Ranking metric: 24h USD (gamma). v1.9 dropped **210** market(s) closing inside 24h; **29** admitted with no published close time (counted, not silently waved through). Book exclusions: 0 id(s), 0 market(s) dropped.
+
+| # | id | category | 24h volume | last | market |
+|---|---|---|---|---|---|
+| 1 | `0xa3b36b2d6104d34a…` | fomc, Economic Policy, Fed Rates,  | 1,928,965 | 0.355 | Will there be no change in Fed interest rates after the September 2026 meeting |
+| 2 | `0x876506d8b2bd7a0d…` | fomc, Economic Policy, Fed Rates,  | 1,697,828 | 0.635 | Will the Fed increase interest rates by 25 bps after the September 2026 meetin |
+| 3 | `0x2e4b58fc18dbffd7…` | fomc, Economic Policy, Fed Rates,  | 920,646 | 0.0085 | Will the Fed increase interest rates by 50+ bps after the September 2026 meeti |
+| 4 | `0xac02cbb049e46d6a…` | fomc, Economic Policy, Fed Rates,  | 824,892 | 0.0035 | Will the Fed decrease interest rates by 25 bps after the September 2026 meetin |
+| 5 | `0x5e464d85eb49f22d…` | fomc, Economic Policy, Fed Rates,  | 744,388 | 0.0015 | Will the Fed decrease interest rates by 50+ bps after the September 2026 meeti |
+
+**OBSERVATION, NOT A RULE — day one's pool is dominated by one event, and the records are therefore correlated.** All five Polymarket rows are strikes on the **September 2026 FOMC decision**, and so are Kalshi ranks 1 and 2. **Seven of the ten records this day produces bind the same underlying event**, across two venues and across mutually exclusive strikes of one outcome distribution. Three consequences, recorded so §6 cannot silently assume otherwise:
+
+1. **These are not ten independent observations.** §6 must not pool them into any statistic that assumes independence — a base rate, a hit rate, a confidence interval, a significance test. The effective n for this day is far below ten and is closer to *one event observed ten ways*.
+2. **The correlation is structural, not incidental.** Strikes on one distribution are mutually exclusive by construction: exactly one of the five Polymarket rows resolves YES. Their outcomes are not merely correlated, they are *deterministically linked*, so errors made on them will also be linked.
+3. **Nothing is filtered.** §3's pool is mechanical — top-N by 24h volume within the categories — and a concentrated day is a fact about the venues that day, not a defect to correct. No record is dropped, re-weighted or re-ranked because of this note. It is recorded so the analysis can stratify or cluster by underlying event, which is a §6 decision and is not taken here.
+
+This is expected to recur: a scheduled macro event drives volume on both venues at once, so pool days near an FOMC, CPI or election date will concentrate. Recording the underlying event per record — rather than reconstructing it later from questions — is the cheap way to make clustering possible, and is worth considering before the sample grows.
+
+
+## 7. v1.10 + v1.11 — `event_key`, `venue_event_key`, and clustering
+
+**v1.11 corrected v1.10's identifier clause, and the correction is why the two fields exist.** `event_key` is **always operator-assigned** and names the real-world event *independent of venue* — resolving authority, the decision or measurement, and its scheduled date, stable across venues and listings. `venue_event_key` carries the venue's own published identifier verbatim, or `null` where the venue publishes none. §6 clusters on `event_key` and **never** on `venue_event_key`.
+
+**Both are sealed at Phase A**, inside the `phase_a_hash` preimage. Four properties proven mechanically for *each* field, not asserted: adding it changes `phase_a_hash`; a different value changes it differently; a record that never carried it hashes exactly as before (so the three pre-amendment records are untouched); and altering it after sealing breaks `phase_a_hash`. Proven additionally for `venue_event_key`: an explicit `null` is a **sealed value distinct from the key being absent**, which is the distinction v1.11 rests on.
+
+**The two fields are enforced differently, because v1.11 gives them different contracts.**
+
+| field | contract | how `q3-verify` checks it |
+|---|---|---|
+| `event_key` | non-empty string, operator-assigned, venue-independent | FAIL if missing, non-string, or blank |
+| `venue_event_key` | the **key** must be present; its **value** may be `null` | FAIL if the key is absent; FAIL if present but neither a non-empty string nor `null` |
+
+Testing `venue_event_key` for truthiness would silently accept a record that omitted the field entirely — "the venue publishes no event id" and "we forgot to look" are different facts, and only one of them is a legitimate `null`.
+
+Enforcement is gated on `posted_at >= 2026-09-10T00:00:00Z`, **not on key presence**. v1.7(a) could read an absent key as "sealed before the amendment" because it said exactly that; a rule stating *every* record carries the field cannot, or a record that simply forgot it would look pre-amendment and pass. A record posted *before* that instant which carries either field also fails: it is immutable and anchored, so the field cannot be backfilled into it. Every branch was proven with temporary synthetic records, since deleted; `records/` is byte-unchanged.
+
+**A regression guard for the exact defect v1.11 fixed:** if a record's `event_key` equals its `venue_event_key`, the verifier WARNs. That is what venue-scoped clustering looks like from the inside. It warns rather than fails because an operator key could legitimately coincide with a venue string.
+
+The verifier also reports `records over distinct events`, naming every cluster holding more than one record — the pair v1.10 requires stated wherever records are counted.
+
+### 7.1 The ruling (supersedes the three options previously listed here)
+
+v1.10 derived `event_key` from the venue's event ticker. On day one that produced **five keys over ten records** while the reality was **four events**: the seven September FOMC records split into clusters of 2 (Kalshi) and 5 (Polymarket), so §6 would have treated two venues' view of one Fed decision as independent evidence — the defect v1.10 was written to prevent. **v1.11 rules that `event_key` is always operator-assigned and venue-independent, and that the venue's identifier is kept separately as `venue_event_key`.** The three options this section previously set out are retired; option 2 is essentially what was ruled.
+
+Mutual exclusivity now likewise crosses venues: the Polymarket ladder and the two Kalshi strikes are mutually exclusive **in substance** whatever their listings say, and that must be stated wherever their outcomes are reported.
+
+### 7.2 Day one's assignment (2026-09-10 pool)
+
+Ten records, **four** `event_key`s:
+
+| `event_key` | venue | `venue_event_key` | records |
+|---|---|---|---|
+| `FOMC-2026-09-16` | Kalshi | `KXFEDDECISION-26SEP` | 2 |
+| `FOMC-2026-09-16` | Polymarket | `fed-decision-in-september-762` | 5 |
+| `US-SENATE-ME-2026` | Kalshi | `SENATEME-26` | 1 |
+| `US-SENATE-OH-SPECIAL-2026` | Kalshi | `SENATEOHS-26` | 1 |
+| `US-SENATE-IA-2026` | Kalshi | `SENATEIA-26` | 1 |
+
+Seven records now form **one** cluster, across both venues, as intended.
+
+**The FOMC date is corroborated, not taken on trust.** Both venues' own published close times agree with `2026-09-16`: Polymarket `endDate` `2026-09-16T00:00:00Z` on all five strikes, Kalshi `close_time` `2026-09-16T17:59:00Z` on both.
+
+**The Senate keys name the cycle, not a day — ruled 2026-09-11.** The earlier draft of this table assigned `…-2026-11-03`. Kalshi publishes `close_time` `2027-11-03T15:00:00Z` on all three, a year after that. It is most likely a certification-window close rather than election day, but "most likely" is not a basis for a permanent sealed identifier, and a date taken from one venue's close is not stable across listings — which is what v1.11 requires of `event_key`. Clustering needs only that records on the same race collide and records on different races do not; the calendar day does no work there. So the keys name the cycle.
+
+**What actually corroborates `2026`, stated precisely, because the obvious claim is wrong.** It is *not* "in both venues' tickers and in the market question":
+
+- Only **Kalshi** lists these three in day one's pool — Polymarket's top five is entirely FOMC, so there is no second venue ticker to agree with.
+- The question text carries **no year**: `"Will Democratics win the Senate race in Maine?"`, and the same for Ohio and Iowa.
+
+The sole corroboration is the Kalshi ticker suffix `-26` (repeated in the series slug in the same listing, which is not a second source). Under §7.3 below that is enough to name a **cycle** and would not be enough to name a **date** — which is exactly why the cycle form was chosen. Recorded so the basis is not overstated later. Independent corroboration is available if wanted (which Senate class each seat sits in) and has not been done.
+
+**The Ohio key — investigated 2026-09-11, findings below, key NOT reassigned.** The `S` does mean *special*, confirmed from Kalshi's own series metadata:
+
+| series | venue title | open event |
+|---|---|---|
+| `SENATEOHS` | **"Special Senate election in Ohio"** | `SENATEOHS-26` — "Ohio Senate winner?", sub *"In 2026"* |
+| `SENATEOH` | "Ohio Senate race" | `SENATEOH-28` — "Ohio Senate winner? (2028)" |
+
+So Ohio's *regular* Senate race is a **2028** event and the only Ohio Senate election in the 2026 cycle is the special. **`US-SENATE-OH-2026` is therefore not ambiguous today** — there is no regular 2026 Ohio Senate race to collide with. The collision I flagged does not exist in the data.
+
+**But the key form is still weak, for a reason the search turned up rather than the one I raised.** Kalshi lists further open markets that resolve on *the same real-world election*: `KXMIDTERMMOV-OHSEND` and `KXMIDTERMMOV-OHSENR` ("Ohio Senate margin of victory", sub *"On November 3, 2026"*) and `KXMIDTERMVOTETURN-OHSEN` ("Ohio Senate General Election: voter turnout"). If any of those ever enters the pool it must share the Ohio record's `event_key`, or §6 will treat two views of one election as independent — the v1.11 defect again, this time within a single venue. A key that reads as "the Ohio Senate seat contested in 2026" needs to cover the winner, the margin and the turnout alike. The same shape applies to Maine and Iowa; only Ohio was searched.
+
+**ASSIGNED 2026-09-11: `US-SENATE-OH-SPECIAL-2026`.** Naming the election *type* leaves `US-SENATE-OH-2028` free for the regular seat, so neither key has to be renamed after a collision instead of before one.
+
+**One date note, reported and deliberately not acted on.** `KXMIDTERMMOV-OHSEN*` carries the sub-title *"On November 3, 2026"*, which matches the computed general-election day and contradicts the `2027-11-03` `close_time` on `SENATEOHS-26`. It raises confidence that the election is 2026-11-03 — but it is still **Kalshi**, and §7.3 says a second field, or a second series, from the same venue is not a second source. So it does not meet the independence bar and the cycle form stands.
+
+### 7.3 Standing rule — when an `event_key` may name a date
+
+**An `event_key` names a date only when that date is corroborated by a source independent of the listing. Otherwise it names the cycle or period.**
+
+A listing is not independent of itself: a ticker suffix, a series slug, an event slug, a `close_time`, an `endDate`, or a question string are all the venue talking, and a second field from the same venue is not a second source. Independent corroboration means the resolving authority's own published schedule, or a second venue agreeing on the same instant.
+
+*The observation that prompted the rule:* Kalshi published `close_time` `2027-11-03T15:00:00Z` on the three 2026-cycle Senate markets — a year after the election the tickers name. Had the key been built from that close it would have named the wrong year; had it been built from the computed election day it would have rested on a date no source actually published for these markets. Both routes produce a permanent identifier asserting something the evidence did not support. The FOMC key is the contrasting case and shows the rule is not merely cautious: `FOMC-2026-09-16` is kept precisely *because* two independent venues published closes on that day, to the minute.
+
+
+### 7.4 Standing rule — sibling search before an `event_key` is assigned
+
+**Before an `event_key` is assigned, the venue's series metadata is searched for other listings that resolve on the same real-world event. Any found are recorded against the key below, so a later pool day assigns them the same one rather than minting a second key for an event already covered.**
+
+Without this, the v1.11 defect returns by a different route: not two venues splitting one event, but one venue's several listings on one event splitting into several clusters. §6 would then read a margin-of-victory market and a winner market as independent evidence about the same election.
+
+**Search method — series-targeted, not a corpus walk.** Enumerate `GET /events?series_ticker=…&status=open` per candidate series and page it to exhaustion. Do **not** rely on walking the whole open-event corpus: see the methodology note below.
+
+#### Registry (as of 2026-09-11, Kalshi; every enumeration below returned complete)
+
+| `event_key` | pooled listing | other listings on the SAME event |
+|---|---|---|
+| `FOMC-2026-09-16` | `KXFEDDECISION-26SEP`, Polymarket `fed-decision-in-september-762` | **`KXFED-26SEP`** *"On Sep 16, 2026"* — a second Kalshi series on the same decision |
+| `US-SENATE-ME-2026` | `SENATEME-26` | `KXMIDTERMMOV-MESEND`, `KXMIDTERMMOV-MESENR` *"On November 3, 2026"*; `KXMIDTERMVOTETURN-MESEN`; `KXMESENOUTCOME-27JAN` |
+| `US-SENATE-IA-2026` | `SENATEIA-26` | `KXMIDTERMMOV-IASEND`, `KXMIDTERMMOV-IASENR`; `KXMIDTERMVOTETURN-IASEN` |
+| `US-SENATE-OH-SPECIAL-2026` | `SENATEOHS-26` | `KXMIDTERMMOV-OHSEND`, `KXMIDTERMMOV-OHSENR`; `KXMIDTERMVOTETURN-OHSEN` |
+
+#### What the Maine and Iowa search found
+
+Both keys previously rested on a search that had not been run. It has now been run and **both hold**, for different reasons worth recording:
+
+- **Maine** — no special-election series exists (`SENATEMES` absent), and `SENATEME` carries exactly **one** open event, `SENATEME-26`. `US-SENATE-ME-2026` is unambiguous.
+- **Iowa** — no special either, but `SENATEIA` carries **two** open events, `SENATEIA-26` *and* `SENATEIA-28`. So for Iowa the cycle component is doing real disambiguating work rather than being decorative; a bare `US-SENATE-IA` would have collided two different elections.
+- **Ohio** — `SENATEOH-28` (regular, 2028) and `SENATEOHS-26` (special, 2026), as already recorded.
+
+#### A stronger corroboration for the FOMC date, found by the same search
+
+`KXFEDDECISION-26SEP` carries the venue sub-title **"On Sep 16, 2026"** — Kalshi stating the decision date outright rather than implying it through a `close_time`. `KXFED-26SEP` says the same. This is better evidence than the close times already recorded, though it is still one venue; the Polymarket `endDate` of `2026-09-16T00:00:00Z` remains the independent half that satisfies §7.3.
+
+#### Out of scope for a single key: combination markets
+
+`KXMESENGOVCOMBO-26NOV`, `KXIASENGOVCOMBO-26NOV`, `KXOHSENGOVCOMBO-26NOV` and `KXMETXCOMBO-26NOV` resolve on a Senate race **and** another race jointly. They do not resolve on one event, so they cannot take one `event_key` without misstating what they are, and they are deliberately **not** in the registry. If such a market ever enters the pool it needs a ruling of its own — it belongs to two clusters at once, which nothing in v1.10–v1.12 contemplates. Flagged, not resolved.
+
+#### Methodology note — why the corpus walk is not trusted
+
+The first sibling search was run by walking every open event. That walk is **not reliable**: the Kalshi events endpoint returns **HTTP 429** partway through, and a walk that swallows the error returns a partial corpus that looks complete. Measured directly — successive full walks returned 4,400, then 3,200, then 3,400 events, and one aborted at page 1 with 200. On the truncated pass `KXFEDDECISION-26SEP` itself was missing, which is how the problem was noticed: a series known to be open did not appear.
+
+Every finding above was therefore re-derived by series-targeted enumeration, each of which reported completion.
+
+**`tape/discover.ts` is not affected.** Its `getJson` throws on any non-OK response, so a 429 during the pool read aborts the run loudly instead of silently producing a short pool. The 2026-09-10 pool day's counts stand.
+
+*One correction to my own first pass:* the regex used in that walk matched `KXAUSTRALIASENATE-28` and `KXNIGERIASENATE-27` as Iowa results — `IASEN` occurs inside *austral-IASEN-ate* and *niger-IASEN-ate*. They are unrelated and were never Iowa listings. Noted because the same substring trap is what array-containment matching was adopted to avoid on the tag side.
+
+## 8. v1.12 — the no-public-case record
+
+**Implementation.** Two sealed Phase A fields:
+
+| field | contract |
+|---|---|
+| `thesis_state` | absent/`null` normally; exactly `"no_public_case"` otherwise. The protocol defines **one** value, so any other string is a typo rather than a new state, and is rejected as such. |
+| `search_record` | required and non-empty when `thesis_state` is `"no_public_case"`: `sources_consulted[]`, `queries[]`, `window{from,to}`, `searched_at`. |
+
+Both sit inside the `phase_a_hash` preimage; the four hash properties are proven for each, plus that `search_record` is hashed **deeply** — changing one nested element of the query list changes the hash, so the evidence of absence cannot be edited after sealing.
+
+**The engine is not special-cased.** v1.12 says the verdict on a thesis-absent input "is a finding about the market, not a defect in the record", so Phase A runs the same extraction and the same deterministic engine, and records whatever comes back.
+
+**An absent field is now genuinely absent from the extraction input.** `renderIntentText` previously rendered a `null` field as the literal token `null`, which would have handed the extractor a string to read as content — the opposite of absence, and it would have made the v1.12 verdict an artifact of the renderer. It now omits null and undefined fields, which also matches §3's own wording that an unstated basis or invalidation is *omitted*. Proven hash-neutral: all three pre-v1.12 records recompute their `intent_sha256` unchanged, because none carries a null inside `intent`.
+
+**Enforcement** is at Phase A *and* in the verifier, gated on `posted_at >= 2026-09-10` like the v1.10/v1.11 fields. Phase A validates **before anything is hashed** — a record that cannot be sealed correctly must never be sealed at all. Six failure branches proven to fire with temporary synthetic records (thesis present alongside `no_public_case`; missing `search_record`; empty `queries`; unparseable `searched_at`; `deviated: true`; a typo'd state), and a valid no-case record proven to pass clean. All synthetics deleted; `records/` byte-unchanged.
+
+### 8.1 Why not `deviated: true` — considered and rejected
+
+`deviated: true` was the only pre-existing mechanism that fit mechanically, and §3 pairs it with `inclusion_note` for exactly this sort of exception. **It was rejected, and v1.12 forbids it outright** (*"never skipped and never deviated"*), for a reason worth keeping written down:
+
+§3 says a deviated record is **excluded from primary**. So routing no-public-case markets through it would quietly remove them from the primary analysis — and they are not a random subset. A market with no dominant public case is plausibly quieter, more mechanical, less narrated, or simply less interesting to commentators than one with a loud case. Draining that class out of the primary reinstates the selection bias the coverage pool exists to remove, in inverted form: instead of an operator choosing which markets to audit, the *availability of commentary* chooses, which is worse because it is invisible and correlated with the very thing under study.
+
+v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
+
+**Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.
+
+## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
+
+**Not an amendment and not a rule change. This section records a discrepancy and names the point at which it has to be addressed; it invents no threshold and changes nothing.**
+
+PROTOCOL §9 already supplies the floor below which no inference may be drawn — *"Anything before Stage 1 n is reached"* is listed under **What this study cannot show**, so the question of whether a stopping floor exists is settled and needed no amendment.
+
+The gap is in the **units** those floors are counted in:
+
+| clause | where | counts |
+|---|---|---|
+| `Stage 1 analysis runs once at n = 100 … first-audit records` | §6 | **records** |
+| `Binary analyses (H1, H2) require ≥ 25 records in each cell` | §6 | **records** |
+| statistics `computed over clusters, or reported with cluster-robust uncertainty` | v1.10 | **events** (clusters) |
+
+v1.10 and v1.11 changed how a statistic is *computed and reported* — clustered on `event_key`, with the number of distinct events stated alongside the number of records. **Neither restates the §6 thresholds.** So the uncertainty is cluster-aware while the gate deciding *when to report at all* still counts records, and **clustered records advance both floors faster than independent evidence does.** Day one is the shape of the problem: ten records over four events, seven of them on one Fed decision.
+
+Stated precisely, because the loose version overstates it: a single strike ladder does **not** reach n = 100, which sits far above any one ladder. The floor within reach of a handful of ladders is the **25-per-cell minimum** — that is where the discrepancy bites first, and it is the earlier of the two in any case.
+
+**Tripwire.** *Before any cell reaches 25 records*, one of two things happens: the minimum is restated in clusters, **or** the analysis reports both counts — records and distinct events — and justifies that cell's composition. Which of those, and any number attached to it, is the operator's to decide; recording the tripwire here is not choosing between them.
+
+This is currently inert: zero graded records exist, so no cell has any members and nothing is pending. It is written down now because the moment it stops being inert is the moment it is easiest to miss.
+
+**PROTOCOL.md is frozen at v1.12** until a guard actually breaks.
+
+## 10. Division of labour — the container drafts, the operator's shell seals in one pass
+
+**Ruled 2026-09-12 (CLAUDE.md §5): record-bearing operations run only from the operator's shell.** Sealing, pricing, anchoring and any public-query mutation need keys a remote container never holds. Containers research, review, implement, and hand over **drafts**.
+
+### 10.1 What a container hands over, and what that handover is not
+
+| artefact | key needed | container |
+|---|---|---|
+| venue-direct pool reads (Kalshi API, Polymarket Gamma) + the day's discovery JSON | none | **yes** |
+| `event_key` / `venue_event_key` assignment and the §7.4 sibling search | none | **yes** |
+| candidate `source.url`, and the verbatim text **as a draft** | none | **draft only** |
+| draft `intent.thesis` / `probability_basis` / `bounds`, quoted from that source | none | **draft only** |
+| `market`, `binding`, `criterion`, `prescreen` | none | **yes** |
+| a v1.12 `search_record` | none | **draft only — see 10.2** |
+| Dune pool query 8601185 execution or republish | `DUNE_API_KEY` | no |
+| `engine.*`, `verdict_hash`, `intent_sha256`, `phase_a_hash` | `ANTHROPIC_API_KEY` | no |
+| Phase B price, `volume_24h`, `volume_total`, `record_hash` | `DUNE_API_KEY` | no |
+| Irys anchor | anchor key | no |
+
+The handover artefact is the inbox files — `tests/q3/inbox/<id>.json`, one per record. **They are drafts, not evidence.** A container's job is to find the sources, work out which markets carry a case and which do not, and set out the searching so the operator's pass is fast rather than exploratory.
+
+### 10.2 Source and seal run in ONE pass, from the operator's shell
+
+**This restores the rule and locates it correctly (ruled 2026-09-12).** The earlier draft of this section said one-pass sealing was unachievable under key custody. That was wrong: it assumed the sealing shell could not reach the web. It can. The operator's shell has both web access and the keys, so **the sealing pass re-runs every search and re-fetches every source at seal time.**
+
+Consequently:
+
+- **Every timestamped field is regenerated in the sealing pass, never carried over from a draft.** `source.text`, `source.captured_at` and the whole `search_record` are produced by the pass that seals them.
+- **A `no_public_case` search must run AT SEAL.** An absence is only evidence in the state of the world at `posted_at`. A search run days earlier certifies an absence that may no longer hold — and v1.12's whole point is that the absence is *evidenced*, not asserted. The 2026-09-11 CPI case is the concrete failure: a window closing pre-print, sealed post-print, would certify an absence never checked in the state that mattered.
+- **A draft may carry `draft_captured_at`, for the operator's information only.** It records when the container found the material, so the operator can see the age of the draft they are about to re-verify. It is **not evidence and is not sealed.**
+
+**`draft_captured_at` is unsealable by construction, not by convention.** Left as an ordinary top-level key it would be folded into `phase_a_hash` like any other field — the document would say "not sealed" while the code sealed it. So: Phase A **deletes** it from the record outright (logging that it did), and it sits in both `PHASE_A_EXCLUDE` and `PHASE_B_EXCLUDE` so a future path that reintroduces it still cannot reach either hash. `q3-verify` fails any record that carries it. Proven mechanically: two different `draft_captured_at` values hash identically under both phases, while `source.captured_at` still changes the hash — the exclusion is narrow and real evidence timestamps remain sealed.
+
+**What this means for a stale brief.** If a seal cannot run in the same pass as the sourcing — the window has closed, the keys are elsewhere, the day has turned — the drafts are still usable, because nothing in them is evidence yet. The operator re-runs and seals when the pass can complete. Nothing has to be thrown away, and nothing stale can be sealed by accident.
+
+## 11. Acceptance rule for extraction-contract changes
+
+**Recorded 2026-09-12. This is an implementation-side discipline, not a PROTOCOL amendment** — PROTOCOL.md stays frozen at v1.12. It governs the extraction layer (contracts `DJZS-X-v*`, `DJZS-X-LF-v*`), which sits between the model and the frozen engine and is the one part of the verdict path that a prompt edit can move.
+
+The rule has three parts, and the order matters more than the numbers:
+
+1. **The threshold is pre-registered in the commit that introduces the change, before any harness run.** A contract change lands with its acceptance bar already written down — in the commit that changes the prompt, not in a later commit, not in a message, not in a README revised once results are in. The bar is a claim made in ignorance of the result. That is the only condition under which passing it means anything.
+2. **A breach produces a published deviation note. It never produces a redefinition.** If the measured number misses the pre-registered bar, the honest outputs are: do not deploy, or deploy and publish a note saying the bar was missed, by how much, and why the deploy went ahead anyway. Moving the bar to fit the measurement is not an option — not in the same message, not in the same commit, not afterwards. A bar that can be adjusted once the number is known measures nothing.
+3. **Re-measuring the noise band is a separate act, with its own commit, done BEFORE the next change — not after a number.** The band is legitimately re-estimable: two points is a bad estimate of a distribution and more replays of an unchanged contract genuinely sharpen it. But a re-measurement performed *because a result was disappointing* is indistinguishable from a redefinition, whatever its arithmetic. So the re-measurement runs on its own, on the unchanged contract, is committed on its own, and the revised band applies **only to changes that come after it**. It never reaches back to grade the change that prompted it.
+
+**Why this is written down.** The engine is frozen and hash-checked; nobody can quietly move a weight. The extraction contract has no equivalent guard — it is a prompt, and its quality is a measurement rather than an identity. Without a pre-registration rule, "we measured, it was fine" is unfalsifiable, because the standard for "fine" can be set after the fact. §11.1 is the case that earned the rule.
+
+### 11.1 Deviation note (retroactive) — the 2026-09-08 deploy of Worker `697a014a`
+
+**Written 2026-09-12, about an event on 2026-09-08. Recorded as a breach with the bar revised after the fact — not as a re-measurement.**
+
+| | |
+|---|---|
+| **Pre-registered bar** | verdict stability within **0.02 of 0.975**, with designed-class match **16/16** |
+| **Measured** | stability **0.950**, class match 16/16 |
+| **Breach** | **2.5 points** below the 0.975 reference (0.5 points below the band floor of 0.955) |
+| **Action taken** | **deployed** (Worker `697a014a`) |
+| **What happened next** | the bar was revised to "class match primary, ≥0.95" **in the same message that disclosed the miss** |
+
+**The grounding runs**, both on the 16-thesis PM corpus, Sonnet 4.6 at temperature 0, K=5 replays, N=3 consensus:
+
+- `tests/out/q2-live-2026-09-08-01-40-21.json` — `meanStab` 0.9750, `designedMatch` 16/16. This is the 0.975 the bar was written around.
+- `tests/out/q2-live-2026-09-09-01-14-26.json` — `meanStab` 0.9500, `designedMatch` 16/16. This is the measurement that breached it. (The filename stamp is UTC; the deploy is dated 2026-09-08 in the operator's own record. The two are the same episode, not two.)
+
+**Why this is a breach and not a re-measurement.** The revision ("class match primary, ≥0.95") is defensible on its merits — class match *is* the more meaningful dimension, and a band estimated from two points was too tight. None of that is the issue. The issue is the sequence: the number arrived, then the bar moved, then both were published together. A bar revised in the same message that discloses the miss cannot have been a re-estimation of the noise band, because a re-estimation done properly (§11 rule 3) would have been its own act, on the unchanged contract, before the next change — and would not have applied to this deploy at all. So the deploy stands as a deploy that missed its bar. The revision stands as a revision made after the fact. Recording it as "we re-measured and it was inside the band" would be the redefinition §11 rule 2 exists to forbid.
+
+**What was and was not at risk.** The deployed layer's class match was 16/16 — every designed verdict class landed. The harness's own built-in grade was `RELIABLE` (its internal gate is `mean>=0.95 && full>=0.8`, which 0.950 passes). So the deploy was not reckless, and no caller received a wrong class because of it. That is exactly why it is worth recording: the failure mode here is not a bad verdict, it is a bar that moved. The cost is entirely to the credibility of every future statement of the form "it passed."
+
+**Consequence, already in force.** §11 is the rule this produced. The next extraction-contract change pre-registers its threshold in its own commit, and if it misses, it gets a note like this one rather than a new bar.

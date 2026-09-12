@@ -15,10 +15,15 @@ export function merkleRoot(hashes: string[]): string {
   while (lvl.length > 1) { if (lvl.length % 2) lvl.push(lvl[lvl.length - 1]); const n: Buffer[] = []; for (let i = 0; i < lvl.length; i += 2) n.push(createHash("sha256").update(Buffer.concat([lvl[i], lvl[i + 1]])).digest()); lvl = n; }
   return "0x" + lvl[0].toString("hex");
 }
+/** Renders the intent for extraction. A null or undefined field is OMITTED, never rendered as the token "null".
+ *  §3 already says an absent basis or invalidation is omitted rather than stated, and v1.12 says the engine sees "an
+ *  input whose thesis is absent" — rendering `thesis: null` would hand the extractor a literal string to read as
+ *  content, which is the opposite of absence. Hash-neutral on every record written before v1.12: none carries a null
+ *  inside intent, checked. */
 export function renderIntentText(i: unknown): string {
   if (typeof i === "string") return i; if (!i || typeof i !== "object") return String(i);
   const o = i as Record<string, unknown>;
-  return Object.keys(o).sort().map(k => { const v = o[k]; return `${k}: ${typeof v === "string" ? v : (typeof v === "number" || typeof v === "boolean") ? String(v) : JSON.stringify(v)}`; }).join("\n");
+  return Object.keys(o).sort().filter(k => o[k] !== null && o[k] !== undefined).map(k => { const v = o[k]; return `${k}: ${typeof v === "string" ? v : (typeof v === "number" || typeof v === "boolean") ? String(v) : JSON.stringify(v)}`; }).join("\n");
 }
 /** §3 pool tag vocabulary — v1.5 rule 1 (categories) plus v1.8 (venue-native recurrence). ONE definition, consumed by
  *  the venue-direct read, the Dune publish check and the day's JSON; queries/polymarket_pool.sql carries the same
@@ -115,6 +120,11 @@ export function devVar(name: string): string | undefined {
  *  volume_24h / volume_total (v1.7a) are sealed at Phase B alongside the price, so they are excluded here for the same
  *  reason price_at_audit is. Adding a name to this set cannot change any existing hash: strip() removes keys by name,
  *  and a record that never carried the key canonicalises identically either way. */
-export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "volume_24h", "volume_total", "record_hash", "outcome"]);
-export const PHASE_B_EXCLUDE = new Set(["record_hash", "outcome"]);
+export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "volume_24h", "volume_total", "record_hash", "outcome", "draft_captured_at"]);
+export const PHASE_B_EXCLUDE = new Set(["record_hash", "outcome", "draft_captured_at"]);
+/** draft_captured_at is a DRAFT-ONLY field an inbox file may carry for the operator's information (SCAN_SPEC §10.2).
+ *  It is NOT evidence and is NOT sealed: Phase A deletes it from the record outright, and it sits in both exclude
+ *  sets so that even if a future path reintroduces it, it cannot reach phase_a_hash or record_hash. Without this it
+ *  would be folded into phase_a_hash like any other top-level key — the doc would say "not sealed" while the code
+ *  sealed it. */
 export function strip(rec: Record<string, unknown>, ex: Set<string>) { const o: Record<string, unknown> = {}; for (const k of Object.keys(rec)) if (!ex.has(k)) o[k] = rec[k]; return o; }
