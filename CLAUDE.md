@@ -67,6 +67,19 @@ struct → same verdict + `verdict_hash`, always).
 - Run the **offline stub harness** (stubbed model, no key) before ANY live run. (Not yet a
   tracked repo file — rebuilt in scratch each session; a candidate to commit.)
 - Touch only the files a task names.
+- **Record-bearing operations run ONLY from Damon's shell** (ruled 2026-09-12). Sealing a record
+  (Phase A or Phase B), pricing, anchoring to Irys, and any mutation of a public saved query — a Dune
+  republish included — need `ANTHROPIC_API_KEY`, `DUNE_API_KEY` or the anchor key, and those live in the
+  operator's shell only. Remote containers do research, review and implementation, and hand over material;
+  they NEVER hold those keys. Their absence in a container is **the design, not a gap to route around** —
+  do not treat it as a blocker to be fixed, and do not look for a path that does not need them.
+  A brief that assigns a seal to a container which cannot execute it is the **operator's error**: the
+  container reports and stops, and finishing the brief some other way is the wrong instinct.
+  - Corollary, stated because the route is discoverable and looks reasonable: `DUNE_API_KEY` exists as a
+    GitHub Actions secret (`.github/workflows/djzs-gate.yml` passes it to q3-verify), so a
+    `workflow_dispatch` job *could* republish queries 8601184/8601185 from CI. That is a public-query
+    mutation outside the operator's shell and is therefore **ruled out**. Do not build it, do not offer it.
+    It was offered once before this rule existed; that offer is withdrawn.
 
 ## 6. Deployment reality (as of 2026-07-04)
 - The calibrated `/api/v2/audit` route serves **nowhere public**. Deploy lineage = `main`-only

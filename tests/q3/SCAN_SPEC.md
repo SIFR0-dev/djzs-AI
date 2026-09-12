@@ -368,3 +368,40 @@ Stated precisely, because the loose version overstates it: a single strike ladde
 This is currently inert: zero graded records exist, so no cell has any members and nothing is pending. It is written down now because the moment it stops being inert is the moment it is easiest to miss.
 
 **PROTOCOL.md is frozen at v1.12** until a guard actually breaks.
+
+## 10. Division of labour — what a container hands over, and the gap that creates
+
+**Ruled 2026-09-12 (CLAUDE.md §5): record-bearing operations run only from the operator's shell.** Sealing, pricing, anchoring and any public-query mutation need keys a remote container never holds. Containers research, review, implement, and hand over.
+
+### 10.1 What a container CAN produce for a pool-day seal
+
+Everything that needs no key. For a ten-record day that is nearly all of the operator-authored surface:
+
+| artefact | key needed | container can produce |
+|---|---|---|
+| venue-direct pool reads (Kalshi API, Polymarket Gamma) + the day's discovery JSON | none | **yes** |
+| `event_key` / `venue_event_key` assignment and the §7.4 sibling search | none | **yes** |
+| `source.url`, `source.text` verbatim, `source.captured_at` | none | **yes** |
+| `intent.thesis` / `probability_basis` / `bounds`, quoted from source | none | **yes** |
+| `market`, `binding`, `criterion`, `prescreen` | none | **yes** |
+| a complete `search_record` for a v1.12 no-public-case record | none | **yes** |
+| a complete inbox file per record, ready for `q3-log --phase-a` | none | **yes** |
+| Dune pool query 8601185 execution or republish | `DUNE_API_KEY` | no |
+| `engine.*`, `verdict_hash`, `intent_sha256`, `phase_a_hash` | `ANTHROPIC_API_KEY` | no |
+| Phase B price, `volume_24h`, `volume_total`, `record_hash` | `DUNE_API_KEY` | no |
+| Irys anchor | anchor key | no |
+
+So the handover artefact is **the inbox files**: `tests/q3/inbox/<id>.json`, one per record, carrying every field §3 requires the operator to write plus the v1.10–v1.12 fields, and nothing that a hash covers.
+
+### 10.2 The consequence: capture and seal can no longer be simultaneous
+
+This retires an operating rule stated earlier in this session — *"source and seal in one pass or not at all."* Under the ruling that is **not achievable**: the container captures, the operator seals, and those are different shells at different times. The gap is now **structural**, not a mistake to avoid.
+
+That matters because two fields are timestamps of evidence:
+
+- `source.captured_at` — when the verbatim text was taken.
+- `search_record.searched_at` — when the absence was checked (v1.12).
+
+A record sealed hours or days after capture carries evidence timestamps earlier than its own `posted_at`, and nothing in the record says how much earlier or whether anything moved in between. The 2026-09-11 CPI case is the concrete failure mode: a `search_record` window closing pre-print, sealed post-print, would certify an absence never checked in the state that mattered.
+
+**Not ruled here, and flagged for the operator.** Options visible from the implementation side: cap the permitted capture-to-seal interval; have the operator re-verify sources at seal and record that it was done; or record the interval explicitly and let §6 stratify on it. Each touches v1.12's `search_record` semantics, and `PROTOCOL.md` is frozen at v1.12 — so this is an amendment question, not an implementation one. Until it is ruled, a container should state the capture timestamps prominently in its handover so the operator can see the age of what they are about to seal.
