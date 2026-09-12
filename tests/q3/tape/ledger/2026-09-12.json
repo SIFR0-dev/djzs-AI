@@ -1,0 +1,26 @@
+[
+  {
+    "at": "2026-09-12T18:25:02.398Z",
+    "op": "exchange-price",
+    "args": [
+      "--exchange",
+      "coinbase",
+      "--pair",
+      "BTC/USD"
+    ],
+    "credits": 1,
+    "cached": false
+  },
+  {
+    "at": "2026-09-12T18:32:01.959Z",
+    "op": "exchange-price",
+    "args": [
+      "--exchange",
+      "coinbase",
+      "--pair",
+      "BTC/USD"
+    ],
+    "credits": 1,
+    "cached": false
+  }
+]
