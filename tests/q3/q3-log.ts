@@ -43,6 +43,10 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     const rec = JSON.parse(readFileSync(flag("--phase-a")!, "utf8")) as Record<string, unknown>;
     const missing = REQUIRED_A.filter(k => !(k in rec)); if (missing.length) { console.error("Phase A: missing fields:", missing.join(", ")); process.exit(1); }
     for (const k of ["price_at_audit", "implied_prob_at_audit", "engine", "phase_a_hash", "record_hash", "outcome"]) if (k in rec && rec[k] != null) { console.error(`Phase A: '${k}' must not be present — it is computed or belongs to a later phase`); process.exit(1); }
+    // SCAN_SPEC §10.2: an inbox file may carry draft_captured_at for the operator's information. It is not evidence
+    // and is not sealed, so it is dropped here rather than merely excluded from the hash — a sealed record must not
+    // carry a timestamp that looks like provenance but was regenerated in this pass.
+    if ("draft_captured_at" in rec) { console.log(`  note: dropping draft_captured_at ${JSON.stringify(rec.draft_captured_at)} — draft-only, not sealed (SCAN_SPEC §10.2)`); delete rec.draft_captured_at; }
     const date = String(rec.posted_at).slice(0, 10); const recs = loadDay(date); if (recs.some(r => r.id === rec.id)) { console.error(`Phase A: id ${rec.id} already exists in ${date}`); process.exit(1); }
     // Venue ticker must resolve before anything is hashed — a 404 ticker is an ungradable record (learned from pilot N5).
     const mk = rec.market as Record<string, unknown>; const bt = (rec.binding as Record<string, unknown>)?.type;

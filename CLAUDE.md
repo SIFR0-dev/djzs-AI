@@ -61,7 +61,9 @@ struct → same verdict + `verdict_hash`, always).
   member; 0 occurrences across the last 3 cycles.
 
 ## 5. Working rules
-- **CC never commits.** Damon signs in his own shell.
+- **CC commits to branches and opens PRs; only Damon merges to `main`, and only Damon seals,
+  prices, or anchors a record.** (Corrected 2026-09-12 — the former "CC never commits" had not
+  described practice for some time.)
 - Verdict-core changes MUST show: perp parity byte-identical incl `verdict_hash` (vs prior
   HEAD) **and** PM-hash stability on legacy inputs (no `edge_claim` key).
 - Run the **offline stub harness** (stubbed model, no key) before ANY live run. (Not yet a

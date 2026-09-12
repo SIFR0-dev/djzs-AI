@@ -120,6 +120,11 @@ export function devVar(name: string): string | undefined {
  *  volume_24h / volume_total (v1.7a) are sealed at Phase B alongside the price, so they are excluded here for the same
  *  reason price_at_audit is. Adding a name to this set cannot change any existing hash: strip() removes keys by name,
  *  and a record that never carried the key canonicalises identically either way. */
-export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "volume_24h", "volume_total", "record_hash", "outcome"]);
-export const PHASE_B_EXCLUDE = new Set(["record_hash", "outcome"]);
+export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "volume_24h", "volume_total", "record_hash", "outcome", "draft_captured_at"]);
+export const PHASE_B_EXCLUDE = new Set(["record_hash", "outcome", "draft_captured_at"]);
+/** draft_captured_at is a DRAFT-ONLY field an inbox file may carry for the operator's information (SCAN_SPEC §10.2).
+ *  It is NOT evidence and is NOT sealed: Phase A deletes it from the record outright, and it sits in both exclude
+ *  sets so that even if a future path reintroduces it, it cannot reach phase_a_hash or record_hash. Without this it
+ *  would be folded into phase_a_hash like any other top-level key — the doc would say "not sealed" while the code
+ *  sealed it. */
 export function strip(rec: Record<string, unknown>, ex: Set<string>) { const o: Record<string, unknown> = {}; for (const k of Object.keys(rec)) if (!ex.has(k)) o[k] = rec[k]; return o; }

@@ -52,6 +52,8 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     // v1.10, checked on every record and not only sealed ones: the field is operator-authored at Phase A, so a record
     // can be wrong about it before it is ever sealed and that is the cheapest moment to say so.
     const rec = r as Record<string, unknown>;
+    // SCAN_SPEC §10.2: draft-only, dropped at Phase A. Its presence in a record means a draft field was sealed.
+    if ("draft_captured_at" in rec) fails.push(`${id}: carries draft_captured_at — that field is draft-only and must be dropped at Phase A, never sealed (SCAN_SPEC §10.2)`);
     if (Date.parse(String(r.posted_at)) >= V110_FROM) {
       const ek = rec.event_key;
       if (typeof ek !== "string" || !ek.trim()) fails.push(`${id}: v1.10/v1.11 require a non-empty operator-assigned event_key on every record posted after the amendment (got ${JSON.stringify(ek)})`);

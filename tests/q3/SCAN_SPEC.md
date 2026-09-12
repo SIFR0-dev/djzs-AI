@@ -369,39 +369,37 @@ This is currently inert: zero graded records exist, so no cell has any members a
 
 **PROTOCOL.md is frozen at v1.12** until a guard actually breaks.
 
-## 10. Division of labour — what a container hands over, and the gap that creates
+## 10. Division of labour — the container drafts, the operator's shell seals in one pass
 
-**Ruled 2026-09-12 (CLAUDE.md §5): record-bearing operations run only from the operator's shell.** Sealing, pricing, anchoring and any public-query mutation need keys a remote container never holds. Containers research, review, implement, and hand over.
+**Ruled 2026-09-12 (CLAUDE.md §5): record-bearing operations run only from the operator's shell.** Sealing, pricing, anchoring and any public-query mutation need keys a remote container never holds. Containers research, review, implement, and hand over **drafts**.
 
-### 10.1 What a container CAN produce for a pool-day seal
+### 10.1 What a container hands over, and what that handover is not
 
-Everything that needs no key. For a ten-record day that is nearly all of the operator-authored surface:
-
-| artefact | key needed | container can produce |
+| artefact | key needed | container |
 |---|---|---|
 | venue-direct pool reads (Kalshi API, Polymarket Gamma) + the day's discovery JSON | none | **yes** |
 | `event_key` / `venue_event_key` assignment and the §7.4 sibling search | none | **yes** |
-| `source.url`, `source.text` verbatim, `source.captured_at` | none | **yes** |
-| `intent.thesis` / `probability_basis` / `bounds`, quoted from source | none | **yes** |
+| candidate `source.url`, and the verbatim text **as a draft** | none | **draft only** |
+| draft `intent.thesis` / `probability_basis` / `bounds`, quoted from that source | none | **draft only** |
 | `market`, `binding`, `criterion`, `prescreen` | none | **yes** |
-| a complete `search_record` for a v1.12 no-public-case record | none | **yes** |
-| a complete inbox file per record, ready for `q3-log --phase-a` | none | **yes** |
+| a v1.12 `search_record` | none | **draft only — see 10.2** |
 | Dune pool query 8601185 execution or republish | `DUNE_API_KEY` | no |
 | `engine.*`, `verdict_hash`, `intent_sha256`, `phase_a_hash` | `ANTHROPIC_API_KEY` | no |
 | Phase B price, `volume_24h`, `volume_total`, `record_hash` | `DUNE_API_KEY` | no |
 | Irys anchor | anchor key | no |
 
-So the handover artefact is **the inbox files**: `tests/q3/inbox/<id>.json`, one per record, carrying every field §3 requires the operator to write plus the v1.10–v1.12 fields, and nothing that a hash covers.
+The handover artefact is the inbox files — `tests/q3/inbox/<id>.json`, one per record. **They are drafts, not evidence.** A container's job is to find the sources, work out which markets carry a case and which do not, and set out the searching so the operator's pass is fast rather than exploratory.
 
-### 10.2 The consequence: capture and seal can no longer be simultaneous
+### 10.2 Source and seal run in ONE pass, from the operator's shell
 
-This retires an operating rule stated earlier in this session — *"source and seal in one pass or not at all."* Under the ruling that is **not achievable**: the container captures, the operator seals, and those are different shells at different times. The gap is now **structural**, not a mistake to avoid.
+**This restores the rule and locates it correctly (ruled 2026-09-12).** The earlier draft of this section said one-pass sealing was unachievable under key custody. That was wrong: it assumed the sealing shell could not reach the web. It can. The operator's shell has both web access and the keys, so **the sealing pass re-runs every search and re-fetches every source at seal time.**
 
-That matters because two fields are timestamps of evidence:
+Consequently:
 
-- `source.captured_at` — when the verbatim text was taken.
-- `search_record.searched_at` — when the absence was checked (v1.12).
+- **Every timestamped field is regenerated in the sealing pass, never carried over from a draft.** `source.text`, `source.captured_at` and the whole `search_record` are produced by the pass that seals them.
+- **A `no_public_case` search must run AT SEAL.** An absence is only evidence in the state of the world at `posted_at`. A search run days earlier certifies an absence that may no longer hold — and v1.12's whole point is that the absence is *evidenced*, not asserted. The 2026-09-11 CPI case is the concrete failure: a window closing pre-print, sealed post-print, would certify an absence never checked in the state that mattered.
+- **A draft may carry `draft_captured_at`, for the operator's information only.** It records when the container found the material, so the operator can see the age of the draft they are about to re-verify. It is **not evidence and is not sealed.**
 
-A record sealed hours or days after capture carries evidence timestamps earlier than its own `posted_at`, and nothing in the record says how much earlier or whether anything moved in between. The 2026-09-11 CPI case is the concrete failure mode: a `search_record` window closing pre-print, sealed post-print, would certify an absence never checked in the state that mattered.
+**`draft_captured_at` is unsealable by construction, not by convention.** Left as an ordinary top-level key it would be folded into `phase_a_hash` like any other field — the document would say "not sealed" while the code sealed it. So: Phase A **deletes** it from the record outright (logging that it did), and it sits in both `PHASE_A_EXCLUDE` and `PHASE_B_EXCLUDE` so a future path that reintroduces it still cannot reach either hash. `q3-verify` fails any record that carries it. Proven mechanically: two different `draft_captured_at` values hash identically under both phases, while `source.captured_at` still changes the hash — the exclusion is narrow and real evidence timestamps remain sealed.
 
-**Not ruled here, and flagged for the operator.** Options visible from the implementation side: cap the permitted capture-to-seal interval; have the operator re-verify sources at seal and record that it was done; or record the interval explicitly and let §6 stratify on it. Each touches v1.12's `search_record` semantics, and `PROTOCOL.md` is frozen at v1.12 — so this is an amendment question, not an implementation one. Until it is ruled, a container should state the capture timestamps prominently in its handover so the operator can see the age of what they are about to seal.
+**What this means for a stale brief.** If a seal cannot run in the same pass as the sourcing — the window has closed, the keys are elsewhere, the day has turned — the drafts are still usable, because nothing in them is evidence yet. The operator re-runs and seals when the pass can complete. Nothing has to be thrown away, and nothing stale can be sealed by accident.
