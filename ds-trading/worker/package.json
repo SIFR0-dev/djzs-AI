@@ -1,0 +1,12 @@
+{
+  "name": "ds-trading-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/worker.test.ts"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  }
+}

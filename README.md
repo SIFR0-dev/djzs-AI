@@ -19,12 +19,18 @@ Cloudflare Worker. Add it to an MCP-capable agent in one line:
 claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp
 ```
 
+**`verify_pm_trade` costs 2.00 USDC per audit.** It is metered on this MCP transport, not only
+over HTTP — an unpaid call returns an x402 402 challenge (`exact` scheme, `eip155:8453`, USDC,
+to the treasury), not a verdict. The other two tools, `query_pol_certificates` and
+`query_agent_trust`, are free. An out-of-scope intent is refused for free: it is answered but
+never settled, so a refused audit costs nothing.
+
 Then call `verify_pm_trade` with a free-text prediction-market trade thesis. It extracts the
 reasoning, audits it against the calibrated DJZS-M taxonomy, and returns
 `PASS → PROCEED` / `FAIL` / `WAIT → HALT`, with the flagged defects and a `verdict_hash`.
 
-**First external audit on record.** An outside agent audited a benchmark thesis
-(`pm-block-008`) through the deployed tool and received:
+**First external audit on record — and it was a free call.** On 2026-07-05 an outside agent
+audited a benchmark thesis (`pm-block-008`) through the deployed tool and received:
 
 ```
 verdict:       FAIL
@@ -34,16 +40,20 @@ disagreements: []
 verdict_hash:  0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937
 ```
 
+That audit **predates metering**: the x402 gate landed on 2026-07-13, eight days later. No 402
+was issued because no toll existed yet. It is a record of external *use*, not of external
+*payment* — the two are counted separately here and should not be read as one.
+
 Behavioral parity against the offline batteries (verdict + flags + extracted input) is green.
-Hash parity is a pending re-mint the calibration key lapsed during deployment so the live
-hash above stands as the record until it is re-run.
+Hash parity was **discharged on 2026-07-12**: byte-identical reproduction of the hash above from
+a live N=3 extraction into the frozen engine.
 
 ---
 
 ## Pay it over HTTP x402 - the ecosystem rail
 
-Beyond the MCP transport above, `verify_pm_trade` is now payable over the **HTTP x402**
-transport, live on Base mainnet:
+The same 2.00 USDC gate is payable over the **HTTP x402** transport as well, live on Base
+mainnet — a second way to pay the same tool, not a paid alternative to a free one:
 
 ```
 POST https://mcp.djzs.ai/x402/verify
@@ -160,18 +170,28 @@ The deployed Worker exposes three tools over streamable HTTP at `/mcp`:
 
 ## Honest v1 posture
 
-What the tool does **not** do yet — recorded deliberately, to be re-ruled before the gate is
-broadly promoted:
+Both gaps previously recorded here are **closed**. They are corrected in place rather than
+quietly deleted, because this section is the reason to trust the rest of the page:
 
-- **No ProofOfLogic write on the tool.** `verify_pm_trade` returns a `verdict_hash` but does not yet
-  anchor a certificate. Existing Irys certificates are prior-architecture lineage, not output of
-  this tool.
-- **Taxonomy hashes not in the response.** The four hash constants are exported from the frozen
-  tables but are not yet included in the tool's JSON response.
+- **ProofOfLogic write — LIVE on the tool.** Every in-scope `verify_pm_trade` audit anchors a
+  certificate on Irys and returns it in-band as
+  `pol_certificate: { status, node, irys_id, gateway_url, audit_id, verdict_hash }`.
+  Certificates carry a `verdict-hash` tag and are served publicly from the Irys gateway.
+  Anchoring is **fail-open**: a failure annotates the response and never blocks or mutates the
+  verdict.
+- **Taxonomy hashes — IN the response.** All four (`weights_hash`, `taxonomy_hash`,
+  `pm_weights_hash`, `pm_taxonomy_hash`) ship in the `taxonomy` block of every in-scope
+  response, alongside the two schema versions.
 
-The response contract today is: `verdict`, `action`, `risk_score`, `flags`, `unknown_fields`,
-`disagreements` (the per-field sample-agreement telemetry), `verdict_hash`, `extraction_failsafe`,
-`in_scope`, and taxonomy versions.
+The response contract today is: `schema_version`, `tool`, `in_scope`, `taxonomy` (two schema
+versions plus the four frozen hashes), `verdict`, `action`, `risk_score`, `flags`,
+`unknown_fields`, `disagreements` (the per-field sample-agreement telemetry), `verdict_hash`,
+`extraction_failsafe`, `halt_reason` on a WAIT, `pol_certificate`, and `trust_score` when an
+`agent_address` was supplied.
+
+What the tool still does **not** do: it audits **prediction-market** theses only. An intent that
+does not extract as one is refused with `in_scope: false`, free, and is never silently run
+through the perpetuals path — that taxonomy (`DJZS-LF-v1.1`) has no serving tool.
 
 ---
 
@@ -210,9 +230,10 @@ Addresses are as recorded in `agent.json`; verify any of them on BaseScan.
 A fifth contract, `contracts/DJZSProofOfLogicNFT.sol`, exists as source only — it is not in the
 deployed manifest, and this document makes no claim that certificate NFTs are live or mintable.
 
-Prior ProofOfLogic certificates live on the Irys datachain and are readable via the
-`query_pol_certificates` MCP tool. They are prior-architecture lineage, not output of
-`verify_pm_trade`.
+ProofOfLogic certificates live on the Irys datachain, readable via the free
+`query_pol_certificates` MCP tool or straight from the Irys gateway by id. Every in-scope
+`verify_pm_trade` audit anchors one and returns its id and gateway URL in the response. Only
+certificates predating the anchor write (landed 2026-07-12) are prior-architecture lineage.
 
 ---
 
