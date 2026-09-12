@@ -19,7 +19,12 @@
       "units": 1,
       "entry": 77900,
       "opened": "2026-09-03",
-      "horizon": "2026-09-10"
+      "horizon": "2026-09-10",
+      "closed": "2026-09-10",
+      "close_price": 76537,
+      "close_basis": "Coinbase BTC-USD daily close on horizon date",
+      "ret": -0.0175,
+      "grade": "MISSED \u2014 stated bar >80,000 by 2026-09-10 not met (Sep 10 high 78,554); BTC printed 79,852 on 09-11, one day past horizon, $148 short"
     }
   ],
   "stubs": [
@@ -43,7 +48,10 @@
         "level": 80000
       },
       "horizon": "2026-09-10",
-      "wrong_if": "no further US strikes by horizon AND BTC >80K"
+      "wrong_if": "no further US strikes by horizon AND BTC >80K",
+      "resolved": "2026-09-10",
+      "hit": false,
+      "note": "falsifier did not fire; Sep 10 high 78,554 vs 80,000 bar"
     },
     {
       "id": "REKTEMBER",
