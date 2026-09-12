@@ -403,3 +403,38 @@ Consequently:
 **`draft_captured_at` is unsealable by construction, not by convention.** Left as an ordinary top-level key it would be folded into `phase_a_hash` like any other field — the document would say "not sealed" while the code sealed it. So: Phase A **deletes** it from the record outright (logging that it did), and it sits in both `PHASE_A_EXCLUDE` and `PHASE_B_EXCLUDE` so a future path that reintroduces it still cannot reach either hash. `q3-verify` fails any record that carries it. Proven mechanically: two different `draft_captured_at` values hash identically under both phases, while `source.captured_at` still changes the hash — the exclusion is narrow and real evidence timestamps remain sealed.
 
 **What this means for a stale brief.** If a seal cannot run in the same pass as the sourcing — the window has closed, the keys are elsewhere, the day has turned — the drafts are still usable, because nothing in them is evidence yet. The operator re-runs and seals when the pass can complete. Nothing has to be thrown away, and nothing stale can be sealed by accident.
+
+## 11. Acceptance rule for extraction-contract changes
+
+**Recorded 2026-09-12. This is an implementation-side discipline, not a PROTOCOL amendment** — PROTOCOL.md stays frozen at v1.12. It governs the extraction layer (contracts `DJZS-X-v*`, `DJZS-X-LF-v*`), which sits between the model and the frozen engine and is the one part of the verdict path that a prompt edit can move.
+
+The rule has three parts, and the order matters more than the numbers:
+
+1. **The threshold is pre-registered in the commit that introduces the change, before any harness run.** A contract change lands with its acceptance bar already written down — in the commit that changes the prompt, not in a later commit, not in a message, not in a README revised once results are in. The bar is a claim made in ignorance of the result. That is the only condition under which passing it means anything.
+2. **A breach produces a published deviation note. It never produces a redefinition.** If the measured number misses the pre-registered bar, the honest outputs are: do not deploy, or deploy and publish a note saying the bar was missed, by how much, and why the deploy went ahead anyway. Moving the bar to fit the measurement is not an option — not in the same message, not in the same commit, not afterwards. A bar that can be adjusted once the number is known measures nothing.
+3. **Re-measuring the noise band is a separate act, with its own commit, done BEFORE the next change — not after a number.** The band is legitimately re-estimable: two points is a bad estimate of a distribution and more replays of an unchanged contract genuinely sharpen it. But a re-measurement performed *because a result was disappointing* is indistinguishable from a redefinition, whatever its arithmetic. So the re-measurement runs on its own, on the unchanged contract, is committed on its own, and the revised band applies **only to changes that come after it**. It never reaches back to grade the change that prompted it.
+
+**Why this is written down.** The engine is frozen and hash-checked; nobody can quietly move a weight. The extraction contract has no equivalent guard — it is a prompt, and its quality is a measurement rather than an identity. Without a pre-registration rule, "we measured, it was fine" is unfalsifiable, because the standard for "fine" can be set after the fact. §11.1 is the case that earned the rule.
+
+### 11.1 Deviation note (retroactive) — the 2026-09-08 deploy of Worker `697a014a`
+
+**Written 2026-09-12, about an event on 2026-09-08. Recorded as a breach with the bar revised after the fact — not as a re-measurement.**
+
+| | |
+|---|---|
+| **Pre-registered bar** | verdict stability within **0.02 of 0.975**, with designed-class match **16/16** |
+| **Measured** | stability **0.950**, class match 16/16 |
+| **Breach** | **2.5 points** below the 0.975 reference (0.5 points below the band floor of 0.955) |
+| **Action taken** | **deployed** (Worker `697a014a`) |
+| **What happened next** | the bar was revised to "class match primary, ≥0.95" **in the same message that disclosed the miss** |
+
+**The grounding runs**, both on the 16-thesis PM corpus, Sonnet 4.6 at temperature 0, K=5 replays, N=3 consensus:
+
+- `tests/out/q2-live-2026-09-08-01-40-21.json` — `meanStab` 0.9750, `designedMatch` 16/16. This is the 0.975 the bar was written around.
+- `tests/out/q2-live-2026-09-09-01-14-26.json` — `meanStab` 0.9500, `designedMatch` 16/16. This is the measurement that breached it. (The filename stamp is UTC; the deploy is dated 2026-09-08 in the operator's own record. The two are the same episode, not two.)
+
+**Why this is a breach and not a re-measurement.** The revision ("class match primary, ≥0.95") is defensible on its merits — class match *is* the more meaningful dimension, and a band estimated from two points was too tight. None of that is the issue. The issue is the sequence: the number arrived, then the bar moved, then both were published together. A bar revised in the same message that discloses the miss cannot have been a re-estimation of the noise band, because a re-estimation done properly (§11 rule 3) would have been its own act, on the unchanged contract, before the next change — and would not have applied to this deploy at all. So the deploy stands as a deploy that missed its bar. The revision stands as a revision made after the fact. Recording it as "we re-measured and it was inside the band" would be the redefinition §11 rule 2 exists to forbid.
+
+**What was and was not at risk.** The deployed layer's class match was 16/16 — every designed verdict class landed. The harness's own built-in grade was `RELIABLE` (its internal gate is `mean>=0.95 && full>=0.8`, which 0.950 passes). So the deploy was not reckless, and no caller received a wrong class because of it. That is exactly why it is worth recording: the failure mode here is not a bad verdict, it is a bar that moved. The cost is entirely to the credibility of every future statement of the form "it passed."
+
+**Consequence, already in force.** §11 is the rule this produced. The next extraction-contract change pre-registers its threshold in its own commit, and if it misses, it gets a note like this one rather than a new bar.
