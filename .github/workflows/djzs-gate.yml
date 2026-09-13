@@ -42,6 +42,9 @@ jobs:
       - name: Corrections — registry and anchored record cannot drift apart
         run: npx tsx test/corrections.test.mjs
         working-directory: djzs-trust-mcp
+      - name: Correction anchor — key stays in the Worker; route refuses before it signs
+        run: npx tsx test/correction-anchor.test.mjs
+        working-directory: djzs-trust-mcp
 
   q3-integrity:
     runs-on: ubuntu-latest

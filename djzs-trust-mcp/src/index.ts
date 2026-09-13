@@ -8,6 +8,7 @@ import { VERIFY_PERP_TRADE_INPUT, runVerifyPerpTrade } from "./verify-perp-trade
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { renderTargetSystem, verifyTargetSystemClaim, canonicalTargetSystemMessage, TARGET_SYSTEM_CLAIM_VERSION, UNVERIFIED_PREFIX } from "./target-system"
 import { correctionsFor } from "./corrections"
+import { makeCorrectionAnchorHandler, CORRECTION_ANCHOR_PATH } from "./correction-route"
 
 /**
  * Minimum scored audits before query_agent_trust reports a rate at all.
@@ -663,7 +664,14 @@ function buildServer(env: Env): McpServer {
   return server
 }
 
-const app = new Hono<{ Bindings: Env }>()
+/**
+ * Exported ALONGSIDE the default export, not instead of it: the default stays
+ * {fetch, scheduled} exactly as the runtime needs. The named export exists so
+ * test/correction-anchor.test.mjs can drive routes through `app.request()`
+ * offline, with a stubbed env and no network — a route that can only be
+ * exercised by deploying is a route nobody tests before deploying.
+ */
+export const app = new Hono<{ Bindings: Env }>()
 
 /** The six paths the enrichment recorder observes. Nothing else is recorded. */
 const ENRICHMENT_PATHS = new Set([
@@ -893,6 +901,24 @@ const classifyRpcError = (s: unknown): string => {
     .slice(0, 80)
   return "rpc error: " + scrubbed
 }
+
+/**
+ * POST /corrections/anchor — anchor a Correction Record, Worker-side.
+ *
+ * The handler lives in correction-route.ts so it can be driven offline by
+ * test/correction-anchor.test.mjs; index.ts cannot be imported from Node (a
+ * pre-existing module-scope TDZ in http-x402-bazaar.v2.ts that esbuild reorders
+ * away in the shipped bundle). Registration stays here, one line, and the test
+ * asserts this line exists rather than assuming it.
+ *
+ * KEY CUSTODY: IRYS_UPLOAD_KEY is a Worker secret and never leaves the Worker.
+ * The operator proves intent with DJZS_Q3_ANCHOR_KEY, the same header and
+ * constant-time compare as /q3/anchor. Distinct from /q3/anchor on purpose:
+ * that route commits a merkle root of hashes and publishes no document, so a
+ * correction anchored through it would be less retrievable than the certificate
+ * it corrects.
+ */
+app.post(CORRECTION_ANCHOR_PATH, makeCorrectionAnchorHandler(DEFAULT_IRYS_NODE_URL))
 
 app.get("/health/writer", async (c) => {
   const diag = describeWriterKey(c.env.DJZS_WRITER_KEY)
