@@ -4,7 +4,7 @@ description: Use BEFORE executing any capital-deploying MetaMask Agent Wallet ac
 license: MIT
 metadata:
   author: SIFR0-dev
-  version: "1.1.0"
+  version: "1.0.1"
   product: DJZS Protocol
   pairsWith: metamask-agent-wallet
   targetsAgentWallet: "2.0.0"
@@ -103,3 +103,20 @@ thorough one.
   downstream regardless.
 - It does not change MetaMask wallet policy. Policy (allowlists, outflow limits)
   is who/where/how-much; DJZS audits why. Different axes.
+
+## Changelog
+
+### 1.0.1 — 2026-09-13
+
+- **Removed the dry-run path.** v1.0.0 described a "dry-run (unpaid signal)"
+  and told you to default to it while iterating. **That route does not exist
+  and never did** — the Worker serves `/mcp` and `/x402/verify`, both paid,
+  plus free registry and health tools that never audit. Replaced with what to
+  actually do while iterating, and an explicit instruction to stop rather than
+  improvise a free route.
+- **Added the two reference files.** `references/gate.md` and
+  `references/readiness.md` were linked from v1.0.0 but did not exist.
+- **Priced the routing table.** 2.00 USDC, stated where the decision is made.
+- **Added the permanence warning and Correction Record 001**, so the cost of a
+  careless field on an immutable certificate is on the page that tells you to
+  spend.

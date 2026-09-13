@@ -11,13 +11,10 @@ exactly as issued, byte for byte, forever.
 
 ## Status
 
-**`001.json` is NOT in this directory yet.** Its text is the operator's to
-write and was not supplied when the surrounding machinery was built
-(2026-09-13). The registry entry for it already exists in
-`djzs-trust-mcp/src/corrections.ts` with `irys_id: null`, so a reader hitting
-the affected certificate today is told a correction is authored and pending
-anchor rather than being shown nothing. Drop the record in here, set the
-`irys_id` after anchoring, and the join completes.
+`001.json` is written (`DJZS-CORR-001`, text supplied by the operator
+2026-09-13) and **not yet anchored** — `anchored_irys_id` and `eas_uid` are
+`null`, which is the honest state and renders as `authored_pending_anchor`.
+Set them after anchoring and the join completes.
 
 The certificate 001 concerns:
 
@@ -30,21 +27,37 @@ The certificate 001 concerns:
 
 ## Shape
 
+As written, not as once sketched — an earlier draft of this file described a
+different field set, which is exactly the stale-surface problem these records
+exist to correct. `djzs-trust-mcp/test/corrections.test.mjs` fails CI if the
+registry and the record file disagree on any of these.
+
 ```json
 {
-  "correction_id": "001",
-  "corrects": {
-    "irys_id": "...",
+  "id": "DJZS-CORR-001",
+  "scope": "attribution only",
+  "supersedes": {
     "audit_id": "...",
-    "issued_at": "2026-08-18T19:12:00Z"
+    "irys_id": "...",
+    "minted_at": "2026-08-18T19:12Z",
+    "tier": "micro",
+    "verdict": "FAIL"
   },
-  "defect": "what the certificate says that is wrong",
-  "correction": "what is actually true",
-  "discovered": { "date": "2026-09-13", "method": "..." },
-  "remedy": "the rule or code change that stops a recurrence",
-  "authored_at": "..."
+  "effective": "2026-09-13",
+  "signer": "0xfB0e11471D41f88D1eE43A1bA38d885fb6b77824",
+  "anchored_irys_id": null,
+  "eas_uid": null,
+  "statement": ["paragraph", "paragraph", "..."]
 }
 ```
+
+`scope` says what the record touches. `"attribution only"` means the verdict
+itself is untouched — the audit ran, the engine ruled, and that ruling stands;
+only the claim about *whose* system it concerned is corrected.
+
+`supersedes` names the certificate. It does **not** mean the certificate is
+withdrawn or replaced: Irys does not permit deletion, and the record of the
+error is part of the record.
 
 ## Anchoring — operator only
 
@@ -57,10 +70,12 @@ container drafts; it never anchors.
    use, so a correction is exactly as permanent and as verifiable as the thing
    it corrects.
 3. Attest via EAS from `0xfB0e11471D41f88D1eE43A1bA38d885fb6b77824`.
-4. Put the returned Irys id and EAS uid into the `CORRECTIONS` entry in
-   `djzs-trust-mcp/src/corrections.ts`, and deploy. The certificate query then
-   returns the correction alongside the certificate.
+4. Put the returned Irys id and EAS uid into **both** the record file and the
+   `CORRECTIONS` entry in `djzs-trust-mcp/src/corrections.ts`, then deploy. The
+   certificate query then returns the correction alongside the certificate.
+   `test/corrections.test.mjs` fails if you update one and not the other.
 
-A correction registered without an `irys_id` reads as
+A correction registered without an `anchored_irys_id` reads as
 `authored_pending_anchor`, which is the honest state and renders as such. Do not
-fill that field with anything but a real anchored id.
+fill that field with anything but a real anchored id — the test asserts the
+registry can never advertise an anchor the record file lacks.

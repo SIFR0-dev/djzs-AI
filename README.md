@@ -173,6 +173,20 @@ The response contract today is: `verdict`, `action`, `risk_score`, `flags`, `unk
 `disagreements` (the per-field sample-agreement telemetry), `verdict_hash`, `extraction_failsafe`,
 `in_scope`, and taxonomy versions.
 
+### Known divergence: the subgraph's raw `failCount` counts WAIT as FAIL
+
+`query_agent_trust` excludes WAIT verdicts from both sides of the fail rate and reports them as
+`wait_count`. **Anyone reading the subgraph directly, rather than through the tool, gets a
+different answer.** `djzs-subgraph/src/trust-score.ts` `handleScoreUpdated` increments
+`failCount` on an `else` branch (`verdict == "PASS"` / else), so a WAIT — an abstention, not a
+failure — lands in `failCount` and inflates the rate for any agent that ever received one.
+
+The Worker recomputes from per-audit verdicts, so the tool is right. The indexed counters are
+not, and they stay that way until the mapping is corrected and re-indexed. Both numbers are
+returned side by side (`subgraph_counters`, labelled) so the discrepancy is visible rather than
+discovered. Tracked as a follow-up; deliberately not folded into the read-layer fix, because a
+mapping change needs a subgraph redeploy and a re-index.
+
 ---
 
 ## Legacy HTTP API (backward-compatible)
@@ -223,6 +237,22 @@ The commit history is the product's own audit trail: each verdict-bearing change
 note explicitly. Every claim a recall number, a parity result, a live verdict hash — is cited to
 a specific run at the moment it is pushed, not asserted after the fact. If you want to know what is
 proven versus deferred, `git log` is the source of truth and this file is downstream of it.
+
+---
+
+## Operator settings (not in code — set on the platform, easy to lose)
+
+These are configured outside the repository. They are recorded here because nothing in the tree
+enforces them, and a silent revert would change live behaviour with no diff to point at.
+
+| Setting | Where | Why |
+| --- | --- | --- |
+| **Browser Integrity Check: OFF for `mcp.djzs.ai`** | Cloudflare dashboard → Configuration Rules | BIC returns a Cloudflare **403, `error code: 1010`** to banned client signatures *before the Worker runs*. Measured 2026-09-13: `Python-urllib/2.7`, `/3.4`, `/3.11`, `Java/1.8.0_292` and `libwww-perl/6.15` were all blocked, while `python-requests`, `curl`, `Wget`, `Go-http-client`, `httpx`, `aiohttp`, `node-fetch`, Postman, an empty UA and custom UAs passed. `mcp.djzs.ai` is an **API host, not a browser surface** — a stdlib `urllib` caller is a normal client here, not a bot. **Do not re-enable.** |
+| **Worker rollback target: `bca8ccb6`** | `wrangler rollback bca8ccb6` | Named before the deploy of the target-system / WAIT changes, per deploy doctrine: name the rollback target *before* deploying, probe the deployed version *after*. |
+
+A 403 with `server: cloudflare` and a `text/plain` body reading `error code: 1010` is always the
+edge, never the Worker. The Worker reads `user-agent` in exactly one place — a telemetry `INSERT`
+— and never blocks on it.
 
 ---
 
