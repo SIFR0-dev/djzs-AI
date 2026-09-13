@@ -9,6 +9,8 @@
  * Exit 0 => every check passed, final line "POL OFFLINE HARNESS: PASS".
  * Exit 1 => a numbered check failed. Live uploads NEVER happen here.
  */
+import { privateKeyToAccount } from "viem/accounts"
+import { canonicalTargetSystemMessage } from "../src/target-system"
 import { DataItem } from "@irys/bundles"
 import {
   anchorPolCertificate,
@@ -22,6 +24,21 @@ import { sha256Hex } from "../../server/engine-v2/hash"
 
 // Throwaway, never-funded key. Signing is offline; nothing custodial here.
 const TEST_KEY = "11".repeat(32)
+
+// A REAL signed claim, not a string. Ruling 2026-09-13: target_system reaches a
+// certificate only as a claim signed by its subject, so the harness signs one
+// with the same test key rather than handing the builder free text — otherwise
+// the offline path would stop covering the only way the field can be written.
+const TEST_ACCOUNT = privateKeyToAccount(`0x${TEST_KEY}`)
+async function testClaim(value: string) {
+  return {
+    value,
+    subject: TEST_ACCOUNT.address.toLowerCase(),
+    signature: await TEST_ACCOUNT.signMessage({
+      message: canonicalTargetSystemMessage(value, TEST_ACCOUNT.address),
+    }),
+  }
+}
 
 // Frozen fixture mirroring the committed response shape (verify-pm-trade.ts:92-112),
 // populated with the recorded first-external-audit artifact (CLAUDE.md / spec A6):
@@ -76,7 +93,7 @@ async function main(): Promise<void> {
   const cert = buildPolCertificate({
     result: FIXTURE_RESULT,
     intent: FIXTURE_INTENT,
-    targetSystem: "vugola-agent",
+    targetSystemClaim: await testClaim("vugola-agent"),
     auditId,
     issuedAtMs,
   })
@@ -118,7 +135,7 @@ async function main(): Promise<void> {
     return { id: "STUB-IRYS-ID-0001" }
   }
   const anchored = await anchorPolCertificate(
-    { result: FIXTURE_RESULT, intent: FIXTURE_INTENT, targetSystem: "vugola-agent", auditId, issuedAtMs },
+    { result: FIXTURE_RESULT, intent: FIXTURE_INTENT, targetSystemClaim: await testClaim("vugola-agent"), auditId, issuedAtMs },
     TEST_KEY,
     stubUpload,
   )
