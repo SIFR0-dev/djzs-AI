@@ -6,6 +6,34 @@ import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
 import { VERIFY_PERP_TRADE_INPUT, runVerifyPerpTrade } from "./verify-perp-trade"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
+import { renderTargetSystem, verifyTargetSystemClaim, canonicalTargetSystemMessage, TARGET_SYSTEM_CLAIM_VERSION, UNVERIFIED_PREFIX } from "./target-system"
+import { correctionsFor } from "./corrections"
+
+/**
+ * Minimum scored audits before query_agent_trust reports a rate at all.
+ * Ten is a judgement, not a derivation: below it the Wilson interval is wider
+ * than the range of rates anyone would act on differently, so the number
+ * carries no decision content while still inviting comparison.
+ */
+const MIN_SCORED_AUDITS = 10
+
+/**
+ * Wilson score interval, lower bound, 95% (z = 1.96).
+ *
+ * Chosen over the normal approximation because it stays inside [0,1] and does
+ * not collapse to a point at 0 or n successes — exactly the small-sample cases
+ * a trust query hits most. Returns 0 for n = 0 rather than dividing by it; that
+ * path is unreachable behind MIN_SCORED_AUDITS and guarded anyway.
+ */
+export function wilsonLowerBound(successes: number, n: number, z = 1.96): number {
+  if (n <= 0) return 0
+  const p = successes / n
+  const z2 = z * z
+  const denom = 1 + z2 / n
+  const centre = p + z2 / (2 * n)
+  const margin = z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n)
+  return Math.max(0, (centre - margin) / denom)
+}
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
@@ -202,26 +230,48 @@ function buildServer(env: Env): McpServer {
       return { content: [{ type: "text" as const, text: `Irys query failed on all windows (pass a narrower from_ms/to_ms): ${JSON.stringify(lastErr)}` }], isError: true }
     }
 
-    const certs = data.transactions.edges.map(({ node }: any) => {
+    const certs = await Promise.all(data.transactions.edges.map(async ({ node }: any) => {
       const t: Record<string, string> = {}
       for (const tag of node.tags) t[tag.name] = tag.value
+      // Ruling 2026-09-13: target_system is a SIGNED claim or null. Anything
+      // unsigned — which is every value written before this rule — renders
+      // behind the `unverified:` prefix, here and on every other surface.
+      // Re-verified from the signature at read time, never trusted from the
+      // tags: the Irys query filters on tag names and does not constrain the
+      // uploader, so tags alone prove nothing about who wrote them.
+      const target_system = await renderTargetSystem(t)
       return {
         irys_id: node.id,
         irys_url: `https://gateway.irys.xyz/${node.id}`,
         timestamp: node.timestamp,
         verdict: t["verdict"] ?? "unknown",
         tier: t["tier"] ?? "unknown",
-        target_system: t["Target-System"] ?? "unknown",
-        audit_id: t["audit-id"] ?? "unknown"
+        target_system,
+        target_system_verified: target_system !== null && !target_system.startsWith(UNVERIFIED_PREFIX),
+        audit_id: t["audit-id"] ?? "unknown",
+        // Populated once a Correction Record naming this certificate is anchored.
+        corrections: correctionsFor(t["audit-id"], node.id)
       }
-    })
+    }))
 
+    // WAIT IS COUNTED. The previous summary counted only PASS and FAIL, so a
+    // WAIT certificate vanished between the two: a 100-cert page reading
+    // 51 PASS / 48 FAIL silently dropped one, and pass+fail != total_returned
+    // was the only trace. Every verdict now has a counter and the residual is
+    // named rather than implied.
+    const countOf = (v: string) => certs.filter((c: any) => c.verdict === v).length
+    const pass_count = countOf("PASS"), fail_count = countOf("FAIL"), wait_count = countOf("WAIT")
     return {
       content: [{ type: "text" as const, text: JSON.stringify({
         total_returned: certs.length,
-        pass_count: certs.filter((c: any) => c.verdict === "PASS").length,
-        fail_count: certs.filter((c: any) => c.verdict === "FAIL").length,
+        pass_count, fail_count, wait_count,
+        other_verdict_count: certs.length - pass_count - fail_count - wait_count,
+        target_system_unverified_count: certs.filter((c: any) => !c.target_system_verified && c.target_system !== null).length,
         window: { from_ms: usedFromMs, to_ms: toMs, note: "certs outside this window need an explicit from_ms" },
+        notes: {
+          target_system: `A bare value is a claim signed by its subject address (${TARGET_SYSTEM_CLAIM_VERSION}). An "${UNVERIFIED_PREFIX}" prefix means the certificate carries the value with no verifying signature — it is the caller's assertion, not evidence, and names no verified relationship to whatever it names.`,
+          corrections: "A non-empty corrections array lists Correction Records anchored against this certificate. The certificate itself is immutable and is never rewritten."
+        },
         certificates: certs
       }, null, 2) }]
     }
@@ -229,7 +279,7 @@ function buildServer(env: Env): McpServer {
 
   server.registerTool("query_agent_trust", {
     title: "Query DJZS Agent Trust Score",
-    description: `Query an agent's DJZS trust score, aggregated on-chain (Base mainnet) from its audit history and indexed via the DJZS subgraph. USE BEFORE delegating work, releasing escrow, or executing agent transactions. Returns totalAudits, pass/fail counts, failRate, latest verdict/risk, and DJZS-S01/DJZS-X01 flag counts. HALT if failRate > 0.3 or DJZS-S01/DJZS-X01 fired more than once.`,
+    description: `Query an agent's DJZS trust score, aggregated on-chain (Base mainnet) from its audit history and indexed via the DJZS subgraph. USE BEFORE delegating work, releasing escrow, or executing agent transactions. Returns scored_audits, pass/fail counts, the raw fail rate, and a Wilson 95% lower bound on it, plus latest verdict/risk and DJZS-S01/DJZS-X01 flag counts. WAIT verdicts are abstentions: they are excluded from BOTH the numerator and the denominator of the fail rate and are reported separately as wait_count. Below 10 scored audits the tool returns INSUFFICIENT_HISTORY and NO rate - a 0-of-0 record is not evidence of reliability and must not compare as better than a 3-of-50. This tool returns evidence, not a decision: it applies no threshold and emits no HALT. Interpreting the bound against your own risk tolerance is the caller's job.`,
     inputSchema: {
       agentAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").describe("Agent wallet address (0x-prefixed)")
     }
@@ -239,9 +289,19 @@ function buildServer(env: Env): McpServer {
       return { ...jsonText({ status: "unavailable", detail: "SUBGRAPH_URL not configured on this Worker; trust index not wired." }), isError: true }
     }
     const id = agentAddress.toLowerCase()
+    // audits{verdict} is queried because the SUBGRAPH'S OWN COUNTERS CANNOT
+    // EXPRESS A WAIT. djzs-subgraph/src/trust-score.ts handleScoreUpdated reads:
+    //     let isPassing = event.params.verdict == "PASS";
+    //     if (isPassing) { agent.passCount = ... } else { agent.failCount = ... }
+    // an else-branch, so every non-PASS verdict — WAIT included — increments
+    // failCount. A WAIT is an abstention, not a failure, and counting it as one
+    // overstates the fail rate of any agent that ever got one. Recomputing from
+    // the per-audit verdicts fixes this at the read layer, without a subgraph
+    // redeploy and without rewriting already-indexed history.
     const query = `query($id: ID!) {
       agent(id: $id) {
         id totalAudits passCount failCount latestVerdict latestRiskScore
+        audits(first: 1000) { verdict }
         flags(first: 1000) { code }
       }
     }`
@@ -265,24 +325,63 @@ function buildServer(env: Env): McpServer {
         message: "No DJZS audit history for this agent; nothing to trust or distrust yet." })
     }
 
+    const verdicts = Array.isArray(agent.audits)
+      ? (agent.audits as Array<{ verdict: string }>).map((a) => String(a.verdict ?? "").toUpperCase())
+      : []
     const totalAudits = Number(agent.totalAudits ?? 0)
-    const passCount = Number(agent.passCount ?? 0)
-    const failCount = Number(agent.failCount ?? 0)
-    const failRate = totalAudits > 0 ? failCount / totalAudits : 0
+    const passCount = verdicts.filter((v) => v === "PASS").length
+    const failCount = verdicts.filter((v) => v === "FAIL").length
+    const waitCount = verdicts.filter((v) => v === "WAIT").length
+    // A WAIT is the engine declining to rule. It is evidence about the thesis,
+    // not about the agent, so it enters neither side of the rate.
+    const scoredAudits = passCount + failCount
     const codes = Array.isArray(agent.flags) ? (agent.flags as Array<{ code: string }>).map((f) => f.code) : []
     const s01 = codes.filter((c) => c === "DJZS-S01").length
     const x01 = codes.filter((c) => c === "DJZS-X01").length
-    const halt = failRate > 0.3 || s01 > 1 || x01 > 1
-    return jsonText({
+
+    const base = {
       agent: id,
-      totalAudits, passCount, failCount,
-      failRate: Number(failRate.toFixed(4)),
-      latestVerdict: agent.latestVerdict ?? "unknown",
-      latestRiskScore: Number(agent.latestRiskScore ?? 0),
+      total_audits: totalAudits,
+      scored_audits: scoredAudits,
+      pass_count: passCount,
+      fail_count: failCount,
+      wait_count: waitCount,
+      latest_verdict: agent.latestVerdict ?? "unknown",
+      latest_risk_score: Number(agent.latestRiskScore ?? 0),
       flag_counts: { "DJZS-S01": s01, "DJZS-X01": x01 },
-      action: halt ? "HALT" : "PROCEED",
-      halt_rule: "HALT if failRate > 0.3 or DJZS-S01/DJZS-X01 fired more than once",
-      ...(halt ? { halt_reason: `failRate ${failRate.toFixed(2)}${s01 > 1 ? `, S01 x${s01}` : ""}${x01 > 1 ? `, X01 x${x01}` : ""}` } : {})
+      // Reported so a reader can see the discrepancy rather than discover it.
+      subgraph_counters: {
+        passCount: Number(agent.passCount ?? 0),
+        failCount: Number(agent.failCount ?? 0),
+        note: "On-chain index counters. Their failCount is an else-branch on verdict != PASS, so it absorbs WAIT verdicts. The counts above are recomputed from per-audit verdicts and are the ones to use.",
+      },
+    }
+
+    // MINIMUM EVIDENCE. Below 10 scored audits no rate is returned at all, not
+    // even a caveated one: a rate printed beside a caveat still gets compared,
+    // and a fresh agent at 0-of-0 would sort ahead of a real one at 3-of-50.
+    // Refusing the number is the only version of this that cannot be misread.
+    if (scoredAudits < MIN_SCORED_AUDITS) {
+      return jsonText({
+        ...base,
+        status: "INSUFFICIENT_HISTORY",
+        fail_rate: null,
+        fail_rate_lower_bound_95: null,
+        detail: `${scoredAudits} scored audit(s); ${MIN_SCORED_AUDITS} required before a rate is reported. No rate is returned rather than an unreliable one.`,
+      })
+    }
+
+    const failRate = failCount / scoredAudits
+    return jsonText({
+      ...base,
+      status: "OK",
+      fail_rate: Number(failRate.toFixed(4)),
+      // Lower bound on the TRUE fail rate at 95%. Small samples pull it toward
+      // zero, which is why it is reported next to the raw rate rather than
+      // instead of it.
+      fail_rate_lower_bound_95: Number(wilsonLowerBound(failCount, scoredAudits).toFixed(4)),
+      interpretation:
+        "No threshold is applied here and no action is returned. As a starting point a lower bound above 0.3, or DJZS-S01/DJZS-X01 firing more than once, is worth refusing on - but that is a recommendation for the caller to weigh against their own exposure, not a rule this tool enforces.",
     })
   })
 
@@ -310,8 +409,17 @@ function buildServer(env: Env): McpServer {
       ...VERIFY_PM_TRADE_INPUT,
       // D4 ruling 2026-07-12: optional; feeds ONLY the Target-System tag on the
       // anchored certificate. Extraction input and hash preimage untouched.
+      // AMENDED 2026-09-13: a value alone is no longer enough. It is written to
+      // the certificate only alongside a signature by the subject address over
+      // canonicalTargetSystemMessage(value, subject); otherwise the field is
+      // omitted entirely. A free-text box on a permanent record is how a
+      // certificate came to name a company with no involvement in the audit.
       target_system: z.string().min(1).max(128).optional()
-        .describe("Optional agent/project identifier; becomes the Target-System tag on the anchored PoL certificate"),
+        .describe("Optional agent/project identifier. Written to the certificate ONLY with a matching target_system_subject + target_system_signature; unsigned values are DISCARDED, not stored"),
+      target_system_subject: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional()
+        .describe("Address that signed the target_system claim. Must be the address that recovers from target_system_signature"),
+      target_system_signature: z.string().regex(/^0x[0-9a-fA-F]{130}$/).optional()
+        .describe(`EIP-191 personal_sign over "${TARGET_SYSTEM_CLAIM_VERSION} target-system claim\\nsubject: <lowercased subject>\\ntarget_system: <value>"`),
       // D1 ruling 2026-07-16: optional 0x agent wallet. Present => this audit's
       // verdict is written on-chain to that agent's DJZS trust score (fail-open,
       // after the cert anchors). Absent => Irys cert only, no on-chain score.
@@ -320,7 +428,7 @@ function buildServer(env: Env): McpServer {
         .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
     { title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)" },
-    async ({ intent, target_system, agent_address }) => {
+    async ({ intent, target_system, target_system_subject, target_system_signature, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -362,7 +470,9 @@ function buildServer(env: Env): McpServer {
             {
               result,
               intent,
-              targetSystem: target_system,
+              targetSystemClaim: await verifyTargetSystemClaim({
+                value: target_system, subject: target_system_subject, signature: target_system_signature,
+              }),
               auditId: crypto.randomUUID(),
               issuedAtMs: Date.now()
             },
@@ -432,8 +542,17 @@ function buildServer(env: Env): McpServer {
       ...VERIFY_PERP_TRADE_INPUT,
       // D4 ruling 2026-07-12: optional; feeds ONLY the Target-System tag on the
       // anchored certificate. Extraction input and hash preimage untouched.
+      // AMENDED 2026-09-13: a value alone is no longer enough. It is written to
+      // the certificate only alongside a signature by the subject address over
+      // canonicalTargetSystemMessage(value, subject); otherwise the field is
+      // omitted entirely. A free-text box on a permanent record is how a
+      // certificate came to name a company with no involvement in the audit.
       target_system: z.string().min(1).max(128).optional()
-        .describe("Optional agent/project identifier; becomes the Target-System tag on the anchored PoL certificate"),
+        .describe("Optional agent/project identifier. Written to the certificate ONLY with a matching target_system_subject + target_system_signature; unsigned values are DISCARDED, not stored"),
+      target_system_subject: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional()
+        .describe("Address that signed the target_system claim. Must be the address that recovers from target_system_signature"),
+      target_system_signature: z.string().regex(/^0x[0-9a-fA-F]{130}$/).optional()
+        .describe(`EIP-191 personal_sign over "${TARGET_SYSTEM_CLAIM_VERSION} target-system claim\\nsubject: <lowercased subject>\\ntarget_system: <value>"`),
       // D1 ruling 2026-07-16: optional 0x agent wallet. Present => this audit's
       // verdict is written on-chain to that agent's DJZS trust score (fail-open,
       // after the cert anchors). Absent => Irys cert only, no on-chain score.
@@ -442,7 +561,7 @@ function buildServer(env: Env): McpServer {
         .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
     { title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)" },
-    async ({ intent, target_system, agent_address }) => {
+    async ({ intent, target_system, target_system_subject, target_system_signature, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -484,7 +603,9 @@ function buildServer(env: Env): McpServer {
             {
               result,
               intent,
-              targetSystem: target_system,
+              targetSystemClaim: await verifyTargetSystemClaim({
+                value: target_system, subject: target_system_subject, signature: target_system_signature,
+              }),
               auditId: crypto.randomUUID(),
               issuedAtMs: Date.now()
             },
@@ -840,8 +961,16 @@ async function anchorAndScore(
   env: Env,
   result: Record<string, unknown>,
   intent: string,
-  target_system: string | undefined,
+  /**
+   * Target-System claim as supplied by the caller. Verified HERE, not at the
+   * call site: an unverified claim reaching this helper is the only way an
+   * unsigned value can land on a permanent certificate, so the check lives
+   * where the write happens rather than somewhere a future caller can skip.
+   */
+  target_system_claim: { value?: string; subject?: string; signature?: string } | undefined,
   agent_address: string | undefined,
+  /** Settlement payer, where the transport knows it. The claim must recover to this address. */
+  payer?: string,
 ): Promise<{ pol_certificate?: Record<string, unknown>; trust_score?: Record<string, unknown> }> {
   // INTRINSIC SCOPE PRECONDITION (ruling 2026-08-10). The /mcp copy guards each
   // block inline with `result.in_scope === true`; hoisting that guard to the call
@@ -859,7 +988,13 @@ async function anchorAndScore(
     const nodeUrl = env.IRYS_NODE_URL ?? DEFAULT_IRYS_NODE_URL
     try {
       const anchored = await anchorPolCertificate(
-        { result, intent, targetSystem: target_system, auditId: crypto.randomUUID(), issuedAtMs: Date.now() },
+        {
+          result,
+          intent,
+          targetSystemClaim: await verifyTargetSystemClaim(target_system_claim, payer),
+          auditId: crypto.randomUUID(),
+          issuedAtMs: Date.now(),
+        },
         env.IRYS_UPLOAD_KEY,
         buildIrysUploadFn(nodeUrl),
       )
@@ -1202,7 +1337,7 @@ app.post("/x402/verify", async (c) => {
   // so a bad request never costs the payer and never reaches runVerifyPmTrade.
   // This is the only ordering that satisfies both the discovery probe (challenge
   // before validation) and the money path (no engine work on an unvalidated body).
-  let body: { intent?: unknown; agent_address?: unknown; target_system?: unknown }
+  let body: { intent?: unknown; agent_address?: unknown; target_system?: unknown; target_system_subject?: unknown; target_system_signature?: unknown }
   try {
     body = await c.req.json()
   } catch {
@@ -1213,7 +1348,11 @@ app.post("/x402/verify", async (c) => {
     return c.json({ error: "BAD_REQUEST", detail: "intent must be a string of at least 10 characters" }, 400)
   }
   const agent_address = typeof body.agent_address === "string" ? body.agent_address : undefined
-  const target_system = typeof body.target_system === "string" ? body.target_system : undefined
+  const target_system_claim = {
+    value: typeof body.target_system === "string" ? body.target_system : undefined,
+    subject: typeof body.target_system_subject === "string" ? body.target_system_subject : undefined,
+    signature: typeof body.target_system_signature === "string" ? body.target_system_signature : undefined,
+  }
 
   // ── the audit runs first. ─────────────────────────────────────────────────
   if (!env.ANTHROPIC_API_KEY) {
@@ -1242,7 +1381,13 @@ app.post("/x402/verify", async (c) => {
   }
   if (!settle.success) return paymentRequired(settle.errorReason ?? "SETTLEMENT_FAILED")
 
-  const { pol_certificate, trust_score } = await anchorAndScore(env, result, intent, target_system, agent_address)
+  // The payer is passed as the expected subject: on this transport the settling
+  // address is cryptographically established, so the claim must recover to it.
+  // A claim signed by any other key is discarded rather than downgraded.
+  const { pol_certificate, trust_score } = await anchorAndScore(
+    env, result, intent, target_system_claim, agent_address,
+    (settle as { payer?: string }).payer,
+  )
 
   let response: Record<string, unknown> = result
   if (pol_certificate) response = { ...response, pol_certificate }

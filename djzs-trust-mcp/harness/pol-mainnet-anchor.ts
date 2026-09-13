@@ -83,7 +83,10 @@ async function main(): Promise<void> {
   const cert = buildPolCertificate({
     result: FIXTURE_RESULT,
     intent: FIXTURE_INTENT,
-    targetSystem: "djzs-mainnet-anchor-probe",
+    // No target_system: this is an operator probe, and there is no subject
+    // address to sign a claim for it. Under the 2026-09-13 ruling an unsigned
+    // value is simply not written — which is exactly the old behaviour that put
+    // an uninvolved company's name on a permanent certificate.
     auditId,
     issuedAtMs: Date.now(),
   })

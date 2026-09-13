@@ -33,6 +33,15 @@ jobs:
       - name: djzs-trust-mcp — bundle (no deploy, no secrets)
         run: npx wrangler deploy --dry-run --outdir /tmp/dry
         working-directory: djzs-trust-mcp
+      - name: Target-System — a signed claim or null, NEVER a bare unsigned value
+        run: npx tsx test/target-system.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: PoL certificate — offline assembly/signing harness
+        run: npx tsx harness/pol-offline.ts
+        working-directory: djzs-trust-mcp
+      - name: Corrections — registry and anchored record cannot drift apart
+        run: npx tsx test/corrections.test.mjs
+        working-directory: djzs-trust-mcp
 
   q3-integrity:
     runs-on: ubuntu-latest

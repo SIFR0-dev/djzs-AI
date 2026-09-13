@@ -25,6 +25,10 @@
  */
 import { EthereumSigner, createData } from "@irys/bundles/web"
 import { sha256Hex } from "../../server/engine-v2/hash"
+import {
+  TAG_CLAIM, TAG_PROOF, TAG_SUBJECT, TAG_VALUE, TARGET_SYSTEM_CLAIM_VERSION,
+  type TargetSystemClaim,
+} from "./target-system"
 
 export const POL_SCHEMA = "DJZS-PoL-1"
 /** Content retrieval base. Devnet retrievability is verified at live-harness time. */
@@ -50,8 +54,15 @@ export interface PolBuildInputs {
   result: Record<string, unknown>
   /** The exact intent string the audit ran on. Hashed into the cert; NEVER published. */
   intent: string
-  /** Optional caller-supplied Target-System tag value (D4 ruling: optional tool input). */
-  targetSystem?: string
+  /**
+   * Optional Target-System claim, ALREADY VERIFIED by the caller
+   * (verifyTargetSystemClaim). Ruling 2026-09-13: the field is populated only
+   * from a claim signed by the subject address, otherwise it is absent. The
+   * old free-text `targetSystem?: string` input is gone deliberately — a
+   * plain string parameter is exactly how an operator's test keystroke became
+   * a permanent certificate naming an uninvolved company.
+   */
+  targetSystemClaim?: TargetSystemClaim | null
   /** Unique id of this audit INSTANCE (deterministic engine => identical verdict_hash across runs is expected). */
   auditId: string
   issuedAtMs: number
@@ -78,7 +89,7 @@ export interface AnchoredPol {
  * intent text stays off-chain.
  */
 export function buildPolCertificate(inputs: PolBuildInputs): PolCertificate {
-  const { result, intent, targetSystem, auditId, issuedAtMs } = inputs
+  const { result, intent, targetSystemClaim, auditId, issuedAtMs } = inputs
 
   if (result.in_scope !== true || result.verdict == null) {
     throw new Error("PoL certificate refused: not an in-scope audit result (nothing to certify).")
@@ -128,7 +139,16 @@ export function buildPolCertificate(inputs: PolBuildInputs): PolCertificate {
     { name: "pol-schema", value: POL_SCHEMA },
     { name: "Content-Type", value: "application/json" },
   ]
-  if (targetSystem) tags.push({ name: "Target-System", value: targetSystem })
+  // A Target-System value never travels alone: the subject, the proof and the
+  // claim version ship with it, so a reader can re-derive the claim instead of
+  // taking the tag on faith. All four or none — a value without its proof is
+  // the exact shape this ruling exists to stop.
+  if (targetSystemClaim) {
+    tags.push({ name: TAG_VALUE, value: targetSystemClaim.value })
+    tags.push({ name: TAG_SUBJECT, value: targetSystemClaim.subject })
+    tags.push({ name: TAG_PROOF, value: targetSystemClaim.signature })
+    tags.push({ name: TAG_CLAIM, value: TARGET_SYSTEM_CLAIM_VERSION })
+  }
 
   return { payload, tags }
 }
