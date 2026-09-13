@@ -88,6 +88,23 @@ const USDC="0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", XFER="0xddf252ad1be2c89
 const EAS="0x4200000000000000000000000000000000000021";
 const DJZS_SCHEMA="0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030", DJZS_ATTESTER="0xfb0e11471d41f88d1ee43a1ba38d885fb6b77824";
 const RPCS=["https://base.llamarpc.com","https://base-rpc.publicnode.com","https://mainnet.base.org","https://1rpc.io/base"];
+// Irys provenance. The tags on an item are strings anyone can write; the SIGNER
+// is the one part a third party cannot forge, so it is the only thing worth
+// checking. DJZS_IRYS_SIGNER is the address derived from the Worker's upload
+// key, read off items the Worker has already signed — see
+// djzs-trust-mcp/src/corrections.ts. Mirrored here so this page needs nothing
+// from DJZS at run time except the public Irys index.
+const IRYS_GQL="https://uploader.irys.xyz/graphql";
+const DJZS_IRYS_SIGNER="0xcf2d8ef4dea0ef8957b0f4d4a6fbfc2aeaf990cd";
+// The correction register, mirrored from djzs-trust-mcp/src/corrections.ts.
+const CORRECTIONS=[{id:"DJZS-CORR-001",corrects_irys_id:"7tNyZtffqCerZ9CdoQJTFMcrdjbRi3B9KbstAGe3G1br",anchored_irys_id:null,
+  known_strays:[{irys_id:"8Kqfic6PVkUUVhEEBppGTzcpr2sZCkbDjventu3W1Fvk",signer:"0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+    note:"Carries 001's text and tags. Signed by the public test key 0x1111...11, not by DJZS. Created 2026-09-13 while testing the anchoring harness. NOT a DJZS record."}]}];
+async function irysSigner(id){try{const r=await fetch(IRYS_GQL,{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({query:"query($ids:[String!]!){transactions(ids:$ids){edges{node{id address}}}}",variables:{ids:[id]}})});
+  if(!r.ok)return{err:"Irys index HTTP "+r.status};const j=await r.json();
+  const a=j?.data?.transactions?.edges?.[0]?.node?.address;return a?{signer:a.toLowerCase()}:{err:"not found in the Irys index"}}
+  catch(e){return{err:"Irys index unreachable: "+e.message}}}
 const DOMAIN={name:"DJZS",version:"2",chainId:8453};
 const TYPES={DJZSIntent:[{name:"action",type:"string"},{name:"venue",type:"string"},{name:"market",type:"string"},{name:"side",type:"string"},{name:"thesis",type:"string"},{name:"probability_basis",type:"string"},{name:"size_usd_cents",type:"uint256"},{name:"max_loss_usd_cents",type:"uint256"},{name:"exit_condition",type:"string"},{name:"params_hash",type:"bytes32"}]};
 const ZERO32="0x"+"00".repeat(32);
@@ -175,12 +192,49 @@ async function run(){
           link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}}
     catch(e){C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"UNREACHABLE",body:"Could not read EAS from this browser.",ev:e.message,link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}
 
-  // 4 — verdict reproducibility
+  // 4 — Irys provenance. Applies to the certificate this receipt names AND to
+  // every registered correction: an item is ours only if the DJZS signer signed
+  // it. Tags prove nothing — one item exists carrying a correction's exact tags
+  // and text, signed by a throwaway key, and it is named below as not ours.
+  const certId=r?.pol_certificate?.irys_id;
+  if(certId){const g=await irysSigner(certId);
+    if(g.err)C.push({r:"wait",tok:"WAIT",name:"Certificate provenance on Irys",chip:"UNREACHABLE",body:"Could not read the Irys index from this browser.",ev:certId+"\n"+g.err});
+    else{const ok=g.signer===DJZS_IRYS_SIGNER;
+      C.push({r:ok?"pass":"fail",tok:ok?"OK":"FAIL",name:"Certificate provenance on Irys",chip:ok?"PROVEN":"NOT OURS",
+        body:ok?"The certificate this receipt names was signed by the DJZS Irys signer. Read from the Irys index, not from DJZS.":"This item was NOT signed by the DJZS signer. Its tags may say DJZS; the signature does not. Treat it as somebody else's item.",
+        ev:`item     ${certId}\nsigner   ${g.signer}${ok?"  == DJZS":"  MISMATCH"}\nexpected ${DJZS_IRYS_SIGNER}`,
+        link:["view on the gateway","https://gateway.irys.xyz/"+certId]})}}
+
+  for(const c of CORRECTIONS){
+    if(!c.anchored_irys_id)C.push({r:"wait",tok:"WAIT",name:"Correction "+c.id+" anchor",chip:"NOT ANCHORED",
+      body:"This correction is authored and published in the repository but not yet anchored to Irys. Until it is, there is no canonical anchor for it — and any item claiming to be one is not ours.",
+      ev:"corrects  "+c.corrects_irys_id});
+    else{const g=await irysSigner(c.anchored_irys_id);
+      if(g.err)C.push({r:"wait",tok:"WAIT",name:"Correction "+c.id+" anchor",chip:"UNREACHABLE",body:"Could not read the Irys index from this browser.",ev:c.anchored_irys_id+"\n"+g.err});
+      else{const ok=g.signer===DJZS_IRYS_SIGNER;
+        C.push({r:ok?"pass":"fail",tok:ok?"OK":"FAIL",name:"Correction "+c.id+" anchor",chip:ok?"PROVEN":"NOT OURS",
+          body:ok?"The anchor named for this correction was signed by the DJZS Irys signer.":"The anchor named for this correction was NOT signed by the DJZS signer. Do not treat it as the canonical correction.",
+          ev:`item     ${c.anchored_irys_id}\nsigner   ${g.signer}${ok?"  == DJZS":"  MISMATCH"}\nexpected ${DJZS_IRYS_SIGNER}`,
+          link:["view on the gateway","https://gateway.irys.xyz/"+c.anchored_irys_id]})}}
+    for(const st of (c.known_strays||[]))
+      C.push({r:"fail",tok:"FAIL",name:"Known stray for "+c.id,chip:"NOT OURS",
+        body:st.note+" It cannot be deleted — Irys is permanent — so it is named here instead. The canonical anchor is the one this register names AND the DJZS signer signed.",
+        ev:`item    ${st.irys_id}\nsigner  ${st.signer}  != DJZS ${DJZS_IRYS_SIGNER}`,
+        link:["view on the gateway","https://gateway.irys.xyz/"+st.irys_id]});
+  }
+
+  // 5 — verdict reproducibility
   C.push({r:"idle",tok:"----",name:"Verdict reproducibility",chip:attOK?"ATTESTED":"NEEDS RULESET",body:attOK?"The verdict is attested on-chain by DJZS. Re-deriving it from the rules independently requires the published engine; the attestation is the binding commitment.":"verdict_hash attests DJZS produced this verdict; re-deriving it requires the published ruleset.",ev:r.verdict_hash||""});
 
   render(C);
-  const s=C.find(c=>c.name.startsWith("Settlement")),a=C.find(c=>c.name.startsWith("Attestation"));const bR=C.filter(c=>c.name.startsWith("Intent binding"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
-  if(s?.r==="fail"||b?.r==="fail"||a?.r==="fail")setV("fail","FAIL","receipt contradicts the chain","At least one recomputation contradicts what the receipt claims. Treat it as unverified.","Recompute or it didn't happen.");
+  const s=C.find(c=>c.name.startsWith("Settlement")),a=C.find(c=>c.name.startsWith("Attestation"));
+  // The stray rows are FAIL by their own nature — they are the page saying "this
+  // item is not ours". They deliberately do NOT drag the receipt's verdict down:
+  // the receipt is not contradicted by somebody else's upload existing. A real
+  // provenance failure on the certificate THIS receipt names does, and is
+  // included via the Settlement/Attestation/binding trio plus the row itself.
+  const prov=C.find(c=>c.name==="Certificate provenance on Irys");const bR=C.filter(c=>c.name.startsWith("Intent binding"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
+  if(s?.r==="fail"||b?.r==="fail"||a?.r==="fail"||prov?.r==="fail")setV("fail","FAIL","receipt contradicts the chain","At least one recomputation contradicts what the receipt claims. Treat it as unverified.","Recompute or it didn't happen.");
   else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","fully reproduced","Payment settled on Base. The binding key recomputes from the intent alone. An EAS attestation from the DJZS identity binds that key to this verdict on the paying agent's record. Three independent reads, one consistent story — and none of them trusted DJZS.","Same receipt, same result, any machine.");
   else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","attestation not on chain","Settlement and binding both reproduce; the on-chain attestation is absent or unreachable. The verdict is real and bound — it just isn't yet on the public record.","Unknown means WAIT.");
   else if(s?.r==="pass")setV("wait","WAIT","binding unprovable","Settlement proven; the binding could not be reproduced. v1 receipt — re-audit for v2.","Unknown means WAIT.");
