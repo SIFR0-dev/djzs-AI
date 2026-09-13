@@ -182,3 +182,61 @@ export async function anchorCorrection(
   }
   return { irys_id: id, sha256, gateway_url, verify_attempts: used }
 }
+
+/** Irys mainnet GraphQL. The index that knows who signed an item. */
+export const IRYS_GRAPHQL_URL = "https://uploader.irys.xyz/graphql"
+
+export interface SignerCheck {
+  ok: boolean
+  irys_id: string
+  /** Signer reported by the Irys index, lowercased; null when the item is unknown there. */
+  signer: string | null
+  expected: string
+  detail: string
+}
+
+/**
+ * Does this Irys item carry the DJZS signature?
+ *
+ * THE GAP THIS CLOSES. Anyone can upload an item wearing our tag names — the
+ * tags are just strings, and the Irys query filters on them without constraining
+ * the uploader. Until now a reader finding an item tagged
+ * `correction-id: DJZS-CORR-001` had no way to tell a DJZS record from a copy.
+ * One such copy exists (see CORRECTIONS[0].known_strays), created by accident,
+ * signed by a public test key. The signer is the only part of an ANS-104 item a
+ * third party cannot forge, so it is the only thing worth checking.
+ *
+ * Returns ok:false for an unknown item rather than throwing — "the index does
+ * not have it" and "the wrong key signed it" are different answers and the
+ * caller should be able to tell them apart from `detail`.
+ */
+export async function verifyAnchorSigner(
+  irysId: string,
+  expectedSigner: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<SignerCheck> {
+  const expected = expectedSigner.toLowerCase()
+  const base = { irys_id: irysId, expected }
+  let signer: string | null = null
+  try {
+    const res = await fetchFn(IRYS_GRAPHQL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `query($ids:[String!]!){transactions(ids:$ids){edges{node{id address}}}}`,
+        variables: { ids: [irysId] },
+      }),
+    })
+    if (!res.ok) return { ...base, ok: false, signer: null, detail: `Irys index HTTP ${res.status}` }
+    const j = (await res.json()) as { data?: { transactions?: { edges?: Array<{ node?: { address?: string } }> } } }
+    const addr = j.data?.transactions?.edges?.[0]?.node?.address
+    signer = typeof addr === "string" ? addr.toLowerCase() : null
+  } catch (e) {
+    return { ...base, ok: false, signer: null, detail: `Irys index unreachable: ${(e as Error).message.slice(0, 120)}` }
+  }
+  if (signer === null) return { ...base, ok: false, signer: null, detail: "not found in the Irys index" }
+  if (signer !== expected) {
+    return { ...base, ok: false, signer, detail: `signed by ${signer}, NOT the DJZS signer ${expected} — this is not a DJZS record` }
+  }
+  return { ...base, ok: true, signer, detail: "signed by the DJZS signer" }
+}

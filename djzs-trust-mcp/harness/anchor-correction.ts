@@ -16,36 +16,16 @@
  * comparison would compare two derivations and pass or fail for the wrong
  * reason; one shared function makes it a real end-to-end check.
  *
- * ── WHY --local-key EXISTS AND WHY YOU SHOULD NOT USE IT ──────────────────
- *
- * --local-key reads IRYS_UPLOAD_KEY from the environment and signs here. It is
- * kept for one narrow case: a devnet rehearsal against a throwaway key, when no
- * Worker carrying /corrections/anchor is deployed yet. Everything else about it
- * is worse than --via-worker:
- *
- *   - IT MOVES THE FUNDED KEY OUT OF THE ONLY PLACE IT IS SUPPOSED TO LIVE.
- *     A Worker secret is held by one system with one access path. An env var is
- *     in a shell history, a process list, a dotfile, and whatever backed that
- *     dotfile up. The custody rule is not a formality; it is the reason the key
- *     has stayed uncompromised.
- *   - IT DESTROYS THE PROOF. With --via-worker the sha comparison is evidence
- *     that an independent system anchored the reviewed bytes. Signing locally,
- *     the same process computes the payload, signs it, and then "verifies" its
- *     own work — a check that cannot fail for the reason it is meant to catch.
- *   - IT ANCHORS FROM AN UNREVIEWED BUILD. --via-worker exercises the deployed
- *     Worker. --local-key exercises whatever is in the working tree, which may
- *     be mid-edit.
- *
- * So: --local-key on mainnet is never right, and it REFUSES a non-devnet node
- * outright rather than warning — a printed warning does not stop an upload, as
- * one test run proved by anchoring a real item to mainnet before the warning
- * had finished being read. There is no override flag, by design. If the Worker
- * is not deployed yet, deploy it — that is the smaller problem to fix.
+ * THERE IS NO LOCAL-SIGNING MODE. One existed briefly behind a --local-key flag
+ * and is deleted. Its only defensible use was a devnet rehearsal, which
+ * --via-worker covers against the deployed Worker anyway, and the flag cost more
+ * than it bought: testing it put a real permanent item on Irys MAINNET
+ * (8Kqfic6PVkUUVhEEBppGTzcpr2sZCkbDjventu3W1Fvk) signed by a throwaway key.
+ * A mode whose own test writes a permanent record by accident is not a mode.
  *
  * Modes:
  *   --dry-run       compute and print the payload, sha and tags. No network.
  *   --via-worker    POST to the Worker, verify the sha, write both files.
- *   --local-key     sign here with IRYS_UPLOAD_KEY. Read the block above first.
  *
  * Optional, and recommended whenever the record was reviewed earlier:
  *   --expect-sha 0x…   refuse before ANY network call unless the locally
@@ -61,7 +41,7 @@
  *     --url https://mcp.djzs.ai --expect-sha 0xb63d9290…
  */
 import { readFileSync, writeFileSync } from "node:fs"
-import { anchorCorrection, buildCorrectionPayload, validateCorrectionRecord, ANCHOR_EXCLUDE } from "../src/correction-anchor"
+import { buildCorrectionPayload, validateCorrectionRecord, ANCHOR_EXCLUDE } from "../src/correction-anchor"
 
 class Halt extends Error {}
 /** Throws rather than process.exit: TypeScript narrows through a throw, and one
@@ -82,15 +62,12 @@ async function main() {
   const id = args.find((a) => !a.startsWith("--") && !/^https?:\/\//.test(a))
   const dryRun = args.includes("--dry-run")
   const viaWorker = args.includes("--via-worker")
-  const localKey = args.includes("--local-key")
   const expectSha = flagValue(args, "--expect-sha")
-  if (!id) die("usage: anchor-correction.ts <n> [--dry-run | --via-worker --url <worker> | --local-key] [--expect-sha 0x…]")
-  const modes = [dryRun, viaWorker, localKey].filter(Boolean).length
-  if (modes > 1) die("--dry-run, --via-worker and --local-key are mutually exclusive")
-  if (modes === 0) {
-    die("pick a mode: --dry-run to inspect, --via-worker to anchor (the intended path),\n" +
-        "or --local-key to sign here — which moves the funded key onto this machine and\n" +
-        "collapses the sha check into self-verification. Read the header before using it.")
+  if (!id) die("usage: anchor-correction.ts <n> [--dry-run | --via-worker --url <worker>] [--expect-sha 0x…]")
+  if (dryRun && viaWorker) die("--dry-run and --via-worker are mutually exclusive")
+  if (!dryRun && !viaWorker) {
+    die("pick a mode: --dry-run to inspect, or --via-worker to anchor.\n" +
+        "There is no local-signing mode: IRYS_UPLOAD_KEY is a Worker secret and stays one.")
   }
 
   const { CORRECTIONS } = await import("../src/corrections")
@@ -132,7 +109,7 @@ async function main() {
         `The record changed since it was reviewed. Nothing was sent.`)
   }
 
-  const mode = dryRun ? "  (DRY RUN — nothing will be uploaded)" : viaWorker ? "  (VIA WORKER)" : "  (LOCAL KEY — see header)"
+  const mode = dryRun ? "  (DRY RUN — nothing will be uploaded)" : "  (VIA WORKER)"
   console.log(`CORRECTION ANCHOR · ${entry.id}${mode}`)
   console.log(`  record file    ${entry.record_file}`)
   console.log(`  corrects       ${entry.corrects_irys_id}  (audit ${entry.corrects_audit_id})`)
@@ -150,43 +127,6 @@ async function main() {
     return
   }
 
-  // ── --local-key: signs here. Reuses the SAME anchorCorrection the route
-  // calls, so this branch adds no second signing path — only a second, worse
-  // place for the key to live. The warning is printed at runtime because a
-  // header comment is not read by someone pasting a command.
-  let irysId: string
-  if (localKey) {
-    const uploadKey = process.env.IRYS_UPLOAD_KEY
-    if (!uploadKey || !/^(0x)?[0-9a-fA-F]{64}$/.test(uploadKey)) {
-      die("IRYS_UPLOAD_KEY unset or malformed (expect 32-byte hex).\n" +
-          "It is a Worker secret. If you are reaching for it here, --via-worker is the answer.")
-    }
-    const node = process.env.IRYS_NODE_URL ?? "https://devnet.irys.xyz"
-    console.error(`\n  !! --local-key: the funded key is in this process's environment.`)
-    console.error(`  !! The sha check below is this process verifying its own work — it is NOT`)
-    console.error(`  !! evidence that an independent system anchored the reviewed bytes.`)
-    console.error(`  !! Intended for a devnet rehearsal only. Node: ${node}`)
-    // A PRINTED WARNING DOES NOT STOP ANYTHING — learned the hard way. An
-    // earlier version of this branch warned about a non-devnet node and then
-    // uploaded anyway; a test run with a throwaway key against
-    // uploader.irys.xyz put a real, permanent item on Irys MAINNET before the
-    // warning had finished being read. Non-devnet is now a REFUSAL, and there
-    // is deliberately no override flag: an override would rebuild exactly the
-    // hazard this refusal exists to remove.
-    if (!/devnet/.test(node)) {
-      die(`--local-key refuses a non-devnet node (${node}).\n` +
-          `On mainnet this writes a PERMANENT item signed by whatever key is in this\n` +
-          `environment, from an unreviewed working tree, with no independent verification.\n` +
-          `Use --via-worker. If the Worker is not deployed yet, deploy it — that is the\n` +
-          `smaller problem. There is no override for this.`)
-    }
-    const out = await anchorCorrection(rec, uploadKey, node)
-    irysId = out.irys_id
-    console.log(`\n  irys_id        ${out.irys_id}`)
-    console.log(`  sha256         ${out.sha256}`)
-    console.log(`  gateway reads  ${out.verify_attempts}`)
-    if (out.sha256 !== localSha) die(`internal inconsistency: anchorCorrection returned ${out.sha256}, expected ${localSha}`)
-  } else {
   const anchorKey = process.env.DJZS_ANCHOR_KEY
   if (!anchorKey) die("DJZS_ANCHOR_KEY unset — the route is gated on it (X-DJZS-Anchor-Key)")
   const base = flagValue(args, "--url") ?? args.find((a) => /^https?:\/\//.test(a)) ?? DEFAULT_URL
@@ -223,8 +163,7 @@ async function main() {
   }
   if (typeof wIrysId !== "string" || !wIrysId) die(`worker returned no irys_id: ${JSON.stringify(out)}`)
   console.log(`  sha match      OK — worker anchored the reviewed bytes`)
-  irysId = wIrysId
-  }
+  const irysId = wIrysId
 
   // ── Write back, both files ───────────────────────────────────────────────
   const updatedRec = raw.replace(/"anchored_irys_id":\s*null/, `"anchored_irys_id": ${JSON.stringify(irysId)}`)

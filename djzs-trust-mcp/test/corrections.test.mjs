@@ -13,7 +13,8 @@
  * Run: npx tsx test/corrections.test.mjs
  */
 import { readFileSync } from "node:fs"
-import { CORRECTIONS, correctionsFor } from "../src/corrections.ts"
+import { CORRECTIONS, correctionsFor, DJZS_IRYS_SIGNER } from "../src/corrections.ts"
+import { verifyAnchorSigner } from "../src/correction-anchor.ts"
 
 let pass = 0
 const failures = []
@@ -52,6 +53,69 @@ check(n++, "unanchored correction reports authored_pending_anchor, not anchored"
 check(n++, "unanchored correction exposes no irys_url", byAudit[0].irys_url === null)
 check(n++, "an unrelated certificate gets no corrections", correctionsFor("00000000-0000-0000-0000-000000000000", "nope").length === 0)
 check(n++, "both identifiers absent yields nothing", correctionsFor(undefined, undefined).length === 0)
+
+
+// ── PROVENANCE: an anchor is ours only if the DJZS signer signed it ───────
+// Anyone can upload an item wearing our tag names; the signer is the one part a
+// third party cannot forge. Offline here, with the Irys index stubbed — the live
+// check runs below only if something is actually anchored.
+console.log("\nCORRECTIONS · anchor provenance")
+const idx = (addr) => async () => new Response(JSON.stringify({
+  data: { transactions: { edges: addr ? [{ node: { id: "x", address: addr } }] : [] } },
+}), { status: 200 })
+
+check(n++, "a published DJZS signer exists and is a 0x address", /^0x[0-9a-f]{40}$/.test(DJZS_IRYS_SIGNER))
+check(n++, "item signed by the DJZS signer -> ok",
+  (await verifyAnchorSigner("id", DJZS_IRYS_SIGNER, idx(DJZS_IRYS_SIGNER))).ok)
+check(n++, "signer match is case-insensitive",
+  (await verifyAnchorSigner("id", DJZS_IRYS_SIGNER, idx(DJZS_IRYS_SIGNER.toUpperCase()))).ok)
+const wrong = await verifyAnchorSigner("id", DJZS_IRYS_SIGNER, idx("0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a"))
+check(n++, "item signed by ANY OTHER key -> NOT ours", !wrong.ok)
+check(n++, "...and the failure names the foreign signer", wrong.detail.includes("0x19e7e376"))
+check(n++, "item unknown to the index -> not ok, and says so",
+  !(await verifyAnchorSigner("id", DJZS_IRYS_SIGNER, idx(null))).ok)
+const down = await verifyAnchorSigner("id", DJZS_IRYS_SIGNER, async () => new Response("nope", { status: 500 }))
+check(n++, "index down -> not ok (never a silent pass)", !down.ok && down.detail.includes("500"))
+const threw = await verifyAnchorSigner("id", DJZS_IRYS_SIGNER, async () => { throw new Error("offline") })
+check(n++, "index unreachable -> not ok, no throw escapes", !threw.ok && threw.detail.includes("unreachable"))
+
+// ── the stray, recorded rather than hidden ───────────────────────────────
+const one = CORRECTIONS.find((c) => c.id === "DJZS-CORR-001")
+const stray = one?.known_strays?.[0]
+check(n++, "001 records the known stray", stray?.irys_id === "8Kqfic6PVkUUVhEEBppGTzcpr2sZCkbDjventu3W1Fvk")
+check(n++, "the stray's signer is recorded and is NOT the DJZS signer",
+  stray?.signer === "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a" && stray.signer !== DJZS_IRYS_SIGNER)
+check(n++, "the stray is NEVER the anchored id", one?.anchored_irys_id !== stray?.irys_id)
+check(n++, "the note says plainly it is not a DJZS record", /NOT a DJZS record/.test(stray?.note ?? ""))
+check(n++, "correctionsFor publishes expected_signer", byAudit[0].expected_signer === DJZS_IRYS_SIGNER)
+check(n++, "correctionsFor surfaces known_strays", Array.isArray(byAudit[0].known_strays) && byAudit[0].known_strays.length === 1)
+
+// ── /verify mirrors the register. Mirrors drift; this makes drift fail. ──
+// site/verify.html is a static page and cannot import corrections.ts, so it
+// carries copies of the signer, the anchored id and the strays. Two copies of
+// the same facts is the shape that drifts — the PASS/PROCEED bug, the two WAIT
+// counters. Asserted against the page source rather than trusted.
+const verifySrc = readFileSync("../site/verify.html", "utf8")
+check(n++, "/verify mirrors the same DJZS_IRYS_SIGNER", verifySrc.includes(`DJZS_IRYS_SIGNER="${DJZS_IRYS_SIGNER}"`))
+check(n++, "/verify names the stray id", verifySrc.includes(stray.irys_id))
+check(n++, "/verify names the stray's signer", verifySrc.includes(stray.signer))
+check(n++, "/verify mirrors 001's anchored state (null while unanchored)",
+  one.anchored_irys_id === null ? /anchored_irys_id:null/.test(verifySrc) : verifySrc.includes(one.anchored_irys_id))
+check(n++, "/verify checks the signer against the Irys index, not the tags",
+  verifySrc.includes("uploader.irys.xyz/graphql") && verifySrc.includes("NOT OURS"))
+
+// ── live: only when something is anchored. Never a silent skip. ──────────
+const anchored = CORRECTIONS.filter((c) => c.anchored_irys_id)
+if (anchored.length === 0) {
+  console.log(`  --  NOT EXERCISED: no correction is anchored yet, so no live signer check ran.`)
+  console.log(`      This is reported, not counted as a pass. It starts running the moment`)
+  console.log(`      an anchored_irys_id is recorded.`)
+} else {
+  for (const c of anchored) {
+    const r = await verifyAnchorSigner(c.anchored_irys_id, DJZS_IRYS_SIGNER)
+    check(n++, `LIVE: ${c.id} anchor is signed by the DJZS signer (${r.detail})`, r.ok)
+  }
+}
 
 console.log(`\nCORRECTIONS · ${pass}/${pass + failures.length} assertions pass`)
 if (failures.length) {
