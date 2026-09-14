@@ -97,7 +97,7 @@ const RPCS=["https://base.llamarpc.com","https://base-rpc.publicnode.com","https
 const IRYS_GQL="https://uploader.irys.xyz/graphql";
 const DJZS_IRYS_SIGNER="0xcf2d8ef4dea0ef8957b0f4d4a6fbfc2aeaf990cd";
 // The correction register, mirrored from djzs-trust-mcp/src/corrections.ts.
-const CORRECTIONS=[{id:"DJZS-CORR-001",corrects_irys_id:"7tNyZtffqCerZ9CdoQJTFMcrdjbRi3B9KbstAGe3G1br",anchored_irys_id:null,
+const CORRECTIONS=[{id:"DJZS-CORR-001",corrects_irys_id:"7tNyZtffqCerZ9CdoQJTFMcrdjbRi3B9KbstAGe3G1br",anchored_irys_id:"Dr6UVXJbpyK8PVp8MU6tFjihA4goaEJ9MUVdw3q4CvFH",
   known_strays:[{irys_id:"8Kqfic6PVkUUVhEEBppGTzcpr2sZCkbDjventu3W1Fvk",signer:"0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
     note:"Carries 001's text and tags. Signed by the public test key 0x1111...11, not by DJZS. Created 2026-09-13 while testing the anchoring harness. NOT a DJZS record."}]}];
 async function irysSigner(id){try{const r=await fetch(IRYS_GQL,{method:"POST",headers:{"content-type":"application/json"},
