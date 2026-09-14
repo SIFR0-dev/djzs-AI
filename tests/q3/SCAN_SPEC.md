@@ -199,6 +199,42 @@ This is the first pool day run with the full amendment stack in force and with t
 This is expected to recur: a scheduled macro event drives volume on both venues at once, so pool days near an FOMC, CPI or election date will concentrate. Recording the underlying event per record — rather than reconstructing it later from questions — is the cheap way to make clustering possible, and is worth considering before the sample grows.
 
 
+### 2026-09-14 — pool day, and the first day any `origin: pool` record was sealed. Discovery JSON: `tests/q3/discovery/2026-09-14.json` (venue-direct; Surf not run — `--venue-direct`, 0 credits)
+
+**Both venues' top five moved materially against the 09-10 read, and that was reported to the operator before anything was sealed** (the standing instruction for a material pool change). Sealing resumed only after three rulings came back: PROTOCOL v1.13 for the combination market, the two new `event_key`s, and confirmation of the day's composition.
+
+**Kalshi** — 12,001 open events, 34,836 in-category markets. Ranking metric: 24h contracts. v1.9 dropped **4,192** markets closing inside 24h. Book exclusions: 0.
+
+| # | id | category | 24h volume | last | market |
+|---|---|---|---|---|---|
+| 1 | `KXFEDDECISION-26SEP-H0` | Economics | 4,734,101 | 0.14 | Hike 0bps (no change) |
+| 2 | `KXFEDDECISION-26SEP-H26` | Economics | 3,071,534 | 0.02 | Hike >25bps |
+| 3 | `KXFEDDECISION-26SEP-H25` | Economics | 1,733,797 | 0.85 | Hike 25bps |
+| 4 | `KXFEDDECISION-26SEP-C25` | Economics | 628,986 | 0.01 | Cut 25bps |
+| 5 | `KXBALANCEPOWERCOMBO-27FEB-RR` | Elections | 410,107 | 0.15 | House R **AND** Senate R for Feb 2027 |
+
+Next five: `KXBALANCEPOWERCOMBO-27FEB-DD` · `CONTROLS-2026-D` · `KXCRYPTOSTRUCTURE-26JAN-27` · `SENATETX-26-D` · `KXCRYPTOSTRUCTURE-26JAN-OCT`.
+
+**Polymarket** — 1,000 events (page cap, hit), 2,935 in-category markets. v1.9 dropped **403**; **52** admitted with no published close time. Book exclusions: 0. **Dune query 8601185 (`n=5`, `exclude=""`) returned the same five condition ids in the same order as the Gamma read**, so the two paths agree again.
+
+| # | id | 24h volume | last | market |
+|---|---|---|---|---|
+| 1 | `0xa3b36b2d…` | 4,501,922 | 0.145 | No change |
+| 2 | `0xac02cbb0…` | 3,701,208 | 0.0025 | Decrease 25bps |
+| 3 | `0x876506d8…` | 2,685,777 | 0.855 | Increase 25bps |
+| 4 | `0x2e4b58fc…` | 1,901,135 | 0.0075 | Increase 50+ bps |
+| 5 | `0x9cb23d04…` | 902,653 | 0.285 | Clarity Act (H.R.3633) signed into law in 2026? |
+
+**What changed since 09-10, stated because the brief for this day assumed otherwise.** Kalshi lost all three Senate markets — and not marginally: `SENATEME-26-D` fell from **568,978 to 2,977** contracts, `SENATEOHS-26-D` 354,979 → 23,893, `SENATEIA-26-D` 336,274 → 5,666. The 09-10 Senate volumes were a spike that has fully drained, and the three `US-SENATE-*-2026` keys assigned on 09-11 bind nothing today. Polymarket kept four of five (reordered) and swapped the Fed −50 strike for the Clarity Act.
+
+**The FOMC book repriced hard in four days**: no-change 0.355 → 0.145, +25 0.635 → 0.855 (Kalshi 0.36 → 0.14 and 0.64 → 0.85), after an August CPI print on 09-11 that came in above forecast with core accelerating month-over-month.
+
+**Clustering: eight of ten records on one event — tighter than 09-10's seven.** `FOMC-2026-09-16` carries 8 (four Kalshi strikes, four Polymarket strikes), **mutually exclusive by construction across both venues**: exactly one of those outcomes resolves YES. The remaining two are `CLARITY-ACT-HR3633-SIGNED-2026` and the combo, which under v1.13 is a member of `US-HOUSE-CONTROL-2026` and `US-SENATE-CONTROL-2026` and an observation of neither alone. `q3-verify` reports **10 records over 4 distinct events, 11 cluster memberships**. §6 must not treat this day as ten independent observations; the §1 note from 09-10 applies with more force, not less.
+
+**Five of ten are v1.12 `no_public_case`** — half the day. That proportion is itself a result (v1.12), and it is not a random half: the markets with no dominant public case are the tails (>25bp hike, 25bp cut on both venues) and the combo, i.e. precisely the low-probability strikes that commentators do not write about. A pool that selects on volume will keep surfacing these, because a liquid strike ladder puts its tails in the top five on volume alone.
+
+**Verdicts.** Nine WAIT, one FAIL (`q3-2026-09-14-010`, Clarity Act, M01+M03, risk 55). Cross-venue determinism held exactly: every intent audited on both venues returned the identical verdict, codes and risk (001≡006, 003≡008, 004≡007). Pre-screen agreement 1/10 — see §8C.
+
 ## 7. v1.10 + v1.11 — `event_key`, `venue_event_key`, and clustering
 
 **v1.11 corrected v1.10's identifier clause, and the correction is why the two fields exist.** `event_key` is **always operator-assigned** and names the real-world event *independent of venue* — resolving authority, the decision or measurement, and its scheduled date, stable across venues and listings. `venue_event_key` carries the venue's own published identifier verbatim, or `null` where the venue publishes none. §6 clusters on `event_key` and **never** on `venue_event_key`.
