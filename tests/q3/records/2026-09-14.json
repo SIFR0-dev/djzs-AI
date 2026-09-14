@@ -77,13 +77,31 @@
     "intent_sha256": "0xb58a01a7d4b4c6f703ac49557073f53be86a6d3bd577792120f7c76508e78dff",
     "intent_hash": "0xe6304d9ee6691c50486d54025c13a3d908d56a1b534598ce41e13ee9bae283b7",
     "phase_a_hash": "0x34f79c463707d3e46af2a0a1d9ad202f6660521ddf631962bd3a6a8f39c0fec8",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.13907758460490913,
+    "implied_prob_at_audit": 0.13907758460490913,
+    "price_captured_at": "2026-09-14T19:51:05.575Z",
+    "volume_24h": 4789093.239999994,
+    "volume_total": 33554697.46999983,
+    "record_hash": "0x36bb7336db31fa0840c885a5a02d77bbfa2c418d2ca596b7e580bf914159f37c",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-H0",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.13907758460490913,
+      "trade_count": 306,
+      "contracts": 232685.0799999998,
+      "volume_usdc": 32361.27890000002,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
   },
   {
     "id": "q3-2026-09-14-002",
@@ -184,13 +202,31 @@
     "intent_sha256": "0x69a178ce786d8f1b41a109f1effeb2104c095804cf42bc0aa4a90aaeea8893fe",
     "intent_hash": null,
     "phase_a_hash": "0x60e4f92120f9943d395ce9a5c6222d26fe937d445c96b66a4ee7bb559c3f7678",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.010298356585479241,
+    "implied_prob_at_audit": 0.010298356585479241,
+    "price_captured_at": "2026-09-14T19:51:21.318Z",
+    "volume_24h": 3102434.3100000005,
+    "volume_total": 14992914.330000026,
+    "record_hash": "0x2f9ea6436f3fbb59580ac392ff05f6f4ec4da877d14968d5905e8b743b0c904b",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-H26",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.010298356585479241,
+      "trade_count": 23,
+      "contracts": 301451.02999999997,
+      "volume_usdc": 3104.4502,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
   },
   {
     "id": "q3-2026-09-14-003",
@@ -271,13 +307,31 @@
     "intent_sha256": "0x4ab478692853894f70415f2e9f63caeef941021656ba937c1e3ee80a7304a679",
     "intent_hash": "0xc958d2eec406e3b7088202f3273476eda3863e430ea74b18a329a5d77a87cfe3",
     "phase_a_hash": "0x9908607fccc531d1154a95e0a3b44eb29ac70752e32d77cb7a74822e91252df6",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.8539079117922298,
+    "implied_prob_at_audit": 0.8539079117922298,
+    "price_captured_at": "2026-09-14T19:51:22.696Z",
+    "volume_24h": 1776272.3700000085,
+    "volume_total": 13750350.550000012,
+    "record_hash": "0xcc886ca610a9df182cfc050d80a1619a3053e47bf22665d3ced8ac9feceafd94",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-H25",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.8539079117922298,
+      "trade_count": 104,
+      "contracts": 84237.92999999998,
+      "volume_usdc": 71931.43490000001,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
   },
   {
     "id": "q3-2026-09-14-004",
@@ -382,13 +436,31 @@
     "intent_sha256": "0x030a0cbb1f8fd33bbc39b963785a74377cab0d69ae9870da98f82ac078d63415",
     "intent_hash": null,
     "phase_a_hash": "0xff880107ecda805e340b56260779510bfe033f3eb9b143aab899eb91eaa51fe5",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.01,
+    "implied_prob_at_audit": 0.01,
+    "price_captured_at": "2026-09-14T19:51:27.450Z",
+    "volume_24h": 624753.24,
+    "volume_total": 9183936.130000008,
+    "record_hash": "0xe8ba9c66108cd3ce8a330db6d2f0b042349becd6ca4db99ce0a7fa195092bc55",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-C25",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.01,
+      "trade_count": 9,
+      "contracts": 11572.27,
+      "volume_usdc": 115.7227,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
   },
   {
     "id": "q3-2026-09-14-005",
@@ -490,13 +562,31 @@
     "intent_sha256": "0x1fb3901ab1a77ab88c9d1e7c1828136a597ff338a6e1023df1d97eb6a5d6cb34",
     "intent_hash": null,
     "phase_a_hash": "0xf9ed94f299018636c287b43c2cf8405b268bec7bfca2db05b957117d70091051",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.1558263672071709,
+    "implied_prob_at_audit": 0.1558263672071709,
+    "price_captured_at": "2026-09-14T19:51:30.099Z",
+    "volume_24h": 410280.31999999995,
+    "volume_total": 2701354.6799999904,
+    "record_hash": "0xa328374af04355f63664abc2c799438eb44fc286212fd4186a4445b205af27d1",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXBALANCEPOWERCOMBO-27FEB-RR",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.1558263672071709,
+      "trade_count": 3,
+      "contracts": 297.87,
+      "volume_usdc": 46.416,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
   },
   {
     "id": "q3-2026-09-14-006",

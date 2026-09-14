@@ -392,6 +392,58 @@ Property 2 has a corollary worth stating: **the array's ORDER is part of the pre
 
 **Enforcement branches proven to fire** with temporary synthetic records, since deleted: a one-entry array; a non-array; an empty entry; a duplicated component; a compound that disagrees with its components. A valid combo and an unsorted-but-consistent array both pass clean. Pre-amendment records are additionally refused if they carry `event_keys`, on the same immutability ground as `event_key` and `venue_event_key`.
 
+## 8B. Which probability text may enter `intent.probability_basis` — ruled 2026-09-14
+
+**The audited market's own price never enters the intent. A different instrument the source cites may.**
+
+§3 populates `intent.probability_basis` "only with text present in the source, quoted", and §3/§4 separately build a property the study leans on: `price_at_audit` is **not** in the intent and is appended only after the intent is hashed and committed, so **extraction is blind to price by construction**. Those two rules collide whenever the sourced public case quotes a probability — which, for macro and legislative markets, is most of the time. The line is:
+
+| the source quotes… | may it be sealed into `probability_basis`? | why |
+|---|---|---|
+| a quote on **the bound market itself** | **NO** | it *is* `price_at_audit`. Sealing it puts the price inside the Phase A preimage and destroys the blindness §3 constructs. The blindness is not a courtesy; it is what makes `implied_prob_at_audit` an independent comparator in §6. |
+| a **different instrument's** implied probability (CME FedWatch, fed funds futures) | **yes** | it is the basis the source itself asserts, which is exactly what M03 exists to detect the presence or absence of. Excluding it would make M03 unreachable for the entire class of narratives that do cite a basis. |
+| a **named analyst's** stated probability (e.g. "Galaxy Research pegs it at 10%") | **yes** | same ground: a third party's estimate quoted by the source. |
+
+**The 2026-09-14 pool day is the case that produced the rule, and it cuts both ways in one day** — which is why it is worth writing down rather than re-deriving:
+
+- `q3-2026-09-14-003` / `-008` (Kalshi and Polymarket, 25bp hike) seal *"the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch."* CME FedWatch is fed funds futures — **not** the Kalshi or Polymarket contract under audit. Sealed.
+- `q3-2026-09-14-010` (Polymarket, CLARITY Act) does **not**. Its source's only probability for the recorded side is *"traders put the chance of the Clarity Act being signed into law this year at 30%"* — and those traders are **the audited market**. Omitted, and M03 then fired on the genuine absence, contributing to the day's only FAIL.
+
+Note what the rule costs and that the cost is correct: obeying it made record 010 score **worse** than it would have with the market's own quote pasted in. A rule that only ever helped the record would not be a rule about evidence.
+
+**A near-miss worth naming.** CME FedWatch resolves on the same real-world event as the audited contracts, so it is highly correlated with their price. Correlation is not the test; **identity** is. The thing §3 excludes is the quote on the instrument whose settlement the record is graded by, because that quote is the comparator §6 measures the verdict against. A correlated third-party estimate is evidence the narrator chose to cite; the contract's own mid is the answer sheet.
+
+## 8C. Pre-screen vs engine — day one, and the direction of the disagreement
+
+**Observation, not a rule. n = 10 on a single day, eight of them on one event; nothing below is a measurement.**
+
+PROTOCOL §6 reports pre-screen/engine agreement as a side-measurement of the doctrine "LLM detects, TypeScript decides". Day one's agreement was **1 of 10** (`q3-2026-09-14-010`, the only record where both said FAIL).
+
+The disagreement is **entirely one-directional**: the pre-screen called FAIL on all ten; the engine returned **WAIT on nine**. Every miss is the pre-screen asserting a *blocking absence* where the engine found it could not establish the field at all and abstained. Concretely, the pre-screen read `no_public_case` records as M01+M02 at σ 60 — a confident double-CRITICAL — while the engine returned WAIT at risk 0 with `invalidation_condition` and `resolution_engagement` **unknown**.
+
+That is the quote-gate and evidence-unanimity machinery doing exactly what they were built to do (CLAUDE.md §3): an absent that cannot produce a verbatim contiguous quote demotes to unknown, and unknown is abstention, not a finding. A hand-applied taxonomy has no such gate, so it converts "I see nothing here" into "there is nothing here" — and those are different claims. On a thesis-absent v1.12 input the difference is total, which is why day one's composition (five no-case records) makes the gap look so wide.
+
+Two consequences, both recorded rather than acted on:
+
+1. **The published cards' "pre-screen" label is load-bearing, not decorative.** §6 says low agreement means the cards must say pre-screen louder. One day at 1/10 does not establish a rate, but it establishes the *direction*, and the direction is the one that matters: the pre-screen is systematically more willing to block than the engine of record.
+2. **Do not read this as the pre-screen being wrong about the markets.** It is wrong about what the evidence supports, which is the only thing the engine claims to measure. Whether a `no_public_case` market resolves like a blocked one is an outcome question, and no record is graded yet.
+
+## 8D. Defect found by the verifier, 2026-09-14 — `price_source` was never excluded from the Phase A preimage
+
+**Found, fixed and proven inside the sealing pass. No record was mis-sealed; no stored hash was ever wrong.**
+
+Phase B writes `price_source` — the provider, query and execution ids, the parameters and the VWAP window that let a third party re-run the number. It was never added to `PHASE_A_EXCLUDE`. So re-deriving a sealed record's `phase_a_hash` folded in a field that **did not exist when that hash was computed**, and every venue record sealed through the priced path failed `phase_a_hash does not recompute` the instant Phase B ran. `q3-verify` caught all five Kalshi records the moment they were priced.
+
+**The stored hashes were always correct. The recomputation was not.** That distinction is the whole reason nothing had to be re-sealed: `phase_a_hash` was computed at Phase A over a record that genuinely had no `price_source`, and adding the name to the exclude set makes the verifier reproduce exactly that. Proven, not asserted: each of the five recomputes to the value Phase A printed **before the price existed**, and under the old set each demonstrably did not — the defect is reproduced rather than inferred.
+
+**Why it stayed invisible until day one of the pool.** No record had ever carried the field. The only pre-existing venue record, pilot `q3-2026-09-02-N5`, was sealed before v1.2 introduced `price_source`; the other two are `series` bindings, which never get one. So the bug was latent from the day `price_source` was introduced and could only surface on the first venue record sealed through the priced path — which is these.
+
+**The fix is hash-neutral by construction and was checked against every existing record.** `strip()` removes keys by name, so a record that never carried `price_source` canonicalises identically under either set; all eight such records were confirmed byte-identical before and after, and all eight still recompute their own stored hash.
+
+**`price_source` deliberately stays OUT of `PHASE_B_EXCLUDE`.** It is the price's provenance, so it must sit inside `record_hash` and be tamper-evident — altering `execution_id` alone breaks `record_hash`, and that is checked. The resulting asymmetry — excluded from Phase A, sealed in Phase B — is exactly the one `price_at_audit` already has, and for the same reason.
+
+**The general lesson, worth more than the fix.** Every field Phase B writes must be added to `PHASE_A_EXCLUDE` *in the same change that introduces it*. v1.7(a) got this right for `volume_24h` / `volume_total` and said so in its own note; `price_source` predates that discipline and was missed. Before any future Phase B field lands, the check is: does re-deriving `phase_a_hash` on a fully sealed record still reproduce it?
+
 ## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
 
 **Not an amendment and not a rule change. This section records a discrepancy and names the point at which it has to be addressed; it invents no threshold and changes nothing.**
