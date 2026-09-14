@@ -404,6 +404,36 @@ Consequently:
 
 **What this means for a stale brief.** If a seal cannot run in the same pass as the sourcing — the window has closed, the keys are elsewhere, the day has turned — the drafts are still usable, because nothing in them is evidence yet. The operator re-runs and seals when the pass can complete. Nothing has to be thrown away, and nothing stale can be sealed by accident.
 
+### 10.3 Commands that read keys or touch the network live in the repo, never in chat
+
+**Ruled 2026-09-14.** Any command that reads a key, signs, uploads, or otherwise
+touches the network is committed as a script in this repository. It is never
+handed over as a shell snippet to paste.
+
+A pasted command is unreviewable, untested and unversioned at exactly the moment
+those things matter most. Nobody can diff it, CI never runs it, and the operator
+is asked to trust a block of text with a funded key in scope. A committed script
+is reviewed in a pull request, exercised by tests, and identical for everyone who
+runs it — and when it turns out to be wrong, the fix is a commit rather than a
+correction in a later message that the first reader never sees.
+
+The concrete failure this rule is written from: a harness mode warned about a
+non-devnet node and then uploaded anyway, putting a permanent item on Irys
+mainnet. That was caught because it was in the repo and could be tested, fixed
+and deleted. The same logic pasted into a terminal would have done the same
+damage with nothing to point at afterwards.
+
+Consequences:
+
+- **Deliverables are scripts and their flags**, not command text. "Run
+  `harness/anchor-correction.ts 001 --via-worker`" is a reference to reviewed
+  code; a multi-line block that curls, signs and writes is not.
+- **Read-only inspection gets the same treatment.** `--inspect` takes no key and
+  writes nothing, and it is still a committed, tested mode rather than an ad-hoc
+  query — because a verification tool nobody can test is not a verification tool.
+- **Pasted blocks stay bare and short** where they are unavoidable at all
+  (CLAUDE.md §9 terminal doctrine still governs their shape).
+
 ## 11. Acceptance rule for extraction-contract changes
 
 **Recorded 2026-09-12. This is an implementation-side discipline, not a PROTOCOL amendment** — PROTOCOL.md stays frozen at v1.12. It governs the extraction layer (contracts `DJZS-X-v*`, `DJZS-X-LF-v*`), which sits between the model and the frozen engine and is the one part of the verdict path that a prompt edit can move.

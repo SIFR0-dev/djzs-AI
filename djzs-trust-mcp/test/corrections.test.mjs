@@ -14,7 +14,7 @@
  */
 import { readFileSync } from "node:fs"
 import { CORRECTIONS, correctionsFor, DJZS_IRYS_SIGNER } from "../src/corrections.ts"
-import { verifyAnchorSigner } from "../src/correction-anchor.ts"
+import { verifyAnchorSigner, inspectIrysItem } from "../src/correction-anchor.ts"
 
 let pass = 0
 const failures = []
@@ -89,6 +89,45 @@ check(n++, "the stray is NEVER the anchored id", one?.anchored_irys_id !== stray
 check(n++, "the note says plainly it is not a DJZS record", /NOT a DJZS record/.test(stray?.note ?? ""))
 check(n++, "correctionsFor publishes expected_signer", byAudit[0].expected_signer === DJZS_IRYS_SIGNER)
 check(n++, "correctionsFor surfaces known_strays", Array.isArray(byAudit[0].known_strays) && byAudit[0].known_strays.length === 1)
+
+// ── --inspect: read-only, and decided by the signature alone ─────────────
+// Offline with an injected fetch. The live runs are reported in the PR body;
+// this pins the logic so the tool cannot quietly start trusting tags.
+const DJZS_TAGS = { "application-id": "DJZS-Correction", "correction-id": "DJZS-CORR-001" }
+const stubItem = (signer, body, tags = DJZS_TAGS) => async (url, init) => {
+  const u = String(url)
+  if (u.includes("graphql")) {
+    const q = JSON.parse(init.body)
+    // verifyAnchorSigner asks for {id address}; inspect also asks for tags.
+    return new Response(JSON.stringify({ data: { transactions: { edges: signer ? [{ node: {
+      id: "x", address: signer, timestamp: 1757804159311,
+      tags: Object.entries(tags).map(([name, value]) => ({ name, value })),
+    } }] : [] } } }), { status: 200 })
+  }
+  return body === null ? new Response("nope", { status: 404 }) : new Response(body, { status: 200 })
+}
+
+const oursRep = await inspectIrysItem("Dr6U", DJZS_IRYS_SIGNER, stubItem(DJZS_IRYS_SIGNER, "hello"))
+check(n++, "inspect: DJZS-signed item reports ours:true", oursRep.ours === true)
+check(n++, "inspect: hashes what the gateway actually served",
+  oursRep.served_sha256 === (await (async () => { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("hello")); return "0x" + [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join("") })()))
+check(n++, "inspect: reports the byte count", oursRep.served_bytes === 5)
+check(n++, "inspect: surfaces the tags", oursRep.tags["correction-id"] === "DJZS-CORR-001")
+check(n++, "inspect: reports when it was indexed", typeof oursRep.indexed_at === "string")
+
+// The assertion this tool exists for: identical tags, wrong signer, NOT ours.
+const strayRep = await inspectIrysItem("8Kqf", DJZS_IRYS_SIGNER, stubItem(stray.signer, "hello"))
+check(n++, "inspect: SAME TAGS + wrong signer -> ours:false", strayRep.ours === false)
+check(n++, "inspect: tags are identical to the genuine item's",
+  JSON.stringify(strayRep.tags) === JSON.stringify(oursRep.tags))
+check(n++, "inspect: identical BYTES too — only the signature separates them",
+  strayRep.served_sha256 === oursRep.served_sha256)
+check(n++, "inspect: names the foreign signer", strayRep.detail.includes(stray.signer))
+
+const goneRep = await inspectIrysItem("nope", DJZS_IRYS_SIGNER, stubItem(null, null))
+check(n++, "inspect: gateway 404 -> served_sha256 null, error recorded",
+  goneRep.served_sha256 === null && goneRep.gateway_error.includes("404"))
+check(n++, "inspect: unknown to the index -> not ours (never a silent pass)", goneRep.ours === false)
 
 // ── /verify mirrors the register. Mirrors drift; this makes drift fail. ──
 // site/verify.html is a static page and cannot import corrections.ts, so it
