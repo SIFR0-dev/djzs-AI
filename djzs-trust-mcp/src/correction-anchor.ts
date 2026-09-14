@@ -240,3 +240,70 @@ export async function verifyAnchorSigner(
   }
   return { ...base, ok: true, signer, detail: "signed by the DJZS signer" }
 }
+
+export interface IrysItemReport {
+  irys_id: string
+  /** Bytes the gateway served, or null when it could not be read. */
+  served_sha256: string | null
+  served_bytes: number | null
+  gateway_error: string | null
+  signer: string | null
+  expected_signer: string
+  /** True only when the DJZS signer signed it. Tags never influence this. */
+  ours: boolean
+  detail: string
+  tags: Record<string, string>
+  indexed_at: string | null
+}
+
+/**
+ * Read-only report on an Irys item: what the gateway serves, who signed it, what
+ * it is tagged. Takes no key and writes nothing.
+ *
+ * Split out of the harness so it can be tested offline with an injected fetch.
+ * The alternative — a printing function tested only by running it against the
+ * live network — is how a verification tool ends up unverified.
+ *
+ * `ours` is decided by the SIGNATURE ALONE. The tags are returned so a caller
+ * can see what an item claims, never so they can decide whether to believe it.
+ */
+export async function inspectIrysItem(
+  irysId: string,
+  expectedSigner: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<IrysItemReport> {
+  let served_sha256: string | null = null
+  let served_bytes: number | null = null
+  let gateway_error: string | null = null
+  try {
+    const r = await fetchFn(`${POL_GATEWAY_BASE}/${irysId}`, { redirect: "follow" })
+    if (r.ok) { const t = await r.text(); served_bytes = t.length; served_sha256 = await sha256Hex(t) }
+    else gateway_error = `HTTP ${r.status}`
+  } catch (e) { gateway_error = (e as Error).message.slice(0, 140) }
+
+  const tags: Record<string, string> = {}
+  let indexed_at: string | null = null
+  try {
+    const r = await fetchFn(IRYS_GRAPHQL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `query($ids:[String!]!){transactions(ids:$ids){edges{node{id address timestamp tags{name value}}}}}`,
+        variables: { ids: [irysId] },
+      }),
+    })
+    const j = (await r.json()) as any
+    const node = j?.data?.transactions?.edges?.[0]?.node
+    if (node) {
+      for (const t of node.tags ?? []) tags[t.name] = t.value
+      indexed_at = node.timestamp ? new Date(Number(node.timestamp)).toISOString() : null
+    }
+  } catch { /* the signer check below reports index failure on its own */ }
+
+  const sig = await verifyAnchorSigner(irysId, expectedSigner, fetchFn)
+  return {
+    irys_id: irysId, served_sha256, served_bytes, gateway_error,
+    signer: sig.signer, expected_signer: sig.expected, ours: sig.ok, detail: sig.detail,
+    tags, indexed_at,
+  }
+}

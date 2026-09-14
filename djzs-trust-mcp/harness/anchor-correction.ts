@@ -26,6 +26,11 @@
  * Modes:
  *   --dry-run       compute and print the payload, sha and tags. No network.
  *   --via-worker    POST to the Worker, verify the sha, write both files.
+ *   --inspect <id>  READ-ONLY. No key, no writes. Fetches an Irys item, hashes
+ *                   what the gateway serves, asks the index who signed it and
+ *                   what it is tagged, and says whether it is ours. Use it on
+ *                   anything claiming to be a DJZS record — including anything
+ *                   this script is about to write back.
  *
  * Optional, and recommended whenever the record was reviewed earlier:
  *   --expect-sha 0x…   refuse before ANY network call unless the locally
@@ -41,7 +46,11 @@
  *     --url https://mcp.djzs.ai --expect-sha 0xb63d9290…
  */
 import { readFileSync, writeFileSync } from "node:fs"
-import { buildCorrectionPayload, validateCorrectionRecord, ANCHOR_EXCLUDE } from "../src/correction-anchor"
+import {
+  buildCorrectionPayload, validateCorrectionRecord, ANCHOR_EXCLUDE,
+  inspectIrysItem,
+} from "../src/correction-anchor"
+import { POL_GATEWAY_BASE } from "../src/pol-certificate"
 
 class Halt extends Error {}
 /** Throws rather than process.exit: TypeScript narrows through a throw, and one
@@ -57,12 +66,75 @@ function flagValue(args: string[], name: string): string | undefined {
   return inline ? inline.slice(name.length + 1) : undefined
 }
 
+/**
+ * READ-ONLY inspection of an Irys item.
+ *
+ * Separate from every writing path on purpose: it takes no key, sets no flag
+ * that could anchor anything, and touches only two public endpoints — the
+ * gateway (what bytes are served) and the index (who signed, what tags). It
+ * exists because "is this item ours?" was previously only answerable by reading
+ * source and trusting it, and the answer matters most in exactly the case where
+ * an item's tags claim more than its signature supports.
+ */
+async function inspect(irysId: string): Promise<void> {
+  const { CORRECTIONS, DJZS_IRYS_SIGNER } = await import("../src/corrections")
+  const rep = await inspectIrysItem(irysId, DJZS_IRYS_SIGNER)
+  console.log(`IRYS INSPECT · ${irysId}   (read-only, no key, nothing written)`)
+
+  if (rep.served_sha256 === null) {
+    console.log(`  gateway        UNREACHABLE from here (${rep.gateway_error})`)
+    console.log(`                 ${POL_GATEWAY_BASE}/${irysId}`)
+  } else {
+    console.log(`  gateway        ${rep.served_bytes} bytes`)
+    console.log(`  served sha256  ${rep.served_sha256}`)
+    let matched = false
+    for (const c of CORRECTIONS) {
+      try {
+        const rec = JSON.parse(readFileSync(`../${c.record_file}`, "utf8")) as Record<string, unknown>
+        const expected = (await buildCorrectionPayload(rec)).sha256
+        const same = expected === rep.served_sha256
+        console.log(`  vs ${c.id}  ${expected}  ${same ? "MATCH — these are that record's bytes" : "differs"}`)
+        if (same) matched = true
+      } catch { /* an unparseable record file is not this command's problem */ }
+    }
+    if (!matched) console.log(`  content        matches no registered correction record`)
+  }
+
+  if (rep.indexed_at) console.log(`  indexed at     ${rep.indexed_at}`)
+  console.log(`  signer         ${rep.signer ?? "unknown"}`)
+  console.log(`  expected       ${rep.expected_signer}`)
+  console.log(`  VERDICT        ${rep.ours ? "OURS — signed by the DJZS signer" : "NOT OURS — " + rep.detail}`)
+
+  const tagNames = Object.keys(rep.tags)
+  if (tagNames.length) {
+    console.log(`  tags`)
+    for (const k of tagNames) console.log(`    ${k.padEnd(18)} ${rep.tags[k]}`)
+    // Tags are strings anyone can write. Saying so next to them is the point.
+    if (rep.tags["correction-id"] && !rep.ours) {
+      console.log(`\n  !! This item is TAGGED correction-id ${rep.tags["correction-id"]} but is NOT signed by DJZS.`)
+      console.log(`  !! Tags are strings any uploader can write. The signature is not.`)
+    }
+  }
+
+  const stray = CORRECTIONS.flatMap((c) => (c.known_strays ?? []).map((x) => ({ ...x, correction: c.id })))
+    .find((x) => x.irys_id === irysId)
+  if (stray) {
+    console.log(`\n  KNOWN STRAY, already recorded against ${stray.correction}:`)
+    console.log(`  ${stray.note}`)
+  }
+  const anchored = CORRECTIONS.find((c) => c.anchored_irys_id === irysId)
+  if (anchored) console.log(`\n  This is the registered anchor for ${anchored.id}.`)
+  else if (!stray) console.log(`\n  Not referenced by the correction register.`)
+}
+
 async function main() {
   const args = process.argv.slice(2)
   const id = args.find((a) => !a.startsWith("--") && !/^https?:\/\//.test(a))
   const dryRun = args.includes("--dry-run")
   const viaWorker = args.includes("--via-worker")
   const expectSha = flagValue(args, "--expect-sha")
+  const inspectId = flagValue(args, "--inspect")
+  if (inspectId) { await inspect(inspectId); return }
   if (!id) die("usage: anchor-correction.ts <n> [--dry-run | --via-worker --url <worker>] [--expect-sha 0x…]")
   if (dryRun && viaWorker) die("--dry-run and --via-worker are mutually exclusive")
   if (!dryRun && !viaWorker) {
