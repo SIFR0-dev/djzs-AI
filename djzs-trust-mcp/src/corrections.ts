@@ -83,7 +83,7 @@ export const CORRECTIONS: readonly CorrectionRecord[] = [
     corrects_irys_id: "7tNyZtffqCerZ9CdoQJTFMcrdjbRi3B9KbstAGe3G1br",
     summary:
       'Certificate carries target_system "Coinbase". The value was operator-entered free text during a test of the audit tool by the DJZS operator; Coinbase did not submit the intent, did not authorize use of its name, and had no involvement in the audit. The verdict says nothing about any Coinbase system. Attribution only: the verdict itself is untouched, the certificate is immutable and stands as issued.',
-    anchored_irys_id: null,
+    anchored_irys_id: "Dr6UVXJbpyK8PVp8MU6tFjihA4goaEJ9MUVdw3q4CvFH",
     eas_uid: null,
     known_strays: [
       {

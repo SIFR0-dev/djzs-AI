@@ -10,7 +10,7 @@
   },
   "effective": "2026-09-13",
   "signer": "0xfB0e11471D41f88D1eE43A1bA38d885fb6b77824",
-  "anchored_irys_id": null,
+  "anchored_irys_id": "Dr6UVXJbpyK8PVp8MU6tFjihA4goaEJ9MUVdw3q4CvFH",
   "eas_uid": null,
   "statement": [
     "The target_system field on certificate a3a5ad8f-0418-4d63-ae7b-85b39973a25b reads \"Coinbase\". That value was operator-entered free text during a test of the audit tool by the DJZS operator. Coinbase did not submit the audited intent, did not authorize the use of its name, and had no involvement in the audit. The verdict evaluated a test intent authored by the operator and states nothing about any Coinbase system, product, agent, or reasoning.",
