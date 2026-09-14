@@ -31,7 +31,15 @@ function check(n, label, ok) {
 }
 
 const KEY = "anchor-key-for-tests-0123456789"
-const REC = JSON.parse(readFileSync("../tests/q3/corrections/001.json", "utf8"))
+const LIVE = JSON.parse(readFileSync("../tests/q3/corrections/001.json", "utf8"))
+// THE FIXTURE IS EXPLICITLY UNANCHORED, derived from the live record rather than
+// being it. The first version of this file used the live record directly and
+// broke the moment 001 was correctly anchored — every "valid record" assertion
+// started failing because the record had, properly, stopped being anchorable.
+// A test that fails because the world advanced as intended is a bug in the test.
+// The payload excludes anchored_irys_id/eas_uid, so REC and LIVE hash identically
+// and nothing about the derivation assertions is weakened by this.
+const REC = { ...LIVE, anchored_irys_id: null, eas_uid: null }
 const ENV = {
   DJZS_Q3_ANCHOR_KEY: KEY,
   IRYS_UPLOAD_KEY: "11".repeat(32),
@@ -81,6 +89,16 @@ check(n++, "record-sha256 tag equals the payload sha", tag("record-sha256") === 
 
 // ── validation ───────────────────────────────────────────────────────────
 check(n++, "valid record passes", validateCorrectionRecord(REC).ok)
+// And the committed record, as it actually stands, is refused BECAUSE it is
+// anchored — the live state asserted as behaviour, not assumed as a constant.
+check(n++, LIVE.anchored_irys_id
+  ? "the committed record is anchored, so it is refused (double-anchor guard)"
+  : "the committed record is not yet anchored, so it is accepted",
+  LIVE.anchored_irys_id
+    ? validateCorrectionRecord(LIVE).error?.startsWith("already anchored")
+    : validateCorrectionRecord(LIVE).ok)
+check(n++, "REC and the committed record hash identically (anchor fields excluded)",
+  (await buildCorrectionPayload(LIVE)).sha256 === built.sha256)
 check(n++, "already-anchored record is refused",
   validateCorrectionRecord({ ...REC, anchored_irys_id: "X" }).error?.startsWith("already anchored"))
 for (const [label, bad] of [

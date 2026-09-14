@@ -49,8 +49,19 @@ const byAudit = correctionsFor("a3a5ad8f-0418-4d63-ae7b-85b39973a25b", undefined
 const byIrys = correctionsFor(undefined, "7tNyZtffqCerZ9CdoQJTFMcrdjbRi3B9KbstAGe3G1br")
 check(n++, "joins by audit_id", byAudit.length === 1 && byAudit[0].correction_id === "DJZS-CORR-001")
 check(n++, "joins by irys_id", byIrys.length === 1 && byIrys[0].correction_id === "DJZS-CORR-001")
-check(n++, "unanchored correction reports authored_pending_anchor, not anchored", byAudit[0].status === "authored_pending_anchor")
-check(n++, "unanchored correction exposes no irys_url", byAudit[0].irys_url === null)
+// STATUS MAPPING, BOTH DIRECTIONS — asserted on the shape, never on whichever
+// state the live register happens to be in today. The first version of these two
+// checks hard-coded "001 is unanchored" and broke the moment 001 was correctly
+// anchored: a test that fails because the world advanced as intended is a bug in
+// the test, not a finding.
+const statusOf = (anchored) => (anchored ? "anchored" : "authored_pending_anchor")
+const urlOf = (anchored) => (anchored ? `https://gateway.irys.xyz/${anchored}` : null)
+for (const c of CORRECTIONS) {
+  const row = correctionsFor(c.corrects_audit_id, undefined).find((x) => x.correction_id === c.id)
+  check(n++, `${c.id}: status follows anchored_irys_id (${statusOf(c.anchored_irys_id)})`,
+    row.status === statusOf(c.anchored_irys_id))
+  check(n++, `${c.id}: irys_url is present iff anchored`, row.irys_url === urlOf(c.anchored_irys_id))
+}
 check(n++, "an unrelated certificate gets no corrections", correctionsFor("00000000-0000-0000-0000-000000000000", "nope").length === 0)
 check(n++, "both identifiers absent yields nothing", correctionsFor(undefined, undefined).length === 0)
 
@@ -138,7 +149,7 @@ const verifySrc = readFileSync("../site/verify.html", "utf8")
 check(n++, "/verify mirrors the same DJZS_IRYS_SIGNER", verifySrc.includes(`DJZS_IRYS_SIGNER="${DJZS_IRYS_SIGNER}"`))
 check(n++, "/verify names the stray id", verifySrc.includes(stray.irys_id))
 check(n++, "/verify names the stray's signer", verifySrc.includes(stray.signer))
-check(n++, "/verify mirrors 001's anchored state (null while unanchored)",
+check(n++, "/verify mirrors 001's CURRENT anchored state",
   one.anchored_irys_id === null ? /anchored_irys_id:null/.test(verifySrc) : verifySrc.includes(one.anchored_irys_id))
 check(n++, "/verify checks the signer against the Irys index, not the tags",
   verifySrc.includes("uploader.irys.xyz/graphql") && verifySrc.includes("NOT OURS"))
