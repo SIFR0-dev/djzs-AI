@@ -64,10 +64,28 @@ function findRecord(id: string): any | null {
   await new Promise(z => setTimeout(z, gap * 1000));
   const b = await shot(`t0+${gap}s`);
 
-  const same = a.vwap === b.vwap && a.trade_count === b.trade_count && a.volume_24h === b.volume_24h && a.volume_total === b.volume_total;
-  if (!same) {
-    console.error(`STILL MOVING: the window changed across ${gap}s (trades ${a.trade_count} -> ${b.trade_count}). Dune is still indexing this range; sealing now would write a VWAP that re-execution cannot reproduce. Wait and re-run.`);
+  // THE GATE MUST NOT BE STRICTER THAN THE VERIFIER IT PROTECTS. Its whole job is to predict whether q3-verify's
+  // re-execution will agree with the sealed number, so it has to compare the way q3-verify compares. Two runs of the
+  // same query over the same settled rows can differ in the last ulp purely from float summation ORDER — observed
+  // live on the first use of this gate: identical vwap and trade_count, volumes differing at 1e-9 relative
+  // (4803260.124947 vs 4803260.124946999). A strict === there reports "still moving" forever on a window that has
+  // completely stopped, which would block Phase B permanently on a false signal. So: trade_count exact (a row either
+  // is indexed or is not, and a changing count is the real signal of a moving window), vwap within dune.json's own
+  // price_tolerance, volumes within q3-verify's volClose — the same two tolerances the verifier applies, and for the
+  // same stated reason: they cover summation order, never drift.
+  const volClose = (x: number, y: number) => Math.abs(x - y) <= Math.max(0.01, 1e-9 * Math.max(Math.abs(x), Math.abs(y)));
+  const tol = Number(cfg.price_tolerance ?? 1e-9);
+  const num = (x: number | null | undefined, y: number | null | undefined) =>
+    (x == null || y == null) ? x === y : volClose(x, y);
+  const countMoved = a.trade_count !== b.trade_count;
+  const vwapMoved = !(Math.abs(a.vwap - b.vwap) <= tol);
+  const volMoved = !num(a.volume_24h, b.volume_24h) || !num(a.volume_total, b.volume_total);
+  if (countMoved || vwapMoved || volMoved) {
+    const why = [countMoved && `trade_count ${a.trade_count} -> ${b.trade_count}`,
+                 vwapMoved && `vwap ${a.vwap} -> ${b.vwap} (> price_tolerance ${tol})`,
+                 volMoved && `volumes moved beyond volClose`].filter(Boolean).join("; ");
+    console.error(`STILL MOVING: the window changed across ${gap}s — ${why}. Dune is still indexing this range; sealing now would write a VWAP that re-execution cannot reproduce. Wait and re-run.`);
     process.exit(1);
   }
-  console.log(`SETTLED — identical across ${gap}s (${b.trade_count} trades, vwap ${b.vwap}). Safe to seal.`);
+  console.log(`SETTLED — stable across ${gap}s (${b.trade_count} trades, vwap ${b.vwap}); volumes agree within the same tolerance q3-verify applies. Safe to seal.`);
 })().catch(e => { console.error(String((e as Error).message ?? e)); process.exit(1); });

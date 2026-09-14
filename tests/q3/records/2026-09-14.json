@@ -667,13 +667,30 @@
     "intent_sha256": "0xb58a01a7d4b4c6f703ac49557073f53be86a6d3bd577792120f7c76508e78dff",
     "intent_hash": "0xe6304d9ee6691c50486d54025c13a3d908d56a1b534598ce41e13ee9bae283b7",
     "phase_a_hash": "0x75d161c7f306e3240ad274384ec53449d49cb86aa1471fbbaae8cbaa13bc3298",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.14343384071604778,
+    "implied_prob_at_audit": 0.14343384071604778,
+    "price_captured_at": "2026-09-14T23:50:13.104Z",
+    "volume_24h": 4803260.124946999,
+    "volume_total": 43240406.98355901,
+    "record_hash": "0xb923dd2f64357be01b25be800b786f1c03ab64c33b0d6d50b05d120bf92fe17d",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H584TEZ6DGD63WQ76RPGTY",
+      "query_params": {
+        "token_id": "5615282760875985231868508008056959876238536896643315063916840237042205273721",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.14343384071604778,
+      "trade_count": 125,
+      "volume_usdc": 107982.95649999999,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
   },
   {
     "id": "q3-2026-09-14-007",
@@ -779,13 +796,30 @@
     "intent_sha256": "0x030a0cbb1f8fd33bbc39b963785a74377cab0d69ae9870da98f82ac078d63415",
     "intent_hash": null,
     "phase_a_hash": "0xa12506903e70df69f14e5160f3b058d9f5bd246019a4df967da8743a8aab320e",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.0022187599622886826,
+    "implied_prob_at_audit": 0.0022187599622886826,
+    "price_captured_at": "2026-09-14T23:50:23.021Z",
+    "volume_24h": 4212628.616035,
+    "volume_total": 44801156.09387499,
+    "record_hash": "0xa65a32c547fe60abec3b17fc507da83a3eae20cef16b6e6ae370da61d33e8085",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H58ECWMHHQW5N2VHAJ9V5C",
+      "query_params": {
+        "token_id": "57748138085022719760345772310040703848567377822400132842014290209986511882046",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.0022187599622886826,
+      "trade_count": 34,
+      "volume_usdc": 1690.9206800000002,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
   },
   {
     "id": "q3-2026-09-14-008",
@@ -867,13 +901,30 @@
     "intent_sha256": "0x4ab478692853894f70415f2e9f63caeef941021656ba937c1e3ee80a7304a679",
     "intent_hash": "0xc958d2eec406e3b7088202f3273476eda3863e430ea74b18a329a5d77a87cfe3",
     "phase_a_hash": "0x55a4ceb6ef82a9dde39402913e5268f86b116b1b193bbb6ed0f2a0e998c171e1",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.8584384817347084,
+    "implied_prob_at_audit": 0.8584384817347084,
+    "price_captured_at": "2026-09-14T23:50:39.041Z",
+    "volume_24h": 2880418.11169,
+    "volume_total": 32703133.39089602,
+    "record_hash": "0x23a28186d651cc39eab41ebb62a729c044001465075ea29c5e744fc0e54d9ac7",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H58Y4M8T93AGF9CCD399NR",
+      "query_params": {
+        "token_id": "63842529068710005716169325380315470359047749786610778647370693404952498013178",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.8584384817347084,
+      "trade_count": 85,
+      "volume_usdc": 164148.816961,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
   },
   {
     "id": "q3-2026-09-14-009",
@@ -975,13 +1026,30 @@
     "intent_sha256": "0xe2e6daca70de06e77edee03e9f82eea4d08113df7797f659277f6c1c1aeb2bf0",
     "intent_hash": null,
     "phase_a_hash": "0x70a0e13774b219bf9cf0e62d13c9e889514c64bad12c9541b93ec8f49ddc1111",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.007870522413569085,
+    "implied_prob_at_audit": 0.007870522413569085,
+    "price_captured_at": "2026-09-14T23:50:48.992Z",
+    "volume_24h": 2499272.4530390007,
+    "volume_total": 22461347.480303023,
+    "record_hash": "0xdf761ac04ce91649e2a3dec0a3e36b1337444bf107860fb67d0a02fd95c38079",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H597VJA4XB42PFQPCPJ43F",
+      "query_params": {
+        "token_id": "88912926533493988427719291698947688154042720958310632316541141466409683822293",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.007870522413569085,
+      "trade_count": 26,
+      "volume_usdc": 6632.338359999999,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
   },
   {
     "id": "q3-2026-09-14-010",
@@ -1060,12 +1128,29 @@
     "intent_sha256": "0xc7e893936eb85536f4fa52a48f3416c85534eee60abd53cf1cf4f10c82b14b00",
     "intent_hash": "0x9a83d1821fec226646f3ec26033447bda13eca7a6f6f2451c73d3e4de92cf218",
     "phase_a_hash": "0x6556ec39b96e2e28a3e0eb339eb57fb317c62e9f71f0228fb61b1cee27195dc5",
-    "price_at_audit": null,
-    "implied_prob_at_audit": null,
-    "price_captured_at": null,
-    "volume_24h": null,
-    "volume_total": null,
-    "record_hash": null,
-    "outcome": null
+    "price_at_audit": 0.29382682522529646,
+    "implied_prob_at_audit": 0.29382682522529646,
+    "price_captured_at": "2026-09-14T23:51:05.211Z",
+    "volume_24h": 943867.4709600003,
+    "volume_total": 16661739.724394001,
+    "record_hash": "0x6d38f3d0dbdee8c8d6da7d870c3e32f76da19d75d2cd208276943bac785b5b07",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H59QQCY11M8SB8KT9T6XV6",
+      "query_params": {
+        "token_id": "35198549486569600595408965368290795524428922595732253580266052028158040373233",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.29382682522529646,
+      "trade_count": 120,
+      "volume_usdc": 13002.951100000006,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
   }
 ]
