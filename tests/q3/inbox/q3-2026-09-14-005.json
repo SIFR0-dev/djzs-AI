@@ -1,0 +1,77 @@
+{
+  "id": "q3-2026-09-14-005",
+  "protocol_version": "1.13",
+  "posted_at": "2026-09-14T19:40:00Z",
+  "origin": "pool",
+  "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+  "supersedes": null,
+  "deviated": false,
+  "inclusion_note": null,
+  "source": {
+    "url": "https://www.foxnews.com/media/rnc-chair-pushes-back-after-carville-predicts-gop-wipeout-2026-midterms.amp",
+    "text": "\"Our secret weapon is President Trump.\"",
+    "captured_at": "2026-09-14T19:30:00Z"
+  },
+  "binding": {
+    "type": "venue",
+    "series": null,
+    "threshold": null,
+    "at": null
+  },
+  "event_key": "US-HOUSE-CONTROL-2026+US-SENATE-CONTROL-2026",
+  "venue_event_key": "KXBALANCEPOWERCOMBO-27FEB",
+  "prescreen": {
+    "codes": [
+      "DJZS-M01",
+      "DJZS-M02"
+    ],
+    "sigma": 60,
+    "verdict": "FAIL",
+    "by": "seat-prescreen"
+  },
+  "market": {
+    "venue": "kalshi",
+    "ticker": "KXBALANCEPOWERCOMBO-27FEB-RR",
+    "title": "Will House Control be Republican AND Senate Control be Republican for Feb 2027?",
+    "side": "YES",
+    "resolution_source": "Kalshi settlement rules for KXBALANCEPOWERCOMBO-27FEB (control of both chambers as of Feb 2027)",
+    "resolution_due": "2027-02-01T15:00:00Z"
+  },
+  "intent": {
+    "market": "2026 midterms - Republicans hold both the House and the Senate",
+    "side": "YES",
+    "thesis": null
+  },
+  "criterion": {
+    "correct_if": "Kalshi settles KXBALANCEPOWERCOMBO-27FEB-RR YES.",
+    "incorrect_if": "Kalshi settles KXBALANCEPOWERCOMBO-27FEB-RR NO.",
+    "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+    "grade_due": "2027-02-02T15:00:00Z"
+  },
+  "event_keys": [
+    "US-HOUSE-CONTROL-2026",
+    "US-SENATE-CONTROL-2026"
+  ],
+  "thesis_state": "no_public_case",
+  "search_record": {
+    "sources_consulted": [
+      "Silver Bulletin (Nate Silver) — '2026 Midterm Election Forecast: Senate & House'",
+      "270toWin — 2026 Senate and 2026 House interactive forecasts",
+      "Race to the WH — 2026 Senate and House predictions, updated daily",
+      "Cook Political Report coverage via Yahoo — 'Cook finds Republicans hold advantage in 2026 Senate races'",
+      "Brookings — 'What history tells us about the 2026 midterm elections'",
+      "Ballotpedia — United States Congress elections, 2026",
+      "Fox News — 'RNC chair pushes back after Carville predicts GOP wipeout in 2026 midterms' (2026-01-17)"
+    ],
+    "queries": [
+      "2026 midterms forecast Republicans hold House and Senate both chambers",
+      "case for Republicans keeping both House and Senate 2026 midterms analyst argument"
+    ],
+    "window": {
+      "from": "2026-01-01T00:00:00Z",
+      "to": "2026-09-14T19:40:00Z"
+    },
+    "searched_at": "2026-09-14T19:35:00Z",
+    "judgement": "No dominant public case for Republicans holding BOTH chambers was located. Every independent forecaster reached points the other way: Nate Silver's model gives Democrats roughly 86% for the House and roughly 57% for the Senate, and Cook rates the Senate map as favourable to Republicans while the House is not. The only located claim for the recorded side is RNC Chairman Joe Gruters', and it fails on three separate counts: it is political advocacy by an interested party rather than a forecast (standing ruling); the sole located report of it is dated 2026-01-17, eight months before posted_at, and is not a current case; and the claim that Republicans retain both chambers appears there only as the outlet's PARAGRAPH, not as his words, so it could not be quoted verbatim without the paraphrase §3 forbids. Nothing was reconstructed from the market's own question, price or structure (v1.12)."
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "q3-2026-09-14-010",
+  "protocol_version": "1.13",
+  "posted_at": "2026-09-14T19:40:00Z",
+  "origin": "pool",
+  "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+  "supersedes": null,
+  "deviated": false,
+  "inclusion_note": null,
+  "source": {
+    "url": "https://fortune.com/2026/09/14/clarity-act-odds-trump-new-ethics-provisions-crypto-bill/",
+    "text": "The Clarity Act is back on the table. On Sunday night, Senate Republicans released a revised version of the bill that includes more than 120 changes, including provisions aimed at addressing long-standing ethics concerns. If enacted, the legislation would establish a framework for bringing more crypto assets into the realm of mainstream finance. The text arrived less than 48 hours before the Senate's pivotal procedural vote on whether to advance the bill. Republicans need 60 votes, requiring support from at least seven Democrats. With limited time before the midterm elections, lawmakers have a narrowing window to bring it to a vote.",
+    "captured_at": "2026-09-14T19:30:00Z"
+  },
+  "binding": {
+    "type": "venue",
+    "series": null,
+    "threshold": null,
+    "at": null
+  },
+  "event_key": "CLARITY-ACT-HR3633-SIGNED-2026",
+  "venue_event_key": "clarity-act-signed-into-law-in-2026",
+  "prescreen": {
+    "codes": [
+      "DJZS-M02",
+      "DJZS-M04"
+    ],
+    "sigma": 45,
+    "verdict": "FAIL",
+    "by": "seat-prescreen"
+  },
+  "market": {
+    "venue": "polymarket",
+    "ticker": "clarity-act-signed-into-law-in-2026",
+    "title": "Clarity Act (H.R.3633) signed into law in 2026?",
+    "side": "YES",
+    "resolution_source": "Polymarket resolution rules for the event clarity-act-signed-into-law-in-2026",
+    "resolution_due": "2027-01-01T05:00:00Z",
+    "token_id": "35198549486569600595408965368290795524428922595732253580266052028158040373233"
+  },
+  "intent": {
+    "market": "CLARITY Act (H.R.3633) signed into law during 2026",
+    "side": "YES",
+    "thesis": "The Clarity Act is back on the table. On Sunday night, Senate Republicans released a revised version of the bill that includes more than 120 changes, including provisions aimed at addressing long-standing ethics concerns. If enacted, the legislation would establish a framework for bringing more crypto assets into the realm of mainstream finance. The text arrived less than 48 hours before the Senate's pivotal procedural vote on whether to advance the bill. Republicans need 60 votes, requiring support from at least seven Democrats. With limited time before the midterm elections, lawmakers have a narrowing window to bring it to a vote."
+  },
+  "criterion": {
+    "correct_if": "Polymarket resolves clarity-act-signed-into-law-in-2026 to Yes.",
+    "incorrect_if": "Polymarket resolves clarity-act-signed-into-law-in-2026 to No.",
+    "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+    "grade_due": "2027-01-02T05:00:00Z"
+  }
+}

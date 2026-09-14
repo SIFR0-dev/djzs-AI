@@ -1,0 +1,81 @@
+{
+  "id": "q3-2026-09-14-007",
+  "protocol_version": "1.13",
+  "posted_at": "2026-09-14T19:40:00Z",
+  "origin": "pool",
+  "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+  "supersedes": null,
+  "deviated": false,
+  "inclusion_note": null,
+  "source": {
+    "url": "https://federalnewsnetwork.com/prediction-markets/2026/09/rate-hike-coming-september-prediction-markets-next-fed-decision/",
+    "text": "Despite Trump's pressure campaign to cut the rates, no one thinks the Fed will do that.",
+    "captured_at": "2026-09-14T19:30:00Z"
+  },
+  "binding": {
+    "type": "venue",
+    "series": null,
+    "threshold": null,
+    "at": null
+  },
+  "event_key": "FOMC-2026-09-16",
+  "venue_event_key": "fed-decision-in-september-762",
+  "prescreen": {
+    "codes": [
+      "DJZS-M01",
+      "DJZS-M02"
+    ],
+    "sigma": 60,
+    "verdict": "FAIL",
+    "by": "seat-prescreen"
+  },
+  "market": {
+    "venue": "polymarket",
+    "ticker": "will-the-fed-decrease-interest-rates-by-25-bps-after-the-september-2026-meeting-586",
+    "title": "Will the Fed decrease interest rates by 25 bps after the September 2026 meeting?",
+    "side": "YES",
+    "resolution_source": "Polymarket resolution rules for the event fed-decision-in-september-762",
+    "resolution_due": "2026-09-16T00:00:00Z",
+    "token_id": "57748138085022719760345772310040703848567377822400132842014290209986511882046"
+  },
+  "intent": {
+    "market": "Federal Reserve September 2026 decision - 25bp cut",
+    "side": "YES",
+    "thesis": null
+  },
+  "criterion": {
+    "correct_if": "Polymarket resolves will-the-fed-decrease-interest-rates-by-25-bps-after-the-september-2026-meeting-586 to Yes.",
+    "incorrect_if": "Polymarket resolves will-the-fed-decrease-interest-rates-by-25-bps-after-the-september-2026-meeting-586 to No.",
+    "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+    "grade_due": "2026-09-17T12:00:00Z"
+  },
+  "thesis_state": "no_public_case",
+  "search_record": {
+    "sources_consulted": [
+      "CBS News — 'Fed rate hike in September is all but guaranteed after CPI report, economists say' (2026-09-11)",
+      "National Mortgage News — 'Modest CPI reading gives Fed no clear direction on rates' (2026-09-11)",
+      "Chase / J.P. Morgan Wealth Management — 'Will the Fed Hike Rates in September?' (2026-08-05)",
+      "24/7 Wall St. — 'Top Economist Says the Fed Should Hike Rates 50 Basis Points Next Week' (2026-09-12)",
+      "PBS NewsHour — 'Fed governor Waller muddies outlook on possible rate hike later this month' (2026-09-03)",
+      "Federal News Network — 'Rate Hike Coming in September? Prediction Markets for Next Fed Decision' (2026-09-08)",
+      "Reuters poll coverage via WSAU — 'Fed rate hike on Wednesday now likely, say economists' (2026-09-14)",
+      "TheStreet — 'UBS doubles down on Fed rate-hike forecast for 2026'",
+      "CNBC — 'Trump pushes Fed to cut rates ahead of pivotal September decision' (2026-09-05)",
+      "CNBC — 'Trump doubles down on threat to halt trade with top partners unless Fed cuts rates' (2026-09-04)",
+      "Bloomberg — 'Trump Pushes Fed to Lower Rates Despite Pressure to Raise Them' (2026-09-13)",
+      "CNBC — \"Warsh's credibility is on the line this week as Trump policies put pressure on Fed to hike\" (2026-09-14)"
+    ],
+    "queries": [
+      "Fed rate cut September 2026 who expects cut Trump pressure Warsh",
+      "Fed September 2026 FOMC meeting rate hike 25 basis points forecast",
+      "Fed hold rates unchanged September 2026 dissent argument after August CPI report",
+      "Fed rate hike September 16 2026 economists expect after August CPI"
+    ],
+    "window": {
+      "from": "2026-08-01T00:00:00Z",
+      "to": "2026-09-14T19:40:00Z"
+    },
+    "searched_at": "2026-09-14T19:35:00Z",
+    "judgement": "No public forecast of a CUT at this meeting was located. The only sustained public case for lower rates is the administration's pressure campaign - the President, Vice President and Treasury Secretary urging the Fed not to raise and in some cases to cut. Per the operator's standing ruling, political advocacy is not a forecast: an interested party demanding an outcome is not a public case that the outcome will occur, and the advocates state no basis, no probability and no falsification. The contemporaneous reporting says so directly - Federal News Network, 2026-09-08: 'Despite Trump's pressure campaign to cut the rates, no one thinks the Fed will do that.' Recorded rather than written as a thesis; nothing was reconstructed from the market's own question, price or structure (v1.12)."
+  }
+}

@@ -157,14 +157,24 @@
     "event_key": {
       "type": "string",
       "minLength": 1,
-      "description": "v1.10, identifier clause corrected by v1.11. OPERATOR-ASSIGNED identifier for the real-world event this market resolves on, INDEPENDENT OF VENUE: resolving authority, the decision or measurement, and its scheduled date, in a form stable across venues and listings (e.g. FOMC-2026-09-16). §6 clusters on this and never on venue_event_key. Sealed at Phase A. Not in `required` only because records sealed before v1.10 are immutable; q3-verify enforces it on every record posted on or after 2026-09-10."
+      "description": "v1.10, identifier clause corrected by v1.11. OPERATOR-ASSIGNED identifier for the real-world event this market resolves on, INDEPENDENT OF VENUE: resolving authority, the decision or measurement, and its scheduled date, in a form stable across venues and listings (e.g. FOMC-2026-09-16). \u00a76 clusters on this and never on venue_event_key. Sealed at Phase A. Not in `required` only because records sealed before v1.10 are immutable; q3-verify enforces it on every record posted on or after 2026-09-10."
+    },
+    "event_keys": {
+      "description": "v1.13: present ONLY on a combination market \u2014 one that resolves jointly on more than one distinct real-world event. Two or more operator-assigned component keys, each satisfying v1.11. event_key must equal these entries sorted lexically and joined by '+'; that compound is a LABEL, not a cluster, and \u00a76 counts the record inside every component cluster instead. Absent on a single-event record; an array of fewer than two entries is invalid.",
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "venue_event_key": {
       "type": [
         "string",
         "null"
       ],
-      "description": "v1.11. The VENUE'S OWN published event identifier, verbatim where one exists and null where none does — e.g. a Kalshi event ticker or a Polymarket Gamma event slug. Kept so the venue's listing stays auditable; it is NEVER the clustering key. Sealed at Phase A. Required to be PRESENT (the key itself) on every record posted on or after 2026-09-10; its value may legitimately be null."
+      "description": "v1.11. The VENUE'S OWN published event identifier, verbatim where one exists and null where none does \u2014 e.g. a Kalshi event ticker or a Polymarket Gamma event slug. Kept so the venue's listing stays auditable; it is NEVER the clustering key. Sealed at Phase A. Required to be PRESENT (the key itself) on every record posted on or after 2026-09-10; its value may legitimately be null."
     },
     "thesis_state": {
       "type": [
@@ -263,8 +273,7 @@
       "type": "object",
       "required": [
         "market",
-        "side",
-        "thesis"
+        "side"
       ],
       "properties": {
         "market": {
@@ -274,9 +283,14 @@
           "type": "string"
         },
         "thesis": {
-          "type": "string"
+          "description": "The verbatim dominant public case for the recorded side (\u00a73). NULL \u2014 and only null \u2014 when thesis_state is \"no_public_case\" (v1.12), which forbids writing, paraphrasing or reconstructing a thesis from the market's own question, price or structure.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "probability_basis": {
+          "description": "\u00a73: populated ONLY with text present in the source, quoted, and only where the source states a basis for the RECORDED side. Omitted otherwise.",
           "type": "string"
         },
         "size_usd": {
@@ -284,6 +298,10 @@
         },
         "bounds": {
           "type": "object"
+        },
+        "invalidation_condition": {
+          "description": "\u00a73: populated ONLY with text present in the source, quoted \u2014 the falsification the source itself states. Omitted where the source states none, so the engine judges that absence.",
+          "type": "string"
         }
       }
     },
@@ -465,7 +483,7 @@
         "null"
       ],
       "minimum": 0,
-      "description": "v1.7(a): traded USD notional on the bound market in the 24h ending at posted_at. $1 of notional per contract (Kalshi) or per share (Polymarket) — the convention both venues publish and the §3 pool ranks on. null for series bindings and for records sealed before v1.7."
+      "description": "v1.7(a): traded USD notional on the bound market in the 24h ending at posted_at. $1 of notional per contract (Kalshi) or per share (Polymarket) \u2014 the convention both venues publish and the \u00a73 pool ranks on. null for series bindings and for records sealed before v1.7."
     },
     "volume_total": {
       "type": [

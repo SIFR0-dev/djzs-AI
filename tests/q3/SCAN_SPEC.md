@@ -226,6 +226,8 @@ v1.10 derived `event_key` from the venue's event ticker. On day one that produce
 
 Mutual exclusivity now likewise crosses venues: the Polymarket ladder and the two Kalshi strikes are mutually exclusive **in substance** whatever their listings say, and that must be stated wherever their outcomes are reported.
 
+**Mutual exclusivity is a property of the particular ladder, never of ladders — noted 2026-09-14.** The FOMC ladder is mutually exclusive because the Fed does exactly one thing on one day: precisely one strike resolves YES. A **deadline** ladder on a single event (`KXCRYPTOSTRUCTURE-26JAN`: "becomes law before Oct 1", "…before Nov 1", "…before Jan 1") is **nested**, and a YES on the earliest implies YES on all the later ones. Both shapes make their records non-independent, for opposite reasons, so v1.10's disclosure has to name which shape it is reporting. Writing "mutually exclusive" over a nested ladder would state something false about the outcome distribution while appearing to discharge the requirement.
+
 ### 7.2 Day one's assignment (2026-09-10 pool)
 
 Ten records, **four** `event_key`s:
@@ -292,6 +294,22 @@ Without this, the v1.11 defect returns by a different route: not two venues spli
 | `US-SENATE-IA-2026` | `SENATEIA-26` | `KXMIDTERMMOV-IASEND`, `KXMIDTERMMOV-IASENR`; `KXMIDTERMVOTETURN-IASEN` |
 | `US-SENATE-OH-SPECIAL-2026` | `SENATEOHS-26` | `KXMIDTERMMOV-OHSEND`, `KXMIDTERMMOV-OHSENR`; `KXMIDTERMVOTETURN-OHSEN` |
 
+#### Registry additions (2026-09-14, by `tape/sibling-search.ts`; every series-targeted enumeration reported complete)
+
+| `event_key` | pooled listing | other listings on the SAME event |
+|---|---|---|
+| `US-HOUSE-CONTROL-2026` | *(component of the combo below; not itself pooled on 2026-09-14)* | `CONTROLH-2026` (`-D`/`-R`, "Which party will win the U.S. House?", sub *"In 2026"*) |
+| `US-SENATE-CONTROL-2026` | *(component of the combo below; not itself pooled on 2026-09-14)* | `CONTROLS-2026` (`-D`/`-R`, "Which party will win the U.S. Senate?", sub *"In 2026"*) |
+| `US-HOUSE-CONTROL-2026+US-SENATE-CONTROL-2026` **(v1.13 compound label, not a cluster)** | `KXBALANCEPOWERCOMBO-27FEB-RR` | the event's three siblings `-DD`, `-RD`, `-DR`, each a different joint outcome of the SAME two events |
+| `CLARITY-ACT-HR3633-SIGNED-2026` | Polymarket `clarity-act-signed-into-law-in-2026` (`0x9cb23d04…`) | Polymarket `crypto-market-structure-legislation-becomes-law-in-2026` (`0x8ab4ef09…`), same end date |
+| `US-CRYPTO-MARKET-STRUCTURE-LAW-2026` | *(not pooled; `KXCRYPTOSTRUCTURE-26JAN-27` sat at Kalshi rank 8 on 2026-09-14)* | `KXCRYPTOSTRUCTURE-26JAN` — 11 markets, a deadline ladder (Aug/Sep/Oct/Nov/Dec 2026, Jan/Apr/Jul/Oct 2027, Jan 2028) |
+
+**`US-CRYPTO-MARKET-STRUCTURE-LAW-2026` is RELATED, NOT CLUSTERED, with `CLARITY-ACT-HR3633-SIGNED-2026` — ruled 2026-09-14.** The two look like one event and are not. Polymarket names **H.R.3633 specifically**; Kalshi's market text reads *"a crypto market structure bill becomes law"* generically, and only its **event title** says "Will the Clarity Act become law?". **A different crypto market-structure bill becoming law resolves Kalshi YES and Polymarket NO** — two listings that can settle in opposite directions are not two views of one event, and §7.4's whole purpose is to stop one event from splitting into several clusters, never to merge two events into one. So they get separate keys, and the relationship is recorded here so a later pool day reaches this ruling instead of re-deriving it. If both ever enter the pool they are two clusters, and §6 may not treat either as corroboration of the other.
+
+**The `KXCRYPTOSTRUCTURE` ladder is NESTED, not mutually exclusive — and this is the point §7.2's disclosure does *not* reach.** Its strikes are deadlines on one underlying event ("becomes law before Oct 1 2026", "…before Nov 1 2026", "…before Jan 1 2027", …), so a YES on an earlier deadline *implies* YES on every later one. That is the opposite structure from the FOMC strike ladder, where **exactly one** outcome resolves YES. v1.10 requires mutual exclusivity to be stated wherever such records' outcomes are reported; stating it of a nested ladder would be **false**, and the correct disclosure is that the outcomes are monotone and therefore maximally positively correlated rather than deterministically anti-correlated. Both are reasons not to treat the records as independent; they are not the same reason, and a reader told the wrong one would mis-model the dependence.
+
+**Vote-side listings resolve on the VOTE, not on the signing, and are therefore neither key.** Kalshi `KXCLARITYVOTE` ("When will the Senate vote on the Clarity Act?", 4 markets) and `KXVOTECLARITY` ("How many Senators will vote Yea…", 8 markets); Polymarket `which-senators-will-vote-for-the-clarity-act-…` (15 per-senator markets) and `how-many-senators-will-vote-for-the-clarity-act-…` (8 threshold markets). A bill can pass the Senate and never be signed, and can be signed after a vote nobody priced — so a vote market and a signing market resolve on different real-world events and must not share a key. Recorded because the tag co-location makes them look like siblings; they are the same *subject*, not the same *event*. `KXCLARITYACT` ("CLARITY Act of 2025 signed into law by [date]") exists as a series with **zero open events** and is therefore not in the registry.
+
 #### What the Maine and Iowa search found
 
 Both keys previously rested on a search that had not been run. It has now been run and **both hold**, for different reasons worth recording:
@@ -344,6 +362,35 @@ Both sit inside the `phase_a_hash` preimage; the four hash properties are proven
 v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
 
 **Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.
+
+## 8A. v1.13 — the combination record
+
+**Implementation.** One optional sealed Phase A field:
+
+| field | contract |
+|---|---|
+| `event_keys` | absent on a single-event record. When present: an array of **≥ 2** non-empty operator-assigned keys, one per component event, each satisfying v1.11 — and `event_key` **must equal** those entries sorted lexically and joined by `+`. |
+
+**The compound is derived and compared, never trusted.** Both Phase A and the verifier recompute `sorted(event_keys).join("+")` and fail if `event_key` differs. A hand-written compound that disagrees with its own components would cluster the record into events it does not resolve on, which is the one thing the field exists to prevent.
+
+**Clustering indexes the COMPONENTS, never the label.** v1.13 says the record "is counted within each, is never independent of any, and is never counted as an observation of its compound label", so `q3-verify` adds a combo record to each component's cluster and never creates a cluster for the compound. Indexing the label instead would invent a one-record "event" that does not exist while leaving both real events an observation short — v1.11's defect wearing new clothes. The verifier therefore prints **records, distinct events, and cluster memberships** separately, since for a combo the memberships legitimately exceed the record count, and it names each combo and the clusters it joins.
+
+**The v1.11 regression guard was extended, not left behind.** The guard WARNs when a cluster key equals `venue_event_key`. A compound label can never equal a venue string, so testing `event_key` alone would have quietly exempted exactly the records v1.13 added; the guard now tests every **component** key on a combo and the `event_key` on a single-event record.
+
+**An array of one is rejected, deliberately.** v1.13 defines `event_keys` as the multi-event case. A one-entry array is a single-event record that has silently stopped being checked as one, so it fails rather than being tolerated as a degenerate case.
+
+**Hash properties, proven mechanically rather than asserted** (synthetic in-memory records; `tests/q3/records/` byte-unchanged, digest compared before and after):
+
+1. adding `event_keys` changes `phase_a_hash`;
+2. a different value changes it differently;
+3. a record that never carried it hashes **exactly** as before — all three pre-amendment records recompute both hashes unchanged;
+4. altering it after sealing breaks `phase_a_hash`, and changing **one nested element** breaks it (the array is hashed deeply, as `search_record` is);
+5. it is in neither exclude set, so it is sealed in the Phase A preimage;
+6. it reaches `record_hash` as well.
+
+Property 2 has a corollary worth stating: **the array's ORDER is part of the preimage**, because canonical JSON sorts object keys and never array elements. A reordered `event_keys` is a different sealed record even though it derives the same compound. The rule does not require the array be stored sorted — only that the compound be the sorted join — but records are written sorted so the two never look inconsistent.
+
+**Enforcement branches proven to fire** with temporary synthetic records, since deleted: a one-entry array; a non-array; an empty entry; a duplicated component; a compound that disagrees with its components. A valid combo and an unsorted-but-consistent array both pass clean. Pre-amendment records are additionally refused if they carry `event_keys`, on the same immutability ground as `event_key` and `venue_event_key`.
 
 ## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
 

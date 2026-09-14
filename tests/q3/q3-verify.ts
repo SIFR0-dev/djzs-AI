@@ -24,9 +24,23 @@ let fails: string[] = [], warns: string[] = [], n = 0, sealed = 0, deviated = 0,
  *    event_key        must be a NON-EMPTY STRING. Operator-assigned, venue-independent, the clustering key.
  *    venue_event_key  the KEY must be PRESENT; its VALUE may legitimately be null, which is what a venue that
  *                     publishes no event identifier looks like. Testing its value for truthiness would silently
- *                     accept a record that omitted the field entirely. */
+ *                     accept a record that omitted the field entirely.
+ *  v1.13 adds a THIRD, optional field for combination markets — one contract resolving jointly on two or more
+ *  distinct real-world events:
+ *    event_keys       absent on a single-event record. When present: an array of >= 2 non-empty operator keys, one
+ *                     per component event, each satisfying v1.11; and event_key MUST equal those entries sorted
+ *                     lexically and joined by "+". The compound event_key is a LABEL, not a cluster — v1.13 says the
+ *                     record is a member of every component cluster and is never an observation of the label. So
+ *                     the clustering map below indexes such a record under each COMPONENT key and never under the
+ *                     compound one; indexing the label would recreate v1.11's defect in a new form, inventing a
+ *                     one-record "event" that does not exist while leaving both real events short an observation.
+ *                     An array of length < 2 is invalid: v1.13 defines event_keys as the multi-event case, and a
+ *                     one-entry array is a single-event record that has silently stopped being checked as one. */
 const V110_FROM = Date.parse("2026-09-10T00:00:00Z");
 const eventKeys = new Map<string, string[]>();
+/** Records whose event_key is a v1.13 compound label, by id — reported so a reader sees that a cluster count of
+ *  N records over M events already accounts for the combos rather than having dropped them. */
+const comboRecords = new Map<string, string[]>();
 /** v1.7(a) volume re-check. Both windows end at posted_at over immutable trades, so re-execution reproduces them;
  *  the tolerance exists only for summation order, not for drift. Absence is never a failure: records sealed before
  *  v1.7 carry no volume, and sealed records are immutable. A recomputation that comes back null (a market_details
@@ -57,7 +71,25 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     if (Date.parse(String(r.posted_at)) >= V110_FROM) {
       const ek = rec.event_key;
       if (typeof ek !== "string" || !ek.trim()) fails.push(`${id}: v1.10/v1.11 require a non-empty operator-assigned event_key on every record posted after the amendment (got ${JSON.stringify(ek)})`);
-      else eventKeys.set(ek, [...(eventKeys.get(ek) ?? []), id]);
+      // v1.13: a combination market carries event_keys, one operator key per component event, and its event_key is
+      // those keys sorted and joined by "+". Validate the array, then derive the compound and compare — deriving it
+      // rather than trusting it is the whole point: a hand-written compound that disagrees with its own components
+      // would cluster the record into events it does not resolve on.
+      const eks = rec.event_keys;
+      if ("event_keys" in rec) {
+        if (!Array.isArray(eks)) fails.push(`${id}: v1.13 event_keys must be an array of component event keys (got ${JSON.stringify(eks)})`);
+        else if (eks.length < 2) fails.push(`${id}: v1.13 event_keys must carry at least two component keys — a combination market resolves jointly on more than one event, and an array of ${eks.length} is a single-event record that has stopped being checked as one`);
+        else if (!eks.every(k => typeof k === "string" && k.trim())) fails.push(`${id}: every v1.13 event_keys entry must be a non-empty operator-assigned key (got ${JSON.stringify(eks)})`);
+        else {
+          if (new Set(eks as string[]).size !== eks.length) fails.push(`${id}: v1.13 event_keys carries a duplicate component (${JSON.stringify(eks)}) — a record cannot be two members of one cluster`);
+          const compound = [...(eks as string[])].sort().join("+");
+          if (ek !== compound) fails.push(`${id}: v1.13 requires event_key to be the component keys joined by "+" in lexical order — expected ${JSON.stringify(compound)}, got ${JSON.stringify(ek)}`);
+          // The compound is a label. Cluster on the COMPONENTS, per v1.13's "member of every component cluster …
+          // never counted as an observation of its compound label".
+          for (const k of eks as string[]) eventKeys.set(k, [...(eventKeys.get(k) ?? []), id]);
+          comboRecords.set(id, [...(eks as string[])]);
+        }
+      } else if (typeof ek === "string" && ek.trim()) eventKeys.set(ek, [...(eventKeys.get(ek) ?? []), id]);
       // v1.12: the no-public-case path. Checked on every record, not only sealed ones — these are operator-authored
       // at Phase A, so a record can be wrong before it is ever sealed and that is the cheapest moment to say so.
       const ts = rec.thesis_state, th = (rec.intent as Record<string, unknown> | undefined)?.thesis;
@@ -83,10 +115,14 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
       else { const vk = rec.venue_event_key;
         if (vk !== null && (typeof vk !== "string" || !vk.trim())) fails.push(`${id}: venue_event_key must be the venue's published identifier verbatim, or null — got ${JSON.stringify(vk)}`);
         // v1.11 exists because the venue identifier is NOT the cluster key. Catch the regression directly.
-        if (typeof vk === "string" && typeof ek === "string" && vk === ek) warns.push(`${id}: event_key equals venue_event_key (${ek}) — v1.11 makes event_key operator-assigned and venue-INDEPENDENT, so a venue ticker used as the cluster key is the exact defect v1.11 corrected. Legitimate only if the operator key genuinely coincides with the venue's string`);
+        // The cluster keys are what v1.11 is about, so compare against those: the event_key on a single-event
+        // record, and every COMPONENT key on a v1.13 combo. A compound label can never equal a venue string, so
+        // testing event_key alone would quietly exempt combination records from the guard.
+        const clusterKeys = Array.isArray(eks) && eks.every(k => typeof k === "string") && eks.length >= 2 ? eks as string[] : (typeof ek === "string" ? [ek] : []);
+        for (const ck of clusterKeys) if (typeof vk === "string" && vk === ck) warns.push(`${id}: cluster key equals venue_event_key (${ck}) — v1.11 makes the cluster key operator-assigned and venue-INDEPENDENT, so a venue ticker used as one is the exact defect v1.11 corrected. Legitimate only if the operator key genuinely coincides with the venue's string`);
       }
     } else {
-      for (const k of ["event_key", "venue_event_key"]) if (k in rec) fails.push(`${id}: carries ${k} but was posted before the amendment — a record sealed before it is immutable and anchored, so the field cannot be backfilled into it`);
+      for (const k of ["event_key", "event_keys", "venue_event_key"]) if (k in rec) fails.push(`${id}: carries ${k} but was posted before the amendment — a record sealed before it is immutable and anchored, so the field cannot be backfilled into it`);
     }
     if (r.record_hash) { sealed++; if (!HEX.test(r.record_hash)) fails.push(`${id}: record_hash format`); if (sha256hex(canonical(strip(r, PHASE_B_EXCLUDE))) !== r.record_hash) fails.push(`${id}: record_hash does not recompute`); dayHashes.push(r.record_hash);
       if (r.binding?.type === "venue" && (r.price_at_audit == null)) fails.push(`${id}: venue record sealed without price_at_audit`); }
@@ -208,7 +244,13 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
   // cluster carrying more than one record — the shape §6 must not silently treat as independent.
   if (eventKeys.size) {
     const multi = [...eventKeys.entries()].filter(([, ids]) => ids.length > 1);
-    console.log(`q3-verify · v1.10 clusters: ${[...eventKeys.values()].reduce((a, b) => a + b.length, 0)} record(s) over ${eventKeys.size} distinct event(s)` + (multi.length ? ` · ${multi.length} event(s) carry more than one record: ${multi.map(([k, ids]) => `${k} x${ids.length}`).join(", ")}` : ""));
+    // Membership counts, not record counts: a v1.13 combo is a member of each of its component clusters, so the
+    // membership total legitimately exceeds the number of records. Print both, and name the combos, so a reader is
+    // never left inferring which of the two a bare number was.
+    const memberships = [...eventKeys.values()].reduce((a, b) => a + b.length, 0);
+    const distinctRecords = new Set([...eventKeys.values()].flat()).size;
+    console.log(`q3-verify · v1.10 clusters: ${distinctRecords} record(s) over ${eventKeys.size} distinct event(s)` + (memberships !== distinctRecords ? ` · ${memberships} cluster membership(s) — ${comboRecords.size} v1.13 combination record(s) belong to more than one event` : "") + (multi.length ? ` · ${multi.length} event(s) carry more than one record: ${multi.map(([k, ids]) => `${k} x${ids.length}`).join(", ")}` : ""));
+    for (const [cid, ks] of comboRecords) console.log(`  v1.13 · ${cid} is a member of ${ks.length} clusters (${ks.join(", ")}); its compound event_key is a label and is NOT a cluster`);
   }
   console.log(`q3-verify · ${n} records (${sealed} sealed, ${deviated} pilot/deviated, ${graded} graded) · ${anchors.length} anchor(s)`);
   for (const w of warns) console.log("  WARN", w);
