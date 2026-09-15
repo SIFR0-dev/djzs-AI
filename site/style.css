@@ -189,3 +189,13 @@ body::after { content: ""; position: fixed; inset: 0; z-index: 9999; pointer-eve
   table { font-size: 0.76rem; }
   th, td { padding: 0.4rem 0.45rem; }
 }
+
+/* mobile patch 2026-09-15: stacked header nav, brand dot gap, nowrap code column */
+.brand .dot { margin-left: -0.5rem; }
+td:first-child, th:first-child { white-space: nowrap; }
+@media (max-width: 640px) {
+  header.site { padding: 0.7rem 0; }
+  header.site .wrap { flex-wrap: wrap; gap: 0.55rem 0; }
+  header.site nav { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  nav a { margin-left: 0; }
+}
