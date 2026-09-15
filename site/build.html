@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DJZS Build · make your API callable — and payable — by AI agents</title>
+<meta name="description" content="Fixed-scope, fixed-price implementation. An MCP server, an x402 payment gate on Base, discovery files agents actually read, and a receipt anyone can recompute. Built by the person who shipped mcp.djzs.ai.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#0A0A0A;--panel:#0D0D0D;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;
+    --pass:#3DFF88;--wait:#FFB000;--fail:#FF4D4D;--base:#0052FF;
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--canvas);color:var(--text);font-family:var(--mono);font-size:14px;
+    line-height:1.65;-webkit-font-smoothing:antialiased;letter-spacing:.01em;padding:clamp(16px,4vw,60px)}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+    background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(61,255,136,.035) 3px,rgba(61,255,136,.035) 4px)}
+  .wrap{max-width:820px;margin:0 auto;position:relative;z-index:1}
+  a{color:var(--pass);text-decoration:none} a:hover{background:var(--pass);color:var(--canvas)}
+  ::selection{background:var(--pass);color:var(--canvas)}
+  :focus-visible{outline:2px solid var(--pass);outline-offset:3px}
+
+  header{border-bottom:1px solid var(--rule);padding-bottom:24px;margin-bottom:30px}
+  .path{color:var(--muted);font-size:13px;margin:0 0 18px} .path .p{color:var(--pass);font-weight:700}
+  .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  h1{font-size:clamp(22px,4vw,32px);font-weight:800;letter-spacing:-.012em;margin:0;line-height:1.12;max-width:24ch}
+  .wordmark{color:var(--base);font-weight:800}
+  .boot{margin:20px 0 0;display:grid;gap:7px}
+  .boot .row{display:grid;grid-template-columns:44px 110px 1fr;gap:12px;align-items:baseline;font-size:12.5px}
+  .boot .ok{color:var(--pass);font-weight:700} .boot .k{color:var(--muted)} .boot .v{color:var(--text)}
+  .lede{color:var(--muted);margin:22px 0 0;max-width:70ch;font-size:13.5px} .lede b{color:var(--text);font-weight:700}
+
+  section{margin:36px 0 0}
+  h2{font-size:16px;font-weight:800;margin:0 0 6px;letter-spacing:-.005em}
+  h2 .sub{color:var(--muted);font-weight:400;font-size:13px} h2 .sub::before{content:"// ";color:var(--rule)}
+  p{max-width:72ch} .coda{color:var(--text);font-weight:700;margin-top:12px}
+
+  .ladder{border:1px solid var(--rule);margin-top:14px}
+  .rung{border-top:1px solid var(--rule);padding:14px 18px;display:grid;grid-template-columns:88px 1fr;gap:0 14px}
+  .rung:first-child{border-top:0}
+  .verdict{align-self:start;font-weight:800;letter-spacing:.06em;border:1px solid currentColor;border-radius:0;padding:.12rem .5rem;font-size:12.5px;text-align:center}
+  .rung.pass .verdict{color:var(--pass)} .rung.wait .verdict{color:var(--wait)} .rung.fail .verdict{color:var(--fail)}
+  .rung .d{color:var(--muted);font-size:13px} .rung .d b{color:var(--text);font-weight:700}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:14px}
+  .cell{background:var(--panel);padding:16px 18px}
+  .cell h3{margin:0 0 6px;font-size:13.5px;font-weight:800}
+  .cell p{margin:0;color:var(--muted);font-size:13px} .cell p b{color:var(--text);font-weight:700}
+  .cell .price{display:block;margin-top:10px;color:var(--text);font-weight:800;font-size:13px}
+  .cell .price span{color:var(--muted);font-weight:400}
+  .cell .fail{color:var(--fail);font-weight:700} .cell .pass{color:var(--pass);font-weight:700}
+
+  pre{background:#080808;border:1px solid var(--rule);border-radius:0;padding:14px 16px;overflow:auto;font-size:12px;line-height:1.6;margin-top:12px}
+  pre .m{color:var(--muted)} pre .c{color:var(--pass)}
+  code.inl{color:var(--pass)}
+  .btn{display:inline-block;font-weight:700;letter-spacing:.1em;font-size:12px;text-transform:uppercase;color:var(--pass);border:1px solid var(--pass);border-radius:0;padding:10px 18px;margin-top:14px}
+  .btn:hover{background:var(--pass);color:var(--canvas)}
+
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--rule);color:var(--muted);font-size:12px;line-height:1.9}
+  footer .k::before{content:"// ";color:var(--rule)} footer .k b{color:var(--text);font-weight:700}
+  footer .sig{margin-top:14px} footer .sig .p{color:var(--pass);font-weight:700}
+  @media (prefers-reduced-motion:reduce){.cursor{animation:none}}
+  @media (max-width:600px){.grid{grid-template-columns:1fr}.rung{grid-template-columns:1fr}.rung .verdict{justify-self:start;margin-bottom:8px}.boot .row{grid-template-columns:40px 1fr}.boot .v{grid-column:1/3}}
+  nav.site{display:flex;flex-wrap:wrap;gap:0 1.1rem;margin:0 0 1.1rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.12em;font-size:.72rem}
+  nav.site a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+  nav.site a:hover{color:var(--text)} nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--pass)}
+  nav.site a.home{color:var(--text)} a.wordmark{text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build" aria-current="page">build</a></nav>
+    <p class="path"><span class="p">~/djzs/build</span> $ cat offer.txt<span class="cursor"></span></p>
+    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Make your API callable — and payable — by AI agents.</h1>
+    <div class="boot">
+      <div class="row"><span class="ok">OK</span><span class="k">FOR</span><span class="v">API owners · SaaS founders · Base ecosystem projects · any business an agent should be able to find and pay</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">DELIVER</span><span class="v">an MCP server, an x402 payment gate on Base, discovery files agents actually read, a receipt anyone can recompute</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">TERMS</span><span class="v">fixed scope · fixed price · half up front · source lands in your repo · you hold every key</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">PROOF</span><span class="v">this exact stack is live at mcp.djzs.ai — two paid tools, settled on Base mainnet since 2026-07-13</span></div>
+    </div>
+    <p class="lede">Agents are already paying for API calls with USDC over x402. Most APIs cannot receive that payment: no MCP surface, no 402 challenge, no discovery file, no receipt. <b>I build the missing layer in two weeks, at a fixed price, from a stack I have already run in production on my own domain.</b> You get the code, the keys, and the runbook. I get out of the way.</p>
+  </header>
+
+  <section>
+    <h2>What gets built <span class="sub">three fixed-scope packages, one retainer</span></h2>
+    <div class="grid">
+      <div class="cell"><h3>Agent-ready API</h3><p>Your existing endpoints wrapped as an MCP server on Cloudflare Workers, an x402 v2 paywall in front of the routes you choose (USDC on Base, CDP facilitator, funds settle payer → your wallet), <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, Bazaar listing submitted. Deploy runbook included.<span class="price">$3,500 <span>· 10 working days · one paid route; +$600 per additional route</span></span></p></div>
+      <div class="cell"><h3>Receipt layer</h3><p>Every paid response carries an EIP-712 hash of the request and an EAS attestation on Base under your own schema, from an attester wallet you control. Plus a static verifier page so a customer, a court, or a DAO can recompute the receipt without trusting you.<span class="price">$2,500 <span>· 5 working days · add-on to Agent-ready API, or standalone on an API that already exists</span></span></p></div>
+      <div class="cell"><h3>Business manifest</h3><p>For a physical or local business: a signed <code class="inl">/.well-known/sifr0.json</code> — services, prices, hours, booking method, policies — so an agent shopping on a customer's behalf can find you, quote you, and act. Includes registry listing at sifr0.dev and one revision.<span class="price">$400 <span>· 3 working days · no code on your side</span></span></p></div>
+      <div class="cell"><h3>Keep-alive</h3><p>Monthly: dependency and Worker-runtime updates, facilitator and schema changes tracked, discovery files re-validated against the current x402 spec, a health probe with alerts, and one hour of changes. Cancel any month.<span class="price">$600 / month <span>· starts after delivery · optional</span></span></p></div>
+    </div>
+    <p class="coda">Scope is written before money moves. Anything not on the scope sheet is a second engagement, not a surprise.</p>
+  </section>
+
+  <section>
+    <h2>Why this builder <span class="sub">every line of this has shipped on this domain</span></h2>
+    <div class="ladder">
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Paid MCP tools over x402 on Base mainnet.</b> <code class="inl">verify_pm_trade</code> and <code class="inl">verify_perp_trade</code> at 2.00 USDC each, non-custodial EIP-3009 settlement, out-of-scope requests refused free. An unpaid request returns the 402 challenge and settles nothing — try it: <code class="inl">GET https://mcp.djzs.ai/x402/verify_pm_trade</code>.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Receipts a third party can recompute.</b> EIP-712 <code class="inl">intent_hash</code> plus an EAS attestation on Base from a dedicated attester, on every paid verdict since 2026-09-01. Recompute any of them at <a href="https://djzs.ai/verify">djzs.ai/verify</a>.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Discovery surfaces agents read.</b> <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, verified Base app registration — all on this site, all free to inspect.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Pre-registered, published test discipline.</b> Exhaustive engine sweeps in CI, extraction-stability harnesses with the raw runs committed, a ruleset page that reports the measured band instead of the best run. Read it at <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a>. You will get the same honesty about your build.</span></div>
+      <div class="rung wait"><span class="verdict">HONEST</span><span class="d"><b>What I cannot promise.</b> That agents will find you on day one. Bazaar indexing is slow and inconsistent — I have the scan logs to prove it. I build the surfaces correctly, submit the listing, and hand you the probe script. Traffic is a distribution problem you and I solve after the plumbing exists.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How an engagement runs <span class="sub">two weeks, four checkpoints</span></h2>
+<pre><span class="c">DAY 0</span>   30-minute call · I read your API · scope sheet written and signed · 50% invoiced
+<span class="c">DAY 3</span>   MCP server on a staging Worker · you call it from Claude or Cursor · nothing paid yet
+<span class="c">DAY 7</span>   x402 gate live on staging · first 402 challenge · first USDC settles to YOUR wallet, not mine
+<span class="c">DAY 10</span>  production deploy from your Cloudflare account · discovery files live · runbook + probe script
+        · remaining 50% invoiced · keys were yours the whole time</pre>
+    <p>Source is committed to a repo you own. Secrets are set in your Cloudflare account by you, from the runbook. I never hold a wallet key, an API key, or a deploy token past the call where you type it in.</p>
+    <p class="coda">You hold every key. That is not a courtesy, it is the design.</p>
+  </section>
+
+  <section>
+    <h2>Not offered <span class="sub">so nobody has to ask</span></h2>
+    <p>Trading advice or signals. Custody of funds or keys. Token launches. Guarantees of agent traffic or revenue. Building on a chain other than Base without a written reason. If your ask is one of those, I will say so on the Day 0 call and point you elsewhere.</p>
+  </section>
+
+  <section>
+    <h2>Start <span class="sub">three lines, one message</span></h2>
+    <p>Send these three lines by DM to <a href="https://x.com/Djzs_ai">@Djzs_ai</a> on X:</p>
+<pre>1. What the API does, in one sentence.
+2. Who should be able to call it (humans, your own agents, anyone's agents).
+3. When you need it live.</pre>
+    <p>You get a yes-or-no on fit within one working day and a scope sheet within three. Two engagements open at a time; the page says so here when both are taken.</p>
+    <a class="btn" href="https://x.com/Djzs_ai">Send the three lines</a>
+    <p class="coda">Plumbing first. Then the traffic.</p>
+  </section>
+
+  <footer>
+    <div class="k"><b>reference build</b> — <a href="https://mcp.djzs.ai/mcp">mcp.djzs.ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
+    <div class="k"><b>receipts</b> — <a href="https://djzs.ai/verify">djzs.ai/verify</a> · <b>ruleset</b> — <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a> · <b>for treasuries</b> — <a href="https://djzs.ai/builders">djzs.ai/builders</a></div>
+    <div class="k"><b>entity</b> — DJZS AI, LLC · California · <a href="https://djzs.ai/legal.html">legal</a></div>
+    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/build · fixed scope, fixed price, your keys</p>
+  </footer>
+</div>
+</body>
+</html>
