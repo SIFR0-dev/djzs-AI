@@ -1,0 +1,93 @@
+{
+  "date": "2026-09-15",
+  "venue": {
+    "exchange": "coinbase",
+    "quote": "USD"
+  },
+  "prices": {
+    "BTC/USD": {
+      "ask": 75919.03,
+      "bid": 75919.02,
+      "change_24h_pct": -3.8790105740783716,
+      "exchange": "coinbase",
+      "high_24h": 79591.17,
+      "last": 75919.02,
+      "low_24h": 74887.5,
+      "pair": "BTC/USD",
+      "timestamp": 1789503334,
+      "volume_24h_base": 10208.896096420001
+    }
+  },
+  "grade_required": [],
+  "marks": [
+    {
+      "id": "N2-0903",
+      "type": "position",
+      "state": "open",
+      "pair": "BTC/USD",
+      "side": "short",
+      "entry": 77900,
+      "last": 75919.02,
+      "ret": 0.025429781771501903,
+      "days": 13,
+      "horizon": null
+    },
+    {
+      "id": "N4-0903",
+      "type": "position",
+      "state": "closed",
+      "pair": "BTC/USD",
+      "side": "long",
+      "entry": 77900,
+      "closed": "2026-09-10",
+      "close_price": 76537,
+      "ret": -0.01749679075738131,
+      "days": 7,
+      "horizon": "2026-09-10",
+      "grade": "MISSED — stated bar >80,000 by 2026-09-10 not met (Sep 10 high 78,554); BTC printed 79,852 on 09-11, one day past horizon, $148 short"
+    },
+    {
+      "id": "N3-0903",
+      "type": "stub",
+      "state": "open",
+      "pair": "BTC/USD",
+      "level": 72000,
+      "op": "<",
+      "last": 75919.02,
+      "distance": -0.05162105622543605,
+      "hit": false,
+      "horizon": "2026-09-16"
+    },
+    {
+      "id": "N4-0903-stub",
+      "type": "stub",
+      "state": "resolved",
+      "pair": "BTC/USD",
+      "level": 80000,
+      "op": ">",
+      "resolved": "2026-09-10",
+      "hit": false,
+      "horizon": "2026-09-10"
+    },
+    {
+      "id": "REKTEMBER",
+      "type": "stub",
+      "state": "open",
+      "pair": "BTC/USD",
+      "level": 78562.74,
+      "op": "<",
+      "last": 75919.02,
+      "distance": 0.03482289418382905,
+      "hit": true,
+      "horizon": "2026-09-30"
+    },
+    {
+      "id": "N5-0903",
+      "type": "stub",
+      "state": "manual",
+      "manual": true,
+      "note": "dominance not on the tape client yet — mark by hand",
+      "horizon": "2026-09-16"
+    }
+  ]
+}

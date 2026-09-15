@@ -75,7 +75,15 @@
       },
       "horizon": "2026-09-16",
       "wrong_if": "dominance <57 by horizon",
-      "note": "dominance not on the tape client yet \u2014 mark by hand"
+      "note": "dominance not on the tape client yet \u2014 mark by hand",
+      "manual_marks": [
+        {
+          "date": "2026-09-15",
+          "dominance_pct": 58.4,
+          "source": "coingecko /global 17:01Z",
+          "vs_open": -1.2
+        }
+      ]
     }
   ]
 }
