@@ -480,6 +480,16 @@ Phase B writes `price_source` — the provider, query and execution ids, the par
 
 **The general lesson, worth more than the fix.** Every field Phase B writes must be added to `PHASE_A_EXCLUDE` *in the same change that introduces it*. v1.7(a) got this right for `volume_24h` / `volume_total` and said so in its own note; `price_source` predates that discipline and was missed. Before any future Phase B field lands, the check is: does re-deriving `phase_a_hash` on a fully sealed record still reproduce it?
 
+## 8E. Outage is not mismatch — the classifier missed Dune's own timeout (2026-09-14)
+
+`q3-verify` re-executes every Polymarket price on every push (`DUNE_REVERIFY=changed`). Its rule, already written down, is that a re-check which could not be *performed* WARNs while a re-check that *disagrees* fails: "the record is NOT wrong, it is NOT VERIFIED THIS RUN". The classifier implementing it enumerated `HTTP 402|429|5xx`, `fetch failed`, `ECONN`, `ETIMEDOUT`, `UND_ERR` — all **transport**-level failures — and missed the **execution**-level one.
+
+`dune-client.ts` polls for a result and throws `dune execution <id> timed out` when its own deadline expires with the query still queued or running. Every HTTP call in that sequence succeeded; Dune simply had not finished. That is the single clearest "the provider was unavailable this run" signal there is, and it fell through to the hard-fail branch — failing the build on PR #156 with ten correctly sealed records and every hash recomputing.
+
+**Fixed by widening the outage set, deliberately narrowly.** `execution \S+ timed out` joins it. An execution that comes back `QUERY_STATE_FAILED` or `CANCELLED` still hard-fails, because that is **Dune answering** rather than Dune being slow — and so do the contract breaks (wrong row count, missing column), which are the failures this check exists to catch. Boundary asserted in both directions rather than assumed.
+
+**The lesson generalises past this one regex.** A verifier that fails on *unknown* rather than on *wrong* trains its operator to ignore it, and a build that goes red for a reason no commit can fix has to be either overridden or waited out — both of which teach that red means nothing. The rule is not "be lenient"; it is that **only disagreement may fail the build**, and every new failure mode has to be sorted into unavailable-or-wrong when it first appears. This one appeared the first time the study re-verified ten records in a single run, which is simply the first time the query was slow enough to hit the deadline.
+
 ## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
 
 **Not an amendment and not a rule change. This section records a discrepancy and names the point at which it has to be addressed; it invents no threshold and changes nothing.**

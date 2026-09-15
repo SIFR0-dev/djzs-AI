@@ -237,7 +237,15 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
       }
     } catch (e) { const m = (e as Error).message;
       // Budget (402), rate limit (429), outage (5xx), network: the record is NOT wrong, it is NOT VERIFIED THIS RUN → WARN. Anything else is a real failure.
-      if (/HTTP (402|429|5\d\d)|fetch failed|ECONN|ETIMEDOUT|UND_ERR/.test(m)) warns.push(`${pc.id}: Dune unavailable (${m.slice(0, 90)}) — price NOT re-verified this run`); else fails.push(`${pc.id}: Dune re-execution failed — ${m}`); } }
+      // "dune execution <id> timed out" is dune-client's OWN deadline expiring while the query sits queued or running.
+      // Added 2026-09-14 after it failed the build on PR #156: the classifier enumerated transport-level failures and
+      // missed the provider's execution-level one, so the single clearest "the provider was unavailable this run"
+      // signal fell through to the hard-fail branch — the exact case the line above says must WARN. It is not
+      // ETIMEDOUT (a socket error); the HTTP calls all succeeded and Dune simply had not finished. A record whose
+      // re-execution never completed is NOT VERIFIED; it is not WRONG, and only wrongness may fail the build.
+      // Deliberately narrow: an execution that comes back FAILED or CANCELLED still hard-fails, because that is Dune
+      // answering rather than Dune being slow.
+      if (/HTTP (402|429|5\d\d)|fetch failed|ECONN|ETIMEDOUT|UND_ERR|execution \S+ timed out/.test(m)) warns.push(`${pc.id}: Dune unavailable (${m.slice(0, 90)}) — price NOT re-verified this run`); else fails.push(`${pc.id}: Dune re-execution failed — ${m}`); } }
   }
   // v1.10 requires any statistic over records to state the number of DISTINCT EVENTS alongside the number of records.
   // The verifier is not §6, but it is where the counts are already computed, so it reports the pair and names any
