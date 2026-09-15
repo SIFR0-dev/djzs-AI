@@ -593,6 +593,22 @@ Consequences:
 - **Pasted blocks stay bare and short** where they are unavoidable at all
   (CLAUDE.md §9 terminal doctrine still governs their shape).
 
+### 10.4 Incident, 2026-09-14 — a commit pushed straight to `main`
+
+**What happened.** Commit `9887313` (`site: /verify renders the Q3 anchor register`) was committed and pushed directly to `main`, breaking CLAUDE.md §5: *CC commits to branches and opens PRs; only Damon merges to `main`*.
+
+**Cause, precisely — it was not a decision.** The work began on `claude/q3-pool-day-2026-09-14`. Between turns the checkout moved: PR #156 was merged and the operator switched to `main`, pulled, and made two commits of their own (reflog `HEAD@{4}`: `checkout: moving from claude/q3-pool-day-2026-09-14 to main`). The next turn committed without re-reading the branch, having carried forward the assumption that the feature branch was still checked out. `git push` then went to `origin/main`.
+
+**The rule that would have caught it already exists and was not applied.** CLAUDE.md §1 says *re-confirm pwd/branch/HEAD at the top of each task*. That was done at session start and not repeated. The lesson is narrower than "check more": **a session spanning several turns has no claim on the checkout between them.** The working tree is shared with the operator, who moves it. Branch is not session state; it is live state, and `git branch --show-current` costs nothing before a commit.
+
+**What was and was not at risk.** The content had been checked — `render-anchors.ts --check` and the HTML balance check passed locally, and CI went green on `9887313` (all three jobs). `main` stayed deployable. What was lost is the *review order*: the operator reviewed after the push rather than before the merge, which is the thing the branch-and-PR rule buys.
+
+**Ruled: left in place** (operator, same day). Undoing it meant either a revert commit — itself another direct commit to `main` — or a force-push of a pushed `main`, which §10 of CLAUDE.md's deploy doctrine treats as the more dangerous option. Neither is worth the trade for a change that is green and reviewed.
+
+**The fix is mechanical, not behavioural.** The operator is enabling **GitHub branch protection on `main`**. A rule that depends on an agent remembering to check will eventually be broken by an agent that did not check; a protected branch refuses the push. That is the same reasoning §10.3 applies to pasted commands and §8F applies to mirrored facts: where a guarantee can be enforced by the machine, enforcing it by discipline is a choice to be wrong occasionally.
+
+Recorded here rather than quietly fixed, because an incident that leaves no trace teaches nothing to the next session.
+
 ## 11. Acceptance rule for extraction-contract changes
 
 **Recorded 2026-09-12. This is an implementation-side discipline, not a PROTOCOL amendment** — PROTOCOL.md stays frozen at v1.12. It governs the extraction layer (contracts `DJZS-X-v*`, `DJZS-X-LF-v*`), which sits between the model and the frozen engine and is the one part of the verdict path that a prompt edit can move.
