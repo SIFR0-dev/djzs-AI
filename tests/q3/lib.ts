@@ -119,8 +119,21 @@ export function devVar(name: string): string | undefined {
 /** Fields hashed in Phase A: everything the operator + engine wrote before the price was looked up.
  *  volume_24h / volume_total (v1.7a) are sealed at Phase B alongside the price, so they are excluded here for the same
  *  reason price_at_audit is. Adding a name to this set cannot change any existing hash: strip() removes keys by name,
- *  and a record that never carried the key canonicalises identically either way. */
-export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "volume_24h", "volume_total", "record_hash", "outcome", "draft_captured_at"]);
+ *  and a record that never carried the key canonicalises identically either way.
+ *
+ *  price_source ADDED 2026-09-14, fixing a latent defect the first priced pool records exposed. Phase B writes
+ *  price_source (provider, query/execution ids, params, window) but it was never listed here, so re-deriving a sealed
+ *  record's phase_a_hash folded in a field that did not exist when that hash was computed, and every venue record
+ *  sealed through the priced path failed `phase_a_hash does not recompute` the moment Phase B ran. The STORED hashes
+ *  were always correct; the recomputation was not. It stayed invisible because no record had ever carried the field:
+ *  the one pre-existing venue record, pilot q3-2026-09-02-N5, was sealed before v1.2 introduced price_source, and the
+ *  other two are series bindings that never get one. Adding the name here is hash-neutral by the rule stated above —
+ *  proven on all three pre-existing records, which recompute byte-identically before and after.
+ *
+ *  price_source deliberately stays OUT of PHASE_B_EXCLUDE: it is the price's provenance — the query id, execution id
+ *  and window a third party re-runs to reproduce the number — so it must sit inside record_hash and be tamper-evident.
+ *  Excluding it from Phase A and sealing it in Phase B is exactly the asymmetry price_at_audit already has. */
+export const PHASE_A_EXCLUDE = new Set(["phase_a_hash", "price_at_audit", "implied_prob_at_audit", "price_captured_at", "price_source", "volume_24h", "volume_total", "record_hash", "outcome", "draft_captured_at"]);
 export const PHASE_B_EXCLUDE = new Set(["record_hash", "outcome", "draft_captured_at"]);
 /** draft_captured_at is a DRAFT-ONLY field an inbox file may carry for the operator's information (SCAN_SPEC §10.2).
  *  It is NOT evidence and is NOT sealed: Phase A deletes it from the record outright, and it sits in both exclude

@@ -199,6 +199,42 @@ This is the first pool day run with the full amendment stack in force and with t
 This is expected to recur: a scheduled macro event drives volume on both venues at once, so pool days near an FOMC, CPI or election date will concentrate. Recording the underlying event per record — rather than reconstructing it later from questions — is the cheap way to make clustering possible, and is worth considering before the sample grows.
 
 
+### 2026-09-14 — pool day, and the first day any `origin: pool` record was sealed. Discovery JSON: `tests/q3/discovery/2026-09-14.json` (venue-direct; Surf not run — `--venue-direct`, 0 credits)
+
+**Both venues' top five moved materially against the 09-10 read, and that was reported to the operator before anything was sealed** (the standing instruction for a material pool change). Sealing resumed only after three rulings came back: PROTOCOL v1.13 for the combination market, the two new `event_key`s, and confirmation of the day's composition.
+
+**Kalshi** — 12,001 open events, 34,836 in-category markets. Ranking metric: 24h contracts. v1.9 dropped **4,192** markets closing inside 24h. Book exclusions: 0.
+
+| # | id | category | 24h volume | last | market |
+|---|---|---|---|---|---|
+| 1 | `KXFEDDECISION-26SEP-H0` | Economics | 4,734,101 | 0.14 | Hike 0bps (no change) |
+| 2 | `KXFEDDECISION-26SEP-H26` | Economics | 3,071,534 | 0.02 | Hike >25bps |
+| 3 | `KXFEDDECISION-26SEP-H25` | Economics | 1,733,797 | 0.85 | Hike 25bps |
+| 4 | `KXFEDDECISION-26SEP-C25` | Economics | 628,986 | 0.01 | Cut 25bps |
+| 5 | `KXBALANCEPOWERCOMBO-27FEB-RR` | Elections | 410,107 | 0.15 | House R **AND** Senate R for Feb 2027 |
+
+Next five: `KXBALANCEPOWERCOMBO-27FEB-DD` · `CONTROLS-2026-D` · `KXCRYPTOSTRUCTURE-26JAN-27` · `SENATETX-26-D` · `KXCRYPTOSTRUCTURE-26JAN-OCT`.
+
+**Polymarket** — 1,000 events (page cap, hit), 2,935 in-category markets. v1.9 dropped **403**; **52** admitted with no published close time. Book exclusions: 0. **Dune query 8601185 (`n=5`, `exclude=""`) returned the same five condition ids in the same order as the Gamma read**, so the two paths agree again.
+
+| # | id | 24h volume | last | market |
+|---|---|---|---|---|
+| 1 | `0xa3b36b2d…` | 4,501,922 | 0.145 | No change |
+| 2 | `0xac02cbb0…` | 3,701,208 | 0.0025 | Decrease 25bps |
+| 3 | `0x876506d8…` | 2,685,777 | 0.855 | Increase 25bps |
+| 4 | `0x2e4b58fc…` | 1,901,135 | 0.0075 | Increase 50+ bps |
+| 5 | `0x9cb23d04…` | 902,653 | 0.285 | Clarity Act (H.R.3633) signed into law in 2026? |
+
+**What changed since 09-10, stated because the brief for this day assumed otherwise.** Kalshi lost all three Senate markets — and not marginally: `SENATEME-26-D` fell from **568,978 to 2,977** contracts, `SENATEOHS-26-D` 354,979 → 23,893, `SENATEIA-26-D` 336,274 → 5,666. The 09-10 Senate volumes were a spike that has fully drained, and the three `US-SENATE-*-2026` keys assigned on 09-11 bind nothing today. Polymarket kept four of five (reordered) and swapped the Fed −50 strike for the Clarity Act.
+
+**The FOMC book repriced hard in four days**: no-change 0.355 → 0.145, +25 0.635 → 0.855 (Kalshi 0.36 → 0.14 and 0.64 → 0.85), after an August CPI print on 09-11 that came in above forecast with core accelerating month-over-month.
+
+**Clustering: eight of ten records on one event — tighter than 09-10's seven.** `FOMC-2026-09-16` carries 8 (four Kalshi strikes, four Polymarket strikes), **mutually exclusive by construction across both venues**: exactly one of those outcomes resolves YES. The remaining two are `CLARITY-ACT-HR3633-SIGNED-2026` and the combo, which under v1.13 is a member of `US-HOUSE-CONTROL-2026` and `US-SENATE-CONTROL-2026` and an observation of neither alone. `q3-verify` reports **10 records over 4 distinct events, 11 cluster memberships**. §6 must not treat this day as ten independent observations; the §1 note from 09-10 applies with more force, not less.
+
+**Five of ten are v1.12 `no_public_case`** — half the day. That proportion is itself a result (v1.12), and it is not a random half: the markets with no dominant public case are the tails (>25bp hike, 25bp cut on both venues) and the combo, i.e. precisely the low-probability strikes that commentators do not write about. A pool that selects on volume will keep surfacing these, because a liquid strike ladder puts its tails in the top five on volume alone.
+
+**Verdicts.** Nine WAIT, one FAIL (`q3-2026-09-14-010`, Clarity Act, M01+M03, risk 55). Cross-venue determinism held exactly: every intent audited on both venues returned the identical verdict, codes and risk (001≡006, 003≡008, 004≡007). Pre-screen agreement 1/10 — see §8C.
+
 ## 7. v1.10 + v1.11 — `event_key`, `venue_event_key`, and clustering
 
 **v1.11 corrected v1.10's identifier clause, and the correction is why the two fields exist.** `event_key` is **always operator-assigned** and names the real-world event *independent of venue* — resolving authority, the decision or measurement, and its scheduled date, stable across venues and listings. `venue_event_key` carries the venue's own published identifier verbatim, or `null` where the venue publishes none. §6 clusters on `event_key` and **never** on `venue_event_key`.
@@ -225,6 +261,8 @@ The verifier also reports `records over distinct events`, naming every cluster h
 v1.10 derived `event_key` from the venue's event ticker. On day one that produced **five keys over ten records** while the reality was **four events**: the seven September FOMC records split into clusters of 2 (Kalshi) and 5 (Polymarket), so §6 would have treated two venues' view of one Fed decision as independent evidence — the defect v1.10 was written to prevent. **v1.11 rules that `event_key` is always operator-assigned and venue-independent, and that the venue's identifier is kept separately as `venue_event_key`.** The three options this section previously set out are retired; option 2 is essentially what was ruled.
 
 Mutual exclusivity now likewise crosses venues: the Polymarket ladder and the two Kalshi strikes are mutually exclusive **in substance** whatever their listings say, and that must be stated wherever their outcomes are reported.
+
+**Mutual exclusivity is a property of the particular ladder, never of ladders — noted 2026-09-14.** The FOMC ladder is mutually exclusive because the Fed does exactly one thing on one day: precisely one strike resolves YES. A **deadline** ladder on a single event (`KXCRYPTOSTRUCTURE-26JAN`: "becomes law before Oct 1", "…before Nov 1", "…before Jan 1") is **nested**, and a YES on the earliest implies YES on all the later ones. Both shapes make their records non-independent, for opposite reasons, so v1.10's disclosure has to name which shape it is reporting. Writing "mutually exclusive" over a nested ladder would state something false about the outcome distribution while appearing to discharge the requirement.
 
 ### 7.2 Day one's assignment (2026-09-10 pool)
 
@@ -292,6 +330,22 @@ Without this, the v1.11 defect returns by a different route: not two venues spli
 | `US-SENATE-IA-2026` | `SENATEIA-26` | `KXMIDTERMMOV-IASEND`, `KXMIDTERMMOV-IASENR`; `KXMIDTERMVOTETURN-IASEN` |
 | `US-SENATE-OH-SPECIAL-2026` | `SENATEOHS-26` | `KXMIDTERMMOV-OHSEND`, `KXMIDTERMMOV-OHSENR`; `KXMIDTERMVOTETURN-OHSEN` |
 
+#### Registry additions (2026-09-14, by `tape/sibling-search.ts`; every series-targeted enumeration reported complete)
+
+| `event_key` | pooled listing | other listings on the SAME event |
+|---|---|---|
+| `US-HOUSE-CONTROL-2026` | *(component of the combo below; not itself pooled on 2026-09-14)* | `CONTROLH-2026` (`-D`/`-R`, "Which party will win the U.S. House?", sub *"In 2026"*) |
+| `US-SENATE-CONTROL-2026` | *(component of the combo below; not itself pooled on 2026-09-14)* | `CONTROLS-2026` (`-D`/`-R`, "Which party will win the U.S. Senate?", sub *"In 2026"*) |
+| `US-HOUSE-CONTROL-2026+US-SENATE-CONTROL-2026` **(v1.13 compound label, not a cluster)** | `KXBALANCEPOWERCOMBO-27FEB-RR` | the event's three siblings `-DD`, `-RD`, `-DR`, each a different joint outcome of the SAME two events |
+| `CLARITY-ACT-HR3633-SIGNED-2026` | Polymarket `clarity-act-signed-into-law-in-2026` (`0x9cb23d04…`) | Polymarket `crypto-market-structure-legislation-becomes-law-in-2026` (`0x8ab4ef09…`), same end date |
+| `US-CRYPTO-MARKET-STRUCTURE-LAW-2026` | *(not pooled; `KXCRYPTOSTRUCTURE-26JAN-27` sat at Kalshi rank 8 on 2026-09-14)* | `KXCRYPTOSTRUCTURE-26JAN` — 11 markets, a deadline ladder (Aug/Sep/Oct/Nov/Dec 2026, Jan/Apr/Jul/Oct 2027, Jan 2028) |
+
+**`US-CRYPTO-MARKET-STRUCTURE-LAW-2026` is RELATED, NOT CLUSTERED, with `CLARITY-ACT-HR3633-SIGNED-2026` — ruled 2026-09-14.** The two look like one event and are not. Polymarket names **H.R.3633 specifically**; Kalshi's market text reads *"a crypto market structure bill becomes law"* generically, and only its **event title** says "Will the Clarity Act become law?". **A different crypto market-structure bill becoming law resolves Kalshi YES and Polymarket NO** — two listings that can settle in opposite directions are not two views of one event, and §7.4's whole purpose is to stop one event from splitting into several clusters, never to merge two events into one. So they get separate keys, and the relationship is recorded here so a later pool day reaches this ruling instead of re-deriving it. If both ever enter the pool they are two clusters, and §6 may not treat either as corroboration of the other.
+
+**The `KXCRYPTOSTRUCTURE` ladder is NESTED, not mutually exclusive — and this is the point §7.2's disclosure does *not* reach.** Its strikes are deadlines on one underlying event ("becomes law before Oct 1 2026", "…before Nov 1 2026", "…before Jan 1 2027", …), so a YES on an earlier deadline *implies* YES on every later one. That is the opposite structure from the FOMC strike ladder, where **exactly one** outcome resolves YES. v1.10 requires mutual exclusivity to be stated wherever such records' outcomes are reported; stating it of a nested ladder would be **false**, and the correct disclosure is that the outcomes are monotone and therefore maximally positively correlated rather than deterministically anti-correlated. Both are reasons not to treat the records as independent; they are not the same reason, and a reader told the wrong one would mis-model the dependence.
+
+**Vote-side listings resolve on the VOTE, not on the signing, and are therefore neither key.** Kalshi `KXCLARITYVOTE` ("When will the Senate vote on the Clarity Act?", 4 markets) and `KXVOTECLARITY` ("How many Senators will vote Yea…", 8 markets); Polymarket `which-senators-will-vote-for-the-clarity-act-…` (15 per-senator markets) and `how-many-senators-will-vote-for-the-clarity-act-…` (8 threshold markets). A bill can pass the Senate and never be signed, and can be signed after a vote nobody priced — so a vote market and a signing market resolve on different real-world events and must not share a key. Recorded because the tag co-location makes them look like siblings; they are the same *subject*, not the same *event*. `KXCLARITYACT` ("CLARITY Act of 2025 signed into law by [date]") exists as a series with **zero open events** and is therefore not in the registry.
+
 #### What the Maine and Iowa search found
 
 Both keys previously rested on a search that had not been run. It has now been run and **both hold**, for different reasons worth recording:
@@ -344,6 +398,97 @@ Both sit inside the `phase_a_hash` preimage; the four hash properties are proven
 v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
 
 **Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.
+
+## 8A. v1.13 — the combination record
+
+**Implementation.** One optional sealed Phase A field:
+
+| field | contract |
+|---|---|
+| `event_keys` | absent on a single-event record. When present: an array of **≥ 2** non-empty operator-assigned keys, one per component event, each satisfying v1.11 — and `event_key` **must equal** those entries sorted lexically and joined by `+`. |
+
+**The compound is derived and compared, never trusted.** Both Phase A and the verifier recompute `sorted(event_keys).join("+")` and fail if `event_key` differs. A hand-written compound that disagrees with its own components would cluster the record into events it does not resolve on, which is the one thing the field exists to prevent.
+
+**Clustering indexes the COMPONENTS, never the label.** v1.13 says the record "is counted within each, is never independent of any, and is never counted as an observation of its compound label", so `q3-verify` adds a combo record to each component's cluster and never creates a cluster for the compound. Indexing the label instead would invent a one-record "event" that does not exist while leaving both real events an observation short — v1.11's defect wearing new clothes. The verifier therefore prints **records, distinct events, and cluster memberships** separately, since for a combo the memberships legitimately exceed the record count, and it names each combo and the clusters it joins.
+
+**The v1.11 regression guard was extended, not left behind.** The guard WARNs when a cluster key equals `venue_event_key`. A compound label can never equal a venue string, so testing `event_key` alone would have quietly exempted exactly the records v1.13 added; the guard now tests every **component** key on a combo and the `event_key` on a single-event record.
+
+**An array of one is rejected, deliberately.** v1.13 defines `event_keys` as the multi-event case. A one-entry array is a single-event record that has silently stopped being checked as one, so it fails rather than being tolerated as a degenerate case.
+
+**Hash properties, proven mechanically rather than asserted** (synthetic in-memory records; `tests/q3/records/` byte-unchanged, digest compared before and after):
+
+1. adding `event_keys` changes `phase_a_hash`;
+2. a different value changes it differently;
+3. a record that never carried it hashes **exactly** as before — all three pre-amendment records recompute both hashes unchanged;
+4. altering it after sealing breaks `phase_a_hash`, and changing **one nested element** breaks it (the array is hashed deeply, as `search_record` is);
+5. it is in neither exclude set, so it is sealed in the Phase A preimage;
+6. it reaches `record_hash` as well.
+
+Property 2 has a corollary worth stating: **the array's ORDER is part of the preimage**, because canonical JSON sorts object keys and never array elements. A reordered `event_keys` is a different sealed record even though it derives the same compound. The rule does not require the array be stored sorted — only that the compound be the sorted join — but records are written sorted so the two never look inconsistent.
+
+**Enforcement branches proven to fire** with temporary synthetic records, since deleted: a one-entry array; a non-array; an empty entry; a duplicated component; a compound that disagrees with its components. A valid combo and an unsorted-but-consistent array both pass clean. Pre-amendment records are additionally refused if they carry `event_keys`, on the same immutability ground as `event_key` and `venue_event_key`.
+
+## 8B. Which probability text may enter `intent.probability_basis` — ruled 2026-09-14
+
+**The audited market's own price never enters the intent. A different instrument the source cites may.**
+
+§3 populates `intent.probability_basis` "only with text present in the source, quoted", and §3/§4 separately build a property the study leans on: `price_at_audit` is **not** in the intent and is appended only after the intent is hashed and committed, so **extraction is blind to price by construction**. Those two rules collide whenever the sourced public case quotes a probability — which, for macro and legislative markets, is most of the time. The line is:
+
+| the source quotes… | may it be sealed into `probability_basis`? | why |
+|---|---|---|
+| a quote on **the bound market itself** | **NO** | it *is* `price_at_audit`. Sealing it puts the price inside the Phase A preimage and destroys the blindness §3 constructs. The blindness is not a courtesy; it is what makes `implied_prob_at_audit` an independent comparator in §6. |
+| a **different instrument's** implied probability (CME FedWatch, fed funds futures) | **yes** | it is the basis the source itself asserts, which is exactly what M03 exists to detect the presence or absence of. Excluding it would make M03 unreachable for the entire class of narratives that do cite a basis. |
+| a **named analyst's** stated probability (e.g. "Galaxy Research pegs it at 10%") | **yes** | same ground: a third party's estimate quoted by the source. |
+
+**The 2026-09-14 pool day is the case that produced the rule, and it cuts both ways in one day** — which is why it is worth writing down rather than re-deriving:
+
+- `q3-2026-09-14-003` / `-008` (Kalshi and Polymarket, 25bp hike) seal *"the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch."* CME FedWatch is fed funds futures — **not** the Kalshi or Polymarket contract under audit. Sealed.
+- `q3-2026-09-14-010` (Polymarket, CLARITY Act) does **not**. Its source's only probability for the recorded side is *"traders put the chance of the Clarity Act being signed into law this year at 30%"* — and those traders are **the audited market**. Omitted, and M03 then fired on the genuine absence, contributing to the day's only FAIL.
+
+Note what the rule costs and that the cost is correct: obeying it made record 010 score **worse** than it would have with the market's own quote pasted in. A rule that only ever helped the record would not be a rule about evidence.
+
+**A near-miss worth naming.** CME FedWatch resolves on the same real-world event as the audited contracts, so it is highly correlated with their price. Correlation is not the test; **identity** is. The thing §3 excludes is the quote on the instrument whose settlement the record is graded by, because that quote is the comparator §6 measures the verdict against. A correlated third-party estimate is evidence the narrator chose to cite; the contract's own mid is the answer sheet.
+
+## 8C. Pre-screen vs engine — day one, and the direction of the disagreement
+
+**Observation, not a rule. n = 10 on a single day, eight of them on one event; nothing below is a measurement.**
+
+PROTOCOL §6 reports pre-screen/engine agreement as a side-measurement of the doctrine "LLM detects, TypeScript decides". Day one's agreement was **1 of 10** (`q3-2026-09-14-010`, the only record where both said FAIL).
+
+The disagreement is **entirely one-directional**: the pre-screen called FAIL on all ten; the engine returned **WAIT on nine**. Every miss is the pre-screen asserting a *blocking absence* where the engine found it could not establish the field at all and abstained. Concretely, the pre-screen read `no_public_case` records as M01+M02 at σ 60 — a confident double-CRITICAL — while the engine returned WAIT at risk 0 with `invalidation_condition` and `resolution_engagement` **unknown**.
+
+That is the quote-gate and evidence-unanimity machinery doing exactly what they were built to do (CLAUDE.md §3): an absent that cannot produce a verbatim contiguous quote demotes to unknown, and unknown is abstention, not a finding. A hand-applied taxonomy has no such gate, so it converts "I see nothing here" into "there is nothing here" — and those are different claims. On a thesis-absent v1.12 input the difference is total, which is why day one's composition (five no-case records) makes the gap look so wide.
+
+Two consequences, both recorded rather than acted on:
+
+1. **The published cards' "pre-screen" label is load-bearing, not decorative.** §6 says low agreement means the cards must say pre-screen louder. One day at 1/10 does not establish a rate, but it establishes the *direction*, and the direction is the one that matters: the pre-screen is systematically more willing to block than the engine of record.
+2. **Do not read this as the pre-screen being wrong about the markets.** It is wrong about what the evidence supports, which is the only thing the engine claims to measure. Whether a `no_public_case` market resolves like a blocked one is an outcome question, and no record is graded yet.
+
+## 8D. Defect found by the verifier, 2026-09-14 — `price_source` was never excluded from the Phase A preimage
+
+**Found, fixed and proven inside the sealing pass. No record was mis-sealed; no stored hash was ever wrong.**
+
+Phase B writes `price_source` — the provider, query and execution ids, the parameters and the VWAP window that let a third party re-run the number. It was never added to `PHASE_A_EXCLUDE`. So re-deriving a sealed record's `phase_a_hash` folded in a field that **did not exist when that hash was computed**, and every venue record sealed through the priced path failed `phase_a_hash does not recompute` the instant Phase B ran. `q3-verify` caught all five Kalshi records the moment they were priced.
+
+**The stored hashes were always correct. The recomputation was not.** That distinction is the whole reason nothing had to be re-sealed: `phase_a_hash` was computed at Phase A over a record that genuinely had no `price_source`, and adding the name to the exclude set makes the verifier reproduce exactly that. Proven, not asserted: each of the five recomputes to the value Phase A printed **before the price existed**, and under the old set each demonstrably did not — the defect is reproduced rather than inferred.
+
+**Why it stayed invisible until day one of the pool.** No record had ever carried the field. The only pre-existing venue record, pilot `q3-2026-09-02-N5`, was sealed before v1.2 introduced `price_source`; the other two are `series` bindings, which never get one. So the bug was latent from the day `price_source` was introduced and could only surface on the first venue record sealed through the priced path — which is these.
+
+**The fix is hash-neutral by construction and was checked against every existing record.** `strip()` removes keys by name, so a record that never carried `price_source` canonicalises identically under either set; all eight such records were confirmed byte-identical before and after, and all eight still recompute their own stored hash.
+
+**`price_source` deliberately stays OUT of `PHASE_B_EXCLUDE`.** It is the price's provenance, so it must sit inside `record_hash` and be tamper-evident — altering `execution_id` alone breaks `record_hash`, and that is checked. The resulting asymmetry — excluded from Phase A, sealed in Phase B — is exactly the one `price_at_audit` already has, and for the same reason.
+
+**The general lesson, worth more than the fix.** Every field Phase B writes must be added to `PHASE_A_EXCLUDE` *in the same change that introduces it*. v1.7(a) got this right for `volume_24h` / `volume_total` and said so in its own note; `price_source` predates that discipline and was missed. Before any future Phase B field lands, the check is: does re-deriving `phase_a_hash` on a fully sealed record still reproduce it?
+
+## 8E. Outage is not mismatch — the classifier missed Dune's own timeout (2026-09-14)
+
+`q3-verify` re-executes every Polymarket price on every push (`DUNE_REVERIFY=changed`). Its rule, already written down, is that a re-check which could not be *performed* WARNs while a re-check that *disagrees* fails: "the record is NOT wrong, it is NOT VERIFIED THIS RUN". The classifier implementing it enumerated `HTTP 402|429|5xx`, `fetch failed`, `ECONN`, `ETIMEDOUT`, `UND_ERR` — all **transport**-level failures — and missed the **execution**-level one.
+
+`dune-client.ts` polls for a result and throws `dune execution <id> timed out` when its own deadline expires with the query still queued or running. Every HTTP call in that sequence succeeded; Dune simply had not finished. That is the single clearest "the provider was unavailable this run" signal there is, and it fell through to the hard-fail branch — failing the build on PR #156 with ten correctly sealed records and every hash recomputing.
+
+**Fixed by widening the outage set, deliberately narrowly.** `execution \S+ timed out` joins it. An execution that comes back `QUERY_STATE_FAILED` or `CANCELLED` still hard-fails, because that is **Dune answering** rather than Dune being slow — and so do the contract breaks (wrong row count, missing column), which are the failures this check exists to catch. Boundary asserted in both directions rather than assumed.
+
+**The lesson generalises past this one regex.** A verifier that fails on *unknown* rather than on *wrong* trains its operator to ignore it, and a build that goes red for a reason no commit can fix has to be either overridden or waited out — both of which teach that red means nothing. The rule is not "be lenient"; it is that **only disagreement may fail the build**, and every new failure mode has to be sorted into unavailable-or-wrong when it first appears. This one appeared the first time the study re-verified ten records in a single run, which is simply the first time the query was slow enough to hit the deadline.
 
 ## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
 

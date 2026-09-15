@@ -1,0 +1,114 @@
+[
+  {
+    "at": "2026-09-14T17:36:28.270Z",
+    "op": "exchange-price",
+    "args": [
+      "--exchange",
+      "coinbase",
+      "--pair",
+      "BTC/USD"
+    ],
+    "credits": 1,
+    "cached": false
+  },
+  {
+    "at": "2026-09-14T23:52:16.250Z",
+    "op": "polymarket-trades",
+    "args": [
+      "--condition-id",
+      "0xa3b36b2d6104d34af4e6c6215fc818e43352e78a748fbfb0b85e3a35f71dec9a",
+      "--outcome-label",
+      "Yes",
+      "--type",
+      "trade",
+      "--from",
+      "1789411200",
+      "--to",
+      "1789414800",
+      "--limit",
+      "500"
+    ],
+    "credits": 2,
+    "cached": false
+  },
+  {
+    "at": "2026-09-14T23:52:18.700Z",
+    "op": "polymarket-trades",
+    "args": [
+      "--condition-id",
+      "0xac02cbb049e46d6a3627c0fdf52fa554982a9025d45968207b362acb6ca4b830",
+      "--outcome-label",
+      "Yes",
+      "--type",
+      "trade",
+      "--from",
+      "1789411200",
+      "--to",
+      "1789414800",
+      "--limit",
+      "500"
+    ],
+    "credits": 2,
+    "cached": false
+  },
+  {
+    "at": "2026-09-14T23:52:20.906Z",
+    "op": "polymarket-trades",
+    "args": [
+      "--condition-id",
+      "0x876506d8b2bd7a0d3fa4fe18c024eee6e1dd81ee24c26795dadd6cfe4a7b5d0d",
+      "--outcome-label",
+      "Yes",
+      "--type",
+      "trade",
+      "--from",
+      "1789411200",
+      "--to",
+      "1789414800",
+      "--limit",
+      "500"
+    ],
+    "credits": 2,
+    "cached": false
+  },
+  {
+    "at": "2026-09-14T23:52:22.902Z",
+    "op": "polymarket-trades",
+    "args": [
+      "--condition-id",
+      "0x2e4b58fc18dbffd74d5275d89fb076943f21992763c45dcadd81391b83bde13c",
+      "--outcome-label",
+      "Yes",
+      "--type",
+      "trade",
+      "--from",
+      "1789411200",
+      "--to",
+      "1789414800",
+      "--limit",
+      "500"
+    ],
+    "credits": 2,
+    "cached": false
+  },
+  {
+    "at": "2026-09-14T23:52:25.161Z",
+    "op": "polymarket-trades",
+    "args": [
+      "--condition-id",
+      "0x9cb23d04b2ded06147482076688b69b487a8d982c63ebdda2ab3678cf27cf390",
+      "--outcome-label",
+      "Yes",
+      "--type",
+      "trade",
+      "--from",
+      "1789411200",
+      "--to",
+      "1789414800",
+      "--limit",
+      "500"
+    ],
+    "credits": 2,
+    "cached": false
+  }
+]

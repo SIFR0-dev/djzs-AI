@@ -1,0 +1,76 @@
+{
+  "id": "q3-2026-09-14-002",
+  "protocol_version": "1.13",
+  "posted_at": "2026-09-14T19:40:00Z",
+  "origin": "pool",
+  "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+  "supersedes": null,
+  "deviated": false,
+  "inclusion_note": null,
+  "source": {
+    "url": "https://247wallst.com/investing/2026/09/12/top-economist-says-the-fed-should-hike-rates-50-basis-points-next-week-the-bond-market-is-already-near-his-danger-zone/",
+    "text": "\"Oil prices are rising and the tariffs are being increased across the world. Those are to me, the fundamentals are much more important than the 8:30 a.m CPI,\" he said. Sri-Kumar's reminded listeners that core PCE has run above 3% and that inflation has failed to meet the Fed's 2% target for five and a half years.",
+    "captured_at": "2026-09-14T19:30:00Z"
+  },
+  "binding": {
+    "type": "venue",
+    "series": null,
+    "threshold": null,
+    "at": null
+  },
+  "event_key": "FOMC-2026-09-16",
+  "venue_event_key": "KXFEDDECISION-26SEP",
+  "prescreen": {
+    "codes": [
+      "DJZS-M01",
+      "DJZS-M02"
+    ],
+    "sigma": 60,
+    "verdict": "FAIL",
+    "by": "seat-prescreen"
+  },
+  "market": {
+    "venue": "kalshi",
+    "ticker": "KXFEDDECISION-26SEP-H26",
+    "title": "Will the Federal Reserve Hike rates by >25bps at their September 2026 meeting?",
+    "side": "YES",
+    "resolution_source": "Kalshi settlement rules for the September 2026 FOMC decision (KXFEDDECISION-26SEP)",
+    "resolution_due": "2026-09-16T17:59:00Z"
+  },
+  "intent": {
+    "market": "Federal Reserve September 2026 decision - hike of more than 25bps",
+    "side": "YES",
+    "thesis": null
+  },
+  "criterion": {
+    "correct_if": "Kalshi settles KXFEDDECISION-26SEP-H26 YES.",
+    "incorrect_if": "Kalshi settles KXFEDDECISION-26SEP-H26 NO.",
+    "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+    "grade_due": "2026-09-17T18:00:00Z"
+  },
+  "thesis_state": "no_public_case",
+  "search_record": {
+    "sources_consulted": [
+      "CBS News — 'Fed rate hike in September is all but guaranteed after CPI report, economists say' (2026-09-11)",
+      "National Mortgage News — 'Modest CPI reading gives Fed no clear direction on rates' (2026-09-11)",
+      "Chase / J.P. Morgan Wealth Management — 'Will the Fed Hike Rates in September?' (2026-08-05)",
+      "24/7 Wall St. — 'Top Economist Says the Fed Should Hike Rates 50 Basis Points Next Week' (2026-09-12)",
+      "PBS NewsHour — 'Fed governor Waller muddies outlook on possible rate hike later this month' (2026-09-03)",
+      "Federal News Network — 'Rate Hike Coming in September? Prediction Markets for Next Fed Decision' (2026-09-08)",
+      "Reuters poll coverage via WSAU — 'Fed rate hike on Wednesday now likely, say economists' (2026-09-14)",
+      "TheStreet — 'UBS doubles down on Fed rate-hike forecast for 2026'"
+    ],
+    "queries": [
+      "Fed 50 basis point hike September 2026 larger than 25bp case economists",
+      "\"50 basis points\" OR \"half-point\" Fed September 2026 forecast expects larger hike bank",
+      "Fed September 2026 FOMC meeting rate hike 25 basis points forecast",
+      "Fed rate hike September 16 2026 economists expect after August CPI"
+    ],
+    "window": {
+      "from": "2026-08-01T00:00:00Z",
+      "to": "2026-09-14T19:40:00Z"
+    },
+    "searched_at": "2026-09-14T19:35:00Z",
+    "judgement": "No public forecast of a move LARGER than 25bp at this meeting was located. Every named forecaster reached - J.P. Morgan Wealth Management, UBS Wealth Management USA, EY-Parthenon, Nationwide, Goldman Sachs - calls 25bp, not more. The only located argument for 50bp is Komal Sri-Kumar (Sri-Kumar Global Strategies, 24/7 Wall St., 2026-09-12), and it is PRESCRIPTIVE rather than predictive: he argues the Fed SHOULD hike 50bp while stating in the same piece that 'even a 25 basis point move may not happen'. A source that disclaims the outcome is not a public case that the outcome will occur, so under the standing ruling that advocacy is not a forecast it is recorded here rather than written as a thesis. No thesis was constructed from the market's own question, price or structure (v1.12)."
+  }
+}

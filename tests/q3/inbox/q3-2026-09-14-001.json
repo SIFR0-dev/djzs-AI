@@ -1,0 +1,52 @@
+{
+  "id": "q3-2026-09-14-001",
+  "protocol_version": "1.13",
+  "posted_at": "2026-09-14T19:40:00Z",
+  "origin": "pool",
+  "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+  "supersedes": null,
+  "deviated": false,
+  "inclusion_note": null,
+  "source": {
+    "url": "https://www.nationalmortgagenews.com/news/modest-cpi-reading-gives-fed-no-clear-direction-on-rates",
+    "text": "Waller said he has seen underlying inflation trending down over the past three months at a speed that is \"encouraging.\" He added that tariffs appear to have been a one-time shock to prices that is no longer accelerating inflation and increases to oil prices, while substantial, have not seeped into prices more broadly. Because of this, he said, he could be willing to allow rates to remain unchanged.\n\n\"To paraphrase John Lennon, I'm willing to give disinflation a chance,\" Waller said.\n\nOther Fed officials echoed this openness to a hold. Fed Gov. Michael Barr said he would be willing to support keeping the federal funds rate unchanged if inflation appeared to be moving in the right direction.\n\n\"If trends in the data give me some confidence that inflation is moderating on a path to 2%, then I think we can take a bit more time to assess our policy stance,\" Barr said. \"However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates.\"",
+    "captured_at": "2026-09-14T19:30:00Z"
+  },
+  "binding": {
+    "type": "venue",
+    "series": null,
+    "threshold": null,
+    "at": null
+  },
+  "event_key": "FOMC-2026-09-16",
+  "venue_event_key": "KXFEDDECISION-26SEP",
+  "prescreen": {
+    "codes": [
+      "DJZS-M03",
+      "DJZS-M04"
+    ],
+    "sigma": 40,
+    "verdict": "FAIL",
+    "by": "seat-prescreen"
+  },
+  "market": {
+    "venue": "kalshi",
+    "ticker": "KXFEDDECISION-26SEP-H0",
+    "title": "Will the Federal Reserve Hike rates by 0bps at their September 2026 meeting?",
+    "side": "YES",
+    "resolution_source": "Kalshi settlement rules for the September 2026 FOMC decision (KXFEDDECISION-26SEP)",
+    "resolution_due": "2026-09-16T17:59:00Z"
+  },
+  "intent": {
+    "market": "Federal Reserve September 2026 decision - no change in rates",
+    "side": "YES",
+    "thesis": "Waller said he has seen underlying inflation trending down over the past three months at a speed that is \"encouraging.\" He added that tariffs appear to have been a one-time shock to prices that is no longer accelerating inflation and increases to oil prices, while substantial, have not seeped into prices more broadly. Because of this, he said, he could be willing to allow rates to remain unchanged.\n\n\"To paraphrase John Lennon, I'm willing to give disinflation a chance,\" Waller said.\n\nOther Fed officials echoed this openness to a hold. Fed Gov. Michael Barr said he would be willing to support keeping the federal funds rate unchanged if inflation appeared to be moving in the right direction.\n\n\"If trends in the data give me some confidence that inflation is moderating on a path to 2%, then I think we can take a bit more time to assess our policy stance,\" Barr said. \"However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates.\"",
+    "invalidation_condition": "However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates."
+  },
+  "criterion": {
+    "correct_if": "Kalshi settles KXFEDDECISION-26SEP-H0 YES.",
+    "incorrect_if": "Kalshi settles KXFEDDECISION-26SEP-H0 NO.",
+    "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+    "grade_due": "2026-09-17T18:00:00Z"
+  }
+}

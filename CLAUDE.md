@@ -35,9 +35,20 @@ struct → same verdict + `verdict_hash`, always).
 - **Rung-membership principle**: a field joins the scored sets (`PM_AUDIT_FIELDS` /
   `isBounded`) iff a *solo* block depends on it. `edge_claim` is in NEITHER (advisory →
   no WAIT-pressure, PM hashes stay frozen).
-- **M03 definitional precondition**: an unsourced-probability absent requires an explicit
-  probability token in the intent (`%`, `percent`, `odds`, `chance`, `likel`, `probabl`);
-  no token → the absent drains to unknown.
+- **M03 has NO probability-token precondition** (corrected 2026-09-14 — the repo outranked the
+  brief). This entry formerly said an unsourced-probability absent required an explicit token
+  (`%`, `percent`, `odds`, `chance`, `likel`, `probabl`) in the intent, with no token draining the
+  absent to unknown. That describes extraction contract **v1.0**. The precondition was **removed in
+  DJZS-X-v1.1 on 2026-09-01** (`server/engine-v2/extraction-layer.ts:38-42`, which records the
+  reasoning: it contradicted the prompt's own definition of certainty claims as assertions, made
+  M03 unreachable for plain-prose unsourced claims like "everyone knows", and let an incidental
+  `%` in an unrelated field unlock it). The **verbatim-quote gate is the whole evidence
+  requirement**, and a probability_basis absent quote must be ONE contiguous span. Live proof:
+  `q3-2026-09-14-010` carries zero probability tokens in its rendered intent and M03 fired.
+  CAUTION when reading the code: `extraction-layer.ts:411-414` still carries the deleted
+  constant's doc comment ("M03 … is definitionally moot without one of these present") with no
+  constant beneath it. That orphaned comment is what kept this stale line alive; it is a known
+  defect, filed separately because it sits in a verdict-core file and needs the §5 parity proof.
 - **Evidence-unanimity**: a critical-driving absent merges to absent only if all N samples
   carry strictly-identical quotes; divergence → unknown + `<field>(evidence)` telemetry.
 - **Quote gates**: every PM absent needs a verbatim intent-quote or it demotes to unknown.

@@ -1,0 +1,53 @@
+{
+  "id": "q3-2026-09-14-008",
+  "protocol_version": "1.13",
+  "posted_at": "2026-09-14T19:40:00Z",
+  "origin": "pool",
+  "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+  "supersedes": null,
+  "deviated": false,
+  "inclusion_note": null,
+  "source": {
+    "url": "https://www.cbsnews.com/news/fed-rate-hike-september-likelihood-cpi/",
+    "text": "A hotter-than-expected inflation report has sharply raised the likelihood that the Federal Reserve will increase interest rates in September, which would mark its first rate hike since 2023. The Consumer Price Index rose at an annual rate of 3.4% in August, in line with July's reading but higher than the 3.3% economists were forecasting. One-third of the monthly increase was due to gasoline prices, which have jumped 27.4% from a year ago, according to the Labor Department. More concerning for the Fed, core prices rose 0.3% from July, higher than expected and an acceleration from the previous month's 0.2% increase. The reading, which excludes the volatile gas and food categories, suggests inflationary pressures are broadening beyond energy as higher fuel prices ripple through the economy. After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch. The inflation reading makes it more likely the Fed will raise borrowing costs as it works to bring inflation back toward its 2% target, economists said Friday. EY-Parthenon now projects the central bank will raise rates by 0.25 percentage points at next week's meeting, bringing the federal funds rate to a target range of 3.75% to 4%.",
+    "captured_at": "2026-09-14T19:30:00Z"
+  },
+  "binding": {
+    "type": "venue",
+    "series": null,
+    "threshold": null,
+    "at": null
+  },
+  "event_key": "FOMC-2026-09-16",
+  "venue_event_key": "fed-decision-in-september-762",
+  "prescreen": {
+    "codes": [
+      "DJZS-M02",
+      "DJZS-M04"
+    ],
+    "sigma": 45,
+    "verdict": "FAIL",
+    "by": "seat-prescreen"
+  },
+  "market": {
+    "venue": "polymarket",
+    "ticker": "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649",
+    "title": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
+    "side": "YES",
+    "resolution_source": "Polymarket resolution rules for the event fed-decision-in-september-762",
+    "resolution_due": "2026-09-16T00:00:00Z",
+    "token_id": "63842529068710005716169325380315470359047749786610778647370693404952498013178"
+  },
+  "intent": {
+    "market": "Federal Reserve September 2026 decision - 25bp hike",
+    "side": "YES",
+    "thesis": "A hotter-than-expected inflation report has sharply raised the likelihood that the Federal Reserve will increase interest rates in September, which would mark its first rate hike since 2023. The Consumer Price Index rose at an annual rate of 3.4% in August, in line with July's reading but higher than the 3.3% economists were forecasting. One-third of the monthly increase was due to gasoline prices, which have jumped 27.4% from a year ago, according to the Labor Department. More concerning for the Fed, core prices rose 0.3% from July, higher than expected and an acceleration from the previous month's 0.2% increase. The reading, which excludes the volatile gas and food categories, suggests inflationary pressures are broadening beyond energy as higher fuel prices ripple through the economy. After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch. The inflation reading makes it more likely the Fed will raise borrowing costs as it works to bring inflation back toward its 2% target, economists said Friday. EY-Parthenon now projects the central bank will raise rates by 0.25 percentage points at next week's meeting, bringing the federal funds rate to a target range of 3.75% to 4%.",
+    "probability_basis": "After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch."
+  },
+  "criterion": {
+    "correct_if": "Polymarket resolves will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649 to Yes.",
+    "incorrect_if": "Polymarket resolves will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649 to No.",
+    "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+    "grade_due": "2026-09-17T12:00:00Z"
+  }
+}

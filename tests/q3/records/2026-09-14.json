@@ -1,0 +1,1156 @@
+[
+  {
+    "id": "q3-2026-09-14-001",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://www.nationalmortgagenews.com/news/modest-cpi-reading-gives-fed-no-clear-direction-on-rates",
+      "text": "Waller said he has seen underlying inflation trending down over the past three months at a speed that is \"encouraging.\" He added that tariffs appear to have been a one-time shock to prices that is no longer accelerating inflation and increases to oil prices, while substantial, have not seeped into prices more broadly. Because of this, he said, he could be willing to allow rates to remain unchanged.\n\n\"To paraphrase John Lennon, I'm willing to give disinflation a chance,\" Waller said.\n\nOther Fed officials echoed this openness to a hold. Fed Gov. Michael Barr said he would be willing to support keeping the federal funds rate unchanged if inflation appeared to be moving in the right direction.\n\n\"If trends in the data give me some confidence that inflation is moderating on a path to 2%, then I think we can take a bit more time to assess our policy stance,\" Barr said. \"However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates.\"",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "KXFEDDECISION-26SEP",
+    "prescreen": {
+      "codes": [
+        "DJZS-M03",
+        "DJZS-M04"
+      ],
+      "sigma": 40,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "kalshi",
+      "ticker": "KXFEDDECISION-26SEP-H0",
+      "title": "Will the Federal Reserve Hike rates by 0bps at their September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Kalshi settlement rules for the September 2026 FOMC decision (KXFEDDECISION-26SEP)",
+      "resolution_due": "2026-09-16T17:59:00Z"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - no change in rates",
+      "side": "YES",
+      "thesis": "Waller said he has seen underlying inflation trending down over the past three months at a speed that is \"encouraging.\" He added that tariffs appear to have been a one-time shock to prices that is no longer accelerating inflation and increases to oil prices, while substantial, have not seeped into prices more broadly. Because of this, he said, he could be willing to allow rates to remain unchanged.\n\n\"To paraphrase John Lennon, I'm willing to give disinflation a chance,\" Waller said.\n\nOther Fed officials echoed this openness to a hold. Fed Gov. Michael Barr said he would be willing to support keeping the federal funds rate unchanged if inflation appeared to be moving in the right direction.\n\n\"If trends in the data give me some confidence that inflation is moderating on a path to 2%, then I think we can take a bit more time to assess our policy stance,\" Barr said. \"However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates.\"",
+      "invalidation_condition": "However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates."
+    },
+    "criterion": {
+      "correct_if": "Kalshi settles KXFEDDECISION-26SEP-H0 YES.",
+      "incorrect_if": "Kalshi settles KXFEDDECISION-26SEP-H0 NO.",
+      "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+      "grade_due": "2026-09-17T18:00:00Z"
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "resolution_engagement",
+        "probability_basis"
+      ],
+      "verdict_hash": "0x07a3a5fcc7cd45f99b48fd8054545090d4002f2ee1babac05094a431dc094646",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [
+        "resolution_engagement",
+        "probability_basis(evidence)"
+      ],
+      "failsafe": false
+    },
+    "intent_sha256": "0xb58a01a7d4b4c6f703ac49557073f53be86a6d3bd577792120f7c76508e78dff",
+    "intent_hash": "0xe6304d9ee6691c50486d54025c13a3d908d56a1b534598ce41e13ee9bae283b7",
+    "phase_a_hash": "0x34f79c463707d3e46af2a0a1d9ad202f6660521ddf631962bd3a6a8f39c0fec8",
+    "price_at_audit": 0.13907758460490913,
+    "implied_prob_at_audit": 0.13907758460490913,
+    "price_captured_at": "2026-09-14T19:51:05.575Z",
+    "volume_24h": 4789093.239999994,
+    "volume_total": 33554697.46999983,
+    "record_hash": "0x36bb7336db31fa0840c885a5a02d77bbfa2c418d2ca596b7e580bf914159f37c",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-H0",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.13907758460490913,
+      "trade_count": 306,
+      "contracts": 232685.0799999998,
+      "volume_usdc": 32361.27890000002,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-002",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://247wallst.com/investing/2026/09/12/top-economist-says-the-fed-should-hike-rates-50-basis-points-next-week-the-bond-market-is-already-near-his-danger-zone/",
+      "text": "\"Oil prices are rising and the tariffs are being increased across the world. Those are to me, the fundamentals are much more important than the 8:30 a.m CPI,\" he said. Sri-Kumar's reminded listeners that core PCE has run above 3% and that inflation has failed to meet the Fed's 2% target for five and a half years.",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "KXFEDDECISION-26SEP",
+    "prescreen": {
+      "codes": [
+        "DJZS-M01",
+        "DJZS-M02"
+      ],
+      "sigma": 60,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "kalshi",
+      "ticker": "KXFEDDECISION-26SEP-H26",
+      "title": "Will the Federal Reserve Hike rates by >25bps at their September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Kalshi settlement rules for the September 2026 FOMC decision (KXFEDDECISION-26SEP)",
+      "resolution_due": "2026-09-16T17:59:00Z"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - hike of more than 25bps",
+      "side": "YES",
+      "thesis": null
+    },
+    "criterion": {
+      "correct_if": "Kalshi settles KXFEDDECISION-26SEP-H26 YES.",
+      "incorrect_if": "Kalshi settles KXFEDDECISION-26SEP-H26 NO.",
+      "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+      "grade_due": "2026-09-17T18:00:00Z"
+    },
+    "thesis_state": "no_public_case",
+    "search_record": {
+      "sources_consulted": [
+        "CBS News — 'Fed rate hike in September is all but guaranteed after CPI report, economists say' (2026-09-11)",
+        "National Mortgage News — 'Modest CPI reading gives Fed no clear direction on rates' (2026-09-11)",
+        "Chase / J.P. Morgan Wealth Management — 'Will the Fed Hike Rates in September?' (2026-08-05)",
+        "24/7 Wall St. — 'Top Economist Says the Fed Should Hike Rates 50 Basis Points Next Week' (2026-09-12)",
+        "PBS NewsHour — 'Fed governor Waller muddies outlook on possible rate hike later this month' (2026-09-03)",
+        "Federal News Network — 'Rate Hike Coming in September? Prediction Markets for Next Fed Decision' (2026-09-08)",
+        "Reuters poll coverage via WSAU — 'Fed rate hike on Wednesday now likely, say economists' (2026-09-14)",
+        "TheStreet — 'UBS doubles down on Fed rate-hike forecast for 2026'"
+      ],
+      "queries": [
+        "Fed 50 basis point hike September 2026 larger than 25bp case economists",
+        "\"50 basis points\" OR \"half-point\" Fed September 2026 forecast expects larger hike bank",
+        "Fed September 2026 FOMC meeting rate hike 25 basis points forecast",
+        "Fed rate hike September 16 2026 economists expect after August CPI"
+      ],
+      "window": {
+        "from": "2026-08-01T00:00:00Z",
+        "to": "2026-09-14T19:40:00Z"
+      },
+      "searched_at": "2026-09-14T19:35:00Z",
+      "judgement": "No public forecast of a move LARGER than 25bp at this meeting was located. Every named forecaster reached - J.P. Morgan Wealth Management, UBS Wealth Management USA, EY-Parthenon, Nationwide, Goldman Sachs - calls 25bp, not more. The only located argument for 50bp is Komal Sri-Kumar (Sri-Kumar Global Strategies, 24/7 Wall St., 2026-09-12), and it is PRESCRIPTIVE rather than predictive: he argues the Fed SHOULD hike 50bp while stating in the same piece that 'even a 25 basis point move may not happen'. A source that disclaims the outcome is not a public case that the outcome will occur, so under the standing ruling that advocacy is not a forecast it is recorded here rather than written as a thesis. No thesis was constructed from the market's own question, price or structure (v1.12)."
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "invalidation_condition",
+        "resolution_engagement"
+      ],
+      "verdict_hash": "0x2b23285dec31089ab91217ba85abbdda8ec496bab91860a0fdc91855bcf9e5c5",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [],
+      "failsafe": false
+    },
+    "intent_sha256": "0x69a178ce786d8f1b41a109f1effeb2104c095804cf42bc0aa4a90aaeea8893fe",
+    "intent_hash": null,
+    "phase_a_hash": "0x60e4f92120f9943d395ce9a5c6222d26fe937d445c96b66a4ee7bb559c3f7678",
+    "price_at_audit": 0.010298356585479241,
+    "implied_prob_at_audit": 0.010298356585479241,
+    "price_captured_at": "2026-09-14T19:51:21.318Z",
+    "volume_24h": 3102434.3100000005,
+    "volume_total": 14992914.330000026,
+    "record_hash": "0x2f9ea6436f3fbb59580ac392ff05f6f4ec4da877d14968d5905e8b743b0c904b",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-H26",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.010298356585479241,
+      "trade_count": 23,
+      "contracts": 301451.02999999997,
+      "volume_usdc": 3104.4502,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-003",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://www.cbsnews.com/news/fed-rate-hike-september-likelihood-cpi/",
+      "text": "A hotter-than-expected inflation report has sharply raised the likelihood that the Federal Reserve will increase interest rates in September, which would mark its first rate hike since 2023. The Consumer Price Index rose at an annual rate of 3.4% in August, in line with July's reading but higher than the 3.3% economists were forecasting. One-third of the monthly increase was due to gasoline prices, which have jumped 27.4% from a year ago, according to the Labor Department. More concerning for the Fed, core prices rose 0.3% from July, higher than expected and an acceleration from the previous month's 0.2% increase. The reading, which excludes the volatile gas and food categories, suggests inflationary pressures are broadening beyond energy as higher fuel prices ripple through the economy. After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch. The inflation reading makes it more likely the Fed will raise borrowing costs as it works to bring inflation back toward its 2% target, economists said Friday. EY-Parthenon now projects the central bank will raise rates by 0.25 percentage points at next week's meeting, bringing the federal funds rate to a target range of 3.75% to 4%.",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "KXFEDDECISION-26SEP",
+    "prescreen": {
+      "codes": [
+        "DJZS-M02",
+        "DJZS-M04"
+      ],
+      "sigma": 45,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "kalshi",
+      "ticker": "KXFEDDECISION-26SEP-H25",
+      "title": "Will the Federal Reserve Hike rates by 25bps at their September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Kalshi settlement rules for the September 2026 FOMC decision (KXFEDDECISION-26SEP)",
+      "resolution_due": "2026-09-16T17:59:00Z"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - 25bp hike",
+      "side": "YES",
+      "thesis": "A hotter-than-expected inflation report has sharply raised the likelihood that the Federal Reserve will increase interest rates in September, which would mark its first rate hike since 2023. The Consumer Price Index rose at an annual rate of 3.4% in August, in line with July's reading but higher than the 3.3% economists were forecasting. One-third of the monthly increase was due to gasoline prices, which have jumped 27.4% from a year ago, according to the Labor Department. More concerning for the Fed, core prices rose 0.3% from July, higher than expected and an acceleration from the previous month's 0.2% increase. The reading, which excludes the volatile gas and food categories, suggests inflationary pressures are broadening beyond energy as higher fuel prices ripple through the economy. After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch. The inflation reading makes it more likely the Fed will raise borrowing costs as it works to bring inflation back toward its 2% target, economists said Friday. EY-Parthenon now projects the central bank will raise rates by 0.25 percentage points at next week's meeting, bringing the federal funds rate to a target range of 3.75% to 4%.",
+      "probability_basis": "After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch."
+    },
+    "criterion": {
+      "correct_if": "Kalshi settles KXFEDDECISION-26SEP-H25 YES.",
+      "incorrect_if": "Kalshi settles KXFEDDECISION-26SEP-H25 NO.",
+      "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+      "grade_due": "2026-09-17T18:00:00Z"
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 15,
+      "codes": [
+        "DJZS-M04"
+      ],
+      "unknown_fields": [
+        "invalidation_condition"
+      ],
+      "verdict_hash": "0x5503e4076ce3869d844a95798f33c02d6aa263df390296403ba1a5159f982d85",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [
+        "invalidation_condition",
+        "confidence"
+      ],
+      "failsafe": false
+    },
+    "intent_sha256": "0x4ab478692853894f70415f2e9f63caeef941021656ba937c1e3ee80a7304a679",
+    "intent_hash": "0xc958d2eec406e3b7088202f3273476eda3863e430ea74b18a329a5d77a87cfe3",
+    "phase_a_hash": "0x9908607fccc531d1154a95e0a3b44eb29ac70752e32d77cb7a74822e91252df6",
+    "price_at_audit": 0.8539079117922298,
+    "implied_prob_at_audit": 0.8539079117922298,
+    "price_captured_at": "2026-09-14T19:51:22.696Z",
+    "volume_24h": 1776272.3700000085,
+    "volume_total": 13750350.550000012,
+    "record_hash": "0xcc886ca610a9df182cfc050d80a1619a3053e47bf22665d3ced8ac9feceafd94",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-H25",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.8539079117922298,
+      "trade_count": 104,
+      "contracts": 84237.92999999998,
+      "volume_usdc": 71931.43490000001,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-004",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://federalnewsnetwork.com/prediction-markets/2026/09/rate-hike-coming-september-prediction-markets-next-fed-decision/",
+      "text": "Despite Trump's pressure campaign to cut the rates, no one thinks the Fed will do that.",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "KXFEDDECISION-26SEP",
+    "prescreen": {
+      "codes": [
+        "DJZS-M01",
+        "DJZS-M02"
+      ],
+      "sigma": 60,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "kalshi",
+      "ticker": "KXFEDDECISION-26SEP-C25",
+      "title": "Will the Federal Reserve Cut rates by 25bps at their September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Kalshi settlement rules for the September 2026 FOMC decision (KXFEDDECISION-26SEP)",
+      "resolution_due": "2026-09-16T17:59:00Z"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - 25bp cut",
+      "side": "YES",
+      "thesis": null
+    },
+    "criterion": {
+      "correct_if": "Kalshi settles KXFEDDECISION-26SEP-C25 YES.",
+      "incorrect_if": "Kalshi settles KXFEDDECISION-26SEP-C25 NO.",
+      "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+      "grade_due": "2026-09-17T18:00:00Z"
+    },
+    "thesis_state": "no_public_case",
+    "search_record": {
+      "sources_consulted": [
+        "CBS News — 'Fed rate hike in September is all but guaranteed after CPI report, economists say' (2026-09-11)",
+        "National Mortgage News — 'Modest CPI reading gives Fed no clear direction on rates' (2026-09-11)",
+        "Chase / J.P. Morgan Wealth Management — 'Will the Fed Hike Rates in September?' (2026-08-05)",
+        "24/7 Wall St. — 'Top Economist Says the Fed Should Hike Rates 50 Basis Points Next Week' (2026-09-12)",
+        "PBS NewsHour — 'Fed governor Waller muddies outlook on possible rate hike later this month' (2026-09-03)",
+        "Federal News Network — 'Rate Hike Coming in September? Prediction Markets for Next Fed Decision' (2026-09-08)",
+        "Reuters poll coverage via WSAU — 'Fed rate hike on Wednesday now likely, say economists' (2026-09-14)",
+        "TheStreet — 'UBS doubles down on Fed rate-hike forecast for 2026'",
+        "CNBC — 'Trump pushes Fed to cut rates ahead of pivotal September decision' (2026-09-05)",
+        "CNBC — 'Trump doubles down on threat to halt trade with top partners unless Fed cuts rates' (2026-09-04)",
+        "Bloomberg — 'Trump Pushes Fed to Lower Rates Despite Pressure to Raise Them' (2026-09-13)",
+        "CNBC — \"Warsh's credibility is on the line this week as Trump policies put pressure on Fed to hike\" (2026-09-14)"
+      ],
+      "queries": [
+        "Fed rate cut September 2026 who expects cut Trump pressure Warsh",
+        "Fed September 2026 FOMC meeting rate hike 25 basis points forecast",
+        "Fed hold rates unchanged September 2026 dissent argument after August CPI report",
+        "Fed rate hike September 16 2026 economists expect after August CPI"
+      ],
+      "window": {
+        "from": "2026-08-01T00:00:00Z",
+        "to": "2026-09-14T19:40:00Z"
+      },
+      "searched_at": "2026-09-14T19:35:00Z",
+      "judgement": "No public forecast of a CUT at this meeting was located. The only sustained public case for lower rates is the administration's pressure campaign - the President, Vice President and Treasury Secretary urging the Fed not to raise and in some cases to cut. Per the operator's standing ruling, political advocacy is not a forecast: an interested party demanding an outcome is not a public case that the outcome will occur, and the advocates state no basis, no probability and no falsification. The contemporaneous reporting says so directly - Federal News Network, 2026-09-08: 'Despite Trump's pressure campaign to cut the rates, no one thinks the Fed will do that.' Recorded rather than written as a thesis; nothing was reconstructed from the market's own question, price or structure (v1.12)."
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "invalidation_condition",
+        "resolution_engagement"
+      ],
+      "verdict_hash": "0x2b23285dec31089ab91217ba85abbdda8ec496bab91860a0fdc91855bcf9e5c5",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [],
+      "failsafe": false
+    },
+    "intent_sha256": "0x030a0cbb1f8fd33bbc39b963785a74377cab0d69ae9870da98f82ac078d63415",
+    "intent_hash": null,
+    "phase_a_hash": "0xff880107ecda805e340b56260779510bfe033f3eb9b143aab899eb91eaa51fe5",
+    "price_at_audit": 0.01,
+    "implied_prob_at_audit": 0.01,
+    "price_captured_at": "2026-09-14T19:51:27.450Z",
+    "volume_24h": 624753.24,
+    "volume_total": 9183936.130000008,
+    "record_hash": "0xe8ba9c66108cd3ce8a330db6d2f0b042349becd6ca4db99ce0a7fa195092bc55",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXFEDDECISION-26SEP-C25",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.01,
+      "trade_count": 9,
+      "contracts": 11572.27,
+      "volume_usdc": 115.7227,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-005",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://www.foxnews.com/media/rnc-chair-pushes-back-after-carville-predicts-gop-wipeout-2026-midterms.amp",
+      "text": "\"Our secret weapon is President Trump.\"",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "US-HOUSE-CONTROL-2026+US-SENATE-CONTROL-2026",
+    "venue_event_key": "KXBALANCEPOWERCOMBO-27FEB",
+    "prescreen": {
+      "codes": [
+        "DJZS-M01",
+        "DJZS-M02"
+      ],
+      "sigma": 60,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "kalshi",
+      "ticker": "KXBALANCEPOWERCOMBO-27FEB-RR",
+      "title": "Will House Control be Republican AND Senate Control be Republican for Feb 2027?",
+      "side": "YES",
+      "resolution_source": "Kalshi settlement rules for KXBALANCEPOWERCOMBO-27FEB (control of both chambers as of Feb 2027)",
+      "resolution_due": "2027-02-01T15:00:00Z"
+    },
+    "intent": {
+      "market": "2026 midterms - Republicans hold both the House and the Senate",
+      "side": "YES",
+      "thesis": null
+    },
+    "criterion": {
+      "correct_if": "Kalshi settles KXBALANCEPOWERCOMBO-27FEB-RR YES.",
+      "incorrect_if": "Kalshi settles KXBALANCEPOWERCOMBO-27FEB-RR NO.",
+      "void_if": "Market cancelled, voided, or settlement disputed past 7 days.",
+      "grade_due": "2027-02-02T15:00:00Z"
+    },
+    "event_keys": [
+      "US-HOUSE-CONTROL-2026",
+      "US-SENATE-CONTROL-2026"
+    ],
+    "thesis_state": "no_public_case",
+    "search_record": {
+      "sources_consulted": [
+        "Silver Bulletin (Nate Silver) — '2026 Midterm Election Forecast: Senate & House'",
+        "270toWin — 2026 Senate and 2026 House interactive forecasts",
+        "Race to the WH — 2026 Senate and House predictions, updated daily",
+        "Cook Political Report coverage via Yahoo — 'Cook finds Republicans hold advantage in 2026 Senate races'",
+        "Brookings — 'What history tells us about the 2026 midterm elections'",
+        "Ballotpedia — United States Congress elections, 2026",
+        "Fox News — 'RNC chair pushes back after Carville predicts GOP wipeout in 2026 midterms' (2026-01-17)"
+      ],
+      "queries": [
+        "2026 midterms forecast Republicans hold House and Senate both chambers",
+        "case for Republicans keeping both House and Senate 2026 midterms analyst argument"
+      ],
+      "window": {
+        "from": "2026-01-01T00:00:00Z",
+        "to": "2026-09-14T19:40:00Z"
+      },
+      "searched_at": "2026-09-14T19:35:00Z",
+      "judgement": "No dominant public case for Republicans holding BOTH chambers was located. Every independent forecaster reached points the other way: Nate Silver's model gives Democrats roughly 86% for the House and roughly 57% for the Senate, and Cook rates the Senate map as favourable to Republicans while the House is not. The only located claim for the recorded side is RNC Chairman Joe Gruters', and it fails on three separate counts: it is political advocacy by an interested party rather than a forecast (standing ruling); the sole located report of it is dated 2026-01-17, eight months before posted_at, and is not a current case; and the claim that Republicans retain both chambers appears there only as the outlet's PARAGRAPH, not as his words, so it could not be quoted verbatim without the paraphrase §3 forbids. Nothing was reconstructed from the market's own question, price or structure (v1.12)."
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "invalidation_condition",
+        "resolution_engagement"
+      ],
+      "verdict_hash": "0x2b23285dec31089ab91217ba85abbdda8ec496bab91860a0fdc91855bcf9e5c5",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [],
+      "failsafe": false
+    },
+    "intent_sha256": "0x1fb3901ab1a77ab88c9d1e7c1828136a597ff338a6e1023df1d97eb6a5d6cb34",
+    "intent_hash": null,
+    "phase_a_hash": "0xf9ed94f299018636c287b43c2cf8405b268bec7bfca2db05b957117d70091051",
+    "price_at_audit": 0.1558263672071709,
+    "implied_prob_at_audit": 0.1558263672071709,
+    "price_captured_at": "2026-09-14T19:51:30.099Z",
+    "volume_24h": 410280.31999999995,
+    "volume_total": 2701354.6799999904,
+    "record_hash": "0xa328374af04355f63664abc2c799438eb44fc286212fd4186a4445b205af27d1",
+    "outcome": null,
+    "price_source": {
+      "provider": "kalshi-api",
+      "tier": "venue-api",
+      "venue": "kalshi",
+      "endpoint": "GET /trade-api/v2/markets/trades",
+      "query_params": {
+        "ticker": "KXBALANCEPOWERCOMBO-27FEB-RR",
+        "min_ts": 1789411200,
+        "max_ts": 1789414800,
+        "side": "yes"
+      },
+      "vwap": 0.1558263672071709,
+      "trade_count": 3,
+      "contracts": 297.87,
+      "volume_usdc": 46.416,
+      "window_start": "2026-09-14T18:40:00.000Z",
+      "window_end": "2026-09-14T19:40:00.000Z"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-006",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://www.nationalmortgagenews.com/news/modest-cpi-reading-gives-fed-no-clear-direction-on-rates",
+      "text": "Waller said he has seen underlying inflation trending down over the past three months at a speed that is \"encouraging.\" He added that tariffs appear to have been a one-time shock to prices that is no longer accelerating inflation and increases to oil prices, while substantial, have not seeped into prices more broadly. Because of this, he said, he could be willing to allow rates to remain unchanged.\n\n\"To paraphrase John Lennon, I'm willing to give disinflation a chance,\" Waller said.\n\nOther Fed officials echoed this openness to a hold. Fed Gov. Michael Barr said he would be willing to support keeping the federal funds rate unchanged if inflation appeared to be moving in the right direction.\n\n\"If trends in the data give me some confidence that inflation is moderating on a path to 2%, then I think we can take a bit more time to assess our policy stance,\" Barr said. \"However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates.\"",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "fed-decision-in-september-762",
+    "prescreen": {
+      "codes": [
+        "DJZS-M03",
+        "DJZS-M04"
+      ],
+      "sigma": 40,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "polymarket",
+      "ticker": "will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615",
+      "title": "Will there be no change in Fed interest rates after the September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Polymarket resolution rules for the event fed-decision-in-september-762",
+      "resolution_due": "2026-09-16T00:00:00Z",
+      "token_id": "5615282760875985231868508008056959876238536896643315063916840237042205273721"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - no change in rates",
+      "side": "YES",
+      "thesis": "Waller said he has seen underlying inflation trending down over the past three months at a speed that is \"encouraging.\" He added that tariffs appear to have been a one-time shock to prices that is no longer accelerating inflation and increases to oil prices, while substantial, have not seeped into prices more broadly. Because of this, he said, he could be willing to allow rates to remain unchanged.\n\n\"To paraphrase John Lennon, I'm willing to give disinflation a chance,\" Waller said.\n\nOther Fed officials echoed this openness to a hold. Fed Gov. Michael Barr said he would be willing to support keeping the federal funds rate unchanged if inflation appeared to be moving in the right direction.\n\n\"If trends in the data give me some confidence that inflation is moderating on a path to 2%, then I think we can take a bit more time to assess our policy stance,\" Barr said. \"However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates.\"",
+      "invalidation_condition": "However, if inflation appears not to be moderating sufficiently, then I think we should act decisively to raise rates."
+    },
+    "criterion": {
+      "correct_if": "Polymarket resolves will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615 to Yes.",
+      "incorrect_if": "Polymarket resolves will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615 to No.",
+      "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+      "grade_due": "2026-09-17T12:00:00Z"
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "resolution_engagement",
+        "probability_basis"
+      ],
+      "verdict_hash": "0x07a3a5fcc7cd45f99b48fd8054545090d4002f2ee1babac05094a431dc094646",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [
+        "resolution_engagement",
+        "probability_basis(evidence)"
+      ],
+      "failsafe": false
+    },
+    "intent_sha256": "0xb58a01a7d4b4c6f703ac49557073f53be86a6d3bd577792120f7c76508e78dff",
+    "intent_hash": "0xe6304d9ee6691c50486d54025c13a3d908d56a1b534598ce41e13ee9bae283b7",
+    "phase_a_hash": "0x75d161c7f306e3240ad274384ec53449d49cb86aa1471fbbaae8cbaa13bc3298",
+    "price_at_audit": 0.14343384071604778,
+    "implied_prob_at_audit": 0.14343384071604778,
+    "price_captured_at": "2026-09-14T23:50:13.104Z",
+    "volume_24h": 4803260.124946999,
+    "volume_total": 43240406.98355901,
+    "record_hash": "0xb923dd2f64357be01b25be800b786f1c03ab64c33b0d6d50b05d120bf92fe17d",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H584TEZ6DGD63WQ76RPGTY",
+      "query_params": {
+        "token_id": "5615282760875985231868508008056959876238536896643315063916840237042205273721",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.14343384071604778,
+      "trade_count": 125,
+      "volume_usdc": 107982.95649999999,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-007",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://federalnewsnetwork.com/prediction-markets/2026/09/rate-hike-coming-september-prediction-markets-next-fed-decision/",
+      "text": "Despite Trump's pressure campaign to cut the rates, no one thinks the Fed will do that.",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "fed-decision-in-september-762",
+    "prescreen": {
+      "codes": [
+        "DJZS-M01",
+        "DJZS-M02"
+      ],
+      "sigma": 60,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "polymarket",
+      "ticker": "will-the-fed-decrease-interest-rates-by-25-bps-after-the-september-2026-meeting-586",
+      "title": "Will the Fed decrease interest rates by 25 bps after the September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Polymarket resolution rules for the event fed-decision-in-september-762",
+      "resolution_due": "2026-09-16T00:00:00Z",
+      "token_id": "57748138085022719760345772310040703848567377822400132842014290209986511882046"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - 25bp cut",
+      "side": "YES",
+      "thesis": null
+    },
+    "criterion": {
+      "correct_if": "Polymarket resolves will-the-fed-decrease-interest-rates-by-25-bps-after-the-september-2026-meeting-586 to Yes.",
+      "incorrect_if": "Polymarket resolves will-the-fed-decrease-interest-rates-by-25-bps-after-the-september-2026-meeting-586 to No.",
+      "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+      "grade_due": "2026-09-17T12:00:00Z"
+    },
+    "thesis_state": "no_public_case",
+    "search_record": {
+      "sources_consulted": [
+        "CBS News — 'Fed rate hike in September is all but guaranteed after CPI report, economists say' (2026-09-11)",
+        "National Mortgage News — 'Modest CPI reading gives Fed no clear direction on rates' (2026-09-11)",
+        "Chase / J.P. Morgan Wealth Management — 'Will the Fed Hike Rates in September?' (2026-08-05)",
+        "24/7 Wall St. — 'Top Economist Says the Fed Should Hike Rates 50 Basis Points Next Week' (2026-09-12)",
+        "PBS NewsHour — 'Fed governor Waller muddies outlook on possible rate hike later this month' (2026-09-03)",
+        "Federal News Network — 'Rate Hike Coming in September? Prediction Markets for Next Fed Decision' (2026-09-08)",
+        "Reuters poll coverage via WSAU — 'Fed rate hike on Wednesday now likely, say economists' (2026-09-14)",
+        "TheStreet — 'UBS doubles down on Fed rate-hike forecast for 2026'",
+        "CNBC — 'Trump pushes Fed to cut rates ahead of pivotal September decision' (2026-09-05)",
+        "CNBC — 'Trump doubles down on threat to halt trade with top partners unless Fed cuts rates' (2026-09-04)",
+        "Bloomberg — 'Trump Pushes Fed to Lower Rates Despite Pressure to Raise Them' (2026-09-13)",
+        "CNBC — \"Warsh's credibility is on the line this week as Trump policies put pressure on Fed to hike\" (2026-09-14)"
+      ],
+      "queries": [
+        "Fed rate cut September 2026 who expects cut Trump pressure Warsh",
+        "Fed September 2026 FOMC meeting rate hike 25 basis points forecast",
+        "Fed hold rates unchanged September 2026 dissent argument after August CPI report",
+        "Fed rate hike September 16 2026 economists expect after August CPI"
+      ],
+      "window": {
+        "from": "2026-08-01T00:00:00Z",
+        "to": "2026-09-14T19:40:00Z"
+      },
+      "searched_at": "2026-09-14T19:35:00Z",
+      "judgement": "No public forecast of a CUT at this meeting was located. The only sustained public case for lower rates is the administration's pressure campaign - the President, Vice President and Treasury Secretary urging the Fed not to raise and in some cases to cut. Per the operator's standing ruling, political advocacy is not a forecast: an interested party demanding an outcome is not a public case that the outcome will occur, and the advocates state no basis, no probability and no falsification. The contemporaneous reporting says so directly - Federal News Network, 2026-09-08: 'Despite Trump's pressure campaign to cut the rates, no one thinks the Fed will do that.' Recorded rather than written as a thesis; nothing was reconstructed from the market's own question, price or structure (v1.12)."
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "invalidation_condition",
+        "resolution_engagement"
+      ],
+      "verdict_hash": "0x2b23285dec31089ab91217ba85abbdda8ec496bab91860a0fdc91855bcf9e5c5",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [],
+      "failsafe": false
+    },
+    "intent_sha256": "0x030a0cbb1f8fd33bbc39b963785a74377cab0d69ae9870da98f82ac078d63415",
+    "intent_hash": null,
+    "phase_a_hash": "0xa12506903e70df69f14e5160f3b058d9f5bd246019a4df967da8743a8aab320e",
+    "price_at_audit": 0.0022187599622886826,
+    "implied_prob_at_audit": 0.0022187599622886826,
+    "price_captured_at": "2026-09-14T23:50:23.021Z",
+    "volume_24h": 4212628.616035,
+    "volume_total": 44801156.09387499,
+    "record_hash": "0xa65a32c547fe60abec3b17fc507da83a3eae20cef16b6e6ae370da61d33e8085",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H58ECWMHHQW5N2VHAJ9V5C",
+      "query_params": {
+        "token_id": "57748138085022719760345772310040703848567377822400132842014290209986511882046",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.0022187599622886826,
+      "trade_count": 34,
+      "volume_usdc": 1690.9206800000002,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-008",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://www.cbsnews.com/news/fed-rate-hike-september-likelihood-cpi/",
+      "text": "A hotter-than-expected inflation report has sharply raised the likelihood that the Federal Reserve will increase interest rates in September, which would mark its first rate hike since 2023. The Consumer Price Index rose at an annual rate of 3.4% in August, in line with July's reading but higher than the 3.3% economists were forecasting. One-third of the monthly increase was due to gasoline prices, which have jumped 27.4% from a year ago, according to the Labor Department. More concerning for the Fed, core prices rose 0.3% from July, higher than expected and an acceleration from the previous month's 0.2% increase. The reading, which excludes the volatile gas and food categories, suggests inflationary pressures are broadening beyond energy as higher fuel prices ripple through the economy. After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch. The inflation reading makes it more likely the Fed will raise borrowing costs as it works to bring inflation back toward its 2% target, economists said Friday. EY-Parthenon now projects the central bank will raise rates by 0.25 percentage points at next week's meeting, bringing the federal funds rate to a target range of 3.75% to 4%.",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "fed-decision-in-september-762",
+    "prescreen": {
+      "codes": [
+        "DJZS-M02",
+        "DJZS-M04"
+      ],
+      "sigma": 45,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "polymarket",
+      "ticker": "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649",
+      "title": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Polymarket resolution rules for the event fed-decision-in-september-762",
+      "resolution_due": "2026-09-16T00:00:00Z",
+      "token_id": "63842529068710005716169325380315470359047749786610778647370693404952498013178"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - 25bp hike",
+      "side": "YES",
+      "thesis": "A hotter-than-expected inflation report has sharply raised the likelihood that the Federal Reserve will increase interest rates in September, which would mark its first rate hike since 2023. The Consumer Price Index rose at an annual rate of 3.4% in August, in line with July's reading but higher than the 3.3% economists were forecasting. One-third of the monthly increase was due to gasoline prices, which have jumped 27.4% from a year ago, according to the Labor Department. More concerning for the Fed, core prices rose 0.3% from July, higher than expected and an acceleration from the previous month's 0.2% increase. The reading, which excludes the volatile gas and food categories, suggests inflationary pressures are broadening beyond energy as higher fuel prices ripple through the economy. After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch. The inflation reading makes it more likely the Fed will raise borrowing costs as it works to bring inflation back toward its 2% target, economists said Friday. EY-Parthenon now projects the central bank will raise rates by 0.25 percentage points at next week's meeting, bringing the federal funds rate to a target range of 3.75% to 4%.",
+      "probability_basis": "After the CPI report was released, the likelihood of a rate hike at the Fed's Sept. 16 meeting jumped to nearly 90%, up from 70% on Thursday, according to CME FedWatch."
+    },
+    "criterion": {
+      "correct_if": "Polymarket resolves will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649 to Yes.",
+      "incorrect_if": "Polymarket resolves will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649 to No.",
+      "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+      "grade_due": "2026-09-17T12:00:00Z"
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 15,
+      "codes": [
+        "DJZS-M04"
+      ],
+      "unknown_fields": [
+        "invalidation_condition"
+      ],
+      "verdict_hash": "0x5503e4076ce3869d844a95798f33c02d6aa263df390296403ba1a5159f982d85",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [
+        "invalidation_condition",
+        "confidence"
+      ],
+      "failsafe": false
+    },
+    "intent_sha256": "0x4ab478692853894f70415f2e9f63caeef941021656ba937c1e3ee80a7304a679",
+    "intent_hash": "0xc958d2eec406e3b7088202f3273476eda3863e430ea74b18a329a5d77a87cfe3",
+    "phase_a_hash": "0x55a4ceb6ef82a9dde39402913e5268f86b116b1b193bbb6ed0f2a0e998c171e1",
+    "price_at_audit": 0.8584384817347084,
+    "implied_prob_at_audit": 0.8584384817347084,
+    "price_captured_at": "2026-09-14T23:50:39.041Z",
+    "volume_24h": 2880418.11169,
+    "volume_total": 32703133.39089602,
+    "record_hash": "0x23a28186d651cc39eab41ebb62a729c044001465075ea29c5e744fc0e54d9ac7",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H58Y4M8T93AGF9CCD399NR",
+      "query_params": {
+        "token_id": "63842529068710005716169325380315470359047749786610778647370693404952498013178",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.8584384817347084,
+      "trade_count": 85,
+      "volume_usdc": 164148.816961,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-009",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://247wallst.com/investing/2026/09/12/top-economist-says-the-fed-should-hike-rates-50-basis-points-next-week-the-bond-market-is-already-near-his-danger-zone/",
+      "text": "\"Oil prices are rising and the tariffs are being increased across the world. Those are to me, the fundamentals are much more important than the 8:30 a.m CPI,\" he said. Sri-Kumar's reminded listeners that core PCE has run above 3% and that inflation has failed to meet the Fed's 2% target for five and a half years.",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "FOMC-2026-09-16",
+    "venue_event_key": "fed-decision-in-september-762",
+    "prescreen": {
+      "codes": [
+        "DJZS-M01",
+        "DJZS-M02"
+      ],
+      "sigma": 60,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "polymarket",
+      "ticker": "will-the-fed-increase-interest-rates-by-50-bps-after-the-september-2026-meeting-664",
+      "title": "Will the Fed increase interest rates by 50+ bps after the September 2026 meeting?",
+      "side": "YES",
+      "resolution_source": "Polymarket resolution rules for the event fed-decision-in-september-762",
+      "resolution_due": "2026-09-16T00:00:00Z",
+      "token_id": "88912926533493988427719291698947688154042720958310632316541141466409683822293"
+    },
+    "intent": {
+      "market": "Federal Reserve September 2026 decision - hike of 50bps or more",
+      "side": "YES",
+      "thesis": null
+    },
+    "criterion": {
+      "correct_if": "Polymarket resolves will-the-fed-increase-interest-rates-by-50-bps-after-the-september-2026-meeting-664 to Yes.",
+      "incorrect_if": "Polymarket resolves will-the-fed-increase-interest-rates-by-50-bps-after-the-september-2026-meeting-664 to No.",
+      "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+      "grade_due": "2026-09-17T12:00:00Z"
+    },
+    "thesis_state": "no_public_case",
+    "search_record": {
+      "sources_consulted": [
+        "CBS News — 'Fed rate hike in September is all but guaranteed after CPI report, economists say' (2026-09-11)",
+        "National Mortgage News — 'Modest CPI reading gives Fed no clear direction on rates' (2026-09-11)",
+        "Chase / J.P. Morgan Wealth Management — 'Will the Fed Hike Rates in September?' (2026-08-05)",
+        "24/7 Wall St. — 'Top Economist Says the Fed Should Hike Rates 50 Basis Points Next Week' (2026-09-12)",
+        "PBS NewsHour — 'Fed governor Waller muddies outlook on possible rate hike later this month' (2026-09-03)",
+        "Federal News Network — 'Rate Hike Coming in September? Prediction Markets for Next Fed Decision' (2026-09-08)",
+        "Reuters poll coverage via WSAU — 'Fed rate hike on Wednesday now likely, say economists' (2026-09-14)",
+        "TheStreet — 'UBS doubles down on Fed rate-hike forecast for 2026'"
+      ],
+      "queries": [
+        "Fed 50 basis point hike September 2026 larger than 25bp case economists",
+        "\"50 basis points\" OR \"half-point\" Fed September 2026 forecast expects larger hike bank",
+        "Fed September 2026 FOMC meeting rate hike 25 basis points forecast",
+        "Fed rate hike September 16 2026 economists expect after August CPI"
+      ],
+      "window": {
+        "from": "2026-08-01T00:00:00Z",
+        "to": "2026-09-14T19:40:00Z"
+      },
+      "searched_at": "2026-09-14T19:35:00Z",
+      "judgement": "No public forecast of a move LARGER than 25bp at this meeting was located. Every named forecaster reached - J.P. Morgan Wealth Management, UBS Wealth Management USA, EY-Parthenon, Nationwide, Goldman Sachs - calls 25bp, not more. The only located argument for 50bp is Komal Sri-Kumar (Sri-Kumar Global Strategies, 24/7 Wall St., 2026-09-12), and it is PRESCRIPTIVE rather than predictive: he argues the Fed SHOULD hike 50bp while stating in the same piece that 'even a 25 basis point move may not happen'. A source that disclaims the outcome is not a public case that the outcome will occur, so under the standing ruling that advocacy is not a forecast it is recorded here rather than written as a thesis. No thesis was constructed from the market's own question, price or structure (v1.12)."
+    },
+    "engine": {
+      "verdict": "WAIT",
+      "action": "WAIT",
+      "risk_score": 0,
+      "codes": [],
+      "unknown_fields": [
+        "invalidation_condition",
+        "resolution_engagement"
+      ],
+      "verdict_hash": "0x2b23285dec31089ab91217ba85abbdda8ec496bab91860a0fdc91855bcf9e5c5",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [],
+      "failsafe": false
+    },
+    "intent_sha256": "0xe2e6daca70de06e77edee03e9f82eea4d08113df7797f659277f6c1c1aeb2bf0",
+    "intent_hash": null,
+    "phase_a_hash": "0x70a0e13774b219bf9cf0e62d13c9e889514c64bad12c9541b93ec8f49ddc1111",
+    "price_at_audit": 0.007870522413569085,
+    "implied_prob_at_audit": 0.007870522413569085,
+    "price_captured_at": "2026-09-14T23:50:48.992Z",
+    "volume_24h": 2499272.4530390007,
+    "volume_total": 22461347.480303023,
+    "record_hash": "0xdf761ac04ce91649e2a3dec0a3e36b1337444bf107860fb67d0a02fd95c38079",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H597VJA4XB42PFQPCPJ43F",
+      "query_params": {
+        "token_id": "88912926533493988427719291698947688154042720958310632316541141466409683822293",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.007870522413569085,
+      "trade_count": 26,
+      "volume_usdc": 6632.338359999999,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
+  },
+  {
+    "id": "q3-2026-09-14-010",
+    "protocol_version": "1.13",
+    "posted_at": "2026-09-14T19:40:00Z",
+    "origin": "pool",
+    "scan_ref": "Q3 pool day 2026-09-14 (venue-direct + Dune 8601185)",
+    "supersedes": null,
+    "deviated": false,
+    "inclusion_note": null,
+    "source": {
+      "url": "https://fortune.com/2026/09/14/clarity-act-odds-trump-new-ethics-provisions-crypto-bill/",
+      "text": "The Clarity Act is back on the table. On Sunday night, Senate Republicans released a revised version of the bill that includes more than 120 changes, including provisions aimed at addressing long-standing ethics concerns. If enacted, the legislation would establish a framework for bringing more crypto assets into the realm of mainstream finance. The text arrived less than 48 hours before the Senate's pivotal procedural vote on whether to advance the bill. Republicans need 60 votes, requiring support from at least seven Democrats. With limited time before the midterm elections, lawmakers have a narrowing window to bring it to a vote.",
+      "captured_at": "2026-09-14T19:30:00Z"
+    },
+    "binding": {
+      "type": "venue",
+      "series": null,
+      "threshold": null,
+      "at": null
+    },
+    "event_key": "CLARITY-ACT-HR3633-SIGNED-2026",
+    "venue_event_key": "clarity-act-signed-into-law-in-2026",
+    "prescreen": {
+      "codes": [
+        "DJZS-M02",
+        "DJZS-M04"
+      ],
+      "sigma": 45,
+      "verdict": "FAIL",
+      "by": "seat-prescreen"
+    },
+    "market": {
+      "venue": "polymarket",
+      "ticker": "clarity-act-signed-into-law-in-2026",
+      "title": "Clarity Act (H.R.3633) signed into law in 2026?",
+      "side": "YES",
+      "resolution_source": "Polymarket resolution rules for the event clarity-act-signed-into-law-in-2026",
+      "resolution_due": "2027-01-01T05:00:00Z",
+      "token_id": "35198549486569600595408965368290795524428922595732253580266052028158040373233"
+    },
+    "intent": {
+      "market": "CLARITY Act (H.R.3633) signed into law during 2026",
+      "side": "YES",
+      "thesis": "The Clarity Act is back on the table. On Sunday night, Senate Republicans released a revised version of the bill that includes more than 120 changes, including provisions aimed at addressing long-standing ethics concerns. If enacted, the legislation would establish a framework for bringing more crypto assets into the realm of mainstream finance. The text arrived less than 48 hours before the Senate's pivotal procedural vote on whether to advance the bill. Republicans need 60 votes, requiring support from at least seven Democrats. With limited time before the midterm elections, lawmakers have a narrowing window to bring it to a vote."
+    },
+    "criterion": {
+      "correct_if": "Polymarket resolves clarity-act-signed-into-law-in-2026 to Yes.",
+      "incorrect_if": "Polymarket resolves clarity-act-signed-into-law-in-2026 to No.",
+      "void_if": "Market cancelled, voided, or resolution disputed past 7 days.",
+      "grade_due": "2027-01-02T05:00:00Z"
+    },
+    "engine": {
+      "verdict": "FAIL",
+      "action": "FAIL",
+      "risk_score": 55,
+      "codes": [
+        "DJZS-M01",
+        "DJZS-M03"
+      ],
+      "unknown_fields": [
+        "invalidation_condition"
+      ],
+      "verdict_hash": "0x02057f81a3bee6efa458889530e72ef285de1dfbd1ce14bbfc6fca91a623c824",
+      "taxonomy": {
+        "pm": "DJZS-PM-v1.0",
+        "engine": "DJZS-LF-v1.2",
+        "extraction": "DJZS-X-v1.1"
+      },
+      "eas_uid": null,
+      "paid": false,
+      "in_scope": true,
+      "disagreements": [],
+      "failsafe": false
+    },
+    "intent_sha256": "0xc7e893936eb85536f4fa52a48f3416c85534eee60abd53cf1cf4f10c82b14b00",
+    "intent_hash": "0x9a83d1821fec226646f3ec26033447bda13eca7a6f6f2451c73d3e4de92cf218",
+    "phase_a_hash": "0x6556ec39b96e2e28a3e0eb339eb57fb317c62e9f71f0228fb61b1cee27195dc5",
+    "price_at_audit": 0.29382682522529646,
+    "implied_prob_at_audit": 0.29382682522529646,
+    "price_captured_at": "2026-09-14T23:51:05.211Z",
+    "volume_24h": 943867.4709600003,
+    "volume_total": 16661739.724394001,
+    "record_hash": "0x6d38f3d0dbdee8c8d6da7d870c3e32f76da19d75d2cd208276943bac785b5b07",
+    "outcome": null,
+    "price_source": {
+      "provider": "dune",
+      "tier": "on-chain",
+      "venue": "polymarket",
+      "query_id": 8601184,
+      "execution_id": "01M2H59QQCY11M8SB8KT9T6XV6",
+      "query_params": {
+        "token_id": "35198549486569600595408965368290795524428922595732253580266052028158040373233",
+        "captured_at": "2026-09-14T19:40:00Z",
+        "window_min": 60
+      },
+      "vwap": 0.29382682522529646,
+      "trade_count": 120,
+      "volume_usdc": 13002.951100000006,
+      "window_start": "2026-09-14 18:40:00",
+      "window_end": "2026-09-14 19:40:00"
+    }
+  }
+]

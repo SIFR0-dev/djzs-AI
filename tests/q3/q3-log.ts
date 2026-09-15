@@ -52,6 +52,19 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
     const mk = rec.market as Record<string, unknown>; const bt = (rec.binding as Record<string, unknown>)?.type;
     if (bt === "venue" && mk.venue === "kalshi") { const vr = await fetch(`https://api.elections.kalshi.com/trade-api/v2/markets/${encodeURIComponent(String(mk.ticker))}`); if (vr.status === 404) { console.error(`Phase A ABORT: kalshi ticker ${mk.ticker} not found — check the strike suffix (e.g. -H25)`); process.exit(1); } if (!vr.ok) console.error(`  warn: kalshi HTTP ${vr.status} validating ticker; continuing`); }
     if (bt === "venue" && mk.venue === "polymarket") { const slug = String(mk.ticker).replace(/^polymarket:/, ""); const vr = await fetch(`https://gamma-api.polymarket.com/markets?slug=${encodeURIComponent(slug)}`); const arr = vr.ok ? await vr.json() as unknown[] : []; if (vr.ok && arr.length === 0) { console.error(`Phase A ABORT: polymarket slug ${slug} not found`); process.exit(1); } }
+    // v1.13: a combination market resolves jointly on more than one real-world event, so it carries event_keys —
+    // one operator key per component — and its event_key is those keys sorted lexically and joined by "+". Validated
+    // here, BEFORE anything is hashed, for the same reason as v1.12 below: a record that cannot be sealed correctly
+    // must never be sealed at all. The compound is DERIVED and compared rather than trusted, so a hand-written
+    // event_key that disagrees with its own components can never reach a hash.
+    if ("event_keys" in rec) {
+      const eks = rec.event_keys;
+      if (!Array.isArray(eks) || eks.length < 2) { console.error(`Phase A: v1.13 event_keys must be an array of at least two component event keys — a combination market resolves jointly on more than one event (got ${JSON.stringify(eks)})`); process.exit(1); }
+      if (!eks.every(k => typeof k === "string" && k.trim())) { console.error(`Phase A: every v1.13 event_keys entry must be a non-empty operator-assigned key (got ${JSON.stringify(eks)})`); process.exit(1); }
+      if (new Set(eks as string[]).size !== eks.length) { console.error(`Phase A: v1.13 event_keys carries a duplicate component (${JSON.stringify(eks)}) — a record cannot be two members of one cluster`); process.exit(1); }
+      const compound = [...(eks as string[])].sort().join("+");
+      if (rec.event_key !== compound) { console.error(`Phase A: v1.13 requires event_key to be the component keys joined by "+" in lexical order — expected ${JSON.stringify(compound)}, got ${JSON.stringify(rec.event_key)}`); process.exit(1); }
+    }
     // v1.12: a pooled market with no dominant public case is audited, not skipped and not deviated. Validate the
     // shape BEFORE anything is hashed — a record that cannot be sealed correctly must never be sealed at all.
     const intent = rec.intent as Record<string, unknown>;
