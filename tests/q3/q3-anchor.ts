@@ -29,5 +29,7 @@ const anchors: any[] = existsSync(ANCHORS) ? JSON.parse(readFileSync(ANCHORS, "u
   if (body.merkle_root !== root) { console.error(`ROOT MISMATCH — worker ${body.merkle_root} vs local ${root}; not recording`); process.exit(1); }
   anchors.push({ date, protocol_version: pv, record_count: hashes.length, merkle_root: root, irys_id: body.irys_id, gateway_url: body.gateway_url, anchored_at: new Date().toISOString() });
   writeFileSync(ANCHORS, JSON.stringify(anchors, null, 2) + "\n");
-  console.log(`${date} · ${hashes.length} records · root ${root}\nanchored → ${body.gateway_url}\n→ ${ANCHORS}   COMMIT.`);
+  // /verify carries a generated mirror of anchors.json and CI byte-compares it (SCAN_SPEC §8F). A new anchor that
+  // is committed without re-rendering turns the build red, so the step is named here rather than left to memory.
+  console.log(`${date} · ${hashes.length} records · root ${root}\nanchored → ${body.gateway_url}\n→ ${ANCHORS}\nNOW: npx tsx tests/q3/render-anchors.ts   (mirrors this into site/verify.html; CI checks it)   then COMMIT both.`);
 })();

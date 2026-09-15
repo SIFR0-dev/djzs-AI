@@ -490,6 +490,20 @@ Phase B writes `price_source` — the provider, query and execution ids, the par
 
 **The lesson generalises past this one regex.** A verifier that fails on *unknown* rather than on *wrong* trains its operator to ignore it, and a build that goes red for a reason no commit can fix has to be either overridden or waited out — both of which teach that red means nothing. The rule is not "be lenient"; it is that **only disagreement may fail the build**, and every new failure mode has to be sorted into unavailable-or-wrong when it first appears. This one appeared the first time the study re-verified ten records in a single run, which is simply the first time the query was slow enough to hit the deadline.
 
+## 8F. `/verify` mirrors `anchors.json` — generated, not written (2026-09-14)
+
+Nothing public rendered `tests/q3/anchors.json`. The study's tamper-evidence existed and was checkable, but only by someone who already knew to clone the repo and run `q3-anchor --verify`. `/verify` now carries a short section listing each anchored day with its record count, protocol version, Merkle root, Irys link and anchoring timestamp.
+
+**It is generated, because it is a second copy.** `/verify` is a static page: it cannot import `anchors.json`, and the file is not in the site asset bundle, so anything the page says about anchors is necessarily a duplicate of facts that live elsewhere. Two copies of the same facts is the shape that drifts — the PASS/PROCEED vocabulary bug, the two WAIT counters, the correction registry this deliberately mirrors. So `tests/q3/render-anchors.ts` writes the block from the source of truth, and `--check` byte-compares it in the `q3-integrity` job.
+
+**The invariant, in the corrections register's own terms:** the page may never advertise an anchor the file does not have, and may never omit one it does. A byte comparison gives both directions at once. A weaker check — does the page merely *contain* each Irys id? — would pass a page that also listed a day that was never anchored, which is the worse of the two failures: a reader shown a fabricated anchor has been told the record is permanent when nothing was written.
+
+**A cross-file check rides along, because the page states a number.** Each day's `record_count` in `anchors.json` is compared against the sealed records in `records/<date>.json`. The page prints that count, so a wrong one is a wrong *public* claim about the size of the book. The writer also refuses to run when that check fails: mirroring a source you already know to be wrong just propagates it with a generator's authority.
+
+Five drift cases proven to fail before this was wired in: a hand-edited root on the page; a day dropped from the page; a day invented on the page; `record_count` disagreeing with `records/`; and the writer refusing to mirror that last one. A mirror test that cannot fail is not a mirror test.
+
+**Operationally:** `q3-anchor` now prints the re-render step in its closing banner. A new anchor committed without re-rendering is a red build, and the cheapest place to learn that is the moment of anchoring rather than CI.
+
 ## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
 
 **Not an amendment and not a rule change. This section records a discrepancy and names the point at which it has to be addressed; it invents no threshold and changes nothing.**
