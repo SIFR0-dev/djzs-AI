@@ -16,5 +16,14 @@
     "irys_id": "CvkLcDSJbxnkyrDoVY5ZGhEyvhCYPxMwKTrj6YToSWxN",
     "gateway_url": "https://gateway.irys.xyz/CvkLcDSJbxnkyrDoVY5ZGhEyvhCYPxMwKTrj6YToSWxN",
     "anchored_at": "2026-09-04T16:33:35.186Z"
+  },
+  {
+    "date": "2026-09-14",
+    "protocol_version": "1.13",
+    "record_count": 10,
+    "merkle_root": "0xae02db92d1ea365107f1b365775b35922dd3529941684cbcea6be3f8ba874682",
+    "irys_id": "3w8hzn8mDrs3JNTzvtANR75jWouBST7V6X9jcHnAKk9P",
+    "gateway_url": "https://gateway.irys.xyz/3w8hzn8mDrs3JNTzvtANR75jWouBST7V6X9jcHnAKk9P",
+    "anchored_at": "2026-09-14T23:56:42.577Z"
   }
 ]
