@@ -1283,6 +1283,20 @@ const OPENAPI_DOC = {
   ]
 } as const
 
+// 2026-09-15: /x402/verify_pm_trade is the canonical PM path named by x402.json, llms.txt, and the agent card;
+// /x402/verify is the legacy alias. Document both so no discovery surface names a door the others do not.
+{
+  const paths = OPENAPI_DOC.paths as Record<string, Record<string, unknown>>;
+  const legacy = paths["/x402/verify"];
+  paths["/x402/verify_pm_trade"] = {
+    ...legacy,
+    post: {
+      ...(legacy.post as Record<string, unknown>),
+      operationId: "verifyPmTradeCanonical",
+      summary: "Audit a prediction-market trade thesis (canonical path; /x402/verify is the legacy alias)",
+    },
+  };
+}
 app.get("/openapi.json", (c) => c.json(OPENAPI_DOC))
 
 app.post("/x402/verify", async (c) => {

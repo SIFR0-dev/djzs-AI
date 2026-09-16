@@ -3,10 +3,11 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-/assets/fonts/*
-  Cache-Control: public, max-age=31536000, immutable
 /assets/*
   Cache-Control: public, max-age=86400
+/assets/fonts/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
 /og.png
   Cache-Control: public, max-age=604800
 /favicon.svg

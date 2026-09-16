@@ -1,4 +1,5 @@
 // DJZS_SENTINEL: discovery-surfaces.v1 host=mcp.djzs.ai routes=llms.txt,.well-known/x402.json,agent-card,root
+import { PERP_RESOURCE_URL, PERP_DESCRIPTION } from "./http-x402-bazaar.v2";
 //
 // discovery-surfaces.ts
 // Agent-facing discovery surfaces served FROM THE RESOURCE HOST (mcp.djzs.ai).
@@ -98,6 +99,7 @@ The gate audits the internal logic of what you submitted. It does not predict wh
 ## Paid endpoints
 
 - [POST /x402/verify_pm_trade](${RESOURCE_URL}): Adversarial audit of one prediction-market trade intent. ${PRICE_HUMAN}, x402 exact scheme, network ${NETWORK}, asset USDC (${USDC_BASE}), paid to ${PAY_TO}. Body: {"intent":{"market","side","thesis","probability_basis","size_usd","bounds"}}. Unpaid requests receive a 402 challenge carrying the full input schema.
+- [POST /x402/verify_perp_trade](${PERP_RESOURCE_URL}): Adversarial audit of one perpetual or spot TRADE intent (direction, size, leverage, entry, stop, target, venue, and the reason). Same price and rail: 2.00 USDC, x402 exact scheme, network eip155:8453. Body: {"intent":{"instrument","side","thesis","leverage","entry","stop_loss","take_profit","invalidation","size_usd","venue","data_sources"}}; instrument, side, and thesis are required. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets sent here are refused without charge. Ruleset DJZS-LF-v1.2, four codes live (E01, I01, X01, S01).
 
 ## Discovery
 
@@ -122,14 +124,75 @@ DJZS AI, LLC (California). Contact: legal@djzs.ai. Site: ${APEX}.
 }
 
 // ------------------------------------------------------------------
+// Second paid surface: verify_perp_trade (DJZS-LF-v1.2). Field list mirrors the live 402 challenge's bazaar schema.
+function perpResourceEntry(): unknown {
+  return {
+    type: "http",
+    resource: PERP_RESOURCE_URL,
+    accepts: [
+      {
+        scheme: "exact",
+        network: NETWORK,
+        asset: USDC_BASE,
+        payTo: PAY_TO,
+        amount: PRICE_ATOMIC,
+        maxAmountRequired: PRICE_ATOMIC,
+        maxTimeoutSeconds: 120,
+        mimeType: "application/json",
+        resource: PERP_RESOURCE_URL,
+        description: PERP_DESCRIPTION,
+        outputSchema: {
+          input: {
+            method: "POST",
+            type: "http",
+            bodySchema: {
+              type: "object",
+              required: ["intent"],
+              properties: {
+                intent: {
+                  type: "object",
+                  required: ["instrument", "side", "thesis"],
+                  properties: {
+                    instrument: { type: "string", description: "Instrument, e.g. BTC-PERP, ETH-USD spot." },
+                    side: { type: "string", description: "LONG or SHORT." },
+                    thesis: { type: "string", description: "The REASON the price should move the chosen way. Direction, size and levels alone are not a thesis." },
+                    leverage: { type: "number", description: "Leverage multiplier (1 for spot)." },
+                    entry: { type: "number", description: "Intended entry price." },
+                    stop_loss: { type: "number", description: "Stop level. A position with neither a stop nor an invalidation condition cannot PASS." },
+                    take_profit: { type: "number", description: "Target level." },
+                    invalidation: { type: "string", description: "The condition that proves the thesis wrong, if not a price stop." },
+                    size_usd: { type: "number", description: "Notional in USD." },
+                    venue: { type: "string", description: "Execution venue; also the mark-price oracle unless stated otherwise." },
+                    data_sources: { type: "string", description: "Where the inputs came from. Social/sentiment-only sourcing is flagged (DJZS-I01), not blocked." },
+                  },
+                },
+              },
+            },
+          },
+          output: {
+            example: { verdict: "FAIL", risk_score: 30, flags: ["DJZS-S01"], charged: true, terms: TERMS_URL },
+          },
+        },
+        extra: {
+          name: "USD Coin",
+          version: "2",
+          termsOfService: TERMS_URL,
+          unchargedScopeRefusal: true,
+        },
+      },
+    ],
+  };
+}
+
 // /.well-known/x402.json — host-local mirror, derived from route constants
 // ------------------------------------------------------------------
 function wellKnownX402(): unknown {
-  return {
+  const doc = {
     x402Version: 2,
     publisher: "DJZS AI, LLC",
     canonical: `${HOST}/.well-known/x402.json`,
     termsOfService: TERMS_URL,
+    lastUpdated: "2026-09-15",
     resources: [
       {
         type: "http",
@@ -199,6 +262,8 @@ function wellKnownX402(): unknown {
     notes:
       "Served from the resource host. The apex manifest at https://djzs.ai/.well-known/x402.json is the publisher-level copy; both are generated from the same route constants and cannot disagree with the live 402 challenge.",
   };
+  (doc.resources as unknown[]).push(perpResourceEntry());
+  return doc;
 }
 
 // ------------------------------------------------------------------
@@ -228,6 +293,16 @@ function agentCard(): unknown {
           'POST {"intent":{"market":"KXBTC-26AUG29-T70000","side":"YES","thesis":"BTC closes above 70k by Aug 29 on ETF inflow continuation","probability_basis":"Kalshi mid 0.41 vs model 0.55, 2026-08-19T14:00Z","size_usd":250,"bounds":{"max_loss_usd":250,"exit_condition":"daily close below 66000"}}}',
         ],
       },
+      {
+        id: "verify_perp_trade",
+        name: "Verify perpetual or spot trade intent",
+        description:
+          "Deterministic adversarial audit of one perpetual or spot trade intent: direction, size, leverage, entry, stop, target, venue, and the reason. Returns PASS, WAIT, or FAIL with risk score, defect flags (DJZS-LF-v1.2), and an on-chain Proof-of-Logic receipt. A position with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused without charge.",
+        tags: ["audit", "perpetuals", "spot", "trading", "verification", "x402"],
+        examples: [
+          'POST {"intent":{"instrument":"BTC-PERP","side":"LONG","leverage":5,"entry":78900,"stop_loss":76200,"take_profit":83000,"size_usd":3000,"venue":"Binance","thesis":"Funding reset to 2% after the weekend flush; 80K held on the daily close; ETF inflows resumed. Invalidation: daily close below 76,200. Oracle: Binance mark price."}}',
+        ],
+      },
     ],
     payments: {
       protocol: "x402",
@@ -238,6 +313,7 @@ function agentCard(): unknown {
       payTo: PAY_TO,
       amount: PRICE_ATOMIC,
       resource: RESOURCE_URL,
+      resources: [RESOURCE_URL, PERP_RESOURCE_URL],
       termsOfService: TERMS_URL,
     },
   };
