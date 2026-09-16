@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DJZS for builders · a pre-execution gate your treasury can recompute</title>
 <meta name="description" content="Put a deterministic audit in front of every autonomous capital action. PASS, WAIT, or FAIL, with a receipt anyone can recompute and a permanent on-chain record. One line to integrate.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css">
 <style>
   :root{
     --canvas:#0A0A0A;--panel:#0D0D0D;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;
@@ -70,11 +69,15 @@
   nav.site a:hover{color:var(--text)} nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--green)}
   nav.site a.home{color:var(--text)} a.wordmark{text-decoration:none}
   body::after{display:none}</style>
+<link rel="canonical" href="https://djzs.ai/builders">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+<link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
+<link rel="alternate" type="application/json" href="https://mcp.djzs.ai/.well-known/agent.json" title="A2A agent card">
 </head>
 <body>
 <div class="wrap">
   <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders" aria-current="page">builders</a><a href="/build">build</a></nav>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders" aria-current="page">builders</a><a href="/build">build</a><a href="/guide">connect &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/builders</span> $ cat pitch.txt<span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> A pre-execution gate your treasury can recompute.</h1>
     <div class="boot">
@@ -149,7 +152,7 @@ on-chain</pre>
   <footer>
     <div class="k"><b>source of truth</b>: <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
     <div class="k"><b>ruleset &amp; contract</b>: <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a> · <b>verify</b>: <a href="https://djzs.ai/verify">djzs.ai/verify</a></div>
-    <div class="k"><b>contact</b>: <a href="https://x.com/Djzs_ai">X @Djzs_ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">support</a> · <a href="https://djzs.ai/legal.html">legal</a></div>
+    <div class="k"><b>contact</b>: <a href="https://x.com/Djzs_ai">X @Djzs_ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">support</a> · <a href="/legal">legal</a> · <a href="/terms">terms</a></div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/builders · no agent acts without audit</p>
   </footer>
 </div>

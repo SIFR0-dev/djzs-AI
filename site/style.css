@@ -199,3 +199,11 @@ td:first-child, th:first-child { white-space: nowrap; }
   header.site nav { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
   nav a { margin-left: 0; }
 }
+
+/* 2026-09-15: header not pinned on phones; scanline overlay retired site-wide (subpages dropped it 09-15); video transcripts */
+@media (max-width: 640px) { header.site { position: static; } }
+body::after { display: none; }
+details.transcript { margin: 0.6rem 0 1.2rem; border: 1px solid var(--rule); border-radius: 6px; padding: 0.55rem 0.8rem; font-size: 0.86rem; color: var(--muted); }
+details.transcript summary { cursor: pointer; color: var(--text); font-weight: 500; }
+details.transcript p { margin: 0.6rem 0 0; }
+details.transcript code { font-size: 0.82em; }

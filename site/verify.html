@@ -4,9 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DJZS · Proof-of-Logic Verifier v2</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css">
 <style>
   :root{--canvas:#0A0A0A;--panel:#0D0D0D;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;--pass:#3DFF88;--wait:#FFB000;--fail:#FF4D4D;--base:#0052FF;--mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
   *{box-sizing:border-box}html,body{margin:0}
@@ -50,11 +49,15 @@
   nav.site a:hover{color:var(--text)} nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--green)}
   nav.site a.home{color:var(--text)} a.wordmark{text-decoration:none}
   body::after{display:none}</style>
+<link rel="canonical" href="https://djzs.ai/verify">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+<link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
+<link rel="alternate" type="application/json" href="https://mcp.djzs.ai/.well-known/agent.json" title="A2A agent card">
 </head>
 <body>
 <div class="wrap">
   <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify" aria-current="page">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a></nav>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify" aria-current="page">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/guide">connect &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/verify</span> $ <span id="cmd">recompute --receipt --v2</span><span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Proof-of-Logic Verifier <span style="color:var(--muted);font-weight:500">v2</span></h1>
     <div class="boot">

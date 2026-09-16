@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DJZS Build · make your API callable and payable by AI agents</title>
 <meta name="description" content="Fixed-scope, fixed-price implementation. An MCP server, an x402 payment gate on Base, discovery files agents actually read, and a receipt anyone can recompute. Built by the person who shipped mcp.djzs.ai.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css">
 <style>
   :root{
     --canvas:#0A0A0A;--panel:#0D0D0D;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;
@@ -71,11 +70,15 @@
   nav.site a:hover{color:var(--text)} nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--pass)}
   nav.site a.home{color:var(--text)} a.wordmark{text-decoration:none}
   body::after{display:none}</style>
+<link rel="canonical" href="https://djzs.ai/build">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+<link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
+<link rel="alternate" type="application/json" href="https://mcp.djzs.ai/.well-known/agent.json" title="A2A agent card">
 </head>
 <body>
 <div class="wrap">
   <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build" aria-current="page">build</a></nav>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build" aria-current="page">build</a><a href="/guide">connect &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/build</span> $ cat offer.txt<span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Make your API callable and payable by AI agents.</h1>
     <div class="boot">
@@ -137,9 +140,9 @@
   </section>
 
   <footer>
-    <div class="k"><b>reference build</b>: <a href="https://mcp.djzs.ai/mcp">mcp.djzs.ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
+    <div class="k"><b>reference build</b>: <a href="https://mcp.djzs.ai/">mcp.djzs.ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
     <div class="k"><b>receipts</b>: <a href="https://djzs.ai/verify">djzs.ai/verify</a> · <b>ruleset</b>: <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a> · <b>for treasuries</b>: <a href="https://djzs.ai/builders">djzs.ai/builders</a></div>
-    <div class="k"><b>entity</b>: DJZS AI, LLC · California · <a href="https://djzs.ai/legal.html">legal</a></div>
+    <div class="k"><b>entity</b>: DJZS AI, LLC · California · <a href="/legal">legal</a> · <a href="/terms">terms</a></div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/build · fixed scope, fixed price, your keys</p>
   </footer>
 </div>
