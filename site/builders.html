@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DJZS for builders · a pre-execution gate your treasury can recompute</title>
-<meta name="description" content="Put a deterministic audit in front of every autonomous capital action. PASS, WAIT, or FAIL — with a receipt anyone can recompute and a permanent on-chain record. One line to integrate.">
+<meta name="description" content="Put a deterministic audit in front of every autonomous capital action. PASS, WAIT, or FAIL, with a receipt anyone can recompute and a permanent on-chain record. One line to integrate.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -79,16 +79,16 @@
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> A pre-execution gate your treasury can recompute.</h1>
     <div class="boot">
       <div class="row"><span class="ok">OK</span><span class="k">FOR</span><span class="v">agent-framework builders · DAO treasuries · anyone deploying autonomous capital</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">GATE</span><span class="v">deterministic audit of the reasoning behind a move — PASS / WAIT / FAIL</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">GATE</span><span class="v">deterministic audit of the reasoning behind a move · PASS / WAIT / FAIL</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">RECEIPT</span><span class="v">hash-locked verdict · permanent Irys certificate · on-chain trust score</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">RAIL</span><span class="v">Base mainnet · 2.00 USDC over x402 · one line to add as an MCP tool</span></div>
     </div>
-    <p class="lede">Your agent is about to move money. You already have spend caps — a budget clamp is not a firewall; it limits the size of the mistake, never whether the position should exist. Before the order leaves, your agent should be able to prove — to you, to governance, to a dispute six months from now — that the reasoning was sound at the moment it acted. DJZS produces that proof: <b>a verdict computed by frozen code, not improvised by a model, with a receipt a third party can recompute.</b></p>
+    <p class="lede">Your agent is about to move money. You already have spend caps. A budget clamp is not a firewall; it limits the size of the mistake, never whether the position should exist. Before the order leaves, your agent should be able to prove (to you, to governance, to a dispute six months from now) that the reasoning was sound at the moment it acted. DJZS produces that proof: <b>a verdict computed by frozen code, not improvised by a model, with a receipt a third party can recompute.</b></p>
   </header>
 
   <section>
     <h2>Two gates, two axes <span class="sub">DJZS audits WHY · your wallet stack audits WHAT</span></h2>
-    <p>Your transaction pipeline — simulation, threat scanning, smart transactions — already answers <b>is this transaction safe to sign?</b> It cannot answer the other question: <b>is the reasoning behind this position sound?</b> A transaction can clear every check and still act on a thesis that is unfalsifiable, unsourced, or pure narrative.</p>
+    <p>Your transaction pipeline (simulation, threat scanning, smart transactions) already answers <b>is this transaction safe to sign?</b> It cannot answer the other question: <b>is the reasoning behind this position sound?</b> A transaction can clear every check and still act on a thesis that is unfalsifiable, unsourced, or pure narrative.</p>
 <pre>capital action
    │
    ▼
@@ -108,7 +108,7 @@ on-chain</pre>
   <section>
     <h2>What integrating buys you <span class="sub">governance artifacts, not alpha</span></h2>
     <div class="grid">
-      <div class="cell"><h3>A verdict that can't be argued with after the fact</h3><p>An LLM <b>extracts facts</b> from the intent — it never returns a verdict. A frozen deterministic engine scores the struct: pure code, no model, no clock. Same struct, same verdict, same hash, every run. <span class="pass">PASS</span> proceeds. <span class="fail">FAIL</span> stops. Unknown drains to WAIT and halts.</p></div>
+      <div class="cell"><h3>A verdict that can't be argued with after the fact</h3><p>An LLM <b>extracts facts</b> from the intent; it never returns a verdict. A frozen deterministic engine scores the struct: pure code, no model, no clock. Same struct, same verdict, same hash, every run. <span class="pass">PASS</span> proceeds. <span class="fail">FAIL</span> stops. Unknown drains to WAIT and halts.</p></div>
       <div class="cell"><h3>A receipt anyone can recompute</h3><p>Weights are hash-locked exported constants. A change is a versioned re-derive, never a hot patch. That immutability is what lets a third party reproduce <code class="inl">verdict_hash</code> byte-for-byte from the published ruleset.</p></div>
       <div class="cell"><h3>A permanent, public audit trail</h3><p>Every in-scope audit anchors a ProofOfLogic certificate to Irys mainnet. Retrievable by id, free to read via <code class="inl">query_pol_certificates</code>. The record outlives the agent, the framework, and the operator.</p></div>
       <div class="cell"><h3>An on-chain reputation for the agent itself</h3><p>Pass an <code class="inl">agent_address</code> and the verdict writes to <code class="inl">DJZSLogicTrustScore</code> on Base. Anyone can read <b>totalAudits · failRate · latest verdict</b> via <code class="inl">query_agent_trust</code>. Governance can gate on it.</p></div>
@@ -119,12 +119,12 @@ on-chain</pre>
   <section>
     <h2>Honest posture <span class="sub">what a treasury should know before trusting this</span></h2>
     <div class="ladder">
-      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Paid audits on Base mainnet.</b> Non-custodial x402 settlement, EIP-3009 — funds move payer → treasury directly, facilitator pays gas. Out-of-scope requests are refused <b>free</b>. Four DJZS contracts attested on Base, source public, verifiable on Basescan.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Paid audits on Base mainnet.</b> Non-custodial x402 settlement, EIP-3009: funds move payer → treasury directly, facilitator pays gas. Out-of-scope requests are refused <b>free</b>. Four DJZS contracts attested on Base, source public, verifiable on Basescan.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Reproducible verdict hash.</b> Hash parity held byte-identical across every re-run since 2026-07-12, including runs with extraction divergence on non-preimage fields.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Reproducible binding + on-chain attestation.</b> Every paid verdict returns an EIP-712 <code class="inl">intent_hash</code> any third party recomputes from the intent alone, and writes an EAS attestation on Base under the DJZS schema onto the paying agent’s record. A Safe Guard or Zodiac module can require it. Contract at <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a>; recompute any receipt at <a href="https://djzs.ai/verify">djzs.ai/verify</a>.</span></div>
-      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Perpetuals.</b> <code class="inl">verify_perp_trade</code> live at 2.00 USDC on the same rail — DJZS-LF v1.2, four codes live (E01, I01, X01, S01). A position stated with no thesis fails; a prediction-market bet sent here is refused free.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Perpetuals.</b> <code class="inl">verify_perp_trade</code> live at 2.00 USDC on the same rail: DJZS-LF v1.2, four codes live (E01, I01, X01, S01). A position stated with no thesis fails; a prediction-market bet sent here is refused free.</span></div>
     </div>
-    <p>A DJZS PASS certifies <b>well-formed reasoning at a moment</b> — never that the narrative is true or the trade wins. It does not check that a quoted price is still live or that a source is right. Those remain yours.</p>
+    <p>A DJZS PASS certifies <b>well-formed reasoning at a moment</b>, never that the narrative is true or the trade wins. It does not check that a quoted price is still live or that a source is right. Those remain yours.</p>
     <p class="coda">Disclosed as roadmap, not sold as done.</p>
   </section>
 
@@ -132,11 +132,11 @@ on-chain</pre>
     <h2>Integrate <span class="sub">one line, one endpoint, one reference client</span></h2>
     <p>As an MCP tool:</p>
 <pre>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</pre>
-    <p>As plain HTTP x402 — any x402 client pays this (Base MCP, MetaMask Agent Wallet, x402-axios). An unpaid request returns the 402 challenge and settles nothing:</p>
+    <p>As plain HTTP x402: any x402 client pays this (Base MCP, MetaMask Agent Wallet, x402-axios). An unpaid request returns the 402 challenge and settles nothing:</p>
 <pre>curl -s -X POST https://mcp.djzs.ai/x402/verify_pm_trade \
   -H 'content-type: application/json' \
   -d '{"intent":{"market":"…","side":"YES","thesis":"…"}}'</pre>
-    <p>Perpetual or spot trade — same rail, same price; a position stated with no thesis fails (DJZS-S01), a prediction-market bet is refused free:</p>
+    <p>Perpetual or spot trade: same rail, same price; a position stated with no thesis fails (DJZS-S01), a prediction-market bet is refused free:</p>
 <pre>curl -s -X POST https://mcp.djzs.ai/x402/verify_perp_trade \
   -H 'content-type: application/json' \
   -d '{"intent":{"instrument":"BTC-PERP","side":"LONG","leverage":5,"entry":78900,"stop_loss":76200,"take_profit":83000,"size_usd":3000,"venue":"Binance","thesis":"…"}}'</pre>
@@ -147,9 +147,9 @@ on-chain</pre>
   </section>
 
   <footer>
-    <div class="k"><b>source of truth</b> — <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
-    <div class="k"><b>ruleset &amp; contract</b> — <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a> · <b>verify</b> — <a href="https://djzs.ai/verify">djzs.ai/verify</a></div>
-    <div class="k"><b>contact</b> — <a href="https://x.com/Djzs_ai">X @Djzs_ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">support</a> · <a href="https://djzs.ai/legal.html">legal</a></div>
+    <div class="k"><b>source of truth</b>: <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
+    <div class="k"><b>ruleset &amp; contract</b>: <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a> · <b>verify</b>: <a href="https://djzs.ai/verify">djzs.ai/verify</a></div>
+    <div class="k"><b>contact</b>: <a href="https://x.com/Djzs_ai">X @Djzs_ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">support</a> · <a href="https://djzs.ai/legal.html">legal</a></div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/builders · no agent acts without audit</p>
   </footer>
 </div>

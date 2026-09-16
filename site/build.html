@@ -82,7 +82,7 @@
       <div class="row"><span class="ok">OK</span><span class="k">FOR</span><span class="v">API owners · SaaS founders · Base ecosystem projects · any business an agent should be able to find and pay</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">DELIVER</span><span class="v">an MCP server, an x402 payment gate on Base, discovery files agents actually read, a receipt anyone can recompute</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">TERMS</span><span class="v">fixed scope · fixed price · half up front · source lands in your repo · you hold every key</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">PROOF</span><span class="v">this exact stack is live at mcp.djzs.ai — two paid tools, settled on Base mainnet since 2026-07-13</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">PROOF</span><span class="v">this exact stack is live at mcp.djzs.ai: two paid tools, settled on Base mainnet since 2026-07-13</span></div>
     </div>
     <p class="lede">Agents are already paying for API calls with USDC over x402. Most APIs cannot receive that payment: no MCP surface, no 402 challenge, no discovery file, no receipt. <b>I build the missing layer in two weeks, at a fixed price, from a stack I have already run in production on my own domain.</b> You get the code, the keys, and the runbook. I get out of the way.</p>
   </header>
@@ -92,7 +92,7 @@
     <div class="grid">
       <div class="cell"><h3>Agent-ready API</h3><p>Your existing endpoints wrapped as an MCP server on Cloudflare Workers, an x402 v2 paywall in front of the routes you choose (USDC on Base, CDP facilitator, funds settle payer → your wallet), <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, Bazaar listing submitted. Deploy runbook included.<span class="price">$3,500 <span>· 10 working days · one paid route; +$600 per additional route</span></span></p></div>
       <div class="cell"><h3>Receipt layer</h3><p>Every paid response carries an EIP-712 hash of the request and an EAS attestation on Base under your own schema, from an attester wallet you control. Plus a static verifier page so a customer, a court, or a DAO can recompute the receipt without trusting you.<span class="price">$2,500 <span>· 5 working days · add-on to Agent-ready API, or standalone on an API that already exists</span></span></p></div>
-      <div class="cell"><h3>Business manifest</h3><p>For a physical or local business: a signed <code class="inl">/.well-known/sifr0.json</code> — services, prices, hours, booking method, policies — so an agent shopping on a customer's behalf can find you, quote you, and act. Includes registry listing at sifr0.dev and one revision.<span class="price">$400 <span>· 3 working days · no code on your side</span></span></p></div>
+      <div class="cell"><h3>Business manifest</h3><p>For a physical or local business: a signed <code class="inl">/.well-known/sifr0.json</code> (services, prices, hours, booking method, policies) so an agent shopping on a customer's behalf can find you, quote you, and act. Includes registry listing at sifr0.dev and one revision.<span class="price">$400 <span>· 3 working days · no code on your side</span></span></p></div>
       <div class="cell"><h3>Keep-alive</h3><p>Monthly: dependency and Worker-runtime updates, facilitator and schema changes tracked, discovery files re-validated against the current x402 spec, a health probe with alerts, and one hour of changes. Cancel any month.<span class="price">$600 / month <span>· starts after delivery · optional</span></span></p></div>
     </div>
     <p class="coda">Scope is written before money moves. Anything not on the scope sheet is a second engagement, not a surprise.</p>
@@ -101,11 +101,11 @@
   <section>
     <h2>Why this builder <span class="sub">every line of this has shipped on this domain</span></h2>
     <div class="ladder">
-      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Paid MCP tools over x402 on Base mainnet.</b> <code class="inl">verify_pm_trade</code> and <code class="inl">verify_perp_trade</code> at 2.00 USDC each, non-custodial EIP-3009 settlement, out-of-scope requests refused free. An unpaid request returns the 402 challenge and settles nothing — try it: <code class="inl">GET https://mcp.djzs.ai/x402/verify_pm_trade</code>.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Paid MCP tools over x402 on Base mainnet.</b> <code class="inl">verify_pm_trade</code> and <code class="inl">verify_perp_trade</code> at 2.00 USDC each, non-custodial EIP-3009 settlement, out-of-scope requests refused free. An unpaid request returns the 402 challenge and settles nothing. Try it: <code class="inl">GET https://mcp.djzs.ai/x402/verify_pm_trade</code>.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Receipts a third party can recompute.</b> EIP-712 <code class="inl">intent_hash</code> plus an EAS attestation on Base from a dedicated attester, on every paid verdict since 2026-09-01. Recompute any of them at <a href="https://djzs.ai/verify">djzs.ai/verify</a>.</span></div>
-      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Discovery surfaces agents read.</b> <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, verified Base app registration — all on this site, all free to inspect.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Discovery surfaces agents read.</b> <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, verified Base app registration, all on this site, all free to inspect.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Pre-registered, published test discipline.</b> Exhaustive engine sweeps in CI, extraction-stability harnesses with the raw runs committed, a ruleset page that reports the measured band instead of the best run. Read it at <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a>. You will get the same honesty about your build.</span></div>
-      <div class="rung wait"><span class="verdict">HONEST</span><span class="d"><b>What I cannot promise.</b> That agents will find you on day one. Bazaar indexing is slow and inconsistent — I have the scan logs to prove it. I build the surfaces correctly, submit the listing, and hand you the probe script. Traffic is a distribution problem you and I solve after the plumbing exists.</span></div>
+      <div class="rung wait"><span class="verdict">HONEST</span><span class="d"><b>What I cannot promise.</b> That agents will find you on day one. Bazaar indexing is slow and inconsistent; I have the scan logs to prove it. I build the surfaces correctly, submit the listing, and hand you the probe script. Traffic is a distribution problem you and I solve after the plumbing exists.</span></div>
     </div>
   </section>
 
@@ -137,9 +137,9 @@
   </section>
 
   <footer>
-    <div class="k"><b>reference build</b> — <a href="https://mcp.djzs.ai/mcp">mcp.djzs.ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
-    <div class="k"><b>receipts</b> — <a href="https://djzs.ai/verify">djzs.ai/verify</a> · <b>ruleset</b> — <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a> · <b>for treasuries</b> — <a href="https://djzs.ai/builders">djzs.ai/builders</a></div>
-    <div class="k"><b>entity</b> — DJZS AI, LLC · California · <a href="https://djzs.ai/legal.html">legal</a></div>
+    <div class="k"><b>reference build</b>: <a href="https://mcp.djzs.ai/mcp">mcp.djzs.ai</a> · <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a></div>
+    <div class="k"><b>receipts</b>: <a href="https://djzs.ai/verify">djzs.ai/verify</a> · <b>ruleset</b>: <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a> · <b>for treasuries</b>: <a href="https://djzs.ai/builders">djzs.ai/builders</a></div>
+    <div class="k"><b>entity</b>: DJZS AI, LLC · California · <a href="https://djzs.ai/legal.html">legal</a></div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/build · fixed scope, fixed price, your keys</p>
   </footer>
 </div>

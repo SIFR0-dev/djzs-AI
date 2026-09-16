@@ -58,17 +58,17 @@
     <p class="path"><span class="p">~/djzs/verify</span> $ <span id="cmd">recompute --receipt --v2</span><span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Proof-of-Logic Verifier <span style="color:var(--muted);font-weight:500">v2</span></h1>
     <div class="boot">
-      <div class="row"><span class="ok">OK</span><span class="k">SCOPE</span><span class="v">recomputation — trusts the chain, not DJZS</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">SCOPE</span><span class="v">recomputation · trusts the chain, not DJZS</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">SETTLEMENT</span><span class="v">USDC transfer read direct from Base</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">BINDING</span><span class="v">intent_hash recomputed as EIP-712 typed data — domain DJZS · 2 · 8453</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">ATTESTATION</span><span class="v">EAS getAttestation(eas_uid) — schema, attester, recipient, fields</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">BINDING</span><span class="v">intent_hash recomputed as EIP-712 typed data · domain DJZS · 2 · 8453</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">ATTESTATION</span><span class="v">EAS getAttestation(eas_uid) · schema, attester, recipient, fields</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">LADDER</span><span class="v">PASS reproduced · WAIT unprovable · FAIL contradicted</span></div>
     </div>
-    <p class="lede">A receipt is a claim. This tool recomputes it. Settlement from the chain; the binding key from the intent alone; the attestation from EAS — and it checks that all three <b>agree with each other</b>. Nothing here trusts DJZS. Unknown resolves to <b>WAIT</b>, contradiction to <b>FAIL</b>.</p>
+    <p class="lede">A receipt is a claim. This tool recomputes it. Settlement from the chain; the binding key from the intent alone; the attestation from EAS. It checks that all three <b>agree with each other</b>. Nothing here trusts DJZS. Unknown resolves to <b>WAIT</b>, contradiction to <b>FAIL</b>.</p>
   </header>
 
   <div class="io">
-    <p class="label">receipt · json — body + payment_response as the gate returned them</p>
+    <p class="label">receipt · json · body + payment_response as the gate returned them</p>
     <textarea id="rcpt" spellcheck="false"></textarea>
     <div class="controls">
       <button class="btn" id="run">Recompute</button>
@@ -78,15 +78,15 @@
   </div>
 
   <div class="verdict" id="verdict" data-state="idle" hidden>
-    <div class="verdict-head"><span class="stamp" id="vstamp">—</span><span class="verdict-title" id="vtitle"></span></div>
+    <div class="verdict-head"><span class="stamp" id="vstamp">·</span><span class="verdict-title" id="vtitle"></span></div>
     <p class="verdict-note" id="vnote"></p>
   </div>
   <div class="ledger" id="ledger"><div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div></div>
 
   <section class="anchors" aria-labelledby="anchors-h">
-    <p class="label" id="anchors-h">Q3 daily anchors — the study's record book, Merkle-rooted to Irys</p>
+    <p class="label" id="anchors-h">Q3 daily anchors · the study's record book, Merkle-rooted to Irys</p>
     <div class="ledger">
-<!-- BEGIN q3-anchors · generated from tests/q3/anchors.json by tests/q3/render-anchors.ts — do not edit by hand -->
+<!-- BEGIN q3-anchors · generated from tests/q3/anchors.json by tests/q3/render-anchors.ts. Do not edit by hand -->
       <div class="row">
         <span class="d">2026-09-14</span>
         <p class="m">10 records<span class="chip">protocol 1.13</span></p>
@@ -111,14 +111,14 @@
       </div>
 <!-- END q3-anchors -->
     </div>
-    <p class="note">Each day's sealed <code class="inl">record_hash</code> values are Merkle-rooted and the root written to Irys. Git history alone is rewritable and is not tamper-evidence; these items are. Recompute with <code class="inl">npx tsx tests/q3/q3-anchor.ts --verify &lt;date&gt;</code> — it fetches the item and compares the anchored root against one recomputed from the committed records.</p>
+    <p class="note">Each day's sealed <code class="inl">record_hash</code> values are Merkle-rooted and the root written to Irys. Git history alone is rewritable and is not tamper-evidence; these items are. Recompute with <code class="inl">npx tsx tests/q3/q3-anchor.ts --verify &lt;date&gt;</code>; it fetches the item and compares the anchored root against one recomputed from the committed records.</p>
   </section>
 
   <footer>
-    <div class="k"><b>settlement</b> — Base chain read, independent of DJZS.</div>
-    <div class="k"><b>binding</b> — EIP-712 hashStruct(DJZSIntent) under the published domain. v1 <code class="inl">intent_sha256</code> recomputed via renderIntentText.</div>
-    <div class="k"><b>attestation</b> — EAS on Base · schema 0x5ef67e2b…2030 · attester 0xfB0e…7824.</div>
-    <div class="k"><b>verdict</b> — attested by DJZS; re-deriving it from rules requires the published engine.</div>
+    <div class="k"><b>settlement</b>: Base chain read, independent of DJZS.</div>
+    <div class="k"><b>binding</b>: EIP-712 hashStruct(DJZSIntent) under the published domain. v1 <code class="inl">intent_sha256</code> recomputed via renderIntentText.</div>
+    <div class="k"><b>attestation</b>: EAS on Base · schema 0x5ef67e2b…2030 · attester 0xfB0e…7824.</div>
+    <div class="k"><b>verdict</b>: attested by DJZS; re-deriving it from rules requires the published engine.</div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/verify · audit before act</p>
   </footer>
 </div>
@@ -133,7 +133,7 @@ const RPCS=["https://base.llamarpc.com","https://base-rpc.publicnode.com","https
 // Irys provenance. The tags on an item are strings anyone can write; the SIGNER
 // is the one part a third party cannot forge, so it is the only thing worth
 // checking. DJZS_IRYS_SIGNER is the address derived from the Worker's upload
-// key, read off items the Worker has already signed — see
+// key, read off items the Worker has already signed; see
 // djzs-trust-mcp/src/corrections.ts. Mirrored here so this page needs nothing
 // from DJZS at run time except the public Irys index.
 const IRYS_GQL="https://uploader.irys.xyz/graphql";
@@ -153,7 +153,7 @@ const ZERO32="0x"+"00".repeat(32);
 const EAS_ABI=parseAbi(["function getAttestation(bytes32 uid) view returns ((bytes32 uid,bytes32 schema,uint64 time,uint64 expirationTime,uint64 revocationTime,bytes32 refUID,address recipient,address attester,bool revocable,bytes data))"]);
 const FIELDS=[{type:"bytes32"},{type:"string"},{type:"uint8"},{type:"string[]"},{type:"string"}];
 
-// the live v2 receipt — settlement 0xfdd03e7e…, attestation 0xc5995989… on Base, 2026-09-01T20:34Z
+// the live v2 receipt: settlement 0xfdd03e7e…, attestation 0xc5995989… on Base, 2026-09-01T20:34Z
 const SAMPLE={
   intent:{market:"KXBTCD-26SEP0217-T76999.99",side:"YES",
     thesis:"BTC spot ~$77,263 (Coinbase 2026-09-01T20:08Z) sits ~0.34% above the $77,000 line; absent a close under $77,000 at the Sep 2 settlement, KXBTCD-26SEP0217-T76999.99 resolves YES.",
@@ -175,11 +175,11 @@ $("#load").onclick=()=>{ta.value=JSON.stringify(SAMPLE,null,2)}; $("#clear").onc
 ta.value=JSON.stringify(SAMPLE,null,2);
 function empty(){$("#ledger").innerHTML='<div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div>'}
 
-// same documented defaults as the engine's toDJZSIntent — venue "" unless supplied, cents, ZERO32
+// same documented defaults as the engine's toDJZSIntent: venue "" unless supplied, cents, ZERO32
 function toDJZSIntent(pm){const c=x=>BigInt(Math.round((typeof x==="number"&&isFinite(x)?x:0)*100));
   return {action:"pm_trade",venue:pm.venue??"",market:pm.market,side:pm.side,thesis:pm.thesis,probability_basis:pm.probability_basis??"",
     size_usd_cents:c(pm.size_usd),max_loss_usd_cents:c(pm.bounds?.max_loss_usd),exit_condition:pm.bounds?.exit_condition??"",params_hash:ZERO32};}
-// exact port of engine-adapter.ts renderIntentText — the v1 binding rule
+// exact port of engine-adapter.ts renderIntentText, the v1 binding rule
 function renderIntentText(i){if(typeof i==="string")return i;if(!i||typeof i!=="object")return String(i);return Object.keys(i).sort().map(k=>{const v=i[k];const s=typeof v==="string"?v:(typeof v==="number"||typeof v==="boolean")?String(v):JSON.stringify(v);return `${k}: ${s}`}).join("\n")}
 async function sha256hex(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return"0x"+[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
 async function rpc(method,params){let last;for(const url of RPCS){try{const r=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});if(!r.ok){last=new Error(url+" HTTP "+r.status);continue}const j=await r.json();if(j.error){last=new Error(j.error.message);continue}return{result:j.result,node:url.replace("https://","")}}catch(e){last=e}}throw last||new Error("no reachable Base node")}
@@ -188,7 +188,7 @@ async function run(){
   const btn=$("#run");btn.disabled=true;btn.textContent="Recomputing…";
   const C=[];let r;try{r=JSON.parse(ta.value)}catch(e){setV("fail","FAIL","receipt unreadable","Not valid JSON.");render([{r:"fail",tok:"FAIL",name:"Parse receipt",chip:"FAIL",body:e.message}]);reset(btn);return}
 
-  // 1 — settlement
+  // 1: settlement
   let settleOK=false;const tx=r?.payment_response?.transaction;
   if(!tx)C.push({r:"fail",tok:"FAIL",name:"Settlement present",chip:"FAIL",body:"No payment_response.transaction in receipt."});
   else try{const {result:rc,node}=await rpc("eth_getTransactionReceipt",[tx]);
@@ -202,20 +202,20 @@ async function run(){
         ev:`status ${ok?"0x1 success":rc.status} · block ${parseInt(rc.blockNumber,16)} · node ${node}`+(x?`\nUSDC ${amt?.toFixed(2)} -> ${to}`:"\nno USDC Transfer log"),link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}}
   catch(e){C.push({r:"wait",tok:"WAIT",name:"Settlement on Base",chip:"UNREACHABLE",body:"No Base node reachable from this browser.",ev:e.message,link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}
 
-  // 2 — binding: v2 EIP-712 (intent_hash) and v1 renderIntentText (intent_sha256), checked independently
+  // 2: binding; v2 EIP-712 (intent_hash) and v1 renderIntentText (intent_sha256), checked independently
   let recomputed=null,bindOK=false;
   if(r.intent&&r.intent_hash){try{recomputed=hashTypedData({domain:DOMAIN,types:TYPES,primaryType:"DJZSIntent",message:toDJZSIntent(r.intent)});bindOK=norm(recomputed)===norm(r.intent_hash);
       C.push({r:bindOK?"pass":"fail",tok:bindOK?"OK":"FAIL",name:"Intent binding · v2",chip:bindOK?"PROVEN":"MISMATCH",
-        body:bindOK?"intent_hash reproduced from the intent alone as EIP-712 typed data. The verdict is provably bound to this exact intent — by anyone, with no access to DJZS.":"Recomputed EIP-712 hash does not equal the receipt's intent_hash. Either the intent text differs from what was audited, or the engine's canonicalization has diverged from the published contract.",
+        body:bindOK?"intent_hash reproduced from the intent alone as EIP-712 typed data. The verdict is provably bound to this exact intent, by anyone, with no access to DJZS.":"Recomputed EIP-712 hash does not equal the receipt's intent_hash. Either the intent text differs from what was audited, or the engine's canonicalization has diverged from the published contract.",
         ev:`receipt     ${r.intent_hash}\nrecomputed  ${recomputed}\ndomain      DJZS · 2 · eip155:8453`})}
     catch(e){C.push({r:"wait",tok:"WAIT",name:"Intent binding · v2",chip:"ERROR",body:"Could not compute EIP-712 hash.",ev:e.message})}}
   if(r.intent&&r.intent_sha256){const v1=await sha256hex(renderIntentText(r.intent));const m=norm(v1)===norm(r.intent_sha256);
     C.push({r:m?"pass":"fail",tok:m?"OK":"FAIL",name:"Intent binding · v1 (intent_sha256)",chip:m?"PROVEN":"MISMATCH",
-      body:m?"intent_sha256 reproduced: sha256 over renderIntentText(intent) — sorted keys, one key: value line each, nested objects as compact JSON. A pure function of the intent, recomputable by anyone.":"Recomputed intent_sha256 does not equal the receipt's — the intent text differs from what was audited.",
+      body:m?"intent_sha256 reproduced: sha256 over renderIntentText(intent): sorted keys, one key: value line each, nested objects as compact JSON. A pure function of the intent, recomputable by anyone.":"Recomputed intent_sha256 does not equal the receipt's; the intent text differs from what was audited.",
       ev:`receipt     ${r.intent_sha256}\nrecomputed  ${v1}`})}
   if(!(r.intent&&(r.intent_hash||r.intent_sha256)))C.push({r:"wait",tok:"WAIT",name:"Intent binding",chip:"ABSENT",body:"Receipt lacks intent + a binding key."});
 
-  // 3 — attestation on EAS
+  // 3: attestation on EAS
   let attOK=false;
   if(!r.eas_uid)C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"ABSENT",body:r.eas_error?"Gate reported an attestation failure. The verdict was still delivered and charged; the on-chain record did not land.":"Receipt carries no eas_uid (pre-v2 receipt).",ev:r.eas_error||""});
   else try{const data=encodeFunctionData({abi:EAS_ABI,functionName:"getAttestation",args:[r.eas_uid]});
@@ -234,9 +234,9 @@ async function run(){
           link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}}
     catch(e){C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"UNREACHABLE",body:"Could not read EAS from this browser.",ev:e.message,link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}
 
-  // 4 — Irys provenance. Applies to the certificate this receipt names AND to
+  // 4: Irys provenance. Applies to the certificate this receipt names AND to
   // every registered correction: an item is ours only if the DJZS signer signed
-  // it. Tags prove nothing — one item exists carrying a correction's exact tags
+  // it. Tags prove nothing; one item exists carrying a correction's exact tags
   // and text, signed by a throwaway key, and it is named below as not ours.
   const certId=r?.pol_certificate?.irys_id;
   if(certId){const g=await irysSigner(certId);
@@ -249,7 +249,7 @@ async function run(){
 
   for(const c of CORRECTIONS){
     if(!c.anchored_irys_id)C.push({r:"wait",tok:"WAIT",name:"Correction "+c.id+" anchor",chip:"NOT ANCHORED",
-      body:"This correction is authored and published in the repository but not yet anchored to Irys. Until it is, there is no canonical anchor for it — and any item claiming to be one is not ours.",
+      body:"This correction is authored and published in the repository but not yet anchored to Irys. Until it is, there is no canonical anchor for it, and any item claiming to be one is not ours.",
       ev:"corrects  "+c.corrects_irys_id});
     else{const g=await irysSigner(c.anchored_irys_id);
       if(g.err)C.push({r:"wait",tok:"WAIT",name:"Correction "+c.id+" anchor",chip:"UNREACHABLE",body:"Could not read the Irys index from this browser.",ev:c.anchored_irys_id+"\n"+g.err});
@@ -260,26 +260,26 @@ async function run(){
           link:["view on the gateway","https://gateway.irys.xyz/"+c.anchored_irys_id]})}}
     for(const st of (c.known_strays||[]))
       C.push({r:"fail",tok:"FAIL",name:"Known stray for "+c.id,chip:"NOT OURS",
-        body:st.note+" It cannot be deleted — Irys is permanent — so it is named here instead. The canonical anchor is the one this register names AND the DJZS signer signed.",
+        body:st.note+" It cannot be deleted (Irys is permanent), so it is named here instead. The canonical anchor is the one this register names AND the DJZS signer signed.",
         ev:`item    ${st.irys_id}\nsigner  ${st.signer}  != DJZS ${DJZS_IRYS_SIGNER}`,
         link:["view on the gateway","https://gateway.irys.xyz/"+st.irys_id]});
   }
 
-  // 5 — verdict reproducibility
+  // 5: verdict reproducibility
   C.push({r:"idle",tok:"----",name:"Verdict reproducibility",chip:attOK?"ATTESTED":"NEEDS RULESET",body:attOK?"The verdict is attested on-chain by DJZS. Re-deriving it from the rules independently requires the published engine; the attestation is the binding commitment.":"verdict_hash attests DJZS produced this verdict; re-deriving it requires the published ruleset.",ev:r.verdict_hash||""});
 
   render(C);
   const s=C.find(c=>c.name.startsWith("Settlement")),a=C.find(c=>c.name.startsWith("Attestation"));
-  // The stray rows are FAIL by their own nature — they are the page saying "this
+  // The stray rows are FAIL by their own nature; they are the page saying "this
   // item is not ours". They deliberately do NOT drag the receipt's verdict down:
   // the receipt is not contradicted by somebody else's upload existing. A real
   // provenance failure on the certificate THIS receipt names does, and is
   // included via the Settlement/Attestation/binding trio plus the row itself.
   const prov=C.find(c=>c.name==="Certificate provenance on Irys");const bR=C.filter(c=>c.name.startsWith("Intent binding"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
   if(s?.r==="fail"||b?.r==="fail"||a?.r==="fail"||prov?.r==="fail")setV("fail","FAIL","receipt contradicts the chain","At least one recomputation contradicts what the receipt claims. Treat it as unverified.","Recompute or it didn't happen.");
-  else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","fully reproduced","Payment settled on Base. The binding key recomputes from the intent alone. An EAS attestation from the DJZS identity binds that key to this verdict on the paying agent's record. Three independent reads, one consistent story — and none of them trusted DJZS.","Same receipt, same result, any machine.");
-  else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","attestation not on chain","Settlement and binding both reproduce; the on-chain attestation is absent or unreachable. The verdict is real and bound — it just isn't yet on the public record.","Unknown means WAIT.");
-  else if(s?.r==="pass")setV("wait","WAIT","binding unprovable","Settlement proven; the binding could not be reproduced. v1 receipt — re-audit for v2.","Unknown means WAIT.");
+  else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","fully reproduced","Payment settled on Base. The binding key recomputes from the intent alone. An EAS attestation from the DJZS identity binds that key to this verdict on the paying agent's record. Three independent reads, one consistent story, and none of them trusted DJZS.","Same receipt, same result, any machine.");
+  else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","attestation not on chain","Settlement and binding both reproduce; the on-chain attestation is absent or unreachable. The verdict is real and bound; it just isn't yet on the public record.","Unknown means WAIT.");
+  else if(s?.r==="pass")setV("wait","WAIT","binding unprovable","Settlement proven; the binding could not be reproduced. v1 receipt; re-audit for v2.","Unknown means WAIT.");
   else setV("wait","WAIT","settlement unconfirmed","Could not confirm settlement from this browser.","Read the chain, don't trust the tab.");
   reset(btn);
 }

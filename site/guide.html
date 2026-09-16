@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DJZS — connect the reasoning gate (MCP setup)</title>
+  <title>DJZS: connect the reasoning gate (MCP setup)</title>
   <meta name="description" content="Connect verify_pm_trade to an MCP-capable agent: one-line install or config JSON, streamable HTTP at /mcp." />
   <link rel="canonical" href="https://djzs.ai/guide.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="DJZS — connect the reasoning gate (MCP setup)" />
+  <meta property="og:title" content="DJZS: connect the reasoning gate (MCP setup)" />
   <meta property="og:description" content="One-line MCP install, tool reference, and the proven x402 payer recipe for verify_pm_trade." />
   <meta property="og:url" content="https://djzs.ai/guide.html" />
   <meta name="twitter:card" content="summary" />
@@ -41,10 +41,10 @@
     <h1>Connect the gate</h1>
     <p class="lede">DJZS is exposed as a Model Context Protocol server over streamable HTTP at
     <code>/mcp</code>. Two paid tools: <code>verify_pm_trade</code> for prediction-market theses and
-    <code>verify_perp_trade</code> for perpetual/spot trade theses — the pre-execution audit an agent calls before it acts.</p>
+    <code>verify_perp_trade</code> for perpetual/spot trade theses, the pre-execution audit an agent calls before it acts.</p>
     <div class="status">
       <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">MODE</span><span class="val">CONNECT — streamable HTTP at /mcp</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">MODE</span><span class="val">CONNECT · streamable HTTP at /mcp</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">PRICE</span><span class="val">verify_pm_trade 2.00 USDC via x402 · registry tools free</span></div>
     </div>
     <p>Endpoint: <code>https://mcp.djzs.ai/mcp</code></p>
@@ -53,7 +53,7 @@
   <section>
     <h2>Setup <span class="k">// step 01 · one line</span></h2>
     <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
-    <p class="muted">Listed in the official <a href="https://registry.modelcontextprotocol.io/v0/servers?search=djzs">MCP Registry</a> as <code>ai.djzs/trust-mcp</code> — MCP clients that read the registry can discover it there.</p>
+    <p class="muted">Listed in the official <a href="https://registry.modelcontextprotocol.io/v0/servers?search=djzs">MCP Registry</a> as <code>ai.djzs/trust-mcp</code>; MCP clients that read the registry can discover it there.</p>
     <h3>Or via config JSON</h3>
     <p>For agents that read an MCP server map, register the streamable-HTTP endpoint:</p>
     <pre><code>{
@@ -81,7 +81,7 @@
     </table>
     </div>
 
-    <h3><code>verify_pm_trade</code> — the gate <span class="h3-tag t-paid">Paid</span></h3>
+    <h3><code>verify_pm_trade</code> · the gate <span class="h3-tag t-paid">Paid</span></h3>
     <p>Pass a free-text prediction-market trade thesis. The tool extracts the reasoning (N=3
     consensus), audits it against the calibrated DJZS-M taxonomy, and returns one of three verdicts
     with flagged defects and a reproducible <code>verdict_hash</code>. It is
@@ -98,28 +98,28 @@
     <code>verdict_hash</code>, <code>extraction_failsafe</code>, <code>in_scope</code>, taxonomy
     versions, and <code>pol_certificate</code> (the anchored Irys certificate).</p>
     <p>Optional input <code>agent_address</code> (a 0x wallet): when present, the verdict is also
-    written to that agent's on-chain trust record after the certificate anchors — fail-open, never
+    written to that agent's on-chain trust record after the certificate anchors: fail-open, never
     altering the audit. The tool is <a href="#pay">paid: 2.00 USDC per audit</a>; the two registry
     tools below are free.</p>
 
     <h3><code>query_pol_certificates</code> <span class="h3-tag t-free">Free</span></h3>
-    <p>Reads ProofOfLogic certificates from the Irys datachain (mainnet, permanent) — including the
+    <p>Reads ProofOfLogic certificates from the Irys datachain (mainnet, permanent), including the
     certificate every in-scope <code>verify_pm_trade</code> audit anchors, plus prior-architecture
     lineage. Free.</p>
 
     <h3><code>query_agent_trust</code> <span class="h3-tag t-free">Free</span></h3>
-    <p>LIVE — reads an agent's on-chain trust record from the DJZS subgraph on The Graph. Pass
+    <p>LIVE: reads an agent's on-chain trust record from the DJZS subgraph on The Graph. Pass
     <code>agentAddress</code> (0x wallet); returns <code>totalAudits</code>, pass/fail counts,
     <code>failRate</code>, latest verdict and risk score, DJZS-S01/X01 flag counts, and an
     <code>action</code> of <code>PROCEED</code>, <code>HALT</code> (failRate &gt; 0.3 or S01/X01 fired
-    more than once), or <code>NO_HISTORY</code> (no audits on record — never a silent pass). Free.
+    more than once), or <code>NO_HISTORY</code> (no audits on record, never a silent pass). Free.
     Records enter this index when audits are called with <code>agent_address</code>.</p>
   </section>
 
   <section id="pay">
     <h2>Pay for the audit <span class="k">// step 03 · x402, 2.00 USDC, non-custodial</span></h2>
     <p><code>verify_pm_trade</code> is paid: 2.00 USDC per audit on Base mainnet over x402. An unpaid
-    call is refused with a payment-required error — no free tier, no API key. Payment is
+    call is refused with a payment-required error: no free tier, no API key. Payment is
     non-custodial: your EIP-3009 signature moves USDC from your wallet directly to the DJZS treasury;
     the facilitator submits the transfer and pays the gas, so your wallet needs USDC only, no ETH.</p>
     <p>The MCP-native payer path, exactly as the production parity instrument runs it:</p>
@@ -146,7 +146,7 @@ const res = await paid.callTool(
 )</code></pre>
     <p>Two payer pitfalls, both hit and proven live: <code>maxPaymentValue</code> must be raised to
     <code>2000000n</code> (the default 0.10 USDC cap refuses the price before signing anything), and the
-    wrapped client's <code>callTool</code> is callback-first — the confirmation callback is the first
+    wrapped client's <code>callTool</code> is callback-first: the confirmation callback is the first
     argument, the tool call the second.</p>
     <p class="muted">Verified path only: this recipe is the one the deploy-parity gate replays against
     production. Other x402 clients (HTTP-framed wrappers, AgentKit) are deliberately undocumented here
@@ -155,7 +155,7 @@ const res = await paid.callTool(
 
   <section id="verify">
     <h2>What comes back <span class="k">// step 04 · a real paid response</span></h2>
-    <p>An actual production response — the deploy-parity replay of benchmark thesis
+    <p>An actual production response: the deploy-parity replay of benchmark thesis
     <code>pm-block-008</code> (2026-07-17), abridged to the decision fields. Nothing staged: the
     certificate below is permanently retrievable and the hash reproduces byte-identical on every
     replay of the same extracted struct.</p>
@@ -175,18 +175,18 @@ const res = await paid.callTool(
   }
 }</pre>
     </div>
-    <p class="muted"><code>disagreements</code> lists fields where the N=3 extraction diverged —
+    <p class="muted"><code>disagreements</code> lists fields where the N=3 extraction diverged;
     <code>stop_loss</code> sits outside the hash preimage, so the verdict_hash held anyway. Pull the
-    certificate yourself: <a href="https://gateway.irys.xyz/EuJ1evB3PWiNwvcMkixyRreaXEhfKGrzGwS6e4o1pyzp">gateway.irys.xyz/EuJ1evB3…</a>
-    — same thesis, same struct, same hash, forever.</p>
+    certificate yourself: <a href="https://gateway.irys.xyz/EuJ1evB3PWiNwvcMkixyRreaXEhfKGrzGwS6e4o1pyzp">gateway.irys.xyz/EuJ1evB3…</a>:
+    same thesis, same struct, same hash, forever.</p>
   </section>
 
   <section>
     <h2>Taxonomy</h2>
-    <p>The DJZS-M and DJZS-LF taxonomies — code names, severities, and weights — are documented once,
+    <p>The DJZS-M and DJZS-LF taxonomies (code names, severities, and weights) are documented once,
     as a single source of truth, in the repository README's Taxonomies section:
     <a href="https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen">github.com/SIFR0-dev/djzs-AI → Taxonomies</a>.
-    This guide deliberately keeps no local copy — one table, one source.</p>
+    This guide deliberately keeps no local copy: one table, one source.</p>
     <p class="doctrine">Connect once. Audit before every act.</p>
   </section>
 
@@ -194,7 +194,7 @@ const res = await paid.callTool(
 
 <footer class="site">
   <div class="wrap">
-    <span>DJZS — connect once, audit before every act.</span>
+    <span>DJZS: connect once, audit before every act.</span>
     <span>
       <a href="https://x.com/Djzs_ai">X @Djzs_ai</a>
       <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a>

@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DJZS — the reasoning gate every trading agent calls before it acts</title>
+  <title>DJZS: the reasoning gate every trading agent calls before it acts</title>
   <meta name="description" content="DJZS is a deterministic pre-execution audit for autonomous agents: it audits the reasoning behind a move and returns PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as an MCP tool." />
   <link rel="canonical" href="https://djzs.ai/" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="DJZS — the reasoning gate every trading agent calls before it acts" />
+  <meta property="og:title" content="DJZS: the reasoning gate every trading agent calls before it acts" />
   <meta property="og:description" content="Deterministic pre-execution audit: PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as a paid MCP tool on Base." />
   <meta property="og:url" content="https://djzs.ai/" />
   <meta property="og:image" content="https://djzs.ai/og.png" />
@@ -45,21 +45,21 @@
 
   <p class="path"><span class="p">~/djzs</span> $<span class="cursor"></span></p>
 
-  <!-- 1 — HERO -->
+  <!-- 1: HERO -->
   <section id="hero">
     <h1>The reasoning gate every trading agent calls before it acts.</h1>
     <div class="status">
       <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">ENGINE</span><span class="val">deterministic v2 — verdict is computed, not improvised.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">GATE</span><span class="val">verify_pm_trade · verify_perp_trade — LIVE · PAID 2.00 USDC each via x402 [MCP] [streamable-HTTP]</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">ENGINE</span><span class="val">deterministic v2. Verdict is computed, not improvised.</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">GATE</span><span class="val">verify_pm_trade · verify_perp_trade · LIVE · PAID 2.00 USDC each via x402 [MCP] [streamable-HTTP]</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">TAXONOMY</span><span class="val">DJZS-PM-v1.0 4/4 calibrated · DJZS-LF-v1.2 11 frozen / 4 live</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">LEDGER</span><span class="val">Irys mainnet — every in-scope audit anchors a permanent ProofOfLogic certificate; readable via query_pol_certificates</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">RECEIPT</span><span class="val">EIP-712 intent_hash + EAS attestation on Base — extraction contract DJZS-X-v1.1 · recompute any receipt at <a href="/verify">djzs.ai/verify</a></span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">LEDGER</span><span class="val">Irys mainnet. Every in-scope audit anchors a permanent ProofOfLogic certificate; readable via query_pol_certificates</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">RECEIPT</span><span class="val">EIP-712 intent_hash + EAS attestation on Base · extraction contract DJZS-X-v1.1 · recompute any receipt at <a href="/verify">djzs.ai/verify</a></span></div>
       <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">OPERATIONAL<span class="cursor"></span></span></div>
     </div>
-    <p class="lede">It checks the claim before the money moves. A budget clamp is not a firewall — a spend cap limits how much you can lose, never whether you should have been in the trade.
+    <p class="lede">It checks the claim before the money moves. A budget clamp is not a firewall. A spend cap limits how much you can lose, never whether you should have been in the trade.
     It produces a receipt <a href="/verify">anyone can recompute</a>.
-    It never guesses — unknown means <strong>WAIT</strong>, and WAIT means <strong>HALT</strong>.</p>
+    It never guesses: unknown means <strong>WAIT</strong>, and WAIT means <strong>HALT</strong>.</p>
     <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
     <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
     <p class="muted">Then call <code>verify_pm_trade</code> with a free-text prediction-market thesis.</p>
@@ -67,42 +67,42 @@
     <p class="doctrine">Audit before act.</p>
   </section>
 
-  <!-- 1.5 — THE LOOP, LIVE -->
+  <!-- 1.5: THE LOOP, LIVE -->
   <section id="loop">
     <h2>The loop, run for real <span class="k">// a wallet paid, an engine decided</span></h2>
     <video controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
       <source src="/assets/djzs-demo-pass.mp4" type="video/mp4" />
     </video>
     <p class="muted">One command to add. The agent pays 2.00 USDC over x402 on Base and the verdict
-    returns with a hash that reproduces on any machine. The payment and the certificate are public —
+    returns with a hash that reproduces on any machine. The payment and the certificate are public;
     <a href="https://djzs.link" rel="noopener">the launch record</a> archives every receipt.</p>
     <h3>How payment works</h3>
     <p>Every verdict is paid for by the wallet that asks for it. The server answers with a price:
     <strong>2.00 USDC</strong>. Your agent pays it on Base over x402 and the verdict comes back in the
-    same breath. No account, no API key, no subscription — the caller's wallet is the identity and the
+    same breath. No account, no API key, no subscription. The caller's wallet is the identity and the
     bill. Out-of-scope requests are refused <em>free</em>: an auditor that stretches past its taxonomy
     to take your money is not an auditor.</p>
-    <p class="muted">Humans without an x402 setup: watch the loop above — that is the whole product,
+    <p class="muted">Humans without an x402 setup: watch the loop above; that is the whole product,
     end to end. Agents replicate it natively.</p>
   
     <h3>The gate, doing its job <span class="k">// this one says no</span></h3>
     <video controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
       <source src="/assets/djzs-demo-fail.mp4" type="video/mp4" />
     </video>
-    <p class="muted">Fed it a consensus thesis — no invalidation, no source, "everyone knows." <strong>FAIL,
+    <p class="muted">Fed it a consensus thesis: no invalidation, no source, "everyone knows." <strong>FAIL,
     risk 75</strong>, and it charged two dollars to say no. An auditor that only ever says yes is not an
     auditor. The refusal is the product.</p>
   </section>
 
-  <!-- 2 — ARCHITECTURE C -->
+  <!-- 2: ARCHITECTURE C -->
   <section id="architecture">
     <h2>Architecture C <span class="k">// extraction reports, the engine decides</span></h2>
     <p>DJZS splits the model-bound step from the trusted step. An LLM <strong>extracts observable
-    facts</strong> from messy intent — it never returns a verdict. It runs as an <strong>N=3
+    facts</strong> from messy intent; it never returns a verdict. It runs as an <strong>N=3
     consensus</strong>: per-field state must agree across all three samples or the field collapses
     to <code>unknown</code>; a claimed <em>absent</em> must quote the intent verbatim (quote gates);
     and a critical-driving absent needs the same quote across every sample (evidence-unanimity).</p>
-    <p>The resulting struct is scored by a <strong>frozen deterministic engine</strong> — pure code,
+    <p>The resulting struct is scored by a <strong>frozen deterministic engine</strong>: pure code,
     no model, no network, no clock. <strong>The verdict rules are model-independent:</strong> swap the
     model and the extraction quality changes, but the rules, weights, and hash do not. The same struct
     always yields the same verdict and the same hash:</p>
@@ -110,7 +110,7 @@
     <p class="doctrine">Verdict is computed, not improvised.</p>
   </section>
 
-  <!-- 3 — THE LADDER -->
+  <!-- 3: THE LADDER -->
   <section id="ladder">
     <h2>The ladder <span class="k">// three outcomes, never two</span></h2>
     <div class="ladder">
@@ -123,11 +123,11 @@
     <p class="doctrine">Abstain over guess.</p>
   </section>
 
-  <!-- 4 — TAXONOMIES -->
+  <!-- 4: TAXONOMIES -->
   <section id="taxonomies">
     <h2>Taxonomies <span class="k">// prediction market, live</span></h2>
 
-    <h3>DJZS-M — Prediction Market (DJZS-PM-v1.0)</h3>
+    <h3>DJZS-M · Prediction Market (DJZS-PM-v1.0)</h3>
     <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated. Full rules, verdict formula, both binding contracts, and the extraction-contract changelog: <a href="/ruleset">djzs.ai/ruleset</a>.</p>
     <div class="table-wrap">
     <table aria-label="DJZS-PM-v1.0 codes, severities, and weights">
@@ -144,18 +144,18 @@
     (weight 15 is below the threshold); it blocks only by stacking (e.g. M03 + M04 = 40 → FAIL).</p>
 
     <p class="muted">The weight table is a hash-locked exported constant; a weight change is a
-    deliberate re-derive that bumps the version, not a hot patch — that immutability is what makes
+    deliberate re-derive that bumps the version, not a hot patch. That immutability is what makes
     every <code>verdict_hash</code> reproducible.</p>
 
-    <h3>DJZS-LF — perpetuals / general reasoning <span class="k">// live, second paid tool</span></h3>
+    <h3>DJZS-LF · perpetuals / general reasoning <span class="k">// live, second paid tool</span></h3>
     <p class="muted">Beyond prediction markets, an 11-code perpetuals and general-reasoning taxonomy
-    (DJZS-LF-v1.2, weights sum 200) is frozen — 4 codes wired live
+    (DJZS-LF-v1.2, weights sum 200) is frozen: 4 codes wired live
     (<code>E01</code>, <code>I01</code>, <code>X01</code>, <code>S01</code>), the other 7 reserved with their weights
     but not yet firing. Served live as <code>verify_perp_trade</code> at <code>/x402/verify_perp_trade</code>. The seven reserved codes are disclosed as roadmap, not sold as done. The full
     table lives in the <a href="https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen">repository</a>.</p>
   </section>
 
-  <!-- 5 — PROOF -->
+  <!-- 5: PROOF -->
   <section id="proof">
     <h2>Proof <span class="k">// same thesis, same hash, every run</span></h2>
     <p>A client audited a benchmark thesis (<code>pm-block-008</code>) through the deployed
@@ -179,9 +179,9 @@
     byte-identical from live extraction into the frozen engine (exit 0, 2026-07-12) and it has held
     across every re-run since, including runs with extraction divergence on non-preimage fields.</p>
     <p><strong>Since then, two stronger proofs.</strong> The deterministic engine has been enumerated over its
-    <strong>entire</strong> prediction-market input space — 108 inputs, 8 properties (totality, determinism,
-    monotonicity, threshold, PASS/WAIT invariants) — and that test runs in CI on every push. The extraction
-    layer has been <strong>measured</strong>: 15 theses spanning the verdict space, 5 replays each, N=3 consensus —
+    <strong>entire</strong> prediction-market input space: 108 inputs, 8 properties (totality, determinism,
+    monotonicity, threshold, PASS/WAIT invariants). That test runs in CI on every push. The extraction
+    layer has been <strong>measured</strong>: 15 theses spanning the verdict space, 5 replays each, N=3 consensus:
     verdict reproduced <strong>100%</strong> under extraction contract <code>DJZS-X-v1.1</code>. That measurement
     found a defect (an unsourced claim in plain prose was demoted to WAIT instead of firing M03); it was
     reproduced from raw samples, removed with a control test, and shipped as a versioned contract change.
@@ -194,7 +194,7 @@
     settlement, both binding keys, and the attestation with no trust in DJZS.</p>
   </section>
 
-  <!-- 7a2 — THE CLAMP PROBLEM -->
+  <!-- 7a2: THE CLAMP PROBLEM -->
   <section id="clamp">
     <h2>The clamp problem <span class="k">// every agent ships a cap, none read the trade</span></h2>
     <p class="lede">A budget clamp is not a firewall. A spend cap constrains the size of the
@@ -208,13 +208,13 @@
     reason, no invalidation condition, no sourced probability. Wallet authority is granted; the
     reasoning is never read.</p>
     <p>DJZS is that layer. It sits <strong>between the proposal and the order</strong> and says
-    no for reasons — not just for size. On Base it is a priced call: 2.00 USDC over x402, an
+    no for reasons, not just for size. On Base it is a priced call: 2.00 USDC over x402, an
     EIP-712 <code>intent_hash</code>, an EAS attestation, and a verdict returned before the
     order exists.</p>
     <p class="doctrine">A clamp is not a gate.</p>
   </section>
 
-  <!-- 7b — UPSTREAM GATE (MetaMask Agent Wallet) -->
+  <!-- 7b: UPSTREAM GATE (MetaMask Agent Wallet) -->
   <section id="upstream">
     <h2>Two gates, two axes <span class="k">// upstream of MetaMask Agent Wallet</span></h2>
     <p class="lede">Your MetaMask agent already checks whether a transaction is safe to
@@ -249,12 +249,12 @@ on-chain</code></pre>
     <p class="doctrine">The gate clears the logic; the position is yours.</p>
     <p><span class="k">// status</span> Live on Base mainnet, payable over HTTP x402 at
     <code>mcp.djzs.ai/x402/verify</code> (Bazaar-listed as <code>/x402/verify_pm_trade</code>). Integration posture for
-    framework builders and treasuries — Safe Guard, AgentKit — is on <a href="/builders">/builders</a>. Base MCP, MetaMask Agent Wallet, and x402-axios
+    framework builders and treasuries (Safe Guard, AgentKit) is on <a href="/builders">/builders</a>. Base MCP, MetaMask Agent Wallet, and x402-axios
     all speak this rail. The gate audits its own operation on the public record; the
     end-to-end wallet compositions remain the <strong>reference design</strong>.</p>
   </section>
 
-  <!-- 6 — HONEST POSTURE -->
+  <!-- 6: HONEST POSTURE -->
   <section id="honest">
     <h2>Honest posture <span class="k">// what's live, what isn't</span></h2>
     <p>Stated plainly:</p>
@@ -276,22 +276,22 @@ on-chain</code></pre>
       <li><strong>The trust loop is closed and live.</strong> Pass an optional <code>agent_address</code>
       to <code>verify_pm_trade</code> and the verdict is written on-chain (<code>DJZSLogicTrustScore</code>
       on Base) by a dedicated authorized writer, indexed by the DJZS subgraph on The Graph, and readable
-      by anyone via <code>query_agent_trust</code> — totalAudits, failRate, latest verdict, and an action
+      by anyone via <code>query_agent_trust</code>: totalAudits, failRate, latest verdict, and an action
       of PROCEED, HALT, or NO_HISTORY. The write is fail-open: a write fault never blocks or alters the
       audit or its certificate.</li>
     </ul>
     <p>On-chain: four DJZS contracts are attested on Base in the A2A manifest, with source in
-    <code>contracts/</code> — verify them yourself on Basescan:
+    <code>contracts/</code>. Verify them yourself on Basescan:
     <a href="https://basescan.org/address/0xB3324D07A8713b354435FF0e2A982A504e81b137">TrustScore</a> ·
     <a href="https://basescan.org/address/0xA362947D23D52C05a431E378F30C8A962De91e8A">Staking</a> ·
     <a href="https://basescan.org/address/0xB041760147a60F63Ca701da9e431412bCc25Cfb7">EscrowLock</a> ·
     <a href="https://basescan.org/address/0xe40d5669Ce8e06A91188B82Ce7292175E2013E41">AgentRegistry</a>.
     A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source
-    only — it is not in the deployed manifest, and nothing here claims certificate NFTs are live or
+    only; it is not in the deployed manifest, and nothing here claims certificate NFTs are live or
     mintable.</p>
   </section>
 
-  <!-- 7 — CALL IT -->
+  <!-- 7: CALL IT -->
   <section id="call">
     <h2>Call it <span class="k">// two transports, one gate</span></h2>
     <p><strong>Probe it free.</strong> An unpaid request returns the payment challenge and settles
@@ -302,12 +302,12 @@ on-chain</code></pre>
     <p>You get back <code>402</code> with the price, the network, and the address to pay:
     <code>exact</code> scheme, <code>eip155:8453</code>, 2.00 USDC, paid to the treasury. Sign the
     authorization, retry, and the verdict comes back.</p>
-    <p><span class="k">// http x402</span> <code>POST mcp.djzs.ai/x402/verify</code> — any HTTP x402
+    <p><span class="k">// http x402</span> <code>POST mcp.djzs.ai/x402/verify</code>: any HTTP x402
     client pays this: Base MCP, MetaMask Agent Wallet, x402-axios.<br>
-    <span class="k">// mcp</span> <code>mcp.djzs.ai/mcp</code> — streamable HTTP. Wrap your MCP client
+    <span class="k">// mcp</span> <code>mcp.djzs.ai/mcp</code>: streamable HTTP. Wrap your MCP client
     with <code>withX402Client</code> from <code>agents/x402</code>; other x402 clients complete the
     handshake against this server without settling.</p>
-    <p><span class="k">// free</span> <code>GET /openapi.json</code> is the discovery contract —
+    <p><span class="k">// free</span> <code>GET /openapi.json</code> is the discovery contract:
     schema, price, and response shape. <code>GET /health/x402</code> reports payment configuration.
     Through MCP, <code>query_pol_certificates</code> and <code>query_agent_trust</code> read the
     certificate ledger and an agent's on-chain record. None of these cost anything.</p>
@@ -316,7 +316,7 @@ on-chain</code></pre>
     the verdict.</p>
   </section>
 
-  <!-- 7 — WHAT A THESIS NEEDS -->
+  <!-- 7: WHAT A THESIS NEEDS -->
   <section id="thesis">
     <h2>What a thesis needs <span class="k">// before you spend $2</span></h2>
     <p>The gate audits reasoning, so the reasoning has to be there. A thesis missing any of these
@@ -347,10 +347,10 @@ on-chain</code></pre>
     <a href="/legal.html">legal</a>.</p>
   </section>
 
-  <!-- 8 — FOR AGENTS -->
+  <!-- 8: FOR AGENTS -->
   <section id="agents">
     <h2>For agents <span class="k">// this page is the API doc</span></h2>
-    <p><strong>curl this page and you get this pitch</strong> — every word is in the HTML, no
+    <p><strong>curl this page and you get this pitch</strong>: every word is in the HTML, no
     JavaScript required to read it. A machine-readable summary lives at
     <a href="/llms.txt">/llms.txt</a> with the MCP endpoint and repository link. The gate is one
     install command away (see the hero above); the source of truth for every number on this page is
