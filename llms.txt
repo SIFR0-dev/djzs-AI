@@ -1,7 +1,7 @@
-# DJZS — deterministic pre-execution audit for agents
+# DJZS: deterministic pre-execution audit for agents
 
 > DJZS audits the reasoning behind an autonomous agent's move before capital is committed and
-> returns a tri-state verdict — PASS, WAIT, or FAIL — with the reasoning defects flagged and a
+> returns a tri-state verdict (PASS, WAIT, or FAIL) with the reasoning defects flagged and a
 > reproducible verdict_hash. It answers "should this position be taken?", complementary to
 > transaction-security tools that answer "is this transaction safe to sign?".
 
@@ -9,19 +9,24 @@
 
 - Endpoint (streamable HTTP): https://mcp.djzs.ai/mcp
 - Install: `claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp`
-- Lead tool: `verify_pm_trade` — pass a free-text prediction-market thesis; returns
+- Lead tool: `verify_pm_trade`: pass a free-text prediction-market thesis; returns
   PASS→PROCEED / FAIL / WAIT→HALT, flags, unknown_fields, disagreements, and verdict_hash.
   Optional `agent_address` (0x wallet) links the verdict to that agent's on-chain trust record.
   Prediction-market only: a non-PM or undetermined intent returns in_scope:false (never a silent
   perpetuals audit).
+- Second paid tool: `verify_perp_trade`: pass a free-text perpetual or spot TRADE thesis (direction,
+  size, leverage, entry, stop, target, venue, and the REASON). Same verdict shape, same price. A position
+  stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01); an unresolvable stop or
+  thesis WAITs. Prediction-market bets are refused here (in_scope:false, not charged); use verify_pm_trade.
+  The two tools run separate extraction contracts (X-v1.1 for PM, X-LF-v1.2 for trades); see /ruleset.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
-  `query_agent_trust` (LIVE — on-chain trust score read from the DJZS subgraph: totalAudits,
+  `query_agent_trust` (LIVE: on-chain trust score read from the DJZS subgraph: totalAudits,
   pass/fail counts, failRate, latest verdict/risk, DJZS-S01/X01 flag counts, and an action of
   PROCEED, HALT, or NO_HISTORY; HALT if failRate > 0.3 or S01/X01 fired more than once).
-- Paying: verify_pm_trade costs 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
+- Paying: verify_pm_trade and verify_perp_trade each cost 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
-  network "base", and maxPaymentValue 2000000n — the library's default cap is 0.10 USDC and
+  network "base", and maxPaymentValue 2000000n; the library's default cap is 0.10 USDC and
   refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
 
 ## How it works
@@ -31,6 +36,17 @@
   are model-independent. Same input struct -> same verdict_hash.
 - WAIT is never silent: an unknown decision-critical fact drains to HALT with unknown_fields returned.
 
+## Receipts (v2, reproducible by anyone)
+
+- Every paid verdict returns intent_hash (EIP-712 typed data, domain DJZS / 2 / eip155:8453) and
+  writes an EAS attestation on Base under schema
+  0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030 from attester
+  0xfB0e11471D41f88D1eE43A1bA38d885fb6b77824 onto the paying agent's address. intent_sha256 (v1)
+  is returned alongside: sha256 over renderIntentText(intent): sorted keys, one `key: value` line each.
+- Recompute any receipt with zero trust in DJZS: https://djzs.ai/verify
+- Scoring rules, verdict formula, both binding contracts: https://djzs.ai/ruleset
+- For agent-framework builders and treasuries (Safe Guard / AgentKit posture): https://djzs.ai/builders
+
 ## Taxonomies (frozen)
 
 - DJZS-M (prediction market, DJZS-PM-v1.0): M01-M04, weights sum 100, FAIL threshold 25. All live.
@@ -38,7 +54,7 @@
 
 ## Live posture (stated honestly)
 
-- verify_pm_trade is PAID: 2.00 USDC per audit over x402 (CDP facilitator) on Base mainnet,
+- verify_pm_trade and verify_perp_trade are PAID: 2.00 USDC per audit over x402 (CDP facilitator) on Base mainnet,
   non-custodial (payer -> treasury via EIP-3009; the facilitator submits the transfer and pays gas).
   The registry tools (query_pol_certificates, query_agent_trust) are free.
 - Certificates anchor to Irys MAINNET and are permanent; retrievable by id and via
@@ -53,4 +69,8 @@
 ## Source of truth
 
 - Repository: https://github.com/SIFR0-dev/djzs-AI
+- Reference integration (Polymarket CLOB): https://github.com/SIFR0-dev/djzs-polymarket-gate
+  Audits the thesis, places the order only on a clean in-scope PASS. Uses withX402Client from
+  agents/x402 (the client this gate speaks; other x402 clients complete the handshake but do
+  not settle here). Out-of-scope refusal verified free on-chain; paid path not yet exercised.
 - Every number here traces to that tree; where docs and tree disagree, the tree wins.

@@ -22,7 +22,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const PAGE = "site/verify.html";
 const SRC = "tests/q3/anchors.json";
 const REC_DIR = "tests/q3/records";
-const BEGIN = "<!-- BEGIN q3-anchors · generated from tests/q3/anchors.json by tests/q3/render-anchors.ts — do not edit by hand -->";
+const BEGIN = "<!-- BEGIN q3-anchors · generated from tests/q3/anchors.json by tests/q3/render-anchors.ts. Do not edit by hand -->";
 const END = "<!-- END q3-anchors -->";
 const check = process.argv.includes("--check");
 
