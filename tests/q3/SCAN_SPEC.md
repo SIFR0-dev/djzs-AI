@@ -459,6 +459,8 @@ The disagreement is **entirely one-directional**: the pre-screen called FAIL on 
 
 That is the quote-gate and evidence-unanimity machinery doing exactly what they were built to do (CLAUDE.md §3): an absent that cannot produce a verbatim contiguous quote demotes to unknown, and unknown is abstention, not a finding. A hand-applied taxonomy has no such gate, so it converts "I see nothing here" into "there is nothing here" — and those are different claims. On a thesis-absent v1.12 input the difference is total, which is why day one's composition (five no-case records) makes the gap look so wide.
 
+**Responded to on 2026-09-17:** the pre-screen was recalibrated so that unbounded, unsourced or undated claims read WAIT rather than FAIL (§12.2). Agreement measured after that date is not comparable with the 1/10 below, and §6 must split the populations at that date.
+
 Two consequences, both recorded rather than acted on:
 
 1. **The published cards' "pre-screen" label is load-bearing, not decorative.** §6 says low agreement means the cards must say pre-screen louder. One day at 1/10 does not establish a rate, but it establishes the *direction*, and the direction is the one that matters: the pre-screen is systematically more willing to block than the engine of record.
@@ -731,3 +733,42 @@ The rule has three parts, and the order matters more than the numbers:
 **What was and was not at risk.** The deployed layer's class match was 16/16 — every designed verdict class landed. The harness's own built-in grade was `RELIABLE` (its internal gate is `mean>=0.95 && full>=0.8`, which 0.950 passes). So the deploy was not reckless, and no caller received a wrong class because of it. That is exactly why it is worth recording: the failure mode here is not a bad verdict, it is a bar that moved. The cost is entirely to the credibility of every future statement of the form "it passed."
 
 **Consequence, already in force.** §11 is the rule this produced. The next extraction-contract change pre-registers its threshold in its own commit, and if it misses, it gets a note like this one rather than a new bar.
+
+## 12. The scan format changed on 2026-09-17
+
+**A record of a change to the published scan, not a rule change to the study.** PROTOCOL.md is untouched and needs no amendment: it fixes what a record contains and who decides a verdict (§3, §4), and says nothing about the layout of the scan's public post. Below: the format, the pre-screen recalibration, and the consequences for the book that a later reader would otherwise have to reconstruct.
+
+### 12.1 The format, as of 2026-09-17
+
+1. **Grades lead the post** — claims that have reached their horizon, graded, first.
+2. **Still-running claims** next: scored, not yet at horizon.
+3. **The day's new claims** last.
+4. **No Proof-of-Logic Certificate.** The post no longer carries one.
+5. **Numeric score and plain-language verdict kept; taxonomy codes out of reader-facing copy.** `DJZS-M01`…`M04` no longer appear in the post.
+6. **Every scored claim carries its own stated falsifier**, so it can be graded at its horizon.
+
+### 12.2 The pre-screen recalibration
+
+**Unbounded, unsourced or undated claims are WAIT, not FAIL.**
+
+Prompted by the 2026-09-14 pool day (§8C): pre-screen agreed with the engine on **1 of 10**, and the disagreement was entirely one-directional — the pre-screen called FAIL on all ten while the engine returned WAIT on nine. Every miss was the pre-screen asserting a blocking absence where the engine could not establish the field and abstained. A hand-applied taxonomy has no quote gate, so it converts "I see nothing here" into "there is nothing here"; the engine demotes an absent that cannot produce a verbatim contiguous quote to unknown, and unknown is abstention. The recalibration moves the pre-screen toward the engine's own posture.
+
+**It does not touch the engine of record.** PROTOCOL §3: `engine.*` is populated only by a local run of the DJZS engine, `prescreen.*` is the scan's, and the two are never merged. No verdict, code, risk score, hash, taxonomy version or weight changes, and no sealed record is affected.
+
+### 12.3 Consequences for the book — stated now so they are not discovered at analysis
+
+**(a) Pre-screen agreement is now measured against a moving instrument.** §6 reports prescreen/engine agreement as a side-measurement. Records pre-screened before 2026-09-17 were judged under the old calibration and those after under the new one, so they are not one sample. Wherever agreement is reported it must be **split at this date, with both n's** — the same discipline §11 rule 3 applies to a re-measured noise band. The first population is the ten records of 2026-09-14, agreement 1/10 (§8C).
+
+**(b) `prescreen.codes` stays in the record even though codes leave the post.** §4 gives every record a `prescreen` block carrying codes, and §6's side-measurement compares code **sets** as well as verdicts. Taking codes out of reader-facing copy is a publication decision; taking them out of the record would delete half of a pre-registered measurement. The scan continues to author them into the record.
+
+**(c) A scan-post grade is not a Q3 outcome.** A Q3 `outcome` is written only by the §5 grading path, at or after `grade_due`, against the record's sealed `criterion`, with evidence and a grader — and, for a `no_public_case` record, with the v1.12 absence re-check (§8H). The scan's own grade at horizon is the pre-screen side of the house: advisory, and not the book. Where a claim is also a record the two can disagree, and the record's `outcome` governs.
+
+**(d) A scan-written falsifier must not migrate into a record's `intent`.** §3 populates `intent.probability_basis` and `intent.bounds` **only** with text present in the source, quoted. Item 6 above puts a stated falsifier on every scored claim, and where the scan writes that falsifier itself it is the scan's text, not the source's. Pasting it into a bound record's intent would hand the engine the scan's own falsification clause to read back — M02 (falsification absent) would become unreachable by construction, and the record would stop testing the public case. Where the **source** states the falsifier it is quoted as usual and nothing changes.
+
+**(e) The post no longer carries the tamper-evidence link, and the study's own is unchanged.** Dropping the Proof-of-Logic Certificate removes the certificate from reader-facing copy. Q3's tamper-evidence never depended on it: the book's is `record_hash` → daily Merkle root → Irys, with `anchors.json`, `q3-verify` and the generated `/verify` register (§8F).
+
+### 12.4 The scan is the surviving DJZS activity, and carries no product conversion goal
+
+Recorded as context for anyone reading the book later: **as of 2026-09-17 the daily scan is the surviving DJZS activity, and it has no product conversion goal.**
+
+Nothing in the study's rules rests on this. Inclusion is mechanical (§3's volume rule, §1's categories), intents are verbatim public text, and verdicts come from the frozen engine, so the book does not depend on what the scan is *for*. The dependency runs the other way, and that is the reason to write it down: the scan is the only thing feeding `origin: scan` narratives into the book, and the coverage pool is worked by whoever runs a pool day. A change in the scan's cadence or survival therefore changes the book's **intake**, not its rules — and Stage 1's timeline (§8 of PROTOCOL, "late October to November 2026") is an intake estimate.
