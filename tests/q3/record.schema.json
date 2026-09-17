@@ -474,6 +474,19 @@
         },
         "note": {
           "type": "string"
+        },
+        "fills_path": {
+          "type": "string",
+          "description": "SCAN_SPEC §8I: Kalshi records sealed after 2026-09-17 — tests/q3/fills/<id>.json.gz, the verbatim fill list behind volume_total."
+        },
+        "fills_sha256": {
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{64}$",
+          "description": "SCAN_SPEC §8I: sha256 over the DECOMPRESSED canonical JSON of the stored fill list. Sealed in record_hash via price_source."
+        },
+        "fills_count": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
@@ -540,6 +553,58 @@
             "string",
             "null"
           ]
+        },
+        "absence_recheck": {
+          "type": "object",
+          "description": "PROTOCOL v1.12 / SCAN_SPEC §8H: the absence re-check at grading, required on a graded thesis_state \"no_public_case\" record and forbidden on any other. Inside outcome, so outside both hashes; never retrofitted into the sealed record. Validated by tests/q3/absence-recheck.ts.",
+          "required": [
+            "sources_consulted",
+            "queries",
+            "window",
+            "searched_at",
+            "finding",
+            "judgement"
+          ],
+          "properties": {
+            "sources_consulted": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "queries": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              },
+              "description": "Must include every sealed search_record.queries entry."
+            },
+            "window": {
+              "type": "object",
+              "required": [
+                "from",
+                "to"
+              ],
+              "description": "Must cover [posted_at, market.resolution_due]."
+            },
+            "searched_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "At or after market.resolution_due, at or before outcome.graded_at."
+            },
+            "finding": {
+              "enum": [
+                "absence_holds",
+                "case_emerged"
+              ]
+            },
+            "judgement": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         }
       }
     }

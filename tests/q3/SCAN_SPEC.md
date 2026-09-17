@@ -397,7 +397,7 @@ Both sit inside the `phase_a_hash` preimage; the four hash properties are proven
 
 v1.12's route keeps the record primary-eligible and makes the absence a measured quantity — §6 must report the stratum's size alongside any pool statistic, so the proportion becomes a result rather than a silent exclusion.
 
-**Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built.
+**Owed, not built:** v1.12 requires the absence to be re-checked at grading, with a later-emerging case noted and never retrofitted into the sealed record. Grading is not implemented (zero graded records), so this is recorded here as owed at the point grading is built. **Built 2026-09-17 — see §8H.**
 
 ## 8A. v1.13 — the combination record
 
@@ -503,6 +503,94 @@ Nothing public rendered `tests/q3/anchors.json`. The study's tamper-evidence exi
 Five drift cases proven to fail before this was wired in: a hand-edited root on the page; a day dropped from the page; a day invented on the page; `record_count` disagreeing with `records/`; and the writer refusing to mirror that last one. A mirror test that cannot fail is not a mirror test.
 
 **Operationally:** `q3-anchor` now prints the re-render step in its closing banner. A new anchor committed without re-rendering is a red build, and the cheapest place to learn that is the moment of anchoring rather than CI.
+
+## 8G. Defect found before first grading, 2026-09-17 — the Polymarket grader could not see a closed market
+
+**Found and fixed before any record was graded. No outcome was ever written by the defective path.**
+
+Gamma's `/markets` endpoint **partitions on `closed`**: with no parameter it returns open markets only, and `closed=true` returns closed markets only. Observed directly on 2026-09-17: all four resolved FOMC slugs in the book (`q3-2026-09-14-006`…`-009`) returned `[]` from the default query and came back `closed: true`, `umaResolutionStatus: "resolved"` with `closed=true`. The same partition held on a market resolved in 2024 (closed only) and on the open CLARITY market (default only).
+
+`q3-grade.ts` asked only the default. So the auto path would have skipped **every** resolved Polymarket record as "slug not found", which means it could never grade the one kind of market it exists to grade. It stayed invisible because nothing had been graded and no Polymarket market in the book had closed.
+
+**Fix.** The lookup asks `closed=true` first (the grading case), then the default, so "not closed yet" and "no such slug" stay distinguishable. It also adds a **resolution gate**: a closed market whose `umaResolutionStatus` is not `"resolved"` is skipped. Trading can stop before the oracle settles, and `outcomePrices` on such a market are the last trades — grading on them would be grading on price.
+
+**Test.** `tests/q3/grading.test.ts` (a step in `q3-integrity`) runs offline against a Gamma double that partitions exactly as the live endpoint was observed to, and live against a known-closed market, `will-donald-trump-win-the-2024-us-presidential-election`. A network failure on the live check is reported as not exercised, never as a pass. **Mutation-checked:** reverting to the default-only lookup fails five assertions, the live one included; removing the resolution gate fails one.
+
+**Residue, not changed.** `q3-log.ts` Phase A still uses the default lookup, which is correct there, since a market is open when it is sealed. `q3-verify.ts`'s Surf cross-check resolves a slug the same way, so after a market closes it cannot resolve the slug and WARNs "Surf cross-check skipped" unless the record carries a `condition_id`. That check is tape-tier and WARN-only, and runs only where the Surf CLI exists.
+
+## 8H. v1.12 absence re-check at grading — built 2026-09-17
+
+v1.12: *"The absence must be re-checked at grading: if a dominant public case appeared after posted_at, the record is graded as sealed and the later emergence is noted, never retrofitted into the sealed record."*
+
+**What the re-check is.** A read-only search performed by the grading pass **the same way the sealed `search_record` was produced at Phase A**: sources consulted, queries used, window, timestamp, and a stated judgement. It is handed to the grader as `q3-grade.ts --recheck <file.json>`, an object keyed by record id. One validator, `tests/q3/absence-recheck.ts`, defines a valid re-check, and both the grader and the verifier call it:
+
+| field | contract |
+|---|---|
+| `sources_consulted` | non-empty list |
+| `queries` | non-empty, and **includes every sealed `search_record.queries` entry**: extra queries are allowed, but dropping a sealed one is not, or the re-check could quietly skip the search that established the absence |
+| `window` | covers **[`posted_at`, `market.resolution_due`]**: from at or before the seal, to at or after the record's own resolution instant |
+| `searched_at` | at or after `market.resolution_due` (the window had elapsed) and at or before `outcome.graded_at` (the re-check was done at grading, not borrowed from later) |
+| `finding` | `absence_holds` or `case_emerged` |
+| `judgement` | non-empty: what was found and why it does or does not amount to a dominant public case, as the sealed search's judgement did |
+
+**Where it lives: `outcome.absence_recheck`.** `outcome` is in both `PHASE_A_EXCLUDE` and `PHASE_B_EXCLUDE`, so the re-check can never reach a sealed hash and never changes a sealed field. **Proven, not asserted:** the test attaches a graded outcome with a re-check to the real sealed `q3-2026-09-14-002` and recomputes both `phase_a_hash` and `record_hash` unchanged, with every non-outcome field byte-identical. A `case_emerged` finding changes nothing about the grade: the grade is always against the sealed `criterion`, and the emergence is noted in `outcome.note`.
+
+**Enforcement.** `q3-grade` will not write an outcome for a `no_public_case` record without a valid re-check, on the auto and manual paths alike. It skips the record and names what is missing, so the requirement cannot be silently dropped. `q3-verify` fails a graded `no_public_case` record whose re-check is missing or invalid, and also fails a re-check attached to a record that **has** a thesis, since that mislabel would inflate the stratum v1.12 makes a result. Proven with synthetic records in scratch directories (the book was never touched): missing → FAIL; valid → PASS; a sealed query dropped → FAIL; re-check on a thesis record → FAIL.
+
+**Why not a scripted feed replay — tried and rejected on evidence, 2026-09-17.**
+- **Google News RSS** returns results for the sealed natural-language queries, but its feed terms restrict use to "a personal feed reader for personal, non-commercial use". It is not a basis for a public study attached to a paid product.
+- **GDELT's DOC API** has open terms but ANDs every word. The sealed query `Fed rate cut September 2026 who expects cut Trump pressure Warsh` returned `{}` over 2026-09-14T19:40Z → 2026-09-16T17:59Z, and a sealed query using `OR` was refused outright for syntax.
+
+A replay through either would have reported "no candidates" because of query syntax, not because the absence held. **A re-check that can only ever confirm the absence is not a re-check.**
+
+**Two things this does not do, stated so they are not read into it.** The tool judges nothing: dominance is the searcher's stated judgement, exactly as it was at seal. And it sets no freshness bound beyond [`resolution_due`, `graded_at`].
+
+**A window asymmetry to know about.** `market.resolution_due` is the venue's own instant, so it differs between venues for one event. On the FOMC records Polymarket's is `2026-09-16T00:00:00Z` (its `endDate`) and Kalshi's is `2026-09-16T17:59:00Z`. The validator's floor is each record's own sealed value; a re-check may run past it, and nothing stops the two venues' views of one decision being re-checked over the same interval.
+
+## 8I. `volume_total` drift — the observation, the ruling, and the sealed fill list (2026-09-17)
+
+### The observation that prompted the ruling
+
+A local `q3-verify` run on 2026-09-17 at 03:55Z failed four sealed Kalshi records on the `volume_total` re-fetch. The re-run at 04:22Z returned identical values:
+
+| record | ticker | sealed `volume_total` | re-fetched 2026-09-17 | Δ (contracts) | Δ / sealed |
+|---|---|---|---|---|---|
+| `q3-2026-09-14-001` | `KXFEDDECISION-26SEP-H0` | 33,554,697.47 | 33,552,721.15 | −1,976.32 | 0.0059% |
+| `q3-2026-09-14-003` | `KXFEDDECISION-26SEP-H25` | 13,750,350.55 | 13,748,931.07 | −1,419.48 | 0.0103% |
+| `q3-2026-09-14-004` | `KXFEDDECISION-26SEP-C25` | 9,183,936.13 | 9,181,389.68 | −2,546.45 | 0.0277% |
+| `q3-2026-09-14-005` | `KXBALANCEPOWERCOMBO-27FEB-RR` | 2,701,354.68 | 2,696,703.54 | −4,651.14 | 0.1722% |
+
+What was established, and what was not:
+- **Every other re-derived field reproduced** on all four: VWAP, fill count and `volume_24h`. `q3-2026-09-14-002` (`-H26`) reproduced `volume_total` exactly.
+- **All four deltas are negative**: the venue now serves less pre-`posted_at` volume than was sealed.
+- **Not a flaky walk.** On 005 two back-to-back full walks each returned 4 pages, 3,238 fills, not truncated, and the identical total. On 001 the walk returned 40,355 fills over 41 pages with **no duplicate `trade_id`**.
+- **Settlement is not required for it.** The combo, 005, has not settled, and it drifted the most in relative terms. Whether settlement played any part on the three settled strikes is not established.
+- **Cause undetermined.** Either the venue's pre-`posted_at` history changed after seal, or the seal-time walk counted fills the venue no longer serves. Without the fill list as it stood at seal the two cannot be told apart, which is why the list is now stored (below). These four records will stay unattributable.
+- **Sealed values untouched.** Nothing about any record changed.
+
+How it surfaced: `volume_total` is re-checked at seal and on its first weekly pass (§5). On push, CI runs `DUNE_REVERIFY=changed` and skips it when no record changed, so the first CI runs to hit it would have been the grading commit (records change) and the Monday 2026-09-21 06:17Z scheduled run. A local `DUNE_REVERIFY=never` run hits it because `recordsChangedThisCommit` defaults to true outside `changed` mode. That quirk was observed, not changed.
+
+### The ruling (operator, 2026-09-17)
+
+A Kalshi `volume_total` re-fetch that disagrees with the sealed value **WARNs, with the delta recorded, iff VWAP, fill count and `volume_24h` all reproduced that run AND |Δ| / sealed is strictly under 1%.** Anything else FAILs exactly as before: 1% or more, or any other field not reproducing. The sealed value is never touched; the rule decides only whether a disagreement is reported as drift or as a mismatch. One definition, `classifyVolumeTotalDrift` in `lib.ts`, used by the verifier and pinned by the test at the boundary (0.99% warns, exactly 1% fails) and on the four observed rows.
+
+**Scope: the Kalshi re-check only.** That is where the observation arose. A Polymarket volume comes from an execution over on-chain trades, where a disagreement means the query or the index changed, and it still fails as before.
+
+**Disclosed, because §11's discipline is the reason to:** the 1% threshold was set *after* these deltas were seen (largest 0.172%). It is a verifier tolerance on a liquidity covariate, not a study bar, and no analysis threshold moved. It is recorded here so that the order of events is visible.
+
+### The sealed fill list (from the next pool day)
+
+Phase B now stores the fill list behind every Kalshi `volume_total` at `tests/q3/fills/<id>.json.gz`: verbatim, in feed order, as canonical JSON, gzipped. It also seals `price_source.fills_path`, `fills_sha256` and `fills_count` into `record_hash` (`price_source` is already in `PHASE_A_EXCLUDE`, so `phase_a_hash` is unaffected). The digest is over the **decompressed** canonical bytes, never the gzip stream, whose header varies by platform, so `gunzip | sha256sum` reproduces it anywhere. Nothing is selected out: which fields turn out to be diagnostic is not known in advance.
+
+**Measured size:** about 1.31 MB gzipped for an FOMC-strike-class market (001's history: 40,355 fills), and about 0.11 MB for a 005-class one. **Commit the file with the record**; Phase B prints the path.
+
+**What the verifier does with it:**
+- The file must exist at the derived path, match the sealed digest and count, and sum to the sealed `volume_total` exactly as `kalshiVolumes` computes it. Any of those failing is a FAIL.
+- On drift it diffs by `trade_id` and names fills no longer served, new fills, and resized fills, each with contracts.
+
+**Proven with synthetic records in scratch directories:** intact → PASS; missing, tampered, or not summing to the sealed total → FAIL. Live against 005's real ticker, a stored list missing one real fill produced `drift +27.72 contracts … 1 new (27.72)` → WARN.
+
+Records sealed before this change carry no list; their drift WARN says so rather than guessing.
 
 ## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
 
