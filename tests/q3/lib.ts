@@ -141,3 +141,17 @@ export const PHASE_B_EXCLUDE = new Set(["record_hash", "outcome", "draft_capture
  *  would be folded into phase_a_hash like any other top-level key — the doc would say "not sealed" while the code
  *  sealed it. */
 export function strip(rec: Record<string, unknown>, ex: Set<string>) { const o: Record<string, unknown> = {}; for (const k of Object.keys(rec)) if (!ex.has(k)) o[k] = rec[k]; return o; }
+/** v1.7(a) volume re-check equality. Both windows end at posted_at over immutable trades, so re-execution reproduces
+ *  them; the tolerance exists only for summation order, not for drift. (Moved here from q3-verify.ts unchanged, so the
+ *  drift rule below and the verifier share one definition.) */
+export const volClose = (a: number, c: number) => Math.abs(a - c) <= Math.max(0.01, 1e-9 * Math.max(Math.abs(a), Math.abs(c)));
+/** Operator ruling 2026-09-17 (SCAN_SPEC §8I): a Kalshi volume_total re-fetch that disagrees with the sealed value
+ *  WARNs — with the delta recorded — only when EVERY other re-derived field reproduced (VWAP, fill count, volume_24h)
+ *  AND the relative difference is strictly under 1%. Anything else fails as before. The sealed value is never touched:
+ *  this decides only whether a disagreement is reported as drift or as a mismatch. */
+export const VOLUME_TOTAL_DRIFT_WARN_BELOW = 0.01;
+export function classifyVolumeTotalDrift(recorded: number, refetched: number, othersReproduce: boolean): { level: "match" | "warn" | "fail"; delta: number; rel: number } {
+  const delta = refetched - recorded; const rel = recorded > 0 ? Math.abs(delta) / recorded : Infinity;
+  if (volClose(recorded, refetched)) return { level: "match", delta, rel };
+  return { level: othersReproduce && rel < VOLUME_TOTAL_DRIFT_WARN_BELOW ? "warn" : "fail", delta, rel };
+}

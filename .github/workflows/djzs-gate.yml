@@ -56,6 +56,8 @@ jobs:
       - run: npm ci
       - name: Q3 — §3 pool admission matcher (v1.5 categories, v1.8 recurrence, v1.9 duration)
         run: npx tsx tests/q3/pool-matcher.test.ts
+      - name: Q3 — grading readiness (closed Polymarket markets, v1.12 absence re-check, volume_total drift rule, sealed fill list)
+        run: npx tsx tests/q3/grading.test.ts
       - name: Q3 — /verify mirrors anchors.json (generated block, no drift)
         run: npx tsx tests/q3/render-anchors.ts --check
       - name: Q3 — recompute every record hash; match every anchor to its Irys item

@@ -3,6 +3,8 @@
  *   GET https://api.elections.kalshi.com/trade-api/v2/markets/trades?ticker=&min_ts=&max_ts=&limit=1000[&cursor=]
  * Fill fields used: yes_price_dollars / no_price_dollars (fixed-point strings), count_fp or count, created_time.
  */
+import { gunzipSync, gzipSync } from "node:zlib";
+import { canonical, sha256hex } from "./lib";
 export interface KalshiFill { trade_id: string; ticker: string; created_time: string; yes_price_dollars?: string; no_price_dollars?: string; yes_price?: number; no_price?: number; count_fp?: string | number; count?: number; taker_side?: string; taker_outcome_side?: string }
 export interface KalshiVwap { vwap: number | null; trade_count: number; contracts: number; volume_usdc: number; window_start: string; window_end: string; query: { ticker: string; min_ts: number; max_ts: number; side: string } }
 const BASE = "https://api.elections.kalshi.com/trade-api/v2";
@@ -32,13 +34,15 @@ export async function fetchKalshiFills(ticker: string, minTs: number, maxTs: num
  *  Unknown is never reported as zero. Truncation, an empty fill history, a fill whose taker side or price cannot be
  *  read, or a total that sums to zero all return null with a note. The VWAP gate has already proven fills exist inside
  *  a window strictly contained in [0, end), so a zero total is not a possible true answer here — only a missing one. */
-export interface KalshiVolumes { volume_24h: number | null; volume_total: number | null; total_computed: boolean; fills: number; pages: number; truncated: boolean; window_24h_start: string; as_of: string; note?: string }
+export interface KalshiVolumes { volume_24h: number | null; volume_total: number | null; total_computed: boolean; fills: number; pages: number; truncated: boolean; window_24h_start: string; as_of: string; note?: string; fill_list?: KalshiFill[] }
 /** includeTotal=false pages ONLY the 24h window, so the full-history walk is not performed at all. volume_total then
- *  comes back null with total_computed false — "not asked for", which the caller must not read as "unknown". */
-export async function kalshiVolumes(ticker: string, endIso: string, fetchImpl: typeof fetch = fetch, maxPages = 400, includeTotal = true): Promise<KalshiVolumes> {
+ *  comes back null with total_computed false — "not asked for", which the caller must not read as "unknown".
+ *  returnFills=true also returns the walk's fills verbatim, in feed order, as `fill_list` — Phase B stores them so a
+ *  later volume_total drift can be diagnosed fill by fill (SCAN_SPEC §8I). */
+export async function kalshiVolumes(ticker: string, endIso: string, fetchImpl: typeof fetch = fetch, maxPages = 400, includeTotal = true, returnFills = false): Promise<KalshiVolumes> {
   const end = Math.floor(new Date(endIso).getTime() / 1000); const start24 = end - 24 * 3600;
   const { fills, truncated, pages } = await fetchKalshiFillsPaged(ticker, includeTotal ? 0 : start24, end, fetchImpl, maxPages);
-  const base = { fills: fills.length, pages, truncated, total_computed: includeTotal, window_24h_start: new Date(start24 * 1000).toISOString(), as_of: new Date(end * 1000).toISOString() };
+  const base = { fills: fills.length, pages, truncated, total_computed: includeTotal, window_24h_start: new Date(start24 * 1000).toISOString(), as_of: new Date(end * 1000).toISOString(), ...(returnFills ? { fill_list: fills } : {}) };
   if (truncated) return { ...base, volume_24h: null, volume_total: null, note: `fill history truncated at ${pages} pages — refusing to report a partial sum as a total` };
   if (fills.length === 0) return { ...base, volume_24h: null, volume_total: null, note: "the feed returned no fills at all — an empty history is not a measured zero" };
   let v24 = 0, vtot = 0, unusable = 0;
@@ -61,4 +65,28 @@ export async function kalshiVwap(ticker: string, side: string, endIso: string, w
   const fills = (await fetchKalshiFills(ticker, min_ts, max_ts, fetchImpl)).filter(t => { const ts = new Date(t.created_time).getTime() / 1000; return ts >= min_ts && ts < max_ts && qty(t) > 0; });
   let num = 0, den = 0; for (const t of fills) { num += px(t, s) * qty(t); den += qty(t); }
   return { vwap: den > 0 ? num / den : null, trade_count: fills.length, contracts: den, volume_usdc: num, window_start: new Date(min_ts * 1000).toISOString(), window_end: new Date(max_ts * 1000).toISOString(), query: { ticker, min_ts, max_ts, side: s } };
+}
+
+/** SCAN_SPEC §8I — the fill list behind a sealed Kalshi volume_total, stored at Phase B so drift is diagnosable.
+ *  Stored verbatim (no field selection: what turns out to be diagnostic is not known in advance), in feed order, as
+ *  canonical JSON, gzipped. The sealed digest is sha256 over the DECOMPRESSED canonical bytes, never over the gzip
+ *  stream, whose header bytes vary by platform — so `gunzip | sha256sum` reproduces it anywhere. */
+export const FILLS_DIR = "tests/q3/fills";
+export const fillsPath = (id: string) => `${FILLS_DIR}/${id}.json.gz`;
+export const fillsDigest = (fills: KalshiFill[]) => sha256hex(canonical(fills));
+export const encodeFills = (fills: KalshiFill[]) => gzipSync(Buffer.from(canonical(fills), "utf8"));
+export function decodeFills(buf: Buffer): { fills: KalshiFill[]; sha256: string } {
+  const raw = gunzipSync(buf); return { fills: JSON.parse(raw.toString("utf8")) as KalshiFill[], sha256: sha256hex(raw) };
+}
+/** volume_total exactly as kalshiVolumes computes it: Σ count over fills strictly before `endTs` with a readable size. */
+export function sumFillsBefore(fills: KalshiFill[], endTs: number): number {
+  let v = 0; for (const f of fills) { const ts = Math.floor(new Date(f.created_time).getTime() / 1000); if (!(ts < endTs)) continue; const q = qty(f); if (q > 0) v += q; } return v;
+}
+/** Fill-level difference between a stored list and a re-fetch, both restricted to fills before `endTs`. */
+export function diffFills(stored: KalshiFill[], refetched: KalshiFill[], endTs: number) {
+  const before = (fs: KalshiFill[]) => new Map(fs.filter(f => Math.floor(new Date(f.created_time).getTime() / 1000) < endTs).map(f => [f.trade_id, f] as const));
+  const a = before(stored), b = before(refetched); let missing = 0, missingQty = 0, added = 0, addedQty = 0, resized = 0, resizedQty = 0;
+  for (const [id, f] of a) { const g = b.get(id); if (!g) { missing++; missingQty += qty(f); } else if (qty(g) !== qty(f)) { resized++; resizedQty += qty(g) - qty(f); } }
+  for (const [id, g] of b) if (!a.has(id)) { added++; addedQty += qty(g); }
+  return { missing, missingQty, added, addedQty, resized, resizedQty };
 }

@@ -6,9 +6,10 @@
  *  4. pilot/deviated records counted separately; a day with sealed records but no anchor is a WARNING (anchor may be pending)
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { canonical, sha256hex, merkleRoot, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
+import { canonical, sha256hex, merkleRoot, strip, volClose, classifyVolumeTotalDrift, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { runDuneQuery, asPriceRow, duneKey } from "./dune-client";
-import { kalshiVwap, kalshiVolumes } from "./kalshi-client";
+import { kalshiVwap, kalshiVolumes, fillsPath, decodeFills, sumFillsBefore, diffFills, type KalshiFill } from "./kalshi-client";
+import { needsAbsenceRecheck, validateAbsenceRecheck } from "./absence-recheck";
 import { surf, surfAvailable, rows } from "./tape/surf";
 const REC_DIR = "tests/q3/records", ANCHORS = "tests/q3/anchors.json";
 const ORIGINS = new Set(["scan", "pool"]), BIND = new Set(["venue", "series", "unbound"]), VERD = new Set(["PASS", "WAIT", "FAIL", "OUT_OF_SCOPE"]), RESULT = new Set(["CORRECT", "INCORRECT", "VOID"]);
@@ -41,11 +42,9 @@ const eventKeys = new Map<string, string[]>();
 /** Records whose event_key is a v1.13 compound label, by id — reported so a reader sees that a cluster count of
  *  N records over M events already accounts for the combos rather than having dropped them. */
 const comboRecords = new Map<string, string[]>();
-/** v1.7(a) volume re-check. Both windows end at posted_at over immutable trades, so re-execution reproduces them;
- *  the tolerance exists only for summation order, not for drift. Absence is never a failure: records sealed before
- *  v1.7 carry no volume, and sealed records are immutable. A recomputation that comes back null (a market_details
- *  row that has moved, an outage) WARNs rather than fails — the same outage-is-not-mismatch rule the price side uses. */
-const volClose = (a: number, c: number) => Math.abs(a - c) <= Math.max(0.01, 1e-9 * Math.max(Math.abs(a), Math.abs(c)));
+/** v1.7(a) volume re-check (volClose lives in lib.ts). Absence is never a failure: records sealed before v1.7 carry no
+ *  volume, and sealed records are immutable. A recomputation that comes back null (a market_details row that has moved,
+ *  an outage) WARNs rather than fails — the same outage-is-not-mismatch rule the price side uses. */
 const priceChecks: { id: string; ps: any; price: number; posted_at: string; v24: number | null; vtot: number | null }[] = []; const kalshiChecks: { id: string; ps: any; price: number; posted_at: string; v24: number | null; vtot: number | null }[] = []; const tol = Number((JSON.parse(readFileSync("tests/q3/dune.json", "utf8")) as any).price_tolerance ?? 1e-9);
 const anchors: any[] = existsSync(ANCHORS) ? JSON.parse(readFileSync(ANCHORS, "utf8")) : [];
 if (!existsSync(REC_DIR)) { console.log("q3-verify: no records yet"); process.exit(0); }
@@ -138,8 +137,24 @@ for (const f of readdirSync(REC_DIR).filter(x => x.endsWith(".json")).sort()) {
     if (r.record_hash && r.volume_24h != null && r.volume_total != null && r.volume_total < r.volume_24h) fails.push(`${id}: volume_total ${r.volume_total} < volume_24h ${r.volume_24h} — a cumulative total cannot be smaller than its own last 24h`);
     if (r.price_source?.provider === "dune") priceChecks.push({ id: r.id, ps: r.price_source, price: r.price_at_audit, posted_at: String(r.posted_at), ...vols });
     if (r.price_source?.provider === "kalshi-api") kalshiChecks.push({ id: r.id, ps: r.price_source, price: r.price_at_audit, posted_at: String(r.posted_at), ...vols });
+    // SCAN_SPEC §8I: a Kalshi record sealed with its fill list must still carry exactly that list. The digest is sealed in
+    // record_hash via price_source, so a missing, altered or swapped file is a FAIL, and the stored fills must sum to the
+    // sealed volume_total exactly as kalshiVolumes computed it — otherwise the list cannot explain the number it backs.
+    if (r.record_hash && r.price_source?.fills_sha256 != null) {
+      const ps = r.price_source, want = fillsPath(String(r.id));
+      if (ps.fills_path !== want) fails.push(`${id}: price_source.fills_path ${JSON.stringify(ps.fills_path)} ≠ ${want}`);
+      else if (!existsSync(want)) fails.push(`${id}: sealed fill list ${want} is missing`);
+      else { try { const { fills, sha256 } = decodeFills(readFileSync(want));
+          if (sha256 !== ps.fills_sha256) fails.push(`${id}: ${want} sha256 ${sha256} ≠ sealed ${ps.fills_sha256}`);
+          else if (fills.length !== ps.fills_count) fails.push(`${id}: ${want} holds ${fills.length} fills ≠ sealed fills_count ${ps.fills_count}`);
+          else if (r.volume_total != null && !volClose(r.volume_total, sumFillsBefore(fills, Math.floor(Date.parse(String(r.posted_at)) / 1000)))) fails.push(`${id}: ${want} sums to ${sumFillsBefore(fills, Math.floor(Date.parse(String(r.posted_at)) / 1000))} ≠ sealed volume_total ${r.volume_total}`);
+        } catch (e) { fails.push(`${id}: ${want} unreadable — ${(e as Error).message}`); } }
+    }
     if (r.outcome) { graded++; if (!RESULT.has(r.outcome.result)) fails.push(`${id}: outcome.result ${r.outcome.result}`); if (r.outcome.grader === "dj" && !r.outcome.evidence_url) fails.push(`${id}: manual grade without evidence_url`);
-      if (r.criterion?.grade_due && r.outcome.graded_at && r.outcome.graded_at < r.criterion.grade_due) fails.push(`${id}: graded before grade_due`); }
+      if (r.criterion?.grade_due && r.outcome.graded_at && r.outcome.graded_at < r.criterion.grade_due) fails.push(`${id}: graded before grade_due`);
+      // v1.12 (SCAN_SPEC §8H): a graded no_public_case record carries the absence re-check, validated by the same
+      // definition q3-grade applied before writing. A re-check on a record that HAS a case is a mislabel and fails too.
+      if (needsAbsenceRecheck(r) || r.outcome.absence_recheck !== undefined) for (const e of validateAbsenceRecheck(r, r.outcome.absence_recheck, String(r.outcome.graded_at))) fails.push(`${id}: v1.12 absence re-check — ${e}`); }
   }
   if (dayHashes.length) { const root = merkleRoot(dayHashes); const a = anchors.find(x => x.date === date);
     if (!a) warns.push(`${date}: ${dayHashes.length} sealed record(s), no anchor yet`);
@@ -175,8 +190,13 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
       if (item.merkle_root !== a.merkle_root) fails.push(`${a.date}: Irys root ≠ anchors.json root`); if (item.date !== a.date) fails.push(`${a.date}: Irys date ${item.date}`); if (item.record_count !== a.record_count) fails.push(`${a.date}: Irys count ${item.record_count}`);
     } catch (e) { fails.push(`${a.date}: Irys fetch failed ${(e as Error).message}`); }
   }
+  // Which Kalshi records reproduced BOTH the VWAP and the fill count this run — one of the conditions under which a
+  // volume_total disagreement may WARN rather than fail (SCAN_SPEC §8I). Absent = not reproduced.
+  const kalshiPriceReproduced = new Set<string>();
   for (const kc of kalshiChecks) { try { const q = kc.ps.query_params; const k = await kalshiVwap(String(q.ticker), String(q.side), new Date(Number(q.max_ts) * 1000).toISOString(), Math.round((Number(q.max_ts) - Number(q.min_ts)) / 60));
-      if (k.vwap == null || Math.abs(k.vwap - kc.price) > tol) fails.push(`${kc.id}: Kalshi re-fetch vwap ${k.vwap} ≠ recorded ${kc.price}`); if (k.trade_count !== kc.ps.trade_count) fails.push(`${kc.id}: Kalshi fills ${k.trade_count} ≠ recorded ${kc.ps.trade_count}`);
+      const vwapOk = !(k.vwap == null || Math.abs(k.vwap - kc.price) > tol), fillsOk = k.trade_count === kc.ps.trade_count;
+      if (!vwapOk) fails.push(`${kc.id}: Kalshi re-fetch vwap ${k.vwap} ≠ recorded ${kc.price}`); if (!fillsOk) fails.push(`${kc.id}: Kalshi fills ${k.trade_count} ≠ recorded ${kc.ps.trade_count}`);
+      if (vwapOk && fillsOk) kalshiPriceReproduced.add(kc.id);
     } catch (e) { fails.push(`${kc.id}: Kalshi re-fetch failed — ${(e as Error).message}`); } }
   // v1.7(a) SCHEDULES, and they differ on purpose.
   //   volume_24h  rides the price re-fetch and keeps the price's schedule.
@@ -197,12 +217,27 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
     if (kc.v24 == null && kc.vtot == null) continue; // sealed before v1.7
     const kt = String(kc.ps.query_params?.ticker ?? ""); if (!kt) { warns.push(`${kc.id}: volume not re-verified — price_source.query_params carries no ticker`); continue; }
     const wantTotal = volTotalDue(kc.posted_at);
-    try { const kv = await kalshiVolumes(kt, new Date(Number(kc.ps.query_params?.max_ts) * 1000).toISOString(), fetch, 400, wantTotal);
+    // An unreadable sealed list already FAILs in the record loop; here it only means there is nothing to diff against.
+    let stored: KalshiFill[] | null = null; if (kc.ps.fills_sha256 != null && existsSync(fillsPath(kc.id))) { try { stored = decodeFills(readFileSync(fillsPath(kc.id))).fills; } catch { stored = null; } }
+    try { const kv = await kalshiVolumes(kt, new Date(Number(kc.ps.query_params?.max_ts) * 1000).toISOString(), fetch, 400, wantTotal, stored != null);
       if (kv.volume_24h == null) { warns.push(`${kc.id}: volume not re-verified — ${kv.note ?? "no volume returned"}`); continue; }
-      if (kc.v24 != null && !volClose(kc.v24, kv.volume_24h)) fails.push(`${kc.id}: Kalshi volume_24h re-fetch ${kv.volume_24h.toFixed(2)} ≠ recorded ${kc.v24}`);
+      const v24Ok = kc.v24 != null && volClose(kc.v24, kv.volume_24h);
+      if (kc.v24 != null && !v24Ok) fails.push(`${kc.id}: Kalshi volume_24h re-fetch ${kv.volume_24h.toFixed(2)} ≠ recorded ${kc.v24}`);
       if (!wantTotal) warns.push(`${kc.id}: volume_total not re-checked this run — settled at seal and on its first weekly pass (immutable once posted_at is past)`);
       else if (kv.volume_total == null) warns.push(`${kc.id}: volume_total not re-verified — ${kv.note ?? "no total returned"}`);
-      else if (kc.vtot != null && !volClose(kc.vtot, kv.volume_total)) fails.push(`${kc.id}: Kalshi volume_total re-fetch ${kv.volume_total.toFixed(2)} ≠ recorded ${kc.vtot}`);
+      else if (kc.vtot != null) {
+        // Operator ruling 2026-09-17 (SCAN_SPEC §8I): WARN with the delta recorded iff every other re-derived field
+        // reproduced and the drift is strictly under 1%; otherwise FAIL exactly as before. The sealed value is untouched.
+        const d = classifyVolumeTotalDrift(kc.vtot, kv.volume_total, kalshiPriceReproduced.has(kc.id) && v24Ok);
+        if (d.level !== "match") {
+          const endTs = Number(kc.ps.query_params?.max_ts);
+          const fd = stored && kv.fill_list ? diffFills(stored, kv.fill_list as KalshiFill[], endTs) : null;
+          const why = fd ? ` · vs the sealed fill list: ${fd.missing} fill(s) no longer served (${fd.missingQty} contracts), ${fd.added} new (${fd.addedQty}), ${fd.resized} resized (${fd.resizedQty >= 0 ? "+" : ""}${fd.resizedQty})` : " · no fill list sealed for this record, so the drift cannot be attributed to fills";
+          const msg = `${kc.id}: Kalshi volume_total drift ${d.delta >= 0 ? "+" : ""}${d.delta.toFixed(2)} contracts (${(d.rel * 100).toFixed(4)}%) — re-fetch ${kv.volume_total.toFixed(2)} vs sealed ${kc.vtot}${why}`;
+          if (d.level === "warn") warns.push(`${msg} · VWAP, fill count and volume_24h reproduce and the drift is under 1%, so this WARNs (SCAN_SPEC §8I); sealed value unchanged`);
+          else fails.push(`${msg} · FAIL: ${d.rel >= 0.01 ? "drift is 1% or more" : "another re-derived field did not reproduce this run"}`);
+        }
+      }
     } catch (e) { warns.push(`${kc.id}: Kalshi volume re-fetch unavailable — ${(e as Error).message.slice(0, 90)}`); }
   }
   // v1.4 use 6 — third-source cross-check (Surf-indexed Polymarket trades) on Dune-priced records. Tape tier: WARN by default, never record-bearing.
