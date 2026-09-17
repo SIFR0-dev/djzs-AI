@@ -1,7 +1,16 @@
 name: djzs-gate
-on: { push: { branches: [main, "fix/**", "feat/**"] }, pull_request: {}, schedule: [{ cron: "17 6 * * 1" }] } # Monday 06:17 UTC: full Dune re-verification of every record
+on:
+  push: { branches: [main, "fix/**", "feat/**"] }
+  pull_request: {}
+  schedule:
+    # Two crons, and every job below says which one it answers to. A job with no `if` would run on BOTH — which
+    # is how an hourly probe quietly turns a weekly full Dune re-verification into an hourly one.
+    - cron: "17 6 * * 1" # Monday 06:17 UTC: full Dune re-verification of every record
+    - cron: "41 * * * *" # hourly: public-site liveness ONLY (site-liveness job). Minute 41, not 0 — GitHub's
+                         # scheduler is most backed up on the hour, and a delayed probe is a late outage report.
 jobs:
   engine-integrity:
+    if: github.event_name != 'schedule' || github.event.schedule == '17 6 * * 1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +29,7 @@ jobs:
       - name: coerceField — bare stated values are PRESENT, never ABSENT
         run: npx tsx tests/coerce.test.ts
   worker-builds:
+    if: github.event_name != 'schedule' || github.event.schedule == '17 6 * * 1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +57,7 @@ jobs:
         working-directory: djzs-trust-mcp
 
   q3-integrity:
+    if: github.event_name != 'schedule' || github.event.schedule == '17 6 * * 1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,4 +71,20 @@ jobs:
         run: npx tsx tests/q3/render-anchors.ts --check
       - name: Q3 — recompute every record hash; match every anchor to its Irys item
         run: npx tsx tests/q3/q3-verify.ts
-        env: { DUNE_API_KEY: "${{ secrets.DUNE_API_KEY }}", DUNE_REVERIFY: "${{ github.event_name == 'schedule' && 'always' || 'changed' }}" }
+        # Named cron, not "any schedule": the hourly cron must never reach a full Dune re-verification, and it
+        # would the moment this job's `if` above were loosened. Two guards, because one of them costs credits.
+        env: { DUNE_API_KEY: "${{ secrets.DUNE_API_KEY }}", DUNE_REVERIFY: "${{ github.event.schedule == '17 6 * * 1' && 'always' || 'changed' }}" }
+
+  # Is the site a visitor sees actually up, and is it the current one? Everything above grades the TREE. This is
+  # the only job that asks what is DEPLOYED — the 2026-09-16 outage (SCAN_SPEC §12.2) was invisible to all of it.
+  site-liveness:
+    # Hourly cron only. Deliberately NOT on push/pull_request: a PR that adds an anchor is legitimately ahead of
+    # the deployed /verify, so grading branches on deploy state would produce a red that means nothing. Also no
+    # workflow_dispatch — this gate carries DUNE_API_KEY, and CLAUDE.md §5 rules out manual CI runs of it.
+    if: github.event_name == 'schedule' && github.event.schedule == '41 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No setup-node, no npm ci: the probe is dependency-free Node so that it can only go red about the site.
+      - name: djzs.ai — every public page answers 200, and /verify carries the latest anchor
+        run: node tests/q3/site-liveness.mjs

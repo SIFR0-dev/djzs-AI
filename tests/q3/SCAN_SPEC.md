@@ -643,3 +643,46 @@ The rule has three parts, and the order matters more than the numbers:
 **What was and was not at risk.** The deployed layer's class match was 16/16 — every designed verdict class landed. The harness's own built-in grade was `RELIABLE` (its internal gate is `mean>=0.95 && full>=0.8`, which 0.950 passes). So the deploy was not reckless, and no caller received a wrong class because of it. That is exactly why it is worth recording: the failure mode here is not a bad verdict, it is a bar that moved. The cost is entirely to the credibility of every future statement of the form "it passed."
 
 **Consequence, already in force.** §11 is the rule this produced. The next extraction-contract change pre-registers its threshold in its own commit, and if it misses, it gets a note like this one rather than a new bar.
+
+## 12. Deploying `site/`, and the check that notices when a deploy was wrong
+
+### 12.1 The rule — one directory, on `main`, after a pull
+
+**`site/` deploys from `~/djzs-om/site` and from nowhere else, on `main`, after `git pull`.** Not from a second clone, not from a sibling worktree, not from the repo root, not from a container. Three conditions, and all three are load-bearing:
+
+- **The directory**, because Cloudflare keys a deployment by the Worker's **name** (`name = "djzs-site"` in `site/wrangler.toml`), not by where `wrangler` was invoked. A deploy from the wrong tree does not fail, and that is the whole problem: it succeeds, and the deployment it lands replaces the live site with whatever that tree contains. When the tree contains no site assets, what goes live is a Worker with no assets, and every path on djzs.ai returns 404.
+- **`main`**, because the deploy ships the working tree, not a commit (the same property recorded in CLAUDE.md §14: `wrangler deploy` ships what is on disk). A deploy from a feature branch publishes unreviewed content and leaves no record of what is serving.
+- **After `git pull`**, because a stale checkout deploys cleanly and serves old content. Nothing 404s, nothing is red, and `/verify` quietly stops listing the most recent anchor.
+
+### 12.2 Incident, 2026-09-16 — a deploy from the wrong directory took every page to 404
+
+**What happened.** `site/` was deployed from a directory other than `~/djzs-om/site`. The deploy reported success. What it published was a Worker with no assets, so **every page on djzs.ai returned 404** — the homepage included — and stayed that way until the operator happened to load the site and see it.
+
+**Why nothing said so.** Every gate in `djzs-gate` was green throughout, and correctly so: all of them grade the **tree**. `render-anchors.ts --check` proves `site/verify.html` mirrors `anchors.json` in the repo; `q3-verify.ts` recomputes hashes and matches anchors to Irys items. Not one of them fetches a URL. The tree was never wrong. The deployment was, and the deployment was the thing nobody was looking at.
+
+**The rule that would have caught it already exists.** CLAUDE.md §10's deploy doctrine is explicit: *a deploy is done when the DEPLOYED VERSION is probed live and answers correctly, not when wrangler prints "Deployed".* This is the same shape as §10.4 — a rule that depends on a human or an agent remembering to run it will eventually meet one who did not. The difference here is that a Worker deploy cannot be refused by a protected branch, so the enforceable half is not prevention but **detection**, and §12.3 is that half.
+
+**Recorded, not quietly fixed**, for the reason §10.4 gives: an outage that leaves no trace teaches nothing to the next session.
+
+### 12.3 The hourly liveness gate
+
+`tests/q3/site-liveness.mjs`, run by the `site-liveness` job in `.github/workflows/djzs-gate.yml` on an hourly cron. It fetches **`/`, `/verify`, `/ruleset`, `/build`, `/builders`, `/guide`, `/favicon.svg`** and fails on anything but **200**; then, on `/verify` only, it fails if the page does not contain the **latest `irys_id` in `tests/q3/anchors.json`** (latest = greatest `date`, `anchored_at` breaking a same-day tie).
+
+Decisions this implementation makes, and why:
+
+- **Two failure modes, not one.** The status checks catch the dead site of §12.2. The anchor assertion catches its quieter sibling — a site that is up, serving, entirely green, and deployed from a checkout that predates the last seal. `render-anchors.ts --check` cannot see that: it is a statement about the tree. This is a statement about what is deployed. They are different claims and they need different checks.
+- **The full id is in the page even though the page elides it.** `render-anchors.ts` prints a shortened label (`3w8hzn8mDr…nAKk9P`) but links it at its full gateway URL, so the complete id ships in the `href`. That is what the substring test reads. If the renderer ever stops emitting the full id, this check goes red, which is the correct outcome: the assertion would otherwise have silently stopped asserting anything.
+- **Hourly cron only — not on push, not on `pull_request`, not on `workflow_dispatch`.** A PR that adds an anchor is *legitimately* ahead of the deployed `/verify`; grading branches against deploy state would manufacture a red that means nothing, and a red that means nothing is how a gate stops being read. `workflow_dispatch` is left off because this workflow carries `DUNE_API_KEY` and CLAUDE.md §5's corollary rules out manual CI runs of it.
+- **Each job now names its cron.** Adding a second schedule to a workflow whose jobs had no `if` would have run *everything* hourly — including `q3-verify` with `DUNE_REVERIFY=always`, a full Dune re-verification of every record, 24 times a day. The three pre-existing jobs are pinned to `17 6 * * 1`; `site-liveness` is pinned to `41 * * * *`. `DUNE_REVERIFY` is now keyed on the cron string rather than on "any schedule", so the credit-spending branch cannot be re-opened by loosening a job guard.
+- **Minute 41, not minute 0.** GitHub's scheduler is most congested on the hour, and a delayed probe is a late outage report.
+- **No dependencies and no `npm ci`.** The probe is Node 22 built-ins only. A monitor that can go red because an install broke is a monitor that trains you to ignore it.
+- **It reports and stops.** No redeploy, no cache purge, no issue filed, no remediation of any kind. Remediation touches a deployed public surface and belongs in the operator's shell (CLAUDE.md §5). The failure output names the two candidate causes — wrong-directory deploy (§12.1) and edge-cache lag (CLAUDE.md §13/§14) — and the one command that separates them: probe the `workers.dev` alias.
+
+**What this buys, stated honestly.** Detection, not prevention, with up to roughly an hour of latency and no SLA: GitHub delays and occasionally drops scheduled runs under load, and disables schedules entirely after 60 days of repository inactivity. So a red job is strong evidence that the site is down; a quiet hour is weak evidence that it is up. It is also inert on a branch — scheduled workflows run from the default branch only, so this gate does nothing until it is merged to `main`. It replaces "until the operator noticed" with a bounded number, which is the entire claim.
+
+The probe runs by hand against any origin, which is what to use immediately after a deploy rather than waiting for the cron:
+
+```
+node tests/q3/site-liveness.mjs
+SITE_ORIGIN=https://djzs-site.<subdomain>.workers.dev node tests/q3/site-liveness.mjs
+```
