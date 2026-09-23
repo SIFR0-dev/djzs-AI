@@ -1,0 +1,10 @@
+{
+  "name": "ds-trading-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Kalshi adapter modules + terminal harnesses (ws-pin). The worker bundles individual files from here; this manifest exists only for harness deps.",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
