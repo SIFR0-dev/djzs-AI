@@ -562,7 +562,7 @@ function buildServer(env: Env): McpServer {
         .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
     { title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)" },
-    async ({ intent, target_system, target_system_subject, target_system_signature, agent_address }) => {
+    async ({ intent, bracket, target_system, target_system_subject, target_system_signature, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -573,7 +573,8 @@ function buildServer(env: Env): McpServer {
       }
     }
     const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
-    const result = await runVerifyPerpTrade(intent, modelFn)
+    // bracket feeds only the non-scoring mechanics block (break-even hit rate); never the verdict or its hash.
+    const result = await runVerifyPerpTrade(intent, modelFn, bracket)
 
     // OUT-OF-SCOPE = NOT CHARGED. The agents/x402 middleware settles payment
     // only when the tool result carries no isError flag (settlePayment guard
