@@ -1,4 +1,2 @@
 # Cloudflare static-assets redirects. One rule per line: source destination status.
-# When the Scan Room page is live on scan.djzs.ai, uncomment the line below and delete scan.html,
-# so /scan has exactly one home.
-# /scan https://scan.djzs.ai 302
+/scan https://scan.djzs.ai 302
