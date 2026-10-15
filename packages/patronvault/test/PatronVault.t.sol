@@ -27,7 +27,7 @@ contract PatronVaultTest is Test {
         vm.warp(1_760_000_000);
         usdc = new MockUSDC();
         src = new MockERC4626(usdc);
-        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0));
+        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0));
         _fund(alice, 100_000e6);
         _fund(bob, 100_000e6);
         _fund(outsider, 1_000_000e6);
@@ -85,16 +85,16 @@ contract PatronVaultTest is Test {
 
     function test_constructor_rejectsBadParams() public {
         vm.expectRevert(PatronVault.ZeroAddress.selector);
-        new PatronVault(IERC4626(address(0)), MIN, PERIOD, TERMS, 0, 0, address(0));
+        new PatronVault(IERC4626(address(0)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0));
         vm.expectRevert(PatronVault.BadTerms.selector);
-        new PatronVault(IERC4626(address(src)), MIN, 0, TERMS, 0, 0, address(0));
+        new PatronVault(IERC4626(address(src)), MIN, 0, TERMS, 0, 0, address(0), 0, address(0));
         vm.expectRevert(PatronVault.BadTerms.selector);
-        new PatronVault(IERC4626(address(src)), MIN, PERIOD, bytes32(0), 0, 0, address(0));
+        new PatronVault(IERC4626(address(src)), MIN, PERIOD, bytes32(0), 0, 0, address(0), 0, address(0));
     }
 
     function test_pilotLimits_capAndJoinWindow() public {
         uint256 closes = block.timestamp + 60 days;
-        PatronVault capped = new PatronVault(IERC4626(address(src)), 3_500e6, PERIOD, TERMS, 49_000e6, closes, address(0));
+        PatronVault capped = new PatronVault(IERC4626(address(src)), 3_500e6, PERIOD, TERMS, 49_000e6, closes, address(0), 0, address(0));
         vm.prank(alice);
         usdc.approve(address(capped), type(uint256).max);
         vm.prank(bob);
@@ -651,7 +651,7 @@ contract PatronVaultTest is Test {
     address sink = makeAddr("sink");
 
     function _sinkVault() internal returns (PatronVault v) {
-        v = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, sink);
+        v = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, sink, 0, address(0));
         vm.prank(alice);
         usdc.approve(address(v), type(uint256).max);
         vm.prank(bob);

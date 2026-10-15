@@ -1,4 +1,4 @@
-# PatronVault v1
+# PatronVault v1.1
 
 One deposit, many creators. A member parks USDC once. The vault lends it through one ERC-4626 yield source and streams only the interest to the creators the member routes it to, at an amount per 30 days the member sets. The deposit comes back whenever the member asks.
 
@@ -48,6 +48,9 @@ The pilot runs principal-only (`yieldSink` = the Scan Room payee, which is also 
 | 9 | A creator address the token refuses (a Circle freeze) never traps the member: the payment is held, every member action still works, and the route is removable with the held amount forgiven. | `_pay`, `setRoute` |
 | 10 | Optional pilot limits: a cap on total principal and a join deadline. 0 disables each. | `_checkCap`, `join` |
 | 11 | Principal-only mode (`yieldSink` set): members cannot claim yield; on leave it is forwarded to their routes, with the same one-share-per-recipient rounding guard, and a recipient the token refuses falls back to the sink and then to the member, so no exit can be trapped. | `_forwardYield`, `_forwardTo` |
+| 12 | Protocol fee: `feeBps` of every creator payment, fixed at deployment, hard-capped at `MAX_FEE_BPS` (10%). Taken only on what is actually paid, never from principal, never on the exit buffer in principal-only mode. The fee's worth of shares moves into a pool; `collectFees()` is permissionless. | `_pay`, `collectFees` |
+| 13 | One-transaction join: `joinWithPermit` takes a USDC permit (ERC-7597 bytes signature, EOA or smart wallet) and routes. A front-run permit does not break it: the allowance is there either way. | `joinWithPermit` |
+| 14 | Batch: `joinAndRoute`, `setRoutes` (one settle, all or nothing), `settleMany` for the keeper (skips non-members instead of reverting). | `_applyRoutes`, `settleMany` |
 
 What the code cannot promise: the yield source. If the source loses money, every share holder loses pro rata, this vault included, and each member's loss is their own (`withdraw` and `leave` are pro rata in a shortfall; `settle` pays nothing). The source is chosen once, at deployment, against the screening rules in the handoff doc, and cannot be changed afterwards. A deprecated source means members leave and join a new vault; there is no migration function because there is no admin.
 
@@ -62,19 +65,24 @@ The source must satisfy `previewRedeem(previewWithdraw(x)) >= x`. OpenZeppelin E
 | Call | Who | Does |
 | --- | --- | --- |
 | `join(amount, terms)` | member | first deposit, at least `minDeposit`; `terms` must equal `termsHash` |
+| `joinAndRoute(amount, terms, routes[])` | member | join and set routes in one transaction |
+| `joinWithPermit(amount, terms, deadline, signature, routes[])` | member | the same with a USDC permit instead of a prior approve |
 | `deposit(amount)` | member | top up (settles first) |
 | `withdraw(amount)` | member | part of the deposit back; remainder is 0 or at least `minDeposit`; yield stays |
 | `claimYield(amount)` | member | unrouted yield out (settles first); reverts in principal-only mode |
 | `leave()` | member | settle, redeem everything, clear routes |
 | `setRoute(creator, amountPerPeriod)` | member | add, change, or remove with 0 (settles first) |
+| `setRoutes(routes[])` | member | several of the above, settled once, all or nothing |
 | `setCreatorMin(amountPerPeriod)` | creator | floor for new or changed routes; removal is always allowed |
 | `settle(member)` | anyone | accrue and pay that member's routes from yield |
+| `settleMany(members[])` | anyone, usually the keeper | the same over a batch; non-members are skipped |
+| `collectFees()` | anyone | redeem the fee pool to `feeRecipient` |
 | `isPatron(creator, member)` | view | routed and funded at the last settle |
 | `previewSettle(member)` | view | owed, how much yield covers, how much the source can pay today |
 | `claimableYield(member)` | view | a lower bound that `claimYield` will accept |
 | `positionValue`, `inShortfall`, `memberOf`, `routesOf`, `creatorPaid`, `totalPrincipal`, `memberCount` | view | state |
 
-Constructor: `(source, minDeposit, period, termsHash, maxTotalPrincipal, joinDeadline, yieldSink)`. The asset is read from `source.asset()`.
+Constructor: `(source, minDeposit, period, termsHash, maxTotalPrincipal, joinDeadline, yieldSink, feeBps, feeRecipient)`. The asset is read from `source.asset()`. `feeBps` above 1,000 reverts; a nonzero fee needs a recipient.
 
 ## Pilot parameters (Scan Room patron tier)
 
@@ -90,23 +98,24 @@ From the handoff doc, open rulings R2, R3 and R7 pending DJ's confirmation:
 | maxTotalPrincipal | 49,000 USDC (14 memberships at the minimum) | R3, inside the $50,000 line counting deposits |
 | joinDeadline | day 60 of the pilot | R4 |
 | yieldSink | the Scan Room payee (principal-only mode) | R8, and the pilot's disclosures |
+| feeBps, feeRecipient | 0 for the pilot; the product vault proposes 500 (5%) to a DJZS fee address | R9 in the product doc |
 
 ## Tests
 
 ```
-forge test            # 46 unit and fuzz tests; 8 invariants in each mode plus I9 in principal-only; two non-vacuity walks
-forge test -vv        # shows the walks' totals: creators paid, sink paid, members claimed, gains, losses
+forge test            # 61 unit and fuzz tests (46 core, 15 product); 8 invariants in each mode plus I9 in principal-only; two walks
+forge test -vv        # shows the walks' totals: creators paid, sink paid, fees, members claimed, gains, losses
 ```
 
-The invariants run 128 sequences of 80 random actions over 4 members, 3 creators, an outside depositor, gains, losses and liquidity caps, with `fail_on_revert` on, so the handler never papers over a revert. They run twice, once per mode:
+The invariants run 128 sequences of 80 random actions over 4 members, 3 creators, an outside depositor, gains, losses and liquidity caps, with `fail_on_revert` on, so the handler never papers over a revert. They run twice, once per mode, both with a 5% fee on so the fee path sits under every property:
 
 | ID | Holds after every sequence |
 | --- | --- |
-| I1 | Every source share the vault holds belongs to exactly one member |
+| I1 | Every source share the vault holds belongs to exactly one member or to the fee pool |
 | I2 | The vault never holds USDC itself |
 | I3 | `totalPrincipal` and `memberCount` are exact sums |
 | I4 | With no source loss on record, every member's shares back their principal within one share per deposit |
-| I5 | Everything paid to creators or claimed came out of source gains (plus other depositors' sub-share rounding dust) |
+| I5 | Everything paid to creators, set aside or collected as fee, or claimed came out of source gains (plus other depositors' sub-share rounding dust) |
 | I6 | A member who left holds nothing: no principal, no shares, no routes |
 | I7 | A current member's principal is never below the minimum |
 | I8 | A member in shortfall cannot pay anyone: settle and claim would both move nothing |
@@ -122,7 +131,7 @@ No keys in a shell line, ever. Use a hardware signer or a keystore account with 
 
 1. Screen the source on a fork: `SOURCE=0x... USDC=0x8335...2913 forge script script/Screen.s.sol --rpc-url $RPC`. All three checks print true.
 2. Print the terms hash: `forge script script/TermsHash.s.sol`. The number is `keccak256` of `terms/member-terms-v1.md`, byte for byte, final newline included. The patron page must serve that file unchanged and hash the same bytes.
-3. Dry run: `SOURCE=0x... MIN_DEPOSIT=3500000000 MAX_TOTAL_PRINCIPAL=49000000000 JOIN_DEADLINE=<unix> YIELD_SINK=<payee> EXPECT_ASSET=0x8335...2913 forge script script/Deploy.s.sol --rpc-url $RPC`.
+3. Dry run: `SOURCE=0x... MIN_DEPOSIT=3500000000 MAX_TOTAL_PRINCIPAL=49000000000 JOIN_DEADLINE=<unix> YIELD_SINK=<payee> FEE_BPS=0 EXPECT_ASSET=0x8335...2913 forge script script/Deploy.s.sol --rpc-url $RPC`. A product vault adds `FEE_BPS=500 FEE_RECIPIENT=<fee address>`.
 4. Broadcast the same line with `--broadcast` and your signer flag. Verify on BaseScan. Confirm the verified code has no owner or admin function (there is none to find).
 5. Publish the address, the source, the terms hash and the terms text together. Then the smoke test from a DJ wallet, excluded from every count: join, setRoute, settle, claimYield, leave.
 
@@ -151,8 +160,9 @@ A `settle(member)` costs about 110k gas with one route against the mock source (
 
 ```
 src/PatronVault.sol            the contract
-src/interfaces/                 the ERC-20 and ERC-4626 subsets it uses
-test/PatronVault.t.sol          unit and fuzz tests
+src/interfaces/                 the ERC-20, ERC-20 permit (ERC-7597) and ERC-4626 subsets it uses
+test/PatronVault.t.sol          unit and fuzz tests, the core
+test/PatronVault.product.t.sol  fee, permit join, batch routes, settleMany
 test/PatronVault.invariants.t.sol
 test/handlers/PatronHandler.sol
 test/mocks/                     MockUSDC (with a Circle-style freeze) and MockERC4626 (gain, loss, liquidity levers)

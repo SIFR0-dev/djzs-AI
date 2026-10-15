@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "./interfaces/IERC20.sol";
+import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 import {IERC4626} from "./interfaces/IERC4626.sol";
 
 /// @title PatronVault v1
@@ -24,6 +25,8 @@ import {IERC4626} from "./interfaces/IERC4626.sol";
 ///           6. Unrouted yield is either the member's to claim (yieldSink unset) or, in principal-only mode
 ///              (yieldSink set), stays in the position as a buffer for the member's routes and goes to those
 ///              creators when the member leaves. The member never receives yield in that mode.
+///           7. The protocol fee is a fixed share of what reaches a creator, set once at deployment and capped
+///              at MAX_FEE_BPS. It is never taken from a member's principal and never from unpaid amounts.
 ///
 ///         What this code cannot promise: the yield source. If the source loses money, every share
 ///         holder loses pro rata, this vault included. The source is chosen once, at deployment,
@@ -41,8 +44,13 @@ contract PatronVault {
     /// @notice Principal-only mode when set: members cannot claim yield; on leave, unrouted yield goes to the
     ///         member's routes pro rata, or to this address when the member has no routes. 0 = members keep yield.
     address public immutable yieldSink;
+    /// @notice Share of every creator payment kept as protocol fee, in basis points; 0 = none. Never above MAX_FEE_BPS.
+    uint256 public immutable feeBps;
+    /// @notice Where collected fees go. collectFees() is permissionless.
+    address public immutable feeRecipient;
 
     uint256 public constant MAX_ROUTES = 16;
+    uint256 public constant MAX_FEE_BPS = 1_000; // 10%: the most any PatronVault can ever take
     /// @dev A settle whose yield covers at least this share of what is owed keeps the member funded.
     uint256 public constant FUNDED_BPS = 9_500;
 
@@ -62,8 +70,16 @@ contract PatronVault {
         uint256 carry; // accrued but unpaid, in asset units * seconds; carry / period is owed now
     }
 
+    struct RouteInput {
+        address creator;
+        uint96 amountPerPeriod;
+    }
+
     mapping(address => Member) internal _members;
     mapping(address => Route[]) internal _routes;
+
+    /// @notice Source shares set aside as protocol fee, not yet collected. Not part of any member's position.
+    uint256 public feeShares;
 
     /// @notice creator => smallest amountPerPeriod the creator accepts on new or changed routes (0 = any)
     mapping(address => uint256) public creatorMin;
@@ -88,6 +104,8 @@ contract PatronVault {
     event CreatorUnpaid(address indexed creator, address indexed member, uint256 amount);
     event CreatorForgiven(address indexed creator, address indexed member, uint256 amount);
     event YieldForwarded(address indexed to, address indexed member, uint256 amount);
+    event FeeAccrued(address indexed member, address indexed creator, uint256 amount);
+    event FeesCollected(address indexed to, uint256 amount);
     event CreatorMinSet(address indexed creator, uint256 amountPerPeriod);
 
     // ─────────────────────────────── errors ───────────────────────────────
@@ -106,6 +124,8 @@ contract PatronVault {
     error CapReached();
     error JoinClosed();
     error YieldNotClaimable();
+    error FeeTooHigh();
+    error NoFees();
     error Reentrancy();
     error TransferFailed();
     error Overflow();
@@ -119,10 +139,14 @@ contract PatronVault {
         bytes32 termsHash_,
         uint256 maxTotalPrincipal_,
         uint256 joinDeadline_,
-        address yieldSink_
+        address yieldSink_,
+        uint256 feeBps_,
+        address feeRecipient_
     ) {
         if (address(source_) == address(0)) revert ZeroAddress();
         if (period_ == 0 || termsHash_ == bytes32(0)) revert BadTerms();
+        if (feeBps_ > MAX_FEE_BPS) revert FeeTooHigh();
+        if (feeBps_ != 0 && feeRecipient_ == address(0)) revert ZeroAddress();
         address asset_ = source_.asset();
         if (asset_ == address(0)) revert ZeroAddress();
         source = source_;
@@ -133,6 +157,8 @@ contract PatronVault {
         maxTotalPrincipal = maxTotalPrincipal_;
         joinDeadline = joinDeadline_;
         yieldSink = yieldSink_;
+        feeBps = feeBps_;
+        feeRecipient = feeRecipient_;
         // One approval, forever. The vault never holds `asset` between transactions, so the
         // allowance only ever covers what deposit() hands to the source in the same call.
         _call(abi.encodeWithSelector(IERC20.approve.selector, address(source_), type(uint256).max));
@@ -149,6 +175,31 @@ contract PatronVault {
 
     /// @notice Join with an initial deposit. `terms` must equal `termsHash`; the transaction is the consent record.
     function join(uint256 amount, bytes32 terms) external nonReentrant {
+        _join(amount, terms);
+    }
+
+    /// @notice Join and set routes in one transaction.
+    function joinAndRoute(uint256 amount, bytes32 terms, RouteInput[] calldata routes) external nonReentrant {
+        _join(amount, terms);
+        _applyRoutes(msg.sender, routes);
+    }
+
+    /// @notice Join in one transaction with no prior approve: a USDC permit (ERC-7597 bytes signature, so an
+    ///         EOA's ECDSA signature or a smart wallet's EIP-1271 one). If someone front-runs the permit, the
+    ///         allowance is already there and the join still goes through.
+    function joinWithPermit(
+        uint256 amount,
+        bytes32 terms,
+        uint256 deadline,
+        bytes calldata signature,
+        RouteInput[] calldata routes
+    ) external nonReentrant {
+        try IERC20Permit(address(asset)).permit(msg.sender, address(this), amount, deadline, signature) {} catch {}
+        _join(amount, terms);
+        _applyRoutes(msg.sender, routes);
+    }
+
+    function _join(uint256 amount, bytes32 terms) internal {
         if (terms != termsHash) revert BadTerms();
         if (joinDeadline != 0 && block.timestamp >= joinDeadline) revert JoinClosed();
         Member storage m = _members[msg.sender];
@@ -237,40 +288,75 @@ contract PatronVault {
     ///         cannot receive the token is removable, and what it was owed is forgiven.
     function setRoute(address creator, uint96 amountPerPeriod) external nonReentrant {
         Member storage m = _requireMember(msg.sender);
-        if (creator == address(0)) revert ZeroAddress();
-        if (creator == msg.sender) revert SelfRoute();
         _settle(msg.sender, m);
+        _setRoute(msg.sender, creator, amountPerPeriod);
+    }
 
-        Route[] storage rs = _routes[msg.sender];
+    /// @notice Several routes in one transaction, settled once. Each entry follows setRoute's rules.
+    function setRoutes(RouteInput[] calldata routes) external nonReentrant {
+        Member storage m = _requireMember(msg.sender);
+        _settle(msg.sender, m);
+        _applyRoutes(msg.sender, routes);
+    }
+
+    function _applyRoutes(address member, RouteInput[] calldata routes) internal {
+        for (uint256 i = 0; i < routes.length; i++) {
+            _setRoute(member, routes[i].creator, routes[i].amountPerPeriod);
+        }
+    }
+
+    function _setRoute(address member, address creator, uint96 amountPerPeriod) internal {
+        if (creator == address(0)) revert ZeroAddress();
+        if (creator == member) revert SelfRoute();
+        Route[] storage rs = _routes[member];
         uint256 n = rs.length;
         for (uint256 i = 0; i < n; i++) {
             if (rs[i].creator != creator) continue;
             if (amountPerPeriod == 0) {
-                // Still owed after the settle above: either the source could not pay (wait for liquidity) or the
-                // creator address cannot receive (blocked token address). The second must not trap the member.
+                // Still owed after the settle that preceded this call: either the source could not pay (wait for
+                // liquidity) or the creator address cannot receive (blocked token address). The second must not
+                // trap the member.
                 uint256 unpaid = rs[i].carry / period;
                 if (unpaid != 0 && source.maxWithdraw(address(this)) < unpaid) revert OwedButIlliquid();
-                if (unpaid != 0) emit CreatorForgiven(creator, msg.sender, unpaid);
+                if (unpaid != 0) emit CreatorForgiven(creator, member, unpaid);
                 rs[i] = rs[n - 1];
                 rs.pop();
             } else {
                 if (amountPerPeriod < creatorMin[creator]) revert BelowCreatorMinimum();
                 rs[i].amountPerPeriod = amountPerPeriod;
             }
-            emit RouteSet(msg.sender, creator, amountPerPeriod);
+            emit RouteSet(member, creator, amountPerPeriod);
             return;
         }
         if (amountPerPeriod == 0) return; // removing a route that does not exist is a no-op
         if (n >= MAX_ROUTES) revert TooManyRoutes();
         if (amountPerPeriod < creatorMin[creator]) revert BelowCreatorMinimum();
         rs.push(Route({creator: creator, amountPerPeriod: amountPerPeriod, carry: 0}));
-        emit RouteSet(msg.sender, creator, amountPerPeriod);
+        emit RouteSet(member, creator, amountPerPeriod);
     }
 
     /// @notice Anyone may settle any member: pays the member's creators from the member's yield, never principal.
     function settle(address member) external nonReentrant {
         Member storage m = _requireMember(member);
         _settle(member, m);
+    }
+
+    /// @notice The keeper's loop. Addresses that are not members are skipped, not reverted on.
+    function settleMany(address[] calldata members) external nonReentrant {
+        for (uint256 i = 0; i < members.length; i++) {
+            Member storage m = _members[members[i]];
+            if (m.principal == 0) continue;
+            _settle(members[i], m);
+        }
+    }
+
+    /// @notice Send the protocol fee set aside so far to feeRecipient. Anyone may call.
+    function collectFees() external nonReentrant returns (uint256 amount) {
+        uint256 s = feeShares;
+        if (s == 0) revert NoFees();
+        feeShares = 0;
+        amount = source.redeem(s, feeRecipient, address(this));
+        emit FeesCollected(feeRecipient, amount);
     }
 
     // ─────────────────────────────── creator actions ───────────────────────────────
@@ -417,7 +503,8 @@ contract PatronVault {
         (uint256[] memory owedBy, uint256 owed) = _accrue(rs, elapsed);
         if (owed == 0) return;
 
-        uint256 fromYield = _fromYield(m, n);
+        // one share kept back per rounding step: the creator's withdraw, and the fee's share move when there is a fee
+        uint256 fromYield = _fromYield(m, feeBps == 0 ? n : 2 * n);
         if (fromYield > owed) fromYield = owed;
         uint256 liquid = source.maxWithdraw(address(this));
         uint256 pay = fromYield > liquid ? liquid : fromYield;
@@ -461,17 +548,26 @@ contract PatronVault {
         }
     }
 
-    /// @dev A payment the source refuses, or a creator address the token refuses, must never block the
-    ///      member's own actions (every one of them settles first). Keep it owed and move on.
-    function _pay(address member, Route storage r, uint256 p) internal returns (uint256) {
-        try source.withdraw(p, r.creator, address(this)) returns (uint256 b) {
-            creatorPaid[r.creator] += p;
-            emit CreatorPaid(r.creator, member, p);
-            return b;
+    /// @dev Pays a creator `p` less the protocol fee, and moves the fee's worth of shares from the member to the
+    ///      fee pool. A payment the source refuses, or a creator address the token refuses, must never block the
+    ///      member's own actions (every one of them settles first): keep the whole amount owed and move on, with
+    ///      no fee taken on what was not paid. Returns the shares that left the member's position.
+    function _pay(address member, Route storage r, uint256 p) internal returns (uint256 taken) {
+        uint256 fee = (p * feeBps) / 10_000;
+        uint256 net = p - fee;
+        try source.withdraw(net, r.creator, address(this)) returns (uint256 b) {
+            taken = b;
+            creatorPaid[r.creator] += net;
+            emit CreatorPaid(r.creator, member, net);
+            if (fee != 0) {
+                uint256 fs = source.previewWithdraw(fee);
+                feeShares += fs;
+                taken += fs;
+                emit FeeAccrued(member, r.creator, fee);
+            }
         } catch {
             r.carry += p * period;
             emit CreatorUnpaid(r.creator, member, p);
-            return 0;
         }
     }
 

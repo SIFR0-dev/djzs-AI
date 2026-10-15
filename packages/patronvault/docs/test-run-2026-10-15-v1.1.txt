@@ -1,0 +1,112 @@
+PatronVault v1.1 test run, 2026-10-15 (container, Linux x86_64)
+forge Version: 1.5.1-stable
+solc 0.8.28, optimizer on, runs 1000; invariant suites with feeBps 500
+
+No files changed, compilation skipped
+Ran 15 tests for test/PatronVault.product.t.sol:PatronVaultProductTest
+[PASS] test_fee_capAndRecipientEnforcedAtDeployment() (gas: 3488431)
+[PASS] test_fee_comesOutOfTheCreatorPayment_neverPrincipal() (gas: 463300)
+[PASS] test_fee_notTakenOnWhatWasNotPaid() (gas: 456777)
+[PASS] test_fee_principalOnlyMode_forwardedBufferCarriesNoFee() (gas: 3723303)
+[PASS] test_fee_proRataAcrossRoutes_whenYieldIsShort() (gas: 531075)
+[PASS] test_fee_zeroMeansNoPool() (gas: 3762494)
+[PASS] test_joinAndRoute_setsRoutesAtTheDoor() (gas: 337446)
+[PASS] test_joinWithPermit_badSignatureWithoutAllowance_reverts() (gas: 66434)
+[PASS] test_joinWithPermit_oneTransaction_noPriorApprove() (gas: 349882)
+[PASS] test_joinWithPermit_stillChecksTermsMinimumAndRoutes() (gas: 315413)
+[PASS] test_joinWithPermit_survivesAFrontRunPermit() (gas: 261922)
+[PASS] test_setRoutes_addChangeRemove_settlesOnce() (gas: 470709)
+[PASS] test_setRoutes_rejectsWhatSetRouteRejects() (gas: 301698)
+[PASS] test_settleMany_emptyIsANoop() (gas: 13213)
+[PASS] test_settleMany_settlesMembersAndSkipsStrangers() (gas: 646477)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 10.67ms (8.96ms CPU time)
+Ran 46 tests for test/PatronVault.t.sol:PatronVaultTest
+[PASS] testFuzz_claimableNeverOverstates(uint256,uint96,uint256,uint256) (runs: 256, μ: 421817, ~: 454555)
+[PASS] testFuzz_settleNeverBurnsPrincipalShares(uint256,uint96,uint96,uint256,uint256,uint256) (runs: 256, μ: 564543, ~: 595650)
+[PASS] test_claimYield_cannotTakeWhatIsHeldForCreators() (gas: 507460)
+[PASS] test_claimYield_nothingInShortfall() (gas: 256526)
+[PASS] test_claimYield_paysUnroutedYield_afterSettlingRoutes() (gas: 436817)
+[PASS] test_claimYield_rejectsMoreThanYield() (gas: 269505)
+[PASS] test_constructor_rejectsBadParams() (gas: 182637)
+[PASS] test_constructor_setsImmutablesAndApproves() (gas: 19289)
+[PASS] test_deposit_requiresMembershipAndAmount() (gas: 222136)
+[PASS] test_deposit_topUpSettlesFirst() (gas: 416583)
+[PASS] test_isPatron_states() (gas: 417335)
+[PASS] test_isolation_onePayoutNeverTouchesAnotherMember() (gas: 489908)
+[PASS] test_isolation_shortfallMemberPaysNothing_healthyMemberPays() (gas: 441244)
+[PASS] test_join_atOddPrice_principalIsBackedWithinOneShare() (gas: 297122)
+[PASS] test_join_recordsPrincipalSharesAndConsent() (gas: 222949)
+[PASS] test_join_rejectsBelowMinimumAndZero() (gas: 27587)
+[PASS] test_join_rejectsSecondJoin() (gas: 213212)
+[PASS] test_join_rejectsWrongTerms() (gas: 15999)
+[PASS] test_leave_inShortfall_takesOwnLossOnly() (gas: 315180)
+[PASS] test_leave_redeemsEverything_clearsRoutes_allowsRejoin() (gas: 500040)
+[PASS] test_memberOf_and_routesOf_forStranger() (gas: 32592)
+[PASS] test_pilotLimits_capAndJoinWindow() (gas: 3703169)
+[PASS] test_previewSettle_matchesSettle() (gas: 526631)
+[PASS] test_setRoute_addChangeRemove() (gas: 331570)
+[PASS] test_setRoute_capsAtMaxRoutes() (gas: 972749)
+[PASS] test_setRoute_rejectsSelfAndZero() (gas: 224722)
+[PASS] test_setRoute_requiresMembership() (gas: 20522)
+[PASS] test_setRoute_respectsCreatorMinimum_removalAlwaysAllowed() (gas: 283234)
+[PASS] test_settle_anyoneCanCall_nonMemberReverts() (gas: 20335)
+[PASS] test_settle_atOddPrice_neverBurnsPrincipalShares() (gas: 1488448)
+[PASS] test_settle_blockedCreator_neverTrapsTheMember() (gas: 751351)
+[PASS] test_settle_frequentSettlesLoseNothingToRounding() (gas: 5631601)
+[PASS] test_settle_illiquidSource_holdsTheDifference_doesNotForgive() (gas: 449506)
+[PASS] test_settle_noYield_paysNothing_flagsUnfunded_principalUntouched() (gas: 301891)
+[PASS] test_settle_paysCreatorFromYieldOnly() (gas: 434833)
+[PASS] test_settle_prorataWhenYieldIsShort_forgivesTheRest() (gas: 574368)
+[PASS] test_sinkMode_blockedRecipientsNeverTrapTheExit() (gas: 3809117)
+[PASS] test_sinkMode_claimIsRefused() (gas: 3648610)
+[PASS] test_sinkMode_leaveForwardsUnroutedYieldToRoutesProRata() (gas: 3788949)
+[PASS] test_sinkMode_leaveWithNoRoutesPaysTheSink() (gas: 3632019)
+[PASS] test_sinkMode_partialWithdrawLeavesTheBufferInPlace() (gas: 3684138)
+[PASS] test_sinkMode_unroutedYieldBuffersALowMonth() (gas: 3841501)
+[PASS] test_withdraw_allIsLeave() (gas: 284069)
+[PASS] test_withdraw_inShortfall_isProRata() (gas: 284221)
+[PASS] test_withdraw_partialReturnsPrincipal_keepsYield() (gas: 292614)
+[PASS] test_withdraw_rejectsDustRemainderAndOverdraw() (gas: 223790)
+Suite result: ok. 46 passed; 0 failed; 0 skipped; finished in 306.93ms (347.07ms CPU time)
+Ran 9 tests for test/PatronVault.invariants.t.sol:PatronVaultInvariants
+[PASS] invariant_I1_sharesBelongToMembers() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I2_vaultHoldsNoAsset() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I3_totalsAreExact() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I4_principalBackedWhenSourceHasNotLost() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I5_payoutsComeFromGainsOnly() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I6_leaversHoldNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I7_membersMeetMinimum() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I8_shortfallPaysNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] test_handlerReachesInterestingStates() (gas: 34502754)
+Logs:
+  creators paid (USDC units): 10921130089
+  sink paid (USDC units): 0
+  fees collected (USDC units): 461962601
+  fee pool uncollected (USDC units): 125564563
+  members claimed (USDC units): 5657307192
+  source gains (USDC units): 32256621195
+  source losses (USDC units): 8884726871
+  illiquidity reverts tolerated: 25
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 26.09s (33.18s CPU time)
+Ran 10 tests for test/PatronVault.invariants.t.sol:PatronVaultInvariantsSink
+[PASS] invariant_I1_sharesBelongToMembers() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I2_vaultHoldsNoAsset() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I3_totalsAreExact() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I4_principalBackedWhenSourceHasNotLost() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I5_payoutsComeFromGainsOnly() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I6_leaversHoldNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I7_membersMeetMinimum() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I8_shortfallPaysNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I9_membersNeverReceiveYield() (runs: 128, calls: 10240, reverts: 0)
+[PASS] test_handlerReachesInterestingStates() (gas: 34929986)
+Logs:
+  creators paid (USDC units): 15538941817
+  sink paid (USDC units): 802259448
+  fees collected (USDC units): 553139742
+  fee pool uncollected (USDC units): 141376338
+  members claimed (USDC units): 0
+  source gains (USDC units): 31564424764
+  source losses (USDC units): 9211884158
+  illiquidity reverts tolerated: 35
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 28.16s (51.93s CPU time)
+Ran 4 test suites in 28.48s (54.56s CPU time): 80 tests passed, 0 failed, 0 skipped (80 total tests)

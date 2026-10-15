@@ -24,6 +24,7 @@ contract PatronHandler is Test {
     mapping(address => uint256) public deposits; // deposit() + join() calls per current membership
     mapping(address => uint256) public leaves; // lifetime leave() and withdraw-all exits
     uint256 public claimedTotal;
+    uint256 public feesCollected;
     uint256 public illiquidReverts;
     uint256 public outsiderOps; // each one can leave at most a share's worth of rounding dust to other holders
     uint256 public calls;
@@ -163,6 +164,17 @@ contract PatronHandler is Test {
         calls++;
         vm.prank(c);
         vault.setCreatorMin(amount);
+    }
+
+    function collectFees() external {
+        if (vault.feeShares() == 0) return;
+        calls++;
+        uint256 before = usdc.balanceOf(vault.feeRecipient());
+        try vault.collectFees() {
+            feesCollected += usdc.balanceOf(vault.feeRecipient()) - before;
+        } catch (bytes memory reason) {
+            _onlyIlliquid(reason);
+        }
     }
 
     // ───────────────────────────── world ─────────────────────────────
