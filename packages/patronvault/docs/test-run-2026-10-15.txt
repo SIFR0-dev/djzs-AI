@@ -1,0 +1,65 @@
+PatronVault v1 test run, 2026-10-15 (container, Linux x86_64)
+forge Version: 1.5.1-stable
+solc 0.8.28, optimizer on, runs 1000
+
+No files changed, compilation skipped
+Ran 40 tests for test/PatronVault.t.sol:PatronVaultTest
+[PASS] testFuzz_claimableNeverOverstates(uint256,uint96,uint256,uint256) (runs: 256, μ: 419440, ~: 454009)
+[PASS] testFuzz_settleNeverBurnsPrincipalShares(uint256,uint96,uint96,uint256,uint256,uint256) (runs: 256, μ: 564161, ~: 594722)
+[PASS] test_claimYield_cannotTakeWhatIsHeldForCreators() (gas: 506290)
+[PASS] test_claimYield_nothingInShortfall() (gas: 256432)
+[PASS] test_claimYield_paysUnroutedYield_afterSettlingRoutes() (gas: 436291)
+[PASS] test_claimYield_rejectsMoreThanYield() (gas: 269458)
+[PASS] test_constructor_rejectsBadParams() (gas: 178596)
+[PASS] test_constructor_setsImmutablesAndApproves() (gas: 19113)
+[PASS] test_deposit_requiresMembershipAndAmount() (gas: 222143)
+[PASS] test_deposit_topUpSettlesFirst() (gas: 416087)
+[PASS] test_isPatron_states() (gas: 416930)
+[PASS] test_isolation_onePayoutNeverTouchesAnotherMember() (gas: 489514)
+[PASS] test_isolation_shortfallMemberPaysNothing_healthyMemberPays() (gas: 440860)
+[PASS] test_join_atOddPrice_principalIsBackedWithinOneShare() (gas: 297122)
+[PASS] test_join_recordsPrincipalSharesAndConsent() (gas: 222864)
+[PASS] test_join_rejectsBelowMinimumAndZero() (gas: 27543)
+[PASS] test_join_rejectsSecondJoin() (gas: 213287)
+[PASS] test_join_rejectsWrongTerms() (gas: 16044)
+[PASS] test_leave_inShortfall_takesOwnLossOnly() (gas: 315168)
+[PASS] test_leave_redeemsEverything_clearsRoutes_allowsRejoin() (gas: 499687)
+[PASS] test_memberOf_and_routesOf_forStranger() (gas: 32568)
+[PASS] test_pilotLimits_capAndJoinWindow() (gas: 2845177)
+[PASS] test_previewSettle_matchesSettle() (gas: 525853)
+[PASS] test_setRoute_addChangeRemove() (gas: 331140)
+[PASS] test_setRoute_capsAtMaxRoutes() (gas: 970611)
+[PASS] test_setRoute_rejectsSelfAndZero() (gas: 218738)
+[PASS] test_setRoute_requiresMembership() (gas: 20499)
+[PASS] test_setRoute_respectsCreatorMinimum_removalAlwaysAllowed() (gas: 282863)
+[PASS] test_settle_anyoneCanCall_nonMemberReverts() (gas: 20334)
+[PASS] test_settle_atOddPrice_neverBurnsPrincipalShares() (gas: 1481984)
+[PASS] test_settle_blockedCreator_neverTrapsTheMember() (gas: 749744)
+[PASS] test_settle_frequentSettlesLoseNothingToRounding() (gas: 5596165)
+[PASS] test_settle_illiquidSource_holdsTheDifference_doesNotForgive() (gas: 448547)
+[PASS] test_settle_noYield_paysNothing_flagsUnfunded_principalUntouched() (gas: 301653)
+[PASS] test_settle_paysCreatorFromYieldOnly() (gas: 434342)
+[PASS] test_settle_prorataWhenYieldIsShort_forgivesTheRest() (gas: 572884)
+[PASS] test_withdraw_allIsLeave() (gas: 283916)
+[PASS] test_withdraw_inShortfall_isProRata() (gas: 284211)
+[PASS] test_withdraw_partialReturnsPrincipal_keepsYield() (gas: 292487)
+[PASS] test_withdraw_rejectsDustRemainderAndOverdraw() (gas: 223752)
+Suite result: ok. 40 passed; 0 failed; 0 skipped; finished in 385.85ms (443.08ms CPU time)
+Ran 9 tests for test/PatronVault.invariants.t.sol:PatronVaultInvariants
+[PASS] invariant_I1_sharesBelongToMembers() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I2_vaultHoldsNoAsset() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I3_totalsAreExact() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I4_principalBackedWhenSourceHasNotLost() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I5_payoutsComeFromGainsOnly() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I6_leaversHoldNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I7_membersMeetMinimum() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I8_shortfallPaysNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] test_handlerReachesInterestingStates() (gas: 31761098)
+Logs:
+  creators paid (USDC units): 7322776709
+  members claimed (USDC units): 4296468283
+  source gains (USDC units): 27128327054
+  source losses (USDC units): 5356902952
+  illiquidity reverts tolerated: 13
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 14.80s (40.56s CPU time)
+Ran 2 test suites in 14.80s (15.18s CPU time): 49 tests passed, 0 failed, 0 skipped (49 total tests)

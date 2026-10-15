@@ -1,0 +1,21 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.28"
+optimizer = true
+optimizer_runs = 1000
+fs_permissions = [{ access = "read", path = "./terms" }]
+
+
+[fuzz]
+runs = 256
+
+[invariant]
+runs = 128
+depth = 80
+fail_on_revert = true
+
+[lint]
+# asset()/source() follow the ERC-4626 getter names; the modifier is five lines
+exclude_lints = ["screaming-snake-case-immutable", "unwrapped-modifier-logic"]
