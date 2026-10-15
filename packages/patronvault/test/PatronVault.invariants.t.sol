@@ -27,11 +27,15 @@ contract PatronVaultInvariants is Test {
 
     bytes32 constant TERMS = keccak256("DJZS Patron Vault member terms v1");
 
+    function _sink() internal virtual returns (address) {
+        return address(0);
+    }
+
     function setUp() public {
         vm.warp(1_760_000_000);
         usdc = new MockUSDC();
         src = new MockERC4626(usdc);
-        vault = new PatronVault(IERC4626(address(src)), 500e6, 30 days, TERMS, 0, 0);
+        vault = new PatronVault(IERC4626(address(src)), 500e6, 30 days, TERMS, 0, 0, _sink());
         handler = new PatronHandler(usdc, src, vault, TERMS);
         targetContract(address(handler));
     }
@@ -71,7 +75,7 @@ contract PatronVaultInvariants is Test {
     }
 
     function invariant_I5_payoutsComeFromGainsOnly() public view {
-        uint256 paid;
+        uint256 paid = vault.creatorPaid(vault.yieldSink());
         for (uint256 i = 0; i < handler.creatorsLength(); i++) {
             paid += vault.creatorPaid(handler.creators(i));
         }
@@ -148,13 +152,31 @@ contract PatronVaultInvariants is Test {
             paid += vault.creatorPaid(handler.creators(i));
         }
         emit log_named_uint("creators paid (USDC units)", paid);
+        emit log_named_uint("sink paid (USDC units)", vault.creatorPaid(vault.yieldSink()));
         emit log_named_uint("members claimed (USDC units)", handler.claimedTotal());
         emit log_named_uint("source gains (USDC units)", src.gains());
         emit log_named_uint("source losses (USDC units)", src.losses());
         emit log_named_uint("illiquidity reverts tolerated", handler.illiquidReverts());
         assertGt(paid, 0, "no creator was ever paid");
-        assertGt(handler.claimedTotal(), 0, "no member ever claimed");
+        if (vault.yieldSink() == address(0)) assertGt(handler.claimedTotal(), 0, "no member ever claimed");
+        else assertGt(vault.creatorPaid(vault.yieldSink()), 0, "the sink never received anything");
         assertTrue(sawLoss, "no loss was ever injected");
         assertGt(src.losses(), 0);
+    }
+}
+
+/// @dev The same properties in principal-only mode: members cannot claim, leavers forward unrouted yield.
+contract PatronVaultInvariantsSink is PatronVaultInvariants {
+    function _sink() internal override returns (address) {
+        return makeAddr("sink");
+    }
+
+    function invariant_I9_membersNeverReceiveYield() public view {
+        // a member's USDC in hand never exceeds what they started with: deposits go out, deposits come back,
+        // yield does not, apart from the MAX_ROUTES shares of rounding dust an exit may leave with the member
+        for (uint256 i = 0; i < handler.membersLength(); i++) {
+            address m = handler.members(i);
+            assertLe(usdc.balanceOf(m), 1_000_000e6 + 2 * vault.MAX_ROUTES() * handler.leaves(m), "a member received yield");
+        }
     }
 }

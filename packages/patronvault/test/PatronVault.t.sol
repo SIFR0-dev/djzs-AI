@@ -27,7 +27,7 @@ contract PatronVaultTest is Test {
         vm.warp(1_760_000_000);
         usdc = new MockUSDC();
         src = new MockERC4626(usdc);
-        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0);
+        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0));
         _fund(alice, 100_000e6);
         _fund(bob, 100_000e6);
         _fund(outsider, 1_000_000e6);
@@ -85,16 +85,16 @@ contract PatronVaultTest is Test {
 
     function test_constructor_rejectsBadParams() public {
         vm.expectRevert(PatronVault.ZeroAddress.selector);
-        new PatronVault(IERC4626(address(0)), MIN, PERIOD, TERMS, 0, 0);
+        new PatronVault(IERC4626(address(0)), MIN, PERIOD, TERMS, 0, 0, address(0));
         vm.expectRevert(PatronVault.BadTerms.selector);
-        new PatronVault(IERC4626(address(src)), MIN, 0, TERMS, 0, 0);
+        new PatronVault(IERC4626(address(src)), MIN, 0, TERMS, 0, 0, address(0));
         vm.expectRevert(PatronVault.BadTerms.selector);
-        new PatronVault(IERC4626(address(src)), MIN, PERIOD, bytes32(0), 0, 0);
+        new PatronVault(IERC4626(address(src)), MIN, PERIOD, bytes32(0), 0, 0, address(0));
     }
 
     function test_pilotLimits_capAndJoinWindow() public {
         uint256 closes = block.timestamp + 60 days;
-        PatronVault capped = new PatronVault(IERC4626(address(src)), 3_500e6, PERIOD, TERMS, 49_000e6, closes);
+        PatronVault capped = new PatronVault(IERC4626(address(src)), 3_500e6, PERIOD, TERMS, 49_000e6, closes, address(0));
         vm.prank(alice);
         usdc.approve(address(capped), type(uint256).max);
         vm.prank(bob);
@@ -644,6 +644,126 @@ contract PatronVaultTest is Test {
         vault.settle(alice);
         assertEq(usdc.balanceOf(creatorA), 5e6, "one period paid, the underwater period forgiven");
         assertTrue(vault.isPatron(creatorA, alice));
+    }
+
+    // ───────────────────────────── principal-only mode (yieldSink) ─────────────────────────────
+
+    address sink = makeAddr("sink");
+
+    function _sinkVault() internal returns (PatronVault v) {
+        v = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, sink);
+        vm.prank(alice);
+        usdc.approve(address(v), type(uint256).max);
+        vm.prank(bob);
+        usdc.approve(address(v), type(uint256).max);
+    }
+
+    function test_sinkMode_claimIsRefused() public {
+        PatronVault v = _sinkVault();
+        vm.prank(alice);
+        v.join(3_000e6, TERMS);
+        src.gain(11e6);
+        assertEq(v.claimableYield(alice), 0);
+        vm.prank(alice);
+        vm.expectRevert(PatronVault.YieldNotClaimable.selector);
+        v.claimYield(1);
+    }
+
+    function test_sinkMode_leaveForwardsUnroutedYieldToRoutesProRata() public {
+        PatronVault v = _sinkVault();
+        vm.prank(alice);
+        v.join(3_000e6, TERMS);
+        vm.prank(alice);
+        v.setRoute(creatorA, 6e6);
+        vm.prank(alice);
+        v.setRoute(creatorB, 2e6);
+        src.gain(40e6);
+        vm.warp(block.timestamp + PERIOD);
+
+        vm.prank(alice);
+        v.leave();
+        // 8 paid by the settle on the way out, then the other 32 split 3:1, less a few units of rounding
+        assertApproxEqAbs(usdc.balanceOf(creatorA), 6e6 + 24e6, 6);
+        assertApproxEqAbs(usdc.balanceOf(creatorB), 2e6 + 8e6, 6);
+        assertGe(usdc.balanceOf(alice), 100_000e6, "the deposit came back in full");
+        assertLe(usdc.balanceOf(alice), 100_000e6 + 10, "and nothing beyond rounding dust");
+        assertEq(usdc.balanceOf(sink), 0);
+        assertEq(src.balanceOf(address(v)), 0);
+    }
+
+    function test_sinkMode_leaveWithNoRoutesPaysTheSink() public {
+        PatronVault v = _sinkVault();
+        vm.prank(alice);
+        v.join(3_000e6, TERMS);
+        src.gain(11e6);
+        vm.prank(alice);
+        v.leave();
+        assertApproxEqAbs(usdc.balanceOf(sink), 11e6, 3);
+        assertGe(usdc.balanceOf(alice), 100_000e6);
+        assertLe(usdc.balanceOf(alice), 100_000e6 + 4);
+        assertEq(v.creatorPaid(sink), usdc.balanceOf(sink));
+    }
+
+    function test_sinkMode_blockedRecipientsNeverTrapTheExit() public {
+        PatronVault v = _sinkVault();
+        vm.prank(alice);
+        v.join(3_000e6, TERMS);
+        vm.prank(alice);
+        v.setRoute(creatorA, 5e6);
+        src.gain(11e6);
+        usdc.setBlocked(creatorA, true);
+        vm.prank(alice);
+        v.leave();
+        assertEq(usdc.balanceOf(creatorA), 0);
+        assertApproxEqAbs(usdc.balanceOf(sink), 11e6, 3, "the creator could not receive, so the sink did");
+        assertGe(usdc.balanceOf(alice), 100_000e6);
+
+        // both the creator and the sink frozen: the member still leaves, and keeps what nobody could take
+        vm.prank(bob);
+        v.join(3_000e6, TERMS);
+        vm.prank(bob);
+        v.setRoute(creatorA, 5e6);
+        src.gain(11e6);
+        usdc.setBlocked(sink, true);
+        vm.prank(bob);
+        v.leave();
+        assertGe(usdc.balanceOf(bob), 100_000e6 + 11e6 - 4);
+    }
+
+    function test_sinkMode_unroutedYieldBuffersALowMonth() public {
+        PatronVault v = _sinkVault();
+        vm.prank(alice);
+        v.join(3_000e6, TERMS);
+        vm.prank(alice);
+        v.setRoute(creatorA, 10e6);
+        src.gain(20e6); // a fat month: 10 to the creator, 10 stays as buffer
+        vm.warp(block.timestamp + PERIOD);
+        vm.prank(keeper);
+        v.settle(alice);
+        assertEq(usdc.balanceOf(creatorA), 10e6);
+
+        src.gain(2e6); // a thin month: the buffer covers it
+        vm.warp(block.timestamp + PERIOD);
+        vm.prank(keeper);
+        v.settle(alice);
+        assertEq(usdc.balanceOf(creatorA), 20e6);
+        assertTrue(v.isPatron(creatorA, alice));
+        assertGe(_sharesIn(v, alice), src.previewWithdraw(3_000e6));
+    }
+
+    function test_sinkMode_partialWithdrawLeavesTheBufferInPlace() public {
+        PatronVault v = _sinkVault();
+        vm.prank(alice);
+        v.join(3_000e6, TERMS);
+        src.gain(11e6);
+        vm.prank(alice);
+        v.withdraw(1_000e6);
+        assertEq(usdc.balanceOf(alice), 98_000e6, "exactly the principal asked for");
+        assertApproxEqAbs(v.positionValue(alice), 2_011e6, 2, "the yield stayed behind as buffer");
+    }
+
+    function _sharesIn(PatronVault v, address who) internal view returns (uint256) {
+        return v.memberOf(who).shares;
     }
 
     // ───────────────────────────── views ─────────────────────────────

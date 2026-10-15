@@ -13,6 +13,9 @@ import {IERC4626} from "../src/interfaces/IERC4626.sol";
 ///                    PERIOD              seconds, default 2592000 (30 days)
 ///                    MAX_TOTAL_PRINCIPAL asset units, default 0 (no cap)
 ///                    JOIN_DEADLINE       unix seconds, default 0 (no deadline)
+///                    YIELD_SINK          principal-only mode: members cannot claim yield; on leave the unrouted
+///                                        yield goes to their routes, or to this address with no routes.
+///                                        Default 0 = members keep and may claim unrouted yield.
 ///                    EXPECT_ASSET        if set, the deploy reverts unless SOURCE.asset() equals it
 ///
 ///         Dry run (no broadcast, no key):
@@ -27,6 +30,7 @@ contract Deploy is Script {
         uint256 period = vm.envOr("PERIOD", uint256(30 days));
         uint256 maxTotalPrincipal = vm.envOr("MAX_TOTAL_PRINCIPAL", uint256(0));
         uint256 joinDeadline = vm.envOr("JOIN_DEADLINE", uint256(0));
+        address yieldSink = vm.envOr("YIELD_SINK", address(0));
         address expectAsset = vm.envOr("EXPECT_ASSET", address(0));
 
         address asset = source.asset();
@@ -36,7 +40,7 @@ contract Deploy is Script {
         bytes32 termsHash = keccak256(bytes(vm.readFile(TERMS_FILE)));
 
         vm.startBroadcast();
-        vault = new PatronVault(source, minDeposit, period, termsHash, maxTotalPrincipal, joinDeadline);
+        vault = new PatronVault(source, minDeposit, period, termsHash, maxTotalPrincipal, joinDeadline, yieldSink);
         vm.stopBroadcast();
 
         console2.log("PatronVault:        ", address(vault));
@@ -46,6 +50,7 @@ contract Deploy is Script {
         console2.log("period (s):         ", period);
         console2.log("maxTotalPrincipal:  ", maxTotalPrincipal);
         console2.log("joinDeadline:       ", joinDeadline);
+        console2.log("yieldSink:          ", yieldSink);
         console2.log("termsHash:");
         console2.logBytes32(termsHash);
     }

@@ -8,7 +8,7 @@ What the contract enforces
 
 1. We never spend your deposit. No function in the contract pays a creator, or anyone else, out of the shares that back your deposit.
 
-2. Only the interest your deposit earns is paid out, and only to creators you have routed it to yourself, at the amounts you set. Interest you have not routed stays yours and you can claim it at any time.
+2. Only the interest your deposit earns is paid out, and only to creators you have routed it to yourself, at the amounts you set. Interest beyond what you route stays in the contract as a buffer for your routes. You never receive interest: when you leave, any buffer goes to the creators you were routing to, or to the vault's named fallback address if you had no routes.
 
 3. You can withdraw your deposit at any time, in part or in full. There is no lock, no notice period and no exit fee. A withdrawal that leaves less than the minimum deposit must take the whole deposit.
 

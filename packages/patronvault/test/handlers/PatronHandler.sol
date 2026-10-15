@@ -22,6 +22,7 @@ contract PatronHandler is Test {
     // ghosts
     bool public lossSinceClean; // a source loss happened while someone was a member
     mapping(address => uint256) public deposits; // deposit() + join() calls per current membership
+    mapping(address => uint256) public leaves; // lifetime leave() and withdraw-all exits
     uint256 public claimedTotal;
     uint256 public illiquidReverts;
     uint256 public outsiderOps; // each one can leave at most a share's worth of rounding dust to other holders
@@ -97,6 +98,7 @@ contract PatronHandler is Test {
     }
 
     function claim(uint256 who, uint256 part) external {
+        if (vault.yieldSink() != address(0)) return; // principal-only mode: nothing to claim
         address m = _member(who);
         if (vault.memberOf(m).principal == 0) return;
         uint256 c = vault.claimableYield(m);
@@ -246,6 +248,7 @@ contract PatronHandler is Test {
 
     function _left(address m) internal {
         deposits[m] = 0;
+        leaves[m] += 1;
         if (vault.memberCount() == 0) lossSinceClean = false;
     }
 

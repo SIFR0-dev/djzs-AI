@@ -21,7 +21,9 @@ import {IERC4626} from "./interfaces/IERC4626.sol";
 ///           4. Nothing is owed against principal. If the yield cannot cover a route, the unpaid part is
 ///              forgiven and the member is flagged unfunded until a later settle is covered again.
 ///           5. Only the member's own transaction creates, changes or removes a route.
-///           6. Unrouted yield belongs to the member and is claimable at any time.
+///           6. Unrouted yield is either the member's to claim (yieldSink unset) or, in principal-only mode
+///              (yieldSink set), stays in the position as a buffer for the member's routes and goes to those
+///              creators when the member leaves. The member never receives yield in that mode.
 ///
 ///         What this code cannot promise: the yield source. If the source loses money, every share
 ///         holder loses pro rata, this vault included. The source is chosen once, at deployment,
@@ -36,6 +38,9 @@ contract PatronVault {
     bytes32 public immutable termsHash; // keccak256 of the exact member terms text; join() must quote it
     uint256 public immutable maxTotalPrincipal; // cap on all principal held, 0 = no cap (pilot sizing)
     uint256 public immutable joinDeadline; // no join() at or after this timestamp, 0 = no deadline (pilot window)
+    /// @notice Principal-only mode when set: members cannot claim yield; on leave, unrouted yield goes to the
+    ///         member's routes pro rata, or to this address when the member has no routes. 0 = members keep yield.
+    address public immutable yieldSink;
 
     uint256 public constant MAX_ROUTES = 16;
     /// @dev A settle whose yield covers at least this share of what is owed keeps the member funded.
@@ -82,6 +87,7 @@ contract PatronVault {
     event CreatorPaid(address indexed creator, address indexed member, uint256 amount);
     event CreatorUnpaid(address indexed creator, address indexed member, uint256 amount);
     event CreatorForgiven(address indexed creator, address indexed member, uint256 amount);
+    event YieldForwarded(address indexed to, address indexed member, uint256 amount);
     event CreatorMinSet(address indexed creator, uint256 amountPerPeriod);
 
     // ─────────────────────────────── errors ───────────────────────────────
@@ -99,6 +105,7 @@ contract PatronVault {
     error OwedButIlliquid();
     error CapReached();
     error JoinClosed();
+    error YieldNotClaimable();
     error Reentrancy();
     error TransferFailed();
     error Overflow();
@@ -111,7 +118,8 @@ contract PatronVault {
         uint256 period_,
         bytes32 termsHash_,
         uint256 maxTotalPrincipal_,
-        uint256 joinDeadline_
+        uint256 joinDeadline_,
+        address yieldSink_
     ) {
         if (address(source_) == address(0)) revert ZeroAddress();
         if (period_ == 0 || termsHash_ == bytes32(0)) revert BadTerms();
@@ -124,6 +132,7 @@ contract PatronVault {
         termsHash = termsHash_;
         maxTotalPrincipal = maxTotalPrincipal_;
         joinDeadline = joinDeadline_;
+        yieldSink = yieldSink_;
         // One approval, forever. The vault never holds `asset` between transactions, so the
         // allowance only ever covers what deposit() hands to the source in the same call.
         _call(abi.encodeWithSelector(IERC20.approve.selector, address(source_), type(uint256).max));
@@ -203,8 +212,9 @@ contract PatronVault {
         emit Withdrawn(msg.sender, amount, received, remaining);
     }
 
-    /// @notice Claim yield that no route is owed. Routes are settled first.
+    /// @notice Claim yield that no route is owed. Routes are settled first. Reverts in principal-only mode.
     function claimYield(uint256 amount) external nonReentrant {
+        if (yieldSink != address(0)) revert YieldNotClaimable();
         Member storage m = _requireMember(msg.sender);
         _settle(msg.sender, m);
         if (amount == 0 || amount > _claimable(msg.sender, m)) revert ExceedsYield();
@@ -213,7 +223,8 @@ contract PatronVault {
         emit YieldClaimed(msg.sender, amount);
     }
 
-    /// @notice Leave: settle, then redeem everything the position is worth to the member and clear all routes.
+    /// @notice Leave: settle, then redeem the position to the member and clear all routes. In principal-only
+    ///         mode the unrouted yield goes to the member's routes first (or to yieldSink with no routes).
     function leave() external nonReentrant {
         Member storage m = _requireMember(msg.sender);
         _settle(msg.sender, m);
@@ -321,6 +332,7 @@ contract PatronVault {
     /// @notice A conservative lower bound on what claimYield() would accept right now.
     ///         claimYield(claimableYield(member)) does not revert; the exact figure after settle may be a little higher.
     function claimableYield(address member) external view returns (uint256) {
+        if (yieldSink != address(0)) return 0;
         Member storage m = _members[member];
         if (m.principal == 0) return 0;
         Route[] storage rs = _routes[member];
@@ -466,12 +478,56 @@ contract PatronVault {
     function _leave(address member, Member storage m) internal {
         uint256 shares = m.shares;
         uint256 principal = m.principal;
+        if (yieldSink != address(0)) shares -= _forwardYield(member, m);
         totalPrincipal -= principal;
         memberCount -= 1;
         delete _members[member];
         delete _routes[member];
         uint256 received = shares == 0 ? 0 : source.redeem(shares, member, address(this));
         emit Left(member, principal, received);
+    }
+
+    /// @dev Principal-only mode, on leave: the yield above principal shares goes to the member's routes pro rata
+    ///      to their amounts, or to yieldSink when there are none. A recipient the token refuses falls back to
+    ///      yieldSink, and if that fails too the member keeps it: nothing may trap an exit. One share per
+    ///      recipient is kept back for rounding, exactly as in settle. Returns the shares burned.
+    function _forwardYield(address member, Member storage m) internal returns (uint256 burned) {
+        Route[] storage rs = _routes[member];
+        uint256 n = rs.length;
+        uint256 ys = _yieldShares(m);
+        uint256 recipients = n == 0 ? 1 : n;
+        if (ys <= recipients) return 0;
+        uint256 total = source.previewRedeem(ys - recipients);
+        uint256 liquid = source.maxWithdraw(address(this));
+        if (total > liquid) total = liquid;
+        if (total == 0) return 0;
+        if (n == 0) return _forwardTo(yieldSink, member, total);
+        uint256 weight;
+        for (uint256 i = 0; i < n; i++) {
+            weight += rs[i].amountPerPeriod;
+        }
+        if (weight == 0) return _forwardTo(yieldSink, member, total);
+        for (uint256 i = 0; i < n; i++) {
+            uint256 p = (total * rs[i].amountPerPeriod) / weight;
+            if (p != 0) burned += _forwardTo(rs[i].creator, member, p);
+        }
+    }
+
+    function _forwardTo(address to, address member, uint256 amount) internal returns (uint256) {
+        try source.withdraw(amount, to, address(this)) returns (uint256 b) {
+            creatorPaid[to] += amount;
+            emit YieldForwarded(to, member, amount);
+            return b;
+        } catch {
+            if (to == yieldSink) return 0;
+            try source.withdraw(amount, yieldSink, address(this)) returns (uint256 b2) {
+                creatorPaid[yieldSink] += amount;
+                emit YieldForwarded(yieldSink, member, amount);
+                return b2;
+            } catch {
+                return 0;
+            }
+        }
     }
 
     function _pullAndDeposit(address from, uint256 amount) internal returns (uint256 shares) {
