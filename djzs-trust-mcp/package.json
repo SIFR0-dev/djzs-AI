@@ -12,7 +12,7 @@
     "@coinbase/x402": "2.1.0",
     "@hono/mcp": "^0.3.0",
     "@irys/bundles": "0.0.5",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "@x402/core": "2.23.0",
     "@x402/evm": "2.23.0",
     "@x402/extensions": "2.23.0",
