@@ -46,3 +46,6 @@ server/engine-v2/calibration/predictions.json
 *.bak-pre-*
 *.bak-pre-upstream
 tests/out/q2-stub-*.json
+
+# Ledger commit-and-reveal (SCAN_SPEC §13): the preimage (side, size, price, salt) stays on the operator machine until the reveal.
+tests/q3/ledger/*.private.json

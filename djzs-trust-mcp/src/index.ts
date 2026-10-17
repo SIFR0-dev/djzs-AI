@@ -9,6 +9,7 @@ import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { renderTargetSystem, verifyTargetSystemClaim, canonicalTargetSystemMessage, TARGET_SYSTEM_CLAIM_VERSION, UNVERIFIED_PREFIX } from "./target-system"
 import { correctionsFor } from "./corrections"
 import { makeCorrectionAnchorHandler, CORRECTION_ANCHOR_PATH } from "./correction-route"
+import { makeLedgerAnchorHandler, LEDGER_ANCHOR_PATH } from "./ledger-route"
 
 /**
  * Minimum scored audits before query_agent_trust reports a rate at all.
@@ -920,6 +921,8 @@ const classifyRpcError = (s: unknown): string => {
  * it corrects.
  */
 app.post(CORRECTION_ANCHOR_PATH, makeCorrectionAnchorHandler(DEFAULT_IRYS_NODE_URL))
+// Ledger commit/reveal (2026-10-16): the conflict record for positions in graded markets. See ledger-route.ts.
+app.post(LEDGER_ANCHOR_PATH, makeLedgerAnchorHandler(DEFAULT_IRYS_NODE_URL))
 
 app.get("/health/writer", async (c) => {
   const diag = describeWriterKey(c.env.DJZS_WRITER_KEY)
