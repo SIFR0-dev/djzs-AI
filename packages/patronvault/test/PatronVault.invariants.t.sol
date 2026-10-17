@@ -14,7 +14,7 @@ import {PatronHandler} from "./handlers/PatronHandler.sol";
 ///      I3  totalPrincipal and memberCount are exact sums.
 ///      I4  With no source loss on record, every member's shares back their principal, within one
 ///          share per deposit (ERC-4626 rounds each deposit against the depositor; nothing else).
-///      I5  Everything ever paid to creators or claimed as yield came out of source gains (plus the sub-share
+///      I5  Everything ever paid to creators, set aside or collected as fee, or claimed as yield came out of source gains (plus the sub-share
 ///          rounding dust that other depositors' own operations leave behind in the source).
 ///      I6  A member who left holds nothing: no principal, no shares, no routes.
 ///      I7  A current member's principal is never below the minimum.
@@ -31,21 +31,25 @@ contract PatronVaultInvariants is Test {
         return address(0);
     }
 
+    function _feeBps() internal pure virtual returns (uint256) {
+        return 500; // the product default, so the fee path is under every invariant
+    }
+
     function setUp() public {
         vm.warp(1_760_000_000);
         usdc = new MockUSDC();
         src = new MockERC4626(usdc);
-        vault = new PatronVault(IERC4626(address(src)), 500e6, 30 days, TERMS, 0, 0, _sink());
+        vault = new PatronVault(IERC4626(address(src)), 500e6, 30 days, TERMS, 0, 0, _sink(), _feeBps(), makeAddr("fees"));
         handler = new PatronHandler(usdc, src, vault, TERMS);
         targetContract(address(handler));
     }
 
     function invariant_I1_sharesBelongToMembers() public view {
-        uint256 sum;
+        uint256 sum = vault.feeShares();
         for (uint256 i = 0; i < handler.membersLength(); i++) {
             sum += vault.memberOf(handler.members(i)).shares;
         }
-        assertEq(sum, src.balanceOf(address(vault)));
+        assertEq(sum, src.balanceOf(address(vault)), "shares held = members' shares + the fee pool");
     }
 
     function invariant_I2_vaultHoldsNoAsset() public view {
@@ -75,7 +79,7 @@ contract PatronVaultInvariants is Test {
     }
 
     function invariant_I5_payoutsComeFromGainsOnly() public view {
-        uint256 paid = vault.creatorPaid(vault.yieldSink());
+        uint256 paid = vault.creatorPaid(vault.yieldSink()) + handler.feesCollected() + src.previewRedeem(vault.feeShares());
         for (uint256 i = 0; i < handler.creatorsLength(); i++) {
             paid += vault.creatorPaid(handler.creators(i));
         }
@@ -135,6 +139,7 @@ contract PatronVaultInvariants is Test {
             else if (a == 10) handler.warp(x);
             else if (a == 11) handler.gain(x);
             else if (a == 12) handler.loss(x, y);
+            else if (a == 13 && (y & 1) == 1) handler.collectFees();
             else handler.setLiquidity(x, y);
             sawLoss = sawLoss || handler.lossSinceClean();
             if (i % 8 != 0) continue; // memory, not gas, is the EVM limit on a long walk
@@ -153,6 +158,8 @@ contract PatronVaultInvariants is Test {
         }
         emit log_named_uint("creators paid (USDC units)", paid);
         emit log_named_uint("sink paid (USDC units)", vault.creatorPaid(vault.yieldSink()));
+        emit log_named_uint("fees collected (USDC units)", handler.feesCollected());
+        emit log_named_uint("fee pool uncollected (USDC units)", src.previewRedeem(vault.feeShares()));
         emit log_named_uint("members claimed (USDC units)", handler.claimedTotal());
         emit log_named_uint("source gains (USDC units)", src.gains());
         emit log_named_uint("source losses (USDC units)", src.losses());
@@ -162,6 +169,7 @@ contract PatronVaultInvariants is Test {
         else assertGt(vault.creatorPaid(vault.yieldSink()), 0, "the sink never received anything");
         assertTrue(sawLoss, "no loss was ever injected");
         assertGt(src.losses(), 0);
+        assertGt(handler.feesCollected() + src.previewRedeem(vault.feeShares()), 0, "the fee path never ran");
     }
 }
 

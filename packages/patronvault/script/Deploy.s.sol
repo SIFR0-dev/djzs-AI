@@ -16,6 +16,8 @@ import {IERC4626} from "../src/interfaces/IERC4626.sol";
 ///                    YIELD_SINK          principal-only mode: members cannot claim yield; on leave the unrouted
 ///                                        yield goes to their routes, or to this address with no routes.
 ///                                        Default 0 = members keep and may claim unrouted yield.
+///                    FEE_BPS             protocol fee on creator payments in basis points, default 0, max 1000
+///                    FEE_RECIPIENT       where collectFees() sends it; required when FEE_BPS > 0
 ///                    EXPECT_ASSET        if set, the deploy reverts unless SOURCE.asset() equals it
 ///
 ///         Dry run (no broadcast, no key):
@@ -31,6 +33,8 @@ contract Deploy is Script {
         uint256 maxTotalPrincipal = vm.envOr("MAX_TOTAL_PRINCIPAL", uint256(0));
         uint256 joinDeadline = vm.envOr("JOIN_DEADLINE", uint256(0));
         address yieldSink = vm.envOr("YIELD_SINK", address(0));
+        uint256 feeBps = vm.envOr("FEE_BPS", uint256(0));
+        address feeRecipient = vm.envOr("FEE_RECIPIENT", address(0));
         address expectAsset = vm.envOr("EXPECT_ASSET", address(0));
 
         address asset = source.asset();
@@ -40,7 +44,7 @@ contract Deploy is Script {
         bytes32 termsHash = keccak256(bytes(vm.readFile(TERMS_FILE)));
 
         vm.startBroadcast();
-        vault = new PatronVault(source, minDeposit, period, termsHash, maxTotalPrincipal, joinDeadline, yieldSink);
+        vault = new PatronVault(source, minDeposit, period, termsHash, maxTotalPrincipal, joinDeadline, yieldSink, feeBps, feeRecipient);
         vm.stopBroadcast();
 
         console2.log("PatronVault:        ", address(vault));
@@ -51,6 +55,8 @@ contract Deploy is Script {
         console2.log("maxTotalPrincipal:  ", maxTotalPrincipal);
         console2.log("joinDeadline:       ", joinDeadline);
         console2.log("yieldSink:          ", yieldSink);
+        console2.log("feeBps:             ", feeBps);
+        console2.log("feeRecipient:       ", feeRecipient);
         console2.log("termsHash:");
         console2.logBytes32(termsHash);
     }
