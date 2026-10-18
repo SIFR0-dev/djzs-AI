@@ -83,7 +83,14 @@
     "volume_24h": 4789093.239999994,
     "volume_total": 33554697.46999983,
     "record_hash": "0x36bb7336db31fa0840c885a5a02d77bbfa2c418d2ca596b7e580bf914159f37c",
-    "outcome": null,
+    "outcome": {
+      "result": "INCORRECT",
+      "settled_value": "NO",
+      "evidence_url": "https://kalshi.com/markets/kxfeddecision-26sep-h0",
+      "graded_at": "2026-10-18T16:54:28.973Z",
+      "grader": "auto:kalshi",
+      "note": null
+    },
     "price_source": {
       "provider": "kalshi-api",
       "tier": "venue-api",
@@ -313,7 +320,14 @@
     "volume_24h": 1776272.3700000085,
     "volume_total": 13750350.550000012,
     "record_hash": "0xcc886ca610a9df182cfc050d80a1619a3053e47bf22665d3ced8ac9feceafd94",
-    "outcome": null,
+    "outcome": {
+      "result": "CORRECT",
+      "settled_value": "YES",
+      "evidence_url": "https://kalshi.com/markets/kxfeddecision-26sep-h25",
+      "graded_at": "2026-10-18T16:54:28.973Z",
+      "grader": "auto:kalshi",
+      "note": null
+    },
     "price_source": {
       "provider": "kalshi-api",
       "tier": "venue-api",
@@ -673,7 +687,14 @@
     "volume_24h": 4803260.124946999,
     "volume_total": 43240406.98355901,
     "record_hash": "0xb923dd2f64357be01b25be800b786f1c03ab64c33b0d6d50b05d120bf92fe17d",
-    "outcome": null,
+    "outcome": {
+      "result": "INCORRECT",
+      "settled_value": "NO",
+      "evidence_url": "https://polymarket.com/event/will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615",
+      "graded_at": "2026-10-18T16:54:28.973Z",
+      "grader": "auto:polymarket",
+      "note": null
+    },
     "price_source": {
       "provider": "dune",
       "tier": "on-chain",
@@ -907,7 +928,14 @@
     "volume_24h": 2880418.11169,
     "volume_total": 32703133.39089602,
     "record_hash": "0x23a28186d651cc39eab41ebb62a729c044001465075ea29c5e744fc0e54d9ac7",
-    "outcome": null,
+    "outcome": {
+      "result": "CORRECT",
+      "settled_value": "YES",
+      "evidence_url": "https://polymarket.com/event/will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649",
+      "graded_at": "2026-10-18T16:54:28.973Z",
+      "grader": "auto:polymarket",
+      "note": null
+    },
     "price_source": {
       "provider": "dune",
       "tier": "on-chain",
