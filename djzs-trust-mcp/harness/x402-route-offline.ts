@@ -19,19 +19,26 @@
  *   PART 2 — the PM resource end to end, anchored to the receipt published on
  *            djzs.ai/verify (a live, on-chain-attested vector — not derived from this code).
  *   PART 3 — money invariants: how many times money moved, and what a payer is told.
+ *   PART 4 — failure honesty: a throw is classified by how far the request got (the
+ *            SettlementTrace), and the REAL Hono routes in index.ts must never tell a payer
+ *            "charged:false" once money may have moved.
  */
 import { createEngineAdapter, intentSha256 } from "../src/engine-adapter"
 import type { runVerifyPmTrade } from "../src/verify-pm-trade"
 import { runVerifyPerpTrade } from "../src/verify-perp-trade"
 import { toDJZSIntent, intentHash } from "../src/djzs-intent"
 import { decodePaymentResponseHeader } from "@x402/core/http"
+import { Hono } from "hono"
 import {
   handleX402VerifyPmTrade,
+  auditFailure,
   NETWORK,
   PM_RESOURCE,
   PERP_RESOURCE,
   type ResourceSpec,
   type EngineAdapter,
+  type SettlementTrace,
+  type SettlementState,
   type X402Env,
 } from "../src/http-x402-bazaar.v2"
 import {
@@ -53,6 +60,15 @@ function check(n: number, name: string, cond: boolean, detail?: string): void {
     process.exit(1)
   }
   console.log(`CHECK ${n} ok: ${name}`)
+}
+
+/** A missing or garbled PAYMENT-RESPONSE must fail a NAMED check, not crash the harness. */
+function decodeReceipt(header: string | null | undefined): Record<string, any> {
+  try {
+    return header ? (decodePaymentResponseHeader(header) as Record<string, any>) : {}
+  } catch {
+    return {}
+  }
 }
 
 // The receipt djzs.ai/verify publishes as its sample. Its intent_hash is the binding key
@@ -118,8 +134,10 @@ const perpAdapter = (extraction: Record<string, unknown> = PERP_EXTRACTION): Eng
 interface Paid {
   res: Response | null
   threw: string | null
+  thrown: unknown
   body: Record<string, any>
   settleHits: number
+  trace: SettlementTrace
 }
 
 /** A real client's sequence: unpaid probe for the challenge, then the paid POST. */
@@ -136,8 +154,10 @@ async function challengeOf(spec: ResourceSpec, env: X402Env): Promise<Record<str
 async function paid(spec: ResourceSpec, env: X402Env, fac: StubFacilitator, engine: EngineAdapter, body: unknown): Promise<Paid> {
   const challenge = await challengeOf(spec, env)
   const before = fac.hits.settle
+  const trace: SettlementTrace = { state: "before_settle" }
   let res: Response | null = null
   let threw: string | null = null
+  let thrown: unknown = null
   try {
     res = await handleX402VerifyPmTrade(
       new Request(spec.url, {
@@ -148,8 +168,10 @@ async function paid(spec: ResourceSpec, env: X402Env, fac: StubFacilitator, engi
       env,
       engine,
       spec,
+      trace,
     )
   } catch (e) {
+    thrown = e
     threw = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
   }
   const text = res ? await res.text() : ""
@@ -157,7 +179,7 @@ async function paid(spec: ResourceSpec, env: X402Env, fac: StubFacilitator, engi
   try {
     parsed = JSON.parse(text)
   } catch {}
-  return { res, threw, body: parsed, settleHits: fac.hits.settle - before }
+  return { res, threw, thrown, body: parsed, settleHits: fac.hits.settle - before, trace }
 }
 
 async function main(): Promise<void> {
@@ -191,7 +213,7 @@ async function main(): Promise<void> {
     )
     check(4, "status 200", perp.res?.status === 200, `status=${perp.res?.status}`)
     check(5, "money moved exactly once", perp.settleHits === 1, `settle hits=${perp.settleHits}`)
-    const receipt = decodePaymentResponseHeader(perp.res?.headers.get("PAYMENT-RESPONSE") ?? "")
+    const receipt = decodeReceipt(perp.res?.headers.get("PAYMENT-RESPONSE"))
     check(
       6,
       "PAYMENT-RESPONSE carries the settlement receipt",
@@ -296,6 +318,211 @@ async function main(): Promise<void> {
       "scope refusal on the perp resource: REFUSED_SCOPE, uncharged, settle never called",
       refused.res?.status === 200 && refused.body.verdict === "REFUSED_SCOPE" && refused.body.charged === false && refused.settleHits === 0,
       refused.threw ?? JSON.stringify({ status: refused.res?.status, settleHits: refused.settleHits, body: refused.body }),
+    )
+    // ══ PART 4 — failure honesty ═════════════════════════════════════════════
+    // A throw out of the handler reaches the route's catch. What the payer is told there must
+    // be true for how far the request got. `auditFailure(trace, e)` is that body.
+    const HISTORICAL_503 = (detail: string) =>
+      JSON.stringify({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false })
+
+    // 4a. The facilitator DEFINITIVELY refuses: nothing moved, and the historical body is true.
+    fac.setSettle("reject")
+    const refusedSettle = await paid(PM_RESOURCE, env, fac, pmAdapter(), { intent: PUBLISHED_PM.intent })
+    const refusedBody = auditFailure(refusedSettle.trace, refusedSettle.thrown)
+    check(
+      24,
+      "settle refused by the facilitator: state settle_refused, and the historical 503 body — byte-for-byte",
+      refusedSettle.trace.state === "settle_refused" &&
+        refusedBody.status === 503 &&
+        JSON.stringify(refusedBody.body) === HISTORICAL_503("insufficient_funds"),
+      JSON.stringify({ state: refusedSettle.trace.state, ...refusedBody }),
+    )
+
+    // 4b. The facilitator goes quiet mid-settle: funds MAY have moved. The old body said
+    //     charged:false here, which nobody could know.
+    fac.setSettle("uncertain")
+    const uncertain = await paid(PM_RESOURCE, env, fac, pmAdapter(), { intent: PUBLISHED_PM.intent })
+    const uncertainBody = auditFailure(uncertain.trace, uncertain.thrown)
+    check(
+      25,
+      "settle outcome unknowable: state settle_in_flight, 502, settled:null charged:null — never charged:false",
+      uncertain.trace.state === "settle_in_flight" &&
+        uncertainBody.status === 502 &&
+        uncertainBody.body.error === "SETTLEMENT_UNCERTAIN" &&
+        uncertainBody.body.settled === null &&
+        uncertainBody.body.charged === null,
+      JSON.stringify({ state: uncertain.trace.state, ...uncertainBody }),
+    )
+    fac.setSettle("ok")
+
+    // 4c. Something throws AFTER a successful settlement (here: reading the verdict while the
+    //     response is built). The payer has been charged and must be told so, with the receipt.
+    const exploding: EngineAdapter = {
+      scopeCheck: async () => ({ inScope: true }),
+      audit: async () =>
+        ({
+          verdict: "PASS",
+          risk_score: 0,
+          flags: [],
+          intent_sha256: "0x00",
+          get verdict_hash(): string {
+            throw new Error("post-settlement failure")
+          },
+        }) as never,
+    }
+    const settledThrow = await paid(PM_RESOURCE, { FACILITATOR_URL: fac.url }, fac, exploding, { intent: PUBLISHED_PM.intent })
+    const settledBody = auditFailure(settledThrow.trace, settledThrow.thrown)
+    const settledReceipt = decodeReceipt(settledBody.headers?.["PAYMENT-RESPONSE"])
+    check(
+      26,
+      "throw AFTER settlement: state settled, 500, charged:true settled:true, receipt attached, told not to retry",
+      settledThrow.settleHits === 1 &&
+        settledThrow.trace.state === "settled" &&
+        settledBody.status === 500 &&
+        settledBody.body.charged === true &&
+        settledBody.body.settled === true &&
+        settledReceipt.transaction === SETTLE_TX &&
+        /do not retry/i.test(String(settledBody.body.remediation)),
+      JSON.stringify({ hits: settledThrow.settleHits, state: settledThrow.trace.state, ...settledBody }),
+    )
+
+    // 4d. The invariant, over every state: `charged:false` is claimed ONLY where no money can
+    //     have moved.
+    const STATES: SettlementState[] = ["before_settle", "settle_refused", "settle_in_flight", "settled"]
+    const claimsUncharged = STATES.filter(
+      (state) =>
+        auditFailure({ state, receipt: state === "settled" ? settledThrow.trace.receipt : undefined }, new Error("x")).body.charged === false,
+    )
+    check(
+      27,
+      "charged:false is claimed only in before_settle and settle_refused",
+      JSON.stringify(claimsUncharged) === JSON.stringify(["before_settle", "settle_refused"]),
+      JSON.stringify(claimsUncharged),
+    )
+
+    // 4d'. A trace object that is reused must not leak "settled" into the next request's catch.
+    const reused: SettlementTrace = { state: "settled", receipt: settledThrow.trace.receipt }
+    await handleX402VerifyPmTrade(new Request(PM_RESOURCE.url, { method: "POST", body: "" }), env, pmAdapter(), PM_RESOURCE, reused)
+    check(
+      28,
+      "a reused trace is reset on entry (no stale 'settled' from a previous request)",
+      reused.state === "before_settle" && reused.receipt === undefined,
+      JSON.stringify(reused),
+    )
+
+    // 4e. The same facts through the REAL routes (index.ts), the model stubbed at the fetch
+    //     layer. The route's catch is two lines of glue; this proves the glue passes the trace.
+    const { app } = await import("../src/index")
+    const realFetch = globalThis.fetch
+    let anthropic: { extraction: Record<string, unknown>; down: boolean } = { extraction: PM_EXTRACTION, down: false }
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const u = typeof input === "string" ? input : input instanceof URL ? input.href : input.url
+      if (u.startsWith("https://api.anthropic.com/")) {
+        if (anthropic.down) return new Response("upstream down", { status: 500 })
+        return new Response(JSON.stringify({ content: [{ text: JSON.stringify(anthropic.extraction) }] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+      }
+      return realFetch(input, init)
+    }) as typeof fetch
+    // The Worker env: placeholders only. Nothing here is a credential.
+    const routeEnv = {
+      FACILITATOR_URL: fac.url,
+      ANTHROPIC_API_KEY: "offline-placeholder",
+      DJZS_ATTESTER_KEY: testAttesterKey(),
+      BASE_RPC_URL: rpc.url,
+    }
+    const viaRoute = async (path: string, extraction: Record<string, unknown>, body: unknown, down = false) => {
+      anthropic = { extraction, down }
+      const u = `https://mcp.djzs.ai${path}`
+      const probe = await app.fetch(new Request(u, { method: "POST", body: "" }), routeEnv as never)
+      const challenge = (await probe.json()) as { accepts?: unknown[] }
+      const before = fac.hits.settle
+      const res = await app.fetch(
+        new Request(u, { method: "POST", headers: { "X-PAYMENT": paymentHeader(challenge) }, body: JSON.stringify(body) }),
+        routeEnv as never,
+      )
+      const text = await res.text()
+      let parsed: Record<string, any> = {}
+      try {
+        parsed = JSON.parse(text)
+      } catch {}
+      return { res, text, body: parsed, settleHits: fac.hits.settle - before }
+    }
+
+    try {
+      // The reported scenario, on the real perp route: this used to be a 503 "charged:false" AFTER a charge.
+      const routePerp = await viaRoute("/x402/verify_perp_trade", PERP_EXTRACTION, published)
+      check(
+      29,
+        "REAL perp route, example body: 200 with a verdict (was: 503 charged:false after settlement)",
+        routePerp.res.status === 200 && routePerp.settleHits === 1 && ["PASS", "WAIT", "FAIL"].includes(routePerp.body.verdict) && routePerp.body.charged === true,
+        `${routePerp.res.status} hits=${routePerp.settleHits} ${routePerp.text.slice(0, 160)}`,
+      )
+
+      const routePm = await viaRoute("/x402/verify_pm_trade", PM_EXTRACTION, { intent: PUBLISHED_PM.intent })
+      check(
+      30,
+        "REAL PM route, published vector: 200, intent_hash == the published value",
+        routePm.res.status === 200 && routePm.body.intent_hash === PUBLISHED_PM.intent_hash,
+        `${routePm.res.status} ${routePm.text.slice(0, 160)}`,
+      )
+
+      // Before settlement: an extraction outage. Uncharged, and the body says exactly what it always did.
+      const routeDown = await viaRoute("/x402/verify_pm_trade", PM_EXTRACTION, { intent: PUBLISHED_PM.intent }, true)
+      check(
+      31,
+        "REAL route, extraction outage (before settle): 503 historical body, settle never called",
+        routeDown.res.status === 503 &&
+          routeDown.settleHits === 0 &&
+          routeDown.body.settled === false &&
+          routeDown.body.charged === false &&
+          routeDown.body.error === "AUDIT_UNAVAILABLE",
+        `${routeDown.res.status} hits=${routeDown.settleHits} ${routeDown.text.slice(0, 160)}`,
+      )
+
+      fac.setSettle("reject")
+      const routeRefused = await viaRoute("/x402/verify_pm_trade", PM_EXTRACTION, { intent: PUBLISHED_PM.intent })
+      check(
+      32,
+        "REAL route, facilitator refuses: 503 historical body (charged:false is true here)",
+        routeRefused.res.status === 503 && routeRefused.text === HISTORICAL_503("insufficient_funds"),
+        `${routeRefused.res.status} ${routeRefused.text.slice(0, 160)}`,
+      )
+
+      fac.setSettle("uncertain")
+      const routeUncertain = await viaRoute("/x402/verify_perp_trade", PERP_EXTRACTION, published)
+      check(
+      33,
+        "REAL route, settle outcome unknowable: 502 SETTLEMENT_UNCERTAIN, never charged:false",
+        routeUncertain.res.status === 502 &&
+          routeUncertain.body.error === "SETTLEMENT_UNCERTAIN" &&
+          routeUncertain.body.charged === null &&
+          routeUncertain.body.settled === null,
+        `${routeUncertain.res.status} ${routeUncertain.text.slice(0, 200)}`,
+      )
+      fac.setSettle("ok")
+    } finally {
+      globalThis.fetch = realFetch
+    }
+
+    // 4f. The route hands `f.headers` to Hono's c.json. The settled body carries the receipt in
+    //     PAYMENT-RESPONSE; prove Hono delivers it (the real routes cannot be made to throw
+    //     after settlement from outside, so this mounts the same two lines).
+    const glue = new Hono().get("/settled", (c) => {
+      const f = auditFailure(settledThrow.trace, new Error("post-settlement failure"))
+      return c.json(f.body, f.status, f.headers)
+    })
+    const glued = await glue.request("/settled")
+    const gluedBody = (await glued.json()) as Record<string, unknown>
+    check(
+      34,
+      "c.json(f.body, f.status, f.headers) delivers a 500 charged:true body WITH the PAYMENT-RESPONSE receipt",
+      glued.status === 500 &&
+        gluedBody.charged === true &&
+        decodeReceipt(glued.headers.get("PAYMENT-RESPONSE")).transaction === SETTLE_TX,
+      `${glued.status} ${glued.headers.get("PAYMENT-RESPONSE")}`,
     )
   } finally {
     await fac.close()

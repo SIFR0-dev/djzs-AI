@@ -14,6 +14,11 @@
 //   2. Payment verifies, OUT of scope -> refusal returned, settlePayment NEVER called (uncharged)
 //   3. Payment verifies, IN scope   -> settle FIRST, then engine, then verdict + PAYMENT-RESPONSE
 //   4. Engine throws after settle   -> AUDIT_ERROR verdict WITH settlement receipt (manual remediation)
+//   5. Everything that is a pure function of the request body (the intent_hash) is computed BEFORE
+//      settlement. After settlement the only fallible step is the EAS write, and it is fail-soft:
+//      a charged payer always gets the verdict.
+//   6. A throw that does escape is classified by SettlementTrace (before_settle / settle_refused /
+//      settle_in_flight / settled) so the route can tell the payer the truth about their money.
 //
 // "LLM detects, TypeScript decides." Nothing in this file consults a model.
 
@@ -28,8 +33,9 @@ import {
   bazaarResourceServerExtension,
   declareDiscoveryExtension,
 } from "@x402/extensions/bazaar";
-import type { PaymentRequirements } from "@x402/core/types";
+import { SettleError, type PaymentRequirements, type SettleResponse } from "@x402/core/types";
 import type { FacilitatorConfig } from "@x402/core/http";
+import type { Hex } from "viem";
 
 import { intentHash, attestVerdict, DJZS_SCHEMA_UID } from "./attest-worker";
 import { toDJZSIntent } from "./djzs-intent";
@@ -349,13 +355,38 @@ export interface ResourceSpec {
   rulesetVersion: string;
   tags: string[];
   extensions: typeof discoveryExtensions;
+  /**
+   * This resource's binding key: intent -> EIP-712 `intent_hash`. OPTIONAL BY DESIGN.
+   *
+   * The intent_hash is a PUBLIC contract — third parties recompute it at djzs.ai/verify from
+   * the intent alone, and the EAS attestation that carries it is permanent. A resource with
+   * no defined binding therefore issues none: `intent_hash: null`, no attestation, the reason
+   * on `eas_error`. It must never borrow another resource's projection — that would mint a
+   * permanent receipt whose hash cannot tell a 5x long from a 50x short.
+   *
+   * Must be a pure function of `intent`. It runs BEFORE settlement and may throw: a throw
+   * degrades the receipt, never the verdict.
+   */
+  bindIntent?: (intent: object) => Hex;
 }
+
+/**
+ * The PM binding key: the v2 EIP-712 hash of the PM projection (`toDJZSIntent`).
+ * The route validates only that `intent` is an object, so a malformed intent (no `market`,
+ * a negative amount that cannot encode as uint256) throws here — which the handler catches
+ * before money moves. The cast is the honest statement of that: the shape is NOT checked.
+ */
+function pmBindIntent(intent: object): Hex {
+  return intentHash(toDJZSIntent(intent as Parameters<typeof toDJZSIntent>[0]));
+}
+
 export const PM_RESOURCE: ResourceSpec = {
   url: RESOURCE_URL,
   description: DESCRIPTION,
   rulesetVersion: RULESET_VERSION,
   tags: ["audit", "prediction-markets", "trading", "verification"],
   extensions: discoveryExtensions,
+  bindIntent: pmBindIntent,
 };
 export const PERP_RESOURCE_URL = "https://mcp.djzs.ai/x402/verify_perp_trade" as const;
 export const PERP_DESCRIPTION =
@@ -366,6 +397,11 @@ export const PERP_RESOURCE: ResourceSpec = {
   rulesetVersion: "DJZS-LF-v1.2",
   tags: ["audit", "perpetuals", "trading", "verification"],
   extensions: discoveryExtensionsPerp,
+  // No `bindIntent`: the perp intent_hash is NOT YET DEFINED (owner ruling pending). The only
+  // projection that exists is the PM one, which reads `market` and drops instrument, leverage,
+  // entry, stop and target. Wiring it here would have perp attest hashes that bind none of
+  // those. Defining it is a public-spec change: DJZSIntent action/params_hash mapping in
+  // djzs-intent.ts, plus the mirror in site/verify.html, site/ruleset.html and llms.txt.
 };
 
 /**
@@ -406,6 +442,80 @@ async function requirements(server: x402ResourceServer): Promise<PaymentRequirem
 }
 
 // ------------------------------------------------------------------
+// Settlement trace — how far a request got before the handler threw.
+// ------------------------------------------------------------------
+/**
+ * Where a request stood relative to the facilitator's /settle when it failed.
+ *
+ *   before_settle    — nothing was sent to /settle. No funds can have moved.
+ *   settle_refused   — the facilitator DEFINITIVELY refused (a SettleError, or success:false).
+ *   settle_in_flight — /settle was called and no definitive answer came back (timeout, dropped
+ *                      connection, unparseable reply). Whether funds moved is UNKNOWABLE here.
+ *   settled          — /settle succeeded. The payer HAS been charged.
+ */
+export type SettlementState = "before_settle" | "settle_refused" | "settle_in_flight" | "settled";
+
+/**
+ * Out-parameter. The route passes one in and reads it in its catch: the router cannot see how
+ * far the handler got, and a catch that hard-codes `charged:false` tells a payer whose USDC
+ * already moved that it did not. The handler writes it; nothing else should.
+ */
+export interface SettlementTrace {
+  state: SettlementState;
+  /** Present once `state` is "settled": the facilitator's receipt. */
+  receipt?: SettleResponse;
+}
+
+/**
+ * The response for a handler that THREW, told truthfully for the state it threw in. The route's
+ * catch calls this instead of hard-coding a body. `before_settle` / `settle_refused` keep the
+ * historical AUDIT_UNAVAILABLE body byte-for-byte (503, settled:false, charged:false) — it is
+ * true there. The other two states used to be served that same body, and it was false.
+ *
+ * Statuses are chosen for what a client will DO with them: 503 invites an automatic retry, and
+ * a retry after a settled payment pays twice. So a settled failure is 500 and an unknowable
+ * one 502, each saying plainly not to retry blind.
+ */
+export function auditFailure(
+  trace: SettlementTrace,
+  e: unknown,
+): { status: 500 | 502 | 503; body: Record<string, unknown>; headers?: Record<string, string> } {
+  const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200);
+  switch (trace.state) {
+    case "settled":
+      return {
+        status: 500,
+        body: {
+          verdict: "AUDIT_ERROR",
+          error: "POST_SETTLEMENT_FAILURE",
+          detail,
+          settled: true,
+          charged: true,
+          remediation: "contact operator with intent_sha256 + the settlement tx in PAYMENT-RESPONSE. Do NOT retry: a retry pays again",
+          terms: TERMS_URL,
+        },
+        ...(trace.receipt
+          ? { headers: { "PAYMENT-RESPONSE": encodePaymentResponseHeader(trace.receipt), ...CORS_BASE } }
+          : {}),
+      };
+    case "settle_in_flight":
+      return {
+        status: 502,
+        body: {
+          error: "SETTLEMENT_UNCERTAIN",
+          detail,
+          settled: null,
+          charged: null,
+          remediation: "the facilitator did not confirm either way. Check your wallet for the USDC transfer before retrying: a retry may pay again",
+          terms: TERMS_URL,
+        },
+      };
+    default:
+      return { status: 503, body: { error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false } };
+  }
+}
+
+// ------------------------------------------------------------------
 // Handler — mount at POST /x402/verify_pm_trade in the worker router.
 // ------------------------------------------------------------------
 export async function handleX402VerifyPmTrade(
@@ -413,7 +523,12 @@ export async function handleX402VerifyPmTrade(
   env: X402Env,
   engine: EngineAdapter = NOT_WIRED,
   spec: ResourceSpec = PM_RESOURCE,
+  /** Optional out-param: see SettlementTrace. The handler writes it; the route reads it on a throw. */
+  trace: SettlementTrace = { state: "before_settle" },
 ): Promise<Response> {
+  // A reused trace must not carry a previous request's "settled" into this one's catch.
+  trace.state = "before_settle";
+  trace.receipt = undefined;
   const method = request.method.toUpperCase();
 
   // S4 — preflight, answered before any facilitator work. No body, no challenge.
@@ -541,14 +656,47 @@ export async function handleX402VerifyPmTrade(
     );
   }
 
+  // 3a — the binding key, computed BEFORE money moves. It is a pure function of the request
+  // body, so there is no reason for it to be able to fail after settlement, and it used to be
+  // the one step that could: it ran after settlePayment, outside any try, and threw on any
+  // intent the PM projection could not encode (a perp body has no `market`; a negative amount
+  // does not fit uint256). The payer was charged and the exception became a 503 "charged:false".
+  // Now a binding that cannot be produced degrades the RECEIPT, never the verdict: the
+  // intent_hash is null, nothing is attested, and the reason rides on eas_error.
+  let intent_hash: Hex | null = null;
+  let eas_error: string | undefined;
+  if (!spec.bindIntent) {
+    eas_error = "intent_hash_unavailable: no intent binding is defined for this resource";
+  } else {
+    try {
+      intent_hash = spec.bindIntent(intent);
+    } catch (e) {
+      // First line only: library errors can carry long, multi-line detail.
+      const why = (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120);
+      eas_error = `intent_hash_unavailable: ${why}`;
+    }
+  }
+
   // 4 — settle FIRST (no free verdicts), then run the deterministic engine.
-  const settle = await server.settlePayment(payload, reqs[0], spec.extensions);
+  trace.state = "settle_in_flight";
+  let settle: Awaited<ReturnType<x402ResourceServer["settlePayment"]>>;
+  try {
+    settle = await server.settlePayment(payload, reqs[0], spec.extensions);
+  } catch (e) {
+    // A SettleError is the facilitator's own definitive "no". Anything else (timeout, dropped
+    // connection, an unparseable reply) happened after the request left, so we cannot know.
+    if (e instanceof SettleError) trace.state = "settle_refused";
+    throw e;
+  }
   if (!settle?.success) {
+    trace.state = "settle_refused";
     return json(
       { error: "settlement_failed", detail: settle?.errorReason ?? "unknown", charged: false, terms: TERMS_URL },
       402,
     );
   }
+  trace.state = "settled";
+  trace.receipt = settle;
 
   let result: VerdictResult;
   try {
@@ -573,11 +721,13 @@ export async function handleX402VerifyPmTrade(
     );
   }
 
-  // 5a — v2 binding + EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
-  // Fail-soft: a charged, valid verdict is never hostage to a second transaction.
-  const intent_hash = intentHash(toDJZSIntent(intent));
-  let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: string | undefined;
-  if (!env.ATTESTER_KEY) {
+  // 5a — EAS receipt for the binding computed at 3a. ADDITIVE: intent_sha256 is untouched
+  // (pipeline key, cert commit). Fail-soft: a charged, valid verdict is never hostage to a second
+  // transaction. The only fallible work left after settlement is this network call.
+  let eas_uid: string | null = null, eas_tx: string | null = null;
+  if (intent_hash === null) {
+    // Nothing to attest: no binding exists for this intent. The reason is already on eas_error.
+  } else if (!env.ATTESTER_KEY) {
     eas_error = "attester_not_configured";
   } else {
     try {

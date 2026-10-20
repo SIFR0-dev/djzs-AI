@@ -38,7 +38,7 @@ export function wilsonLowerBound(successes: number, n: number, z = 1.96): number
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
-import { handleX402VerifyPmTrade, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
+import { handleX402VerifyPmTrade, auditFailure, PAY_TO, PM_RESOURCE, PERP_RESOURCE, type SettlementTrace, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
@@ -1469,9 +1469,11 @@ const CDP_FACILITATOR_URL = "https://api.cdp.coinbase.com/platform/v2/x402"
  *   engineAdapter — built PER REQUEST so the extraction key comes off c.env and the
  *     adapter's one-extraction memo cannot outlive the request.
  *
- * The try/catch is the uncharged-failure net: the adapter throws from scopeCheck
- * (misconfigured key, extraction outage) strictly BEFORE settlePayment is reachable,
- * so a 503 here has always cost the caller nothing.
+ * The try/catch is the failure net, and it is told how far the request got: `trace` is
+ * written by the handler, and auditFailure() turns it into a body that is true for that
+ * state. The adapter throws from scopeCheck (misconfigured key, extraction outage) strictly
+ * BEFORE settlePayment is reachable, so THAT 503 still costs the caller nothing — but a throw
+ * after settlement is no longer reported as one (it used to be: charged:false, after a charge).
  */
 // S1 + S4: registered with `app.all`, not `app.post`. The handler has always
 // carried a method guard, but Hono never dispatched anything but POST here, so
@@ -1487,11 +1489,12 @@ app.all("/x402/verify_pm_trade", async (c) => {
     ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
     BASE_RPC_URL: env.BASE_RPC_URL,
   }
+  const trace: SettlementTrace = { state: "before_settle" }
   try {
-    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env))
+    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env), PM_RESOURCE, trace)
   } catch (e) {
-    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
-    return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)
+    const f = auditFailure(trace, e)
+    return c.json(f.body, f.status, f.headers)
   }
 })
 
@@ -1505,11 +1508,12 @@ app.all("/x402/verify_perp_trade", async (c) => {
     ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
     BASE_RPC_URL: env.BASE_RPC_URL,
   }
+  const trace: SettlementTrace = { state: "before_settle" }
   try {
-    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env, undefined, runVerifyPerpTrade as unknown as typeof runVerifyPmTrade), PERP_RESOURCE)
+    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env, undefined, runVerifyPerpTrade as unknown as typeof runVerifyPmTrade), PERP_RESOURCE, trace)
   } catch (e) {
-    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
-    return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)
+    const f = auditFailure(trace, e)
+    return c.json(f.body, f.status, f.headers)
   }
 })
 

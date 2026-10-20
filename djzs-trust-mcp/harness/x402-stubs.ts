@@ -226,9 +226,7 @@ export async function startRpc(): Promise<StubRpc> {
         const raw = p[0] as Hex
         const tx = parseTransaction(raw)
         const txHash = keccak256(raw)
-        const { args } = decodeFunctionData({ abi: EAS_ABI, data: tx.data as Hex }) as {
-          args: [{ schema: Hex; data: { recipient: Address; data: Hex } }]
-        }
+        const { args } = decodeFunctionData({ abi: EAS_ABI, data: tx.data as Hex })
         const rec: RecordedAttestation = {
           raw,
           txHash,
