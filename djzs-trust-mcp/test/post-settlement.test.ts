@@ -390,6 +390,12 @@ async function main(): Promise<void> {
       const out = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine({ inScope: false }), header: hdrPm })
       check("out of scope: 200 REFUSED_SCOPE, charged:false, settled:false", out.status === 200 && out.body.verdict === "REFUSED_SCOPE" && out.body.charged === false && out.body.settled === false, out.text.slice(0, 160))
       check("out of scope: nothing settled", fac.hits.settle === settleBefore, `settle hits +${fac.hits.settle - settleBefore}`)
+      // Precedence is pinned: the scope gate runs BEFORE the bind, so an out-of-scope body that also cannot be bound keeps its
+      // free, explained REFUSED_SCOPE (200) instead of becoming a generic 400.
+      const oosUnbindable = await paid({ env: envKey, spec: PM_RESOURCE, intent: {}, engine: stubEngine({ inScope: false }), header: hdrPm })
+      check("scope precedes bind: out of scope AND unbindable -> 200 REFUSED_SCOPE, not 400", oosUnbindable.status === 200 && oosUnbindable.body.verdict === "REFUSED_SCOPE", `${oosUnbindable.status} ${oosUnbindable.text.slice(0, 120)}`)
+      const inUnbindable = await paid({ env: envKey, spec: PM_RESOURCE, intent: {}, engine: stubEngine({ inScope: true }), header: hdrPm })
+      check("in scope AND unbindable -> 400 intent_unbindable", inUnbindable.status === 400 && inUnbindable.body.error === "intent_unbindable", `${inUnbindable.status} ${inUnbindable.text.slice(0, 120)}`)
 
       fac.verifyValid = false
       const bad = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), header: hdrPm })
