@@ -59,6 +59,7 @@ function check(name: string, cond: boolean, detail?: string): void {
 // ── fixtures ────────────────────────────────────────────────────────────────────────
 const PAYER = "0x1111111111111111111111111111111111111111"
 const SETTLE_TX = "0x" + "cd".repeat(32)
+const ATTEST_TX = "0x" + "ee".repeat(32) // a broadcast attestation whose receipt never confirmed
 /** Shaped like a provider RPC URL with the key in the path. If any of it reaches a response, the leak is real. */
 const SENTINEL_URL = "https://rpc.sentinel.invalid/v2/KEYSENTINEL0123456789abcdef"
 const SENTINEL_PARTS = ["KEYSENTINEL", "sentinel.invalid"]
@@ -108,15 +109,16 @@ interface StubFacilitator {
   hits: Record<string, number>
   verifyValid: boolean
   verifyReason: string
+  verifyHttp400: boolean
   declineReason: string
-  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup"
+  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup" | "pending" | "pendingJunk"
   close: () => Promise<void>
 }
 
 /** Loopback facilitator speaking the real wire contract: GET /supported, POST /verify, POST /settle. */
 async function startFacilitator(): Promise<StubFacilitator> {
   const state: StubFacilitator = {
-    url: "", hits: { supported: 0, verify: 0, settle: 0 }, verifyValid: true, verifyReason: "stub_invalid",
+    url: "", hits: { supported: 0, verify: 0, settle: 0 }, verifyValid: true, verifyReason: "stub_invalid", verifyHttp400: false,
     declineReason: "stub_settle_declined", settleMode: "ok", close: async () => {},
   }
   const server: Server = createServer((req, res) => {
@@ -129,12 +131,18 @@ async function startFacilitator(): Promise<StubFacilitator> {
     req.on("data", () => {})
     req.on("end", () => {
       if (path === "supported") return reply(200, { kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK }], extensions: [], signers: {} })
+      // @x402/core throws VerifyError for a facilitator 4xx that carries {isValid:false, invalidReason}.
+      if (path === "verify" && state.verifyHttp400) return reply(400, { isValid: false, invalidReason: state.verifyReason, invalidMessage: `bad sig ${SENTINEL_URL}`, payer: PAYER })
       if (path === "verify") return reply(200, state.verifyValid ? { isValid: true, payer: PAYER } : { isValid: false, invalidReason: state.verifyReason, payer: PAYER })
       if (path === "settle") {
         // The 500 body and the garbage body carry the sentinel: the library may fold a response body into the error it throws.
         if (state.settleMode === "http500") return reply(500, { error: `stub settle 500 ${SENTINEL_URL}` })
         if (state.settleMode === "garbage") { res.writeHead(200, { "content-type": "application/json" }); return res.end(`<html>${SENTINEL_URL}`) }
         if (state.settleMode === "hangup") return req.socket.destroy()
+        // The reference facilitator's settlement_pending: success:false, but the transfer WAS broadcast (a tx hash is named).
+        if (state.settleMode === "pending") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
+        // A non-empty "transaction" that is not a transaction hash: still uncertain, and never relayed.
+        if (state.settleMode === "pendingJunk") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: `see ${SENTINEL_URL}`, network: NETWORK })
         if (state.settleMode === "fail") return reply(200, { success: false, errorReason: state.declineReason, payer: PAYER, transaction: "", network: NETWORK })
         return reply(200, { success: true, payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
       }
@@ -169,7 +177,7 @@ function stubAttester(mode: "ok" | "throw") {
   const calls: AttestCall[] = []
   const fn = async (_env: unknown, v: AttestCall) => {
     calls.push(v)
-    if (mode === "throw") throw new Error(`HTTP request failed.\n\nURL: ${SENTINEL_URL}\nRequest body: {"method":"eth_sendRawTransaction"}\n\nDetails: fetch failed`)
+    if (mode === "throw") throw Object.assign(new Error(`HTTP request failed.\n\nURL: ${SENTINEL_URL}\nRequest body: {"method":"eth_sendRawTransaction"}\n\nDetails: fetch failed`), { txHash: ATTEST_TX })
     return { uid: ("0x" + "ee".repeat(32)) as `0x${string}`, txHash: ("0x" + "ff".repeat(32)) as `0x${string}`, block: 1n }
   }
   return { calls, fn: fn as never }
@@ -292,6 +300,7 @@ async function main(): Promise<void> {
       check("the engine never ran and nothing was attested", o.auditCalls === 0 && att.calls.length === 0)
       check("no PAYMENT-RESPONSE header (nothing settled)", headerTx(o.paymentResponse) === null)
       check("detail is a fixed code, no raw text", codesFixed(o) && noLeak(o), o.text.slice(0, 160))
+      check("CORS: a browser payer can READ the 400; the body says what to send", o.paymentResponse.get("access-control-allow-origin") === "*" && /402 challenge/.test(String(o.body.remediation)))
 
       const sb2 = fac.hits.settle
       const miss = await paid({ env: envKey, spec: PM_RESOURCE, intent: { side: "YES", size_usd: 250 }, engine: stubEngine(), attest: att.fn, header: hdrPm })
@@ -352,6 +361,7 @@ async function main(): Promise<void> {
       check("the RPC URL / key appear in NO response body or header", noLeak(o), o.text.slice(0, 200))
       check("every detail / eas_error is in the fixed vocabulary", codesFixed(o))
       check("the Worker log carries the cause ([fault] x402.attest) ...", logs.some((l) => l.includes("[fault] x402.attest")), logs.join(" | ").slice(0, 200))
+      check("... and the PUBLIC tx hash of the broadcast attestation, so the permanent record can be found", logs.some((l) => l.includes("[fault] x402.attest") && l.includes(`tx=${ATTEST_TX}`)), logs.join(" | ").slice(0, 300))
       check("... with the URL and key scrubbed from the log line too", !logs.some((l) => SENTINEL_PARTS.some((p) => l.includes(p))), logs.join(" | ").slice(0, 200))
       check("never settled:false after settlement", neverSaysUnsettled(o))
     }
@@ -366,6 +376,7 @@ async function main(): Promise<void> {
       check("settled exactly once on the engine-failure path", o.settleDelta === 1, `delta=${o.settleDelta}`)
       check("PAYMENT-RESPONSE header carries the settlement tx", headerTx(o.paymentResponse) === SETTLE_TX)
       check("never settled:false after settlement", neverSaysUnsettled(o))
+      check("CORS: a browser payer can READ the AUDIT_ERROR (and its settlement_tx)", o.paymentResponse.get("access-control-allow-origin") === "*")
     }
 
     // ── 6. ANY other failure after settlement: same shape, never an escape ──────────
@@ -393,6 +404,12 @@ async function main(): Promise<void> {
       const out = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine({ inScope: false }), header: hdrPm })
       check("out of scope: 200 REFUSED_SCOPE, charged:false, settled:false", out.status === 200 && out.body.verdict === "REFUSED_SCOPE" && out.body.charged === false && out.body.settled === false, out.text.slice(0, 160))
       check("out of scope: nothing settled", fac.hits.settle === settleBefore, `settle hits +${fac.hits.settle - settleBefore}`)
+      // Precedence is pinned: the scope gate runs BEFORE the bind, so an out-of-scope body that also cannot be bound keeps its
+      // free, explained REFUSED_SCOPE (200) instead of becoming a generic 400.
+      const oosUnbindable = await paid({ env: envKey, spec: PM_RESOURCE, intent: {}, engine: stubEngine({ inScope: false }), header: hdrPm })
+      check("scope precedes bind: out of scope AND unbindable -> 200 REFUSED_SCOPE, not 400", oosUnbindable.status === 200 && oosUnbindable.body.verdict === "REFUSED_SCOPE", `${oosUnbindable.status} ${oosUnbindable.text.slice(0, 120)}`)
+      const inUnbindable = await paid({ env: envKey, spec: PM_RESOURCE, intent: {}, engine: stubEngine({ inScope: true }), header: hdrPm })
+      check("in scope AND unbindable -> 400 intent_unbindable", inUnbindable.status === 400 && inUnbindable.body.error === "intent_unbindable", `${inUnbindable.status} ${inUnbindable.text.slice(0, 120)}`)
 
       fac.verifyValid = false
       const bad = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), header: hdrPm })
@@ -402,6 +419,14 @@ async function main(): Promise<void> {
       fac.verifyValid = true
       check("invalid payment: 402 payment_verification_failed, code-shaped reason relayed, nothing settled", bad.status === 402 && bad.body.error === "payment_verification_failed" && bad.body.detail === "stub_invalid" && fac.hits.settle === settleBefore, `${bad.status} ${bad.text.slice(0, 100)}`)
       check("free-text facilitator reason is NOT relayed: detail becomes unknown, no sentinel", free.status === 402 && free.body.detail === "unknown" && noLeak(free), free.text.slice(0, 160))
+
+      // The facilitator answers a bad signature with HTTP 400 {isValid:false, invalidReason}: @x402/core throws VerifyError.
+      fac.verifyHttp400 = true; fac.verifyReason = "invalid_exact_evm_payload_signature"
+      const sbv = fac.hits.settle
+      const v400 = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), header: hdrPm })
+      fac.verifyHttp400 = false; fac.verifyReason = "stub_invalid"
+      check("facilitator 4xx VerifyError is the PAYER's fault: 402 payment_verification_failed with the reason, not a 503 outage", v400.status === 402 && v400.body.error === "payment_verification_failed" && v400.body.detail === "invalid_exact_evm_payload_signature", `${v400.status} ${v400.text.slice(0, 160)}`)
+      check("... nothing settled, no leak of the facilitator's message", fac.hits.settle === sbv && noLeak(v400), v400.text.slice(0, 160))
     }
 
     // ── 8. settlement DECLINED: no verdict, nothing charged, engine never runs ──
@@ -430,6 +455,22 @@ async function main(): Promise<void> {
       check(`[${mode}] the payer is told not to sign again`, /do not sign a second payment/i.test(String(o.body.remediation)), String(o.body.remediation))
       check(`[${mode}] settlePayment was attempted once, the engine and attester never ran`, fac.hits.settle - sb >= 1 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb} audits=${o.auditCalls}`)
       check(`[${mode}] fixed code only: the facilitator's body / URL do not leak`, o.body.detail === "settlement_uncertain" && noLeak(o) && codesFixed(o), o.text.slice(0, 200))
+      check(`[${mode}] the payer and the intent_hash ride along so the operator can reconcile; no tx is known`, o.body.payer === PAYER && o.body.intent_hash === PM_INTENT_HASH_PINNED && o.body.settlement_tx === null, o.text.slice(0, 260))
+      check(`[${mode}] CORS: a browser payer can READ the 502 (Allow-Origin, Expose-Headers)`, o.paymentResponse.get("access-control-allow-origin") === "*" && /PAYMENT-RESPONSE/i.test(o.paymentResponse.get("access-control-expose-headers") ?? ""))
+    }
+
+    // ── 9b. the facilitator ANSWERS success:false, but names a transaction: the transfer exists ──
+    console.log("9b. success:false WITH a transaction hash (settlement_pending): the transfer was broadcast, so 'nothing moved' is not a claim anyone can back")
+    for (const mode of ["pending", "pendingJunk"] as const) {
+      fac.settleMode = mode
+      const sb = fac.hits.settle
+      const att = stubAttester("ok")
+      const o = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: att.fn, header: hdrPm })
+      fac.settleMode = "ok"
+      check(`[${mode}] 502 SETTLEMENT_UNCERTAIN, never the 402 settlement_failed / charged:false`, o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN" && o.body.settled === null && o.body.charged === null && !/"charged"\s*:\s*false/.test(o.text), `${o.status} ${o.text.slice(0, 200)}`)
+      check(`[${mode}] settled once, the engine and attester never ran`, fac.hits.settle - sb === 1 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb}`)
+      check(`[${mode}] the payer and intent_hash ride along`, o.body.payer === PAYER && o.body.intent_hash === PM_INTENT_HASH_PINNED, o.text.slice(0, 260))
+      check(`[${mode}] settlement_tx is the facilitator's hash when it is a hash, else null (shape-validated, never raw text)`, o.body.settlement_tx === (mode === "pending" ? SETTLE_TX : null) && noLeak(o), o.text.slice(0, 260))
     }
 
     // ── 10. an unexpected throw BEFORE settlement: 503, and there settled:false is true ──

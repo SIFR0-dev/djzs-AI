@@ -67,12 +67,12 @@ const pub = kp.publicKey.export({ format: "der", type: "spki" }).subarray(-32)
 const CDP_SECRET = Buffer.concat([seed, pub]).toString("base64")
 
 // ── stub world ──────────────────────────────────────────────────────────────────────
-const mode = { supported: "ok", settle: "ok", anthropic: "ok", subgraph: "500", irysGraphql: "errors", irysUpload: "500" }
+const mode = { supported: "ok", verify: "ok", settle: "ok", anthropic: "ok", subgraph: "500", irysGraphql: "errors", irysUpload: "500" }
 const hits = { settle: 0 }
 const blocked = new Set()
 const jres = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json" } })
 
-const mf = new Miniflare({
+const mk = (extraBindings = {}) => new Miniflare({
   modules: true,
   modulesRoot: path.dirname(path.resolve(bundle)),
   scriptPath: path.resolve(bundle),
@@ -89,6 +89,7 @@ const mf = new Miniflare({
     SUBGRAPH_URL: SENTINEL_URL + "/subgraph",
     CDP_API_KEY_ID: "organizations/stub/apiKeys/stub",
     CDP_API_KEY_SECRET: CDP_SECRET,
+    ...extraBindings,
   },
   d1Databases: { TELEMETRY: "local-telemetry" },
   outboundService: async (req) => {
@@ -97,9 +98,11 @@ const mf = new Miniflare({
       const p = u.pathname.replace(/^.*\//, "")
       await req.arrayBuffer().catch(() => {})
       if (p === "supported") return mode.supported === "500" ? new Response(`upstream said no ${SENTINEL_URL}`, { status: 500 }) : jres({ kinds: [{ x402Version: 2, scheme: "exact", network: "eip155:8453" }], extensions: [], signers: {} })
-      if (p === "verify") return jres({ isValid: true, payer: PAYER })
+      // "junk": the facilitator says no with free text and a non-address payer, both carrying the sentinel.
+      if (p === "verify") return mode.verify === "junk" ? jres({ isValid: false, invalidReason: `rejected: ${SENTINEL_URL}`, payer: SENTINEL_URL }) : jres({ isValid: true, payer: PAYER })
       if (p === "settle") {
         hits.settle++
+        if (mode.settle === "declineJunk") return jres({ success: false, errorReason: `nope ${SENTINEL_URL}`, payer: SENTINEL_URL, transaction: "", network: "eip155:8453" })
         return mode.settle === "http500" ? new Response(`settle blew up ${SENTINEL_URL}`, { status: 500 }) : jres({ success: true, payer: PAYER, transaction: TX, network: "eip155:8453" })
       }
     }
@@ -116,6 +119,7 @@ const mf = new Miniflare({
     }
     if (u.host === "uploader.irys.xyz" || u.host === "devnet.irys.xyz") {
       if (u.pathname.endsWith("/graphql")) return jres({ errors: [{ message: `irys said no ${SENTINEL_URL}` }] })
+      if (mode.irysUpload === "ok" && u.pathname.startsWith("/tx/")) return jres({ id: "B".repeat(43) })
       return new Response(`irys upload rejected ${SENTINEL_URL}`, { status: 500 })
     }
     blocked.add(u.host)
@@ -123,7 +127,10 @@ const mf = new Miniflare({
   },
 })
 
+const mf = mk()
+
 // ── drivers ─────────────────────────────────────────────────────────────────────────
+let world2 = null // a second Worker whose DJZS_WRITER_KEY is a scalar outside the curve order (created on demand)
 const leaked = (text, headers) => PARTS.some((p) => text.includes(p) || [...headers.entries()].some(([k, v]) => `${k}: ${v}`.includes(p)))
 
 async function http(url, init) {
@@ -209,7 +216,7 @@ try {
     mode.settle = "http500"
     o = await post(legacyUrl, h, STRING_INTENT)
     mode.settle = "ok"
-    check("402 SETTLEMENT_FAILED, detail settlement_uncertain (the body does not say 'not charged')", o.status === 402 && o.body.error === "SETTLEMENT_FAILED" && o.body.detail === "settlement_uncertain", `${o.status} ${o.text.slice(0, 200)}`)
+    check("502 SETTLEMENT_UNCERTAIN, settled:null charged:null, and NO fresh 402 challenge that would invite a second payment", o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN" && o.body.settled === null && o.body.charged === null && !o.headers.get("payment-required"), `${o.status} ${o.text.slice(0, 200)}`)
     check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
   }
 
@@ -270,7 +277,65 @@ try {
     }
   }
 
-  console.log("10. /try/verdict (the free route): extraction fails with a 401 whose body contains the sentinel")
+  console.log("10. /mcp paid tool: the FACILITATOR says no with free text and a non-address payer (agents/x402 builds that result itself)")
+  {
+    const h = await mcpSession()
+    const first = await mcpCall(h, "verify_pm_trade", { intent: STRING_INTENT })
+    const challenge = first.body.result?._meta?.["x402/error"]
+    const token = btoa(JSON.stringify({ x402Version: 2, resource: challenge.resource, accepted: challenge.accepts[0], payload: { signature: "0x" + "00".repeat(65), authorization: {} } }))
+    mode.verify = "junk"
+    let o = await mcpCall(h, "verify_pm_trade", { intent: STRING_INTENT }, { "x402/payment": token })
+    mode.verify = "ok"
+    const e1 = o.body.result?._meta?.["x402/error"]
+    check("verify refused: error becomes the fixed PAYMENT_FAILED, payer (not an address) is dropped", e1?.error === "PAYMENT_FAILED" && !("payer" in (e1 ?? {})), JSON.stringify(e1).slice(0, 200))
+    check("NO part of the sentinel in content[0].text or _meta", !leaked(o.text, o.headers), o.text.slice(0, 240))
+    mode.settle = "declineJunk"
+    o = await mcpCall(h, "verify_pm_trade", { intent: STRING_INTENT }, { "x402/payment": token })
+    mode.settle = "ok"
+    const e2 = o.body.result?._meta?.["x402/error"]
+    check("settle declined with free text: error becomes the fixed PAYMENT_FAILED", e2?.error === "PAYMENT_FAILED", JSON.stringify(e2).slice(0, 200))
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 240))
+    o = await mcpCall(h, "verify_pm_trade", { intent: STRING_INTENT }, { "x402/payment": token })
+    check("a good payment still returns the verdict with a clean receipt (tx, payer)", /"verdict"/.test(o.tool) && o.body.result?._meta?.["x402/payment-response"]?.transaction === TX && o.body.result?._meta?.["x402/payment-response"]?.payer === PAYER, o.text.slice(0, 200))
+  }
+
+  console.log("11. legacy /x402/verify: the facilitator refuses with free text and a non-address payer")
+  {
+    const legacyUrl = "https://mcp.djzs.ai/x402/verify"
+    const h = await payHeader(legacyUrl)
+    mode.verify = "junk"
+    const o = await post(legacyUrl, h, STRING_INTENT)
+    mode.verify = "ok"
+    const hdrBody = o.headers.get("payment-required") ? Buffer.from(o.headers.get("payment-required"), "base64").toString("utf8") : ""
+    check("402 INVALID_PAYMENT, and no payer in the body", o.status === 402 && o.body.error === "INVALID_PAYMENT" && !o.body.payer, o.text.slice(0, 200))
+    check("NO part of the sentinel in the body, the headers or the decoded PAYMENT-REQUIRED header", !leaked(o.text, o.headers) && !PARTS.some((p) => hdrBody.includes(p)), o.text.slice(0, 200))
+  }
+
+  console.log("12. an unhandled route error: the app's own handler answers the same fixed text")
+  {
+    world2 = mk({ DJZS_WRITER_KEY: "0x" + "00".repeat(32) })
+    const r = await world2.dispatchFetch("https://mcp.djzs.ai/health/writer", { method: "GET" })
+    const text = await r.text()
+    check("500 with the fixed text and nothing else", r.status === 500 && text === "Internal Server Error", `${r.status} ${text.slice(0, 120)}`)
+  }
+
+  console.log("13. legacy /x402/verify, paid, with an agent_address: the trust-score write cannot lose a paid verdict (out-of-range writer key)")
+  {
+    mode.irysUpload = "ok"
+    const legacyUrl = "https://mcp.djzs.ai/x402/verify"
+    const ch = await (await world2.dispatchFetch(legacyUrl, { method: "POST", body: "" })).json()
+    const hdr2 = encodePaymentSignatureHeader({ x402Version: 2, resource: ch.resource, accepted: ch.accepts[0], payload: { signature: "0x" + "00".repeat(65), authorization: {} } })
+    const res = await world2.dispatchFetch(legacyUrl, { method: "POST", headers: { "content-type": "application/json", "PAYMENT-SIGNATURE": hdr2 }, body: JSON.stringify({ intent: STRING_INTENT, agent_address: PAYER }) })
+    const text = await res.text()
+    mode.irysUpload = "500"
+    let body = {}
+    try { body = JSON.parse(text) } catch { /* the checks say so */ }
+    check("200 with the verdict (not a bare 500 after the payer was charged)", res.status === 200 && typeof body.verdict === "string", `${res.status} ${text.slice(0, 200)}`)
+    check("the certificate anchored and trust_score reports the failure as a fixed code", body.pol_certificate?.status === "anchored" && body.trust_score?.status === "error" && body.trust_score?.detail === "trust_write_failed", JSON.stringify({ pol: body.pol_certificate?.status, ts: body.trust_score }).slice(0, 240))
+    check("nothing of the key or the error in the response", !PARTS.some((p) => text.includes(p)) && !/valid private key|got 0/.test(text), text.slice(0, 200))
+  }
+
+  console.log("14. /try/verdict (the free route): extraction fails with a 401 whose body contains the sentinel")
   {
     const acct = privateKeyToAccount("0x" + "44".repeat(32))
     const q = await http(`https://mcp.djzs.ai/try/quota?address=${acct.address}`, { method: "GET" })
@@ -284,6 +349,7 @@ try {
   }
 } finally {
   await mf.dispose()
+  if (world2) await world2.dispose()
 }
 
 console.log(`\nunrelated egress refused (599): ${[...blocked].join(", ") || "none"}`)

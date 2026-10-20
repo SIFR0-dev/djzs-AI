@@ -91,14 +91,18 @@ export async function attestVerdict(env: WorkerEnv, v: VerdictAttestation, resol
   const { schema, data } = encodeForSchema(v, resolver);
   const txHash = await wallet.writeContract({ address: EAS_ADDRESS, abi: EAS_ABI, functionName: "attest",
     args: [{ schema, data: { recipient: v.agent, expirationTime: 0n, revocable: false, refUID: ZERO32, data, value: 0n } }] });
-  const rc = await pub.waitForTransactionReceipt({ hash: txHash });
-  if (rc.status !== "success") throw new Error(`attest reverted: ${txHash}`);
+  // After the broadcast the tx hash is the one public fact worth keeping: every failure below carries it
+  // as `txHash`, so the log can name the permanent attestation even though the message is scrubbed.
+  let rc;
+  try { rc = await pub.waitForTransactionReceipt({ hash: txHash }); }
+  catch (e) { throw Object.assign(new Error("attest broadcast but the receipt wait failed"), { txHash, cause: e }); }
+  if (rc.status !== "success") throw Object.assign(new Error(`attest reverted: ${txHash}`), { txHash });
   for (const log of rc.logs) {
     if (log.address.toLowerCase() !== EAS_ADDRESS.toLowerCase()) continue;
     try { const ev = decodeEventLog({ abi: EAS_ABI, data: log.data, topics: log.topics });
           if (ev.eventName === "Attested") return { uid: ev.args.uid, txHash, block: rc.blockNumber }; } catch {}
   }
-  throw new Error(`attest mined but no Attested event: ${txHash}`);
+  throw Object.assign(new Error(`attest mined but no Attested event: ${txHash}`), { txHash });
 }
 export function attestVerdictDeferred(env: WorkerEnv, v: VerdictAttestation, onDone: (r: { uid: Hex; txHash: Hex } | Error) => Promise<void> | void, resolver?: string): Promise<void> {
   return attestVerdict(env, v, resolver).then(r => onDone(r), e => onDone(e instanceof Error ? e : new Error(String(e))));

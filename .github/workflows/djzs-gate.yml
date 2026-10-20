@@ -72,6 +72,9 @@ jobs:
       - name: Post-settlement — bind before settle, 502 SETTLEMENT_UNCERTAIN, a settled payment never answers settled:false, error fields are fixed codes (offline)
         run: npx tsx test/post-settlement.test.ts
         working-directory: djzs-trust-mcp
+      - name: Error hygiene — the shape rules (reasonCode, scrub, logFault) and the app's own error handler
+        run: npx tsx test/safe-error.test.mjs
+        working-directory: djzs-trust-mcp
       - name: Error hygiene — no response carries raw error text (the built bundle in workerd, every dependency failing with a provider-URL sentinel)
         run: npx tsx test/error-leak.bundle.test.mjs
         working-directory: djzs-trust-mcp

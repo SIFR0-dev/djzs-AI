@@ -46,7 +46,7 @@ import type { FacilitatorConfig } from "@x402/core/http";
 
 import { intentHash, attestVerdict, schemaUIDFor } from "./attest-worker";
 import { toDJZSIntent, type PmIntentLike, type PerpIntentLike } from "./djzs-intent";
-import { logFault, reasonCode, type Fault } from "./safe-error";
+import { logFault, reasonCode, addressOnly, hash32Only, type Fault } from "./safe-error";
 
 /** Ruleset the attested verdict was scored under. Bump with the taxonomy, never silently. */
 const RULESET_VERSION = "DJZS-PM-v1.0";
@@ -555,7 +555,18 @@ async function run(
   } catch {
     return json({ error: "malformed_payment_header", terms: TERMS_URL }, 400);
   }
-  const verify = await server.verifyPayment(payload, reqs[0], spec.extensions);
+  let verify: Awaited<ReturnType<x402ResourceServer["verifyPayment"]>>;
+  try {
+    verify = await server.verifyPayment(payload, reqs[0], spec.extensions);
+  } catch (e) {
+    // @x402/core throws VerifyError when the facilitator answers a 4xx carrying {isValid:false, invalidReason}
+    // (a bad signature, an expired authorization): the PAYER's fault, nothing moved. It is a refusal, not an outage.
+    if ((e as { name?: unknown })?.name === "VerifyError") {
+      logFault("x402.verify", e, { payer: (e as { payer?: unknown }).payer });
+      return json({ error: "payment_verification_failed", detail: reasonCode((e as { invalidReason?: unknown }).invalidReason), terms: TERMS_URL }, 402);
+    }
+    throw e;
+  }
   if (!verify?.isValid) {
     return json(
       { error: "payment_verification_failed", detail: reasonCode(verify?.invalidReason), terms: TERMS_URL },
@@ -614,7 +625,14 @@ async function run(
   } catch (e) {
     logFault("x402.bind", e);
     return json(
-      { error: "intent_unbindable", detail: "intent_unbindable" satisfies Fault, charged: false, settled: false, terms: TERMS_URL },
+      {
+        error: "intent_unbindable",
+        detail: "intent_unbindable" satisfies Fault,
+        charged: false,
+        settled: false,
+        remediation: "Send an intent shaped like the example in this route's 402 challenge (extensions.bazaar.info.input.body). Nothing was charged.",
+        terms: TERMS_URL,
+      },
       400,
     );
   }
@@ -628,11 +646,18 @@ async function run(
     // settlePayment signals failure by THROWING (facilitator 4xx/5xx, timeout, unparseable
     // 200). The transfer may already be broadcast, so "settled:false" would be a claim
     // nobody can back (invariant 7).
-    logFault("x402.settle", e);
-    return settlementUncertain();
+    logFault("x402.settle", e, { payer: verify.payer, intent_hash });
+    return settlementUncertain({ payer: verify.payer, intent_hash, transaction: (e as { transaction?: unknown })?.transaction });
   }
   if (!settle?.success) {
-    // The facilitator answered and said no: nothing moved.
+    // success:false WITH a transaction hash is the reference facilitator's settlement_pending
+    // (broadcast, receipt not yet confirmed), or a reverted / mismatched transfer: the transfer
+    // exists, so "nothing moved" is not a claim anyone can back (invariant 7).
+    if (typeof settle?.transaction === "string" && settle.transaction !== "") {
+      logFault("x402.settle", new Error(`success:false with a transaction (${reasonCode(settle.errorReason)})`), { payer: verify.payer, intent_hash, transaction: settle.transaction });
+      return settlementUncertain({ payer: settle.payer ?? verify.payer, intent_hash, transaction: settle.transaction });
+    }
+    // The facilitator answered, said no, and names no transaction: nothing moved.
     return json(
       { error: "settlement_failed", detail: reasonCode(settle?.errorReason), charged: false, terms: TERMS_URL },
       402,
@@ -681,8 +706,9 @@ async function run(
         );
         eas_uid = a.uid; eas_tx = a.txHash;
       } catch (e) {
-        // viem's HttpRequestError message starts with the RPC URL: it stays in the log.
-        logFault("x402.attest", e);
+        // viem's HttpRequestError message starts with the RPC URL: it stays in the log. A broadcast attestation
+        // that did not confirm is permanent on chain, so its public tx hash is logged beside the scrubbed cause.
+        logFault("x402.attest", e, { transaction: (e as { txHash?: unknown })?.txHash });
         eas_error = "attestation_failed";
       }
     }
@@ -710,15 +736,20 @@ async function run(
  * may or may not have been broadcast. 502, not 503: a 503 invites an automatic retry, and
  * a retry after a settled payment pays twice. Neither settled nor charged is claimed.
  */
-function settlementUncertain(): Response {
+export function settlementUncertain(ctx: { payer?: unknown; intent_hash?: unknown; transaction?: unknown } = {}): Response {
+  // What the payer and the operator need to reconcile, each kept only if it has the exact SHAPE of
+  // an address / 32-byte hash: a value can never smuggle error text into the answer.
   return json(
     {
       error: "SETTLEMENT_UNCERTAIN",
       detail: "settlement_uncertain" satisfies Fault,
       settled: null,
       charged: null,
+      payer: addressOnly(ctx.payer) ?? null,
+      intent_hash: hash32Only(ctx.intent_hash) ?? null,
+      settlement_tx: hash32Only(ctx.transaction) ?? null,
       remediation:
-        "The facilitator did not confirm the settlement and may have broadcast it. Do not sign a second payment until you have checked whether the first transfer left your wallet; then contact the operator with the time of this call.",
+        "The facilitator did not confirm the settlement and may have broadcast it. Do not sign a second payment until you have checked whether the first transfer left your wallet (settlement_tx, when present, is the transfer to look up); then contact the operator with the time of this call.",
       terms: TERMS_URL,
     },
     502,
@@ -761,8 +792,8 @@ function paymentResponseHeaders(settle: SettleResult): Record<string, string> {
 }
 
 function json(obj: unknown, status: number): Response {
-  // CORS rides every JSON answer, not only the 402 and the 200: a browser payer that cannot
-  // READ a refusal ("payment_verification_failed", "missing_intent") sees a network error instead.
+  // CORS rides every JSON answer, not only the 402 and the 200: a browser payer that cannot READ
+  // "do not sign a second payment" (502) or a refusal (400) sees an opaque network error and retries.
   return new Response(JSON.stringify(obj), {
     status,
     headers: { "content-type": "application/json", ...CORS_BASE },
