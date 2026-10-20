@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy --tag \"$(git rev-parse --short=12 HEAD)\" --message \"$(git rev-parse HEAD)\""
   },
   "dependencies": {
     "@coinbase/x402": "2.1.0",

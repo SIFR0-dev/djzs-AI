@@ -44,6 +44,7 @@ jobs:
       - name: djzs-trust-mcp — bundle (no deploy, no secrets)
         run: npx wrangler deploy --dry-run --outdir /tmp/dry
         working-directory: djzs-trust-mcp
+        env: { DJZS_BUILD_ONLY: "1" } # builds, uploads nothing; the predeploy guard stands down for it
       - name: Target-System — a signed claim or null, NEVER a bare unsigned value
         run: npx tsx test/target-system.test.mjs
         working-directory: djzs-trust-mcp
