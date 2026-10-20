@@ -14,6 +14,14 @@
 //   2. Payment verifies, OUT of scope -> refusal returned, settlePayment NEVER called (uncharged)
 //   3. Payment verifies, IN scope   -> settle FIRST, then engine, then verdict + PAYMENT-RESPONSE
 //   4. Engine throws after settle   -> AUDIT_ERROR verdict WITH settlement receipt (manual remediation)
+//   5. NOTHING throws after settlePayment RETURNS SUCCESS -> a verdict that exists is returned 200. A failed
+//                                      hash gives intent_hash null; a failed attestation keeps intent_hash and
+//                                      gives eas_uid null; either way eas_error is set. Any other failure is
+//                                      AUDIT_ERROR, charged:true, with the settlement tx and PAYMENT-RESPONSE.
+//                                      The route-level catch in index.ts answers settled:false, so an escape
+//                                      after settlement would be a lie and would lose the verdict.
+//                                      KNOWN GAP, not covered here: settlePayment ITSELF can throw (facilitator
+//                                      5xx / timeout); see the note at that call.
 //
 // "LLM detects, TypeScript decides." Nothing in this file consults a model.
 
@@ -57,6 +65,13 @@ export const EXPECTED_ATOMIC_AMOUNT = "2000000" as const;
 export const RESOURCE_URL = "https://mcp.djzs.ai/x402/verify_pm_trade" as const;
 export const TERMS_URL = "https://djzs.ai/terms" as const;
 export const MAX_TIMEOUT_SECONDS = 120;
+/**
+ * Response media type for the audit verdict — one home, used by info and schema.
+ * Declared HERE, above its first use, so this module can be imported under Node:
+ * withDiscoveryFixups runs at module load, and as a later `const` this was read in its
+ * TDZ (a ReferenceError), which also kept harness/adapter-offline.ts from running.
+ */
+const OUTPUT_MIME_TYPE = "application/json";
 
 // ------------------------------------------------------------------
 // Engine adapter seam — DJ wires this to deterministic-engine.
@@ -85,6 +100,18 @@ export interface EngineAdapter {
   scopeCheck(intent: unknown): Promise<ScopeResult>;
   audit(intent: unknown): Promise<VerdictResult>;
 }
+
+/**
+ * Injection seam for the one outbound call the handler cannot otherwise make
+ * offline. Production passes nothing and gets the real attestVerdict; the offline
+ * regression test passes a stub. Same convention as pol-certificate's UploadFn.
+ */
+export interface HandlerDeps {
+  attest?: typeof attestVerdict;
+}
+
+/** What settlePayment returns on the success path (kept derived from the library, not hand-typed). */
+type SettleResult = Awaited<ReturnType<x402ResourceServer["settlePayment"]>>;
 
 // Loud default: route is inert until wired. Replace at integration.
 export const NOT_WIRED: EngineAdapter = {
@@ -260,9 +287,6 @@ function withDiscoveryFixups<T>(ext: T): T {
   return ext;
 }
 
-/** Response media type for the audit verdict — one home, used by info and schema. */
-const OUTPUT_MIME_TYPE = "application/json";
-
 /**
  * S4 — CORS. `Expose-Headers` is the load-bearing line: without it a browser
  * client receives the 402 but cannot READ the challenge header, so it cannot pay.
@@ -408,7 +432,9 @@ export async function handleX402VerifyPmTrade(
   env: X402Env,
   engine: EngineAdapter = NOT_WIRED,
   spec: ResourceSpec = PM_RESOURCE,
+  deps: HandlerDeps = {},
 ): Promise<Response> {
+  const attest = deps.attest ?? attestVerdict;
   const method = request.method.toUpperCase();
 
   // S4 — preflight, answered before any facilitator work. No body, no challenge.
@@ -537,6 +563,10 @@ export async function handleX402VerifyPmTrade(
   }
 
   // 4 — settle FIRST (no free verdicts), then run the deterministic engine.
+  // KNOWN GAP (out of scope here, needs its own ruling): settlePayment can THROW rather
+  // than return success:false (facilitator 4xx/5xx, timeout, unparseable 200). That
+  // rejection reaches the route catch in index.ts, which answers `settled:false,
+  // charged:false` even though the facilitator may already have broadcast the transfer.
   const settle = await server.settlePayment(payload, reqs[0], spec.extensions);
   if (!settle?.success) {
     return json(
@@ -545,65 +575,111 @@ export async function handleX402VerifyPmTrade(
     );
   }
 
-  let result: VerdictResult;
+  // ── payment SETTLED. ──────────────────────────────────────────────────────
+  // Invariant 5: from here to the end of this function NOTHING may throw. The
+  // route-level catch in index.ts answers `settled:false, charged:false`, which after
+  // a settlement is a lie and also loses the verdict the payer paid for. So the whole
+  // tail sits in one try: a verdict that exists is returned 200 (a failed receipt
+  // degrades to nulls + eas_error), and anything else is AUDIT_ERROR with
+  // charged:true, the settlement tx and the PAYMENT-RESPONSE header.
   try {
-    result = await engine.audit(intent);
-  } catch (e) {
-    // Charged-but-errored: surfaced honestly with the receipt for manual remediation.
+    let result: VerdictResult;
+    try {
+      result = await engine.audit(intent);
+    } catch (e) {
+      // Charged-but-errored: surfaced honestly with the receipt for manual remediation.
+      return auditError(settle, e instanceof Error ? e.message : "engine_error");
+    }
+
+    // 5a — v2 binding + EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
+    // Fail-soft receipt: the hash and the attestation each degrade to eas_error, so a
+    // charged, valid verdict is never hostage to either of them.
+    let intent_hash: ReturnType<typeof intentHash> | null = null;
+    let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: string | undefined;
+    try {
+      // TODO(DJ ruling): toDJZSIntent maps PREDICTION-MARKET intents only (it reads
+      // `market`). A perp/spot intent without a `market` key has none, so intent_hash is
+      // null — and the attestation is skipped — on /x402/verify_perp_trade until DJ rules
+      // on a perp mapping and an action class. (A perp-route intent that DOES carry a
+      // `market` key is hashed through the PM mapping, action "pm_trade".) Do NOT add a
+      // mapping or an action class here without that ruling.
+      intent_hash = intentHash(toDJZSIntent(intent));
+    } catch (e) {
+      eas_error = `intent_hash_failed: ${e instanceof Error ? e.message : String(e)}`.slice(0, 160);
+    }
+    if (intent_hash !== null) {
+      if (!env.ATTESTER_KEY) {
+        eas_error = "attester_not_configured";
+      } else {
+        try {
+          const a = await attest(
+            { DJZS_ATTESTER_KEY: env.ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL },
+            {
+              intentHash: intent_hash,
+              verdict: result.verdict as "PASS" | "WAIT" | "FAIL",
+              riskScore: result.risk_score,
+              flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
+              rulesetVersion: spec.rulesetVersion,
+              agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
+            },
+          );
+          eas_uid = a.uid; eas_tx = a.txHash;
+        } catch (e) {
+          eas_error = (e instanceof Error ? e.message : String(e)).slice(0, 160);
+        }
+      }
+    }
+    // 5 — verdict + settlement evidence.
     return new Response(
-      JSON.stringify({
-        verdict: "AUDIT_ERROR",
-        detail: e instanceof Error ? e.message : "engine_error",
-        charged: true,
-        remediation: "contact operator with intent_sha256 + settlement tx",
-        terms: TERMS_URL,
-      }),
+      JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: DJZS_SCHEMA_UID, ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
       {
-        status: 500,
+        status: 200,
         headers: {
           "content-type": "application/json",
-          "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle),
+          ...paymentResponseHeaders(settle),
+          ...CORS_BASE,
         },
       },
     );
+  } catch (e) {
+    // Anything else after settlement: same shape as an engine failure, never settled:false.
+    return auditError(settle, e instanceof Error ? e.message : "post_settlement_error");
   }
+}
 
-  // 5a — v2 binding + EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
-  // Fail-soft: a charged, valid verdict is never hostage to a second transaction.
-  const intent_hash = intentHash(toDJZSIntent(intent));
-  let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: string | undefined;
-  if (!env.ATTESTER_KEY) {
-    eas_error = "attester_not_configured";
-  } else {
-    try {
-      const a = await attestVerdict(
-        { DJZS_ATTESTER_KEY: env.ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL },
-        {
-          intentHash: intent_hash,
-          verdict: result.verdict as "PASS" | "WAIT" | "FAIL",
-          riskScore: result.risk_score,
-          flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
-          rulesetVersion: spec.rulesetVersion,
-          agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
-        },
-      );
-      eas_uid = a.uid; eas_tx = a.txHash;
-    } catch (e) {
-      eas_error = (e instanceof Error ? e.message : String(e)).slice(0, 160);
-    }
-  }
-  // 5 — verdict + settlement evidence.
+/**
+ * Charged-but-errored: the payment SETTLED, so this answers charged:true with the
+ * settlement tx (body) and the PAYMENT-RESPONSE header, for manual remediation. The
+ * one shape for every failure after settlement. It cannot throw.
+ */
+function auditError(settle: SettleResult, detail: string): Response {
   return new Response(
-    JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: DJZS_SCHEMA_UID, ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
+    JSON.stringify({
+      verdict: "AUDIT_ERROR",
+      detail,
+      charged: true,
+      settlement_tx: (settle as { transaction?: string }).transaction ?? null,
+      remediation: "contact operator with intent_sha256 + settlement tx",
+      terms: TERMS_URL,
+    }),
     {
-      status: 200,
-      headers: {
-        "content-type": "application/json",
-        "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle),
-        ...CORS_BASE,
-      },
+      status: 500,
+      headers: { "content-type": "application/json", ...paymentResponseHeaders(settle) },
     },
   );
+}
+
+/**
+ * PAYMENT-RESPONSE for a settled payment. Encoding the receipt must never be what
+ * loses the verdict, so an encoding failure omits the header (on AUDIT_ERROR the tx is
+ * also in the body; the 200 verdict body does not carry it).
+ */
+function paymentResponseHeaders(settle: SettleResult): Record<string, string> {
+  try {
+    return { "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle) };
+  } catch {
+    return {};
+  }
 }
 
 function json(obj: unknown, status: number): Response {
