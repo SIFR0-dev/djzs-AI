@@ -45,9 +45,13 @@ jobs:
       - name: Correction anchor — key stays in the Worker; route refuses before it signs
         run: npx tsx test/correction-anchor.test.mjs
         working-directory: djzs-trust-mcp
-      - name: Post-settlement — nothing throws after settlePayment; a settled payment never answers settled:false (offline)
+      - name: Post-settlement — bind before settle, 502 SETTLEMENT_UNCERTAIN, a settled payment never answers settled:false, error fields are fixed codes (offline)
         run: npx tsx test/post-settlement.test.ts
         working-directory: djzs-trust-mcp
+      - name: Error hygiene — no response carries raw error text (the built bundle in workerd, every dependency failing with a provider-URL sentinel)
+        run: npx tsx test/error-leak.bundle.test.mjs
+        working-directory: djzs-trust-mcp
+        env: { DJZS_BUNDLE: /tmp/dry/index.js }
 
   q3-integrity:
     runs-on: ubuntu-latest

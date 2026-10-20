@@ -1,0 +1,279 @@
+/**
+ * No caller-facing response may carry raw error text. Driven against the BUILT Worker bundle in
+ * Miniflare (workerd), through the real Hono routes, the real /mcp transport and the real
+ * agents/x402 wrapper, with every dependency stubbed at the outbound-fetch layer.
+ *
+ * Why the bundle and not the handler: the leak paths are spread over index.ts (route catches,
+ * health probes, MCP tools, the legacy x402 route), which cannot be imported under Node, and one
+ * of them lives in a library (agents/x402 answers `Tool execution failed: ${String(e)}` for any
+ * throw out of a paid tool). Only the bundle exercises all of them as they ship.
+ *
+ * How it proves a leak: every dependency fails with a message that contains a SENTINEL shaped like
+ * a provider RPC URL with its key in the path (viem's HttpRequestError begins with the request
+ * URL, and BASE_RPC_URL is a Worker secret). If any part of the sentinel reaches a response body
+ * or header, the check fails. Run against origin/main's bundle this test is RED on the leak
+ * checks; that is the regression it exists to hold.
+ *
+ * ZERO keys, ZERO egress. The CDP key is generated here and signs nothing real; the attester and
+ * writer keys are throwaway hex; every outbound host is answered by a stub or refused (599).
+ *
+ * Run from djzs-trust-mcp/:   npx tsx test/error-leak.bundle.test.mjs
+ *   DJZS_BUNDLE=<path/to/index.js>  to test an already-built bundle (CI passes the dry-run output);
+ *   otherwise it builds one with `wrangler deploy --dry-run` (no login, no secrets, no deploy).
+ */
+import { execFileSync } from "node:child_process"
+import { generateKeyPairSync } from "node:crypto"
+import { existsSync, mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { Miniflare } from "miniflare"
+import { encodePaymentSignatureHeader } from "@x402/core/http"
+
+const SENTINEL_URL = "https://rpc.sentinel.invalid/v2/KEYSENTINEL0123456789abcdef"
+const PARTS = ["KEYSENTINEL", "sentinel.invalid"]
+
+let checks = 0
+const failures = []
+function check(name, cond, detail) {
+  checks++
+  if (cond) console.log(`  ok   ${name}`)
+  else { failures.push(name); console.error(`  FAIL ${name}${detail ? ` :: ${String(detail).slice(0, 220)}` : ""}`) }
+}
+
+// ── bundle ──────────────────────────────────────────────────────────────────────────
+let bundle = process.env.DJZS_BUNDLE
+if (!bundle) {
+  const out = mkdtempSync(path.join(tmpdir(), "djzs-leak-"))
+  execFileSync("npx", ["wrangler", "deploy", "--dry-run", "--outdir", out], { stdio: "ignore", cwd: path.resolve(import.meta.dirname, "..") })
+  bundle = path.join(out, "index.js")
+}
+if (!existsSync(bundle)) throw new Error(`bundle not found: ${bundle}`)
+
+// ── fixtures ────────────────────────────────────────────────────────────────────────
+const F = (state, value, quote) => state === "present" ? { state, value } : state === "absent" && quote ? { state, quote } : { state }
+const PM_X = { agent_type: "trader", intended_action: "buy YES", audit_context: "prediction_market", leverage: F("absent"), position_size: F("present", 250), stop_loss: F("present", "daily close below 66000"), take_profit: F("unknown"), invalidation_condition: F("present", "daily close below 66000"), resolution_engagement: F("unknown"), probability_basis: F("present", "implied 0.41 vs model 0.55"), edge_claim: F("unknown"), data_sources: F("unknown"), oracle_source: F("unknown"), confidence: F("unknown") }
+const PM_INTENT = { market: "KXBTC-26AUG29-T70000", side: "YES", thesis: "BTC closes above 70k by Aug 29 on ETF inflow continuation", probability_basis: "implied 0.41 vs model 0.55", size_usd: 250, bounds: { max_loss_usd: 250, exit_condition: "daily close below 66000" } }
+const STRING_INTENT = "BTC closes above 70k by Aug 29 on ETF inflow continuation; implied 0.41 vs model 0.55; stop on a daily close below 66000"
+const PAYER = "0x1111111111111111111111111111111111111111"
+const TX = "0x" + "cd".repeat(32)
+
+// A CDP-shaped Ed25519 secret (base64 of seed||public). It signs a JWT for a stub that never checks it.
+const kp = generateKeyPairSync("ed25519")
+const seed = kp.privateKey.export({ format: "der", type: "pkcs8" }).subarray(-32)
+const pub = kp.publicKey.export({ format: "der", type: "spki" }).subarray(-32)
+const CDP_SECRET = Buffer.concat([seed, pub]).toString("base64")
+
+// ── stub world ──────────────────────────────────────────────────────────────────────
+const mode = { supported: "ok", settle: "ok", anthropic: "ok", subgraph: "500", irysGraphql: "errors", irysUpload: "500" }
+const hits = { settle: 0 }
+const blocked = new Set()
+const jres = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json" } })
+
+const mf = new Miniflare({
+  modules: true,
+  modulesRoot: path.dirname(path.resolve(bundle)),
+  scriptPath: path.resolve(bundle),
+  compatibilityDate: "2026-06-01",
+  compatibilityFlags: ["nodejs_compat"],
+  bindings: {
+    ENVIRONMENT: "production",
+    FACILITATOR_URL: "https://facilitator.test",
+    ANTHROPIC_API_KEY: "stub-not-a-key",
+    DJZS_ATTESTER_KEY: "0x" + "11".repeat(32),
+    DJZS_WRITER_KEY: "0x" + "22".repeat(32),
+    IRYS_UPLOAD_KEY: "0x" + "33".repeat(32),
+    BASE_RPC_URL: SENTINEL_URL,
+    SUBGRAPH_URL: SENTINEL_URL + "/subgraph",
+    CDP_API_KEY_ID: "organizations/stub/apiKeys/stub",
+    CDP_API_KEY_SECRET: CDP_SECRET,
+  },
+  d1Databases: { TELEMETRY: "local-telemetry" },
+  outboundService: async (req) => {
+    const u = new URL(req.url)
+    if (u.host === "facilitator.test" || u.host === "api.cdp.coinbase.com") {
+      const p = u.pathname.replace(/^.*\//, "")
+      await req.arrayBuffer().catch(() => {})
+      if (p === "supported") return mode.supported === "500" ? new Response(`upstream said no ${SENTINEL_URL}`, { status: 500 }) : jres({ kinds: [{ x402Version: 2, scheme: "exact", network: "eip155:8453" }], extensions: [], signers: {} })
+      if (p === "verify") return jres({ isValid: true, payer: PAYER })
+      if (p === "settle") {
+        hits.settle++
+        return mode.settle === "http500" ? new Response(`settle blew up ${SENTINEL_URL}`, { status: 500 }) : jres({ success: true, payer: PAYER, transaction: TX, network: "eip155:8453" })
+      }
+    }
+    if (u.host === "api.anthropic.com") {
+      return mode.anthropic === "401"
+        ? new Response(`{"error":{"message":"invalid x-api-key at ${SENTINEL_URL}"}}`, { status: 401 })
+        : jres({ content: [{ type: "text", text: JSON.stringify(PM_X) }] })
+    }
+    if (u.host === "rpc.sentinel.invalid") {
+      if (u.pathname.endsWith("/subgraph")) {
+        return mode.subgraph === "graphql" ? jres({ errors: [{ message: `boom ${SENTINEL_URL}` }] }) : new Response(`subgraph said no ${SENTINEL_URL}`, { status: 500 })
+      }
+      return new Response(`rpc said no ${SENTINEL_URL}`, { status: 500 })
+    }
+    if (u.host === "uploader.irys.xyz" || u.host === "devnet.irys.xyz") {
+      if (u.pathname.endsWith("/graphql")) return jres({ errors: [{ message: `irys said no ${SENTINEL_URL}` }] })
+      return new Response(`irys upload rejected ${SENTINEL_URL}`, { status: 500 })
+    }
+    blocked.add(u.host)
+    return new Response("blocked", { status: 599 })
+  },
+})
+
+// ── drivers ─────────────────────────────────────────────────────────────────────────
+const leaked = (text, headers) => PARTS.some((p) => text.includes(p) || [...headers.entries()].some(([k, v]) => `${k}: ${v}`.includes(p)))
+
+async function http(url, init) {
+  const res = await mf.dispatchFetch(url, init)
+  const text = await res.text()
+  let body = {}
+  try { body = JSON.parse(text) } catch { /* the checks say so */ }
+  return { status: res.status, text, body, headers: res.headers }
+}
+
+async function payHeader(url) {
+  const ch = await (await mf.dispatchFetch(url, { method: "POST", body: "" })).json()
+  return encodePaymentSignatureHeader({ x402Version: 2, resource: ch.resource, accepted: ch.accepts[0], payload: { signature: "0x" + "00".repeat(65), authorization: {} } })
+}
+
+const MCP = "https://mcp.djzs.ai/mcp"
+const MCPH = { "content-type": "application/json", accept: "application/json, text/event-stream" }
+const sse = (t) => { const m = t.match(/data: (.*)/); return JSON.parse(m ? m[1] : t) }
+async function mcpSession() {
+  const init = await mf.dispatchFetch(MCP, { method: "POST", headers: MCPH, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "leak-test", version: "0" } } }) })
+  await init.text()
+  const sid = init.headers.get("mcp-session-id")
+  const h = sid ? { ...MCPH, "mcp-session-id": sid } : MCPH
+  await (await mf.dispatchFetch(MCP, { method: "POST", headers: h, body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) })).text()
+  return h
+}
+async function mcpCall(h, name, args, meta) {
+  const res = await mf.dispatchFetch(MCP, { method: "POST", headers: h, body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name, arguments: args, ...(meta ? { _meta: meta } : {}) } }) })
+  const text = await res.text()
+  let body = {}
+  try { body = sse(text) } catch { /* the checks say so */ }
+  return { status: res.status, text, body, headers: res.headers, tool: body.result?.content?.[0]?.text ?? "" }
+}
+
+// ── scenarios ───────────────────────────────────────────────────────────────────────
+try {
+  const pmUrl = "https://mcp.djzs.ai/x402/verify_pm_trade"
+  const hdr = await payHeader(pmUrl)
+  const post = (url, h, intent) => http(url, { method: "POST", headers: { "content-type": "application/json", "PAYMENT-SIGNATURE": h }, body: JSON.stringify({ intent }) })
+
+  console.log("1. canonical PM route, paid: the attestation fails and viem's message begins with the RPC URL")
+  {
+    const o = await post(pmUrl, hdr, PM_INTENT)
+    check("200 with the verdict, charged:true", o.status === 200 && o.body.charged === true && typeof o.body.verdict === "string", `${o.status} ${o.text}`)
+    check("eas_error is the fixed code attestation_failed", o.body.eas_error === "attestation_failed", o.body.eas_error)
+    check("NO part of the RPC URL / key in the body or headers", !leaked(o.text, o.headers), o.text)
+  }
+
+  console.log("2. canonical PM route, paid: extraction fails with a 401 whose body contains the sentinel")
+  {
+    mode.anthropic = "401"; const s0 = hits.settle
+    const o = await post(pmUrl, hdr, PM_INTENT)
+    mode.anthropic = "ok"
+    check("503 AUDIT_UNAVAILABLE, detail audit_unavailable, and nothing settled (so settled:false is true)", o.status === 503 && o.body.error === "AUDIT_UNAVAILABLE" && o.body.detail === "audit_unavailable" && hits.settle === s0, `${o.status} ${o.text}`)
+    check("NO part of the sentinel in the response", !leaked(o.text, o.headers), o.text)
+  }
+
+  console.log("3. canonical PM route, paid: settlePayment throws (the facilitator's 500 body contains the sentinel)")
+  {
+    mode.settle = "http500"
+    const o = await post(pmUrl, hdr, PM_INTENT)
+    mode.settle = "ok"
+    check("502 SETTLEMENT_UNCERTAIN, settled:null charged:null, never settled:false", o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN" && o.body.settled === null && o.body.charged === null && !/"settled"\s*:\s*false/.test(o.text), `${o.status} ${o.text}`)
+    check("NO part of the sentinel in the response", !leaked(o.text, o.headers), o.text)
+  }
+
+  console.log("4. canonical PM route: an intent that cannot be bound is refused before settlement")
+  {
+    const s0 = hits.settle
+    const o = await post(pmUrl, hdr, { side: "YES", size_usd: 250 })
+    check("400 intent_unbindable, charged:false, settlePayment never called", o.status === 400 && o.body.error === "intent_unbindable" && o.body.charged === false && hits.settle === s0, `${o.status} ${o.text}`)
+  }
+
+  console.log("5. legacy /x402/verify, paid: extraction fails; then settlePayment throws")
+  {
+    const legacyUrl = "https://mcp.djzs.ai/x402/verify"
+    const h = await payHeader(legacyUrl)
+    mode.anthropic = "401"
+    let o = await post(legacyUrl, h, STRING_INTENT)
+    mode.anthropic = "ok"
+    check("402 AUDIT_FAILED, detail extraction_failed", o.status === 402 && o.body.error === "AUDIT_FAILED" && o.body.detail === "extraction_failed", `${o.status} ${o.text.slice(0, 200)}`)
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
+    mode.settle = "http500"
+    o = await post(legacyUrl, h, STRING_INTENT)
+    mode.settle = "ok"
+    check("402 SETTLEMENT_FAILED, detail settlement_uncertain (the body does not say 'not charged')", o.status === 402 && o.body.error === "SETTLEMENT_FAILED" && o.body.detail === "settlement_uncertain", `${o.status} ${o.text.slice(0, 200)}`)
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
+  }
+
+  console.log("6. /health/x402: the facilitator answers 500 with the sentinel; then the attester's RPC fails")
+  {
+    mode.supported = "500"
+    let o = await http("https://mcp.djzs.ai/health/x402", { method: "GET" })
+    mode.supported = "ok"
+    check("502 with detail facilitator_unavailable", o.status === 502 && o.body.detail === "facilitator_unavailable", `${o.status} ${o.text.slice(0, 200)}`)
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
+    o = await http("https://mcp.djzs.ai/health/x402", { method: "GET" })
+    check("attester.error is the fixed code attester_balance_unavailable", o.body.attester?.error === "attester_balance_unavailable", `${o.status} ${o.text.slice(0, 240)}`)
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 240))
+  }
+
+  console.log("7. /health/writer: the RPC fails (BASE_RPC_URL is the sentinel)")
+  {
+    const o = await http("https://mcp.djzs.ai/health/writer", { method: "GET" })
+    check("authorization_detail is a fixed phrase", typeof o.body.authorization_detail === "string" && /^(rpc error: (over rate limit|timeout|auth rejected by provider|nonce conflict|no result|unclassified)|config error: BASE_RPC_URL malformed|ok)$/.test(o.body.authorization_detail), `${o.status} ${o.text.slice(0, 240)}`)
+    check("NO part of the sentinel (and no provider host)", !leaked(o.text, o.headers), o.text.slice(0, 240))
+  }
+
+  console.log("8. /mcp free tools: the subgraph fails twice (HTTP 500, then GraphQL errors), the Irys index returns errors")
+  {
+    const h = await mcpSession()
+    let o = await mcpCall(h, "query_agent_trust", { agentAddress: PAYER })
+    check("query_agent_trust, HTTP 500 upstream: detail subgraph_http_500", /subgraph_http_500/.test(o.tool), o.tool.slice(0, 200))
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
+    mode.subgraph = "graphql"
+    o = await mcpCall(h, "query_agent_trust", { agentAddress: PAYER })
+    mode.subgraph = "500"
+    check("query_agent_trust, GraphQL errors upstream: detail subgraph_graphql_error", /subgraph_graphql_error/.test(o.tool), o.tool.slice(0, 200))
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
+    o = await mcpCall(h, "query_pol_certificates", { limit: 1 })
+    check("query_pol_certificates, errors upstream: the code irys_graphql_error", /irys_graphql_error/.test(o.tool), o.tool.slice(0, 200))
+    check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
+  }
+
+  console.log("9. /mcp paid tool, a valid payment: extraction throws inside the handler")
+  {
+    const h = await mcpSession()
+    const first = await mcpCall(h, "verify_pm_trade", { intent: STRING_INTENT })
+    const challenge = first.body.result?._meta?.["x402/error"]
+    check("without a payment the tool answers a payment-required error", challenge?.error === "PAYMENT_REQUIRED" && Array.isArray(challenge?.accepts), first.text.slice(0, 200))
+    if (challenge?.accepts?.[0]) {
+      const token = btoa(JSON.stringify({ x402Version: 2, resource: challenge.resource, accepted: challenge.accepts[0], payload: { signature: "0x" + "00".repeat(65), authorization: {} } }))
+      const s0 = hits.settle
+      mode.anthropic = "401"
+      const o = await mcpCall(h, "verify_pm_trade", { intent: STRING_INTENT }, { "x402/payment": token })
+      mode.anthropic = "ok"
+      check("the result is the fixed TOOL_ERROR, isError (so withX402 does not settle)", /TOOL_ERROR/.test(o.tool) && o.body.result?.isError === true && hits.settle === s0, `${o.tool.slice(0, 200)} settle +${hits.settle - s0}`)
+      check("NO part of the sentinel, and not 'Tool execution failed: ...'", !leaked(o.text, o.headers) && !/Tool execution failed/.test(o.text), o.text.slice(0, 240))
+
+      // And the happy path with a failing Irys upload: the anchor error is a code.
+      const ok = await mcpCall(h, "verify_pm_trade", { intent: STRING_INTENT }, { "x402/payment": token })
+      check("with a working model the verdict returns and pol_certificate.detail is anchor_failed", /anchor_failed/.test(ok.tool), ok.tool.slice(0, 300))
+      check("NO part of the sentinel", !leaked(ok.text, ok.headers), ok.text.slice(0, 300))
+    }
+  }
+} finally {
+  await mf.dispose()
+}
+
+console.log(`\nunrelated egress refused (599): ${[...blocked].join(", ") || "none"}`)
+if (failures.length) {
+  console.error(`\nERROR-LEAK: FAIL (${failures.length} of ${checks} checks failed)`)
+  for (const f of failures) console.error(`  - ${f}`)
+  process.exit(1)
+}
+console.log(`\nERROR-LEAK: PASS (${checks} checks)`)
