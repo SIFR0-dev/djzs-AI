@@ -57,6 +57,14 @@ export const EXPECTED_ATOMIC_AMOUNT = "2000000" as const;
 export const RESOURCE_URL = "https://mcp.djzs.ai/x402/verify_pm_trade" as const;
 export const TERMS_URL = "https://djzs.ai/terms" as const;
 export const MAX_TIMEOUT_SECONDS = 120;
+/**
+ * Response media type for the audit verdict — one home, used by info and schema.
+ * Declared HERE, above the discovery declarations: `withDiscoveryFixups` runs at module
+ * scope while they are built, so a `const` below them is read in its temporal dead zone.
+ * That throws under tsx/node (no harness could load this file) and, in an esbuild bundle
+ * (which lowers top-level const to var), silently reads `undefined`.
+ */
+const OUTPUT_MIME_TYPE = "application/json";
 
 // ------------------------------------------------------------------
 // Engine adapter seam — DJ wires this to deterministic-engine.
@@ -259,9 +267,6 @@ function withDiscoveryFixups<T>(ext: T): T {
   }
   return ext;
 }
-
-/** Response media type for the audit verdict — one home, used by info and schema. */
-const OUTPUT_MIME_TYPE = "application/json";
 
 /**
  * S4 — CORS. `Expose-Headers` is the load-bearing line: without it a browser
