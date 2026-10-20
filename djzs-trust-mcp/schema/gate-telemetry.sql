@@ -54,3 +54,29 @@ CREATE TABLE IF NOT EXISTS bazaar_scan (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bazaar_scan_ts ON bazaar_scan (ts);
+
+-- ── try_verdict / try_day ─────────────────────────────────────────────────
+-- Quota for the FREE audit route (POST /try/verdict, src/try-route.ts; ruling 2026-09-27,
+-- "sell the receipt"). One row per (UTC day, wallet) holding how many free verdicts that
+-- wallet has taken; one row per day holding the total, so the free tier has a ceiling.
+--
+-- PRIVACY. Still no IP address, and none may be added here either. The wallet address is
+-- the caller's own quota key: they sign an EIP-191 text naming it to claim a free verdict,
+-- so storing it records what they asked for, not where they came from. No intent text, no
+-- verdict, no user agent is stored in these tables. Rows for past days can be dropped freely.
+--
+-- The Worker creates these itself (CREATE TABLE IF NOT EXISTS, once per isolate), so a deploy
+-- needs no migration; this copy is the operator's reference and is idempotent to re-apply.
+CREATE TABLE IF NOT EXISTS try_verdict (
+  day      TEXT    NOT NULL,             -- UTC calendar day, YYYY-MM-DD
+  address  TEXT    NOT NULL,             -- checksummed wallet address (the signer)
+  n        INTEGER NOT NULL DEFAULT 0,   -- free verdicts taken today; capped at 5 in code
+  first_ts TEXT    NOT NULL,             -- ISO8601 UTC of the first reservation
+  last_ts  TEXT    NOT NULL,             -- ISO8601 UTC of the latest reservation
+  PRIMARY KEY (day, address)
+);
+
+CREATE TABLE IF NOT EXISTS try_day (
+  day TEXT PRIMARY KEY,                  -- UTC calendar day
+  n   INTEGER NOT NULL DEFAULT 0         -- free verdicts served today, all wallets; capped by TRY_GLOBAL_DAILY_LIMIT
+);

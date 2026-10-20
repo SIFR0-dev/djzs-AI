@@ -19,6 +19,17 @@ jobs:
         run: npx tsx tests/merge-fix.test.ts
       - name: coerceField — bare stated values are PRESENT, never ABSENT
         run: npx tsx tests/coerce.test.ts
+      - name: Verdict rule (DJZS-VR-v1.0): derives the engine's verdict on every input; fixture current
+        run: npx tsx tests/verdict-rule-fixtures.ts --check
+  verdict-rule-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: DJZSVerdictRule + DJZSVerdictResolver: the fixture replayed on chain; inconsistent attestations refused
+        run: npx hardhat test test/DJZSVerdictRule.test.cjs test/DJZSVerdictResolver.test.cjs
   worker-builds:
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +55,18 @@ jobs:
         working-directory: djzs-trust-mcp
       - name: Correction anchor — key stays in the Worker; route refuses before it signs
         run: npx tsx test/correction-anchor.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: EAS schema v3: v2 without a resolver, v3 with one, never v2 silently; engine tally derives the attested verdict
+        run: npx tsx test/attest-v3.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: intent_hash: PM golden unchanged; perp intents map and hash instead of throwing after settlement
+        run: npx tsx test/djzs-intent.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: x402 adapter: ordering invariants offline; engine tally reaches the attestation seam
+        run: npx tsx harness/adapter-offline.ts
+        working-directory: djzs-trust-mcp
+      - name: /try: signature binds wallet, day and intent; 5 per wallet, global cap, fail closed without D1
+        run: npx tsx test/try-route.test.mjs
         working-directory: djzs-trust-mcp
 
   q3-integrity:

@@ -26,5 +26,8 @@
     "@types/node": "^22.0.0",
     "typescript": "^5.4.0",
     "wrangler": "4.107.0"
+  },
+  "overrides": {
+    "axios": "1.18.1"
   }
 }

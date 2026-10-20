@@ -1,6 +1,6 @@
 import { hashTypedData, keccak256, encodePacked, type Hex } from "viem";
 
-export const ACTIONS = ["pm_trade","swap","defi","transfer","contract_call","deploy"] as const;
+export const ACTIONS = ["pm_trade","perp_trade","swap","defi","transfer","contract_call","deploy"] as const;
 export type Action = typeof ACTIONS[number];
 export const DJZS_DOMAIN = { name: "DJZS", version: "2", chainId: 8453 } as const;
 export const DJZS_TYPES = {
@@ -60,16 +60,70 @@ export function selfTest(): boolean {
 }
 if (process.argv[1]?.endsWith("djzs-intent.ts")) selfTest();
 
-/**
- * PM intent -> v2 struct. Defaults are DOCUMENTED, never inferred: a third party
- * recomputing intent_hash must not have to guess. venue "" unless supplied;
- * missing numbers 0; params_hash ZERO32.
- */
-export function toDJZSIntent(pm: {
+/** A PM intent as the paid route receives it. */
+export type PmIntentLike = {
   market: string; side: string; thesis: string; probability_basis?: string; size_usd?: number;
   bounds?: { max_loss_usd?: number; exit_condition?: string }; venue?: string;
-}): DJZSIntent {
+};
+/** A perp/spot intent as /x402/verify_perp_trade receives it (discovery block field names). */
+export type PerpIntentLike = {
+  instrument: string; side: string; thesis: string; leverage?: number; entry?: number; stop_loss?: number;
+  take_profit?: number; invalidation?: string; size_usd?: number; venue?: string; data_sources?: string;
+};
+
+/** Level fields bound into params_hash for a perp intent, in this order, always all four. */
+export const PERP_PARAM_FIELDS = ["leverage", "entry", "stop_loss", "take_profit"] as const;
+
+/**
+ * Canonical rendering of a perp intent's numeric levels, hashed into params_hash.
+ * "leverage=5|entry=78900|stop_loss=76200|take_profit=83000"; an absent or non-finite
+ * level renders empty ("take_profit="). Numbers render as JavaScript String(n). Exposed
+ * so a verifier can print the preimage next to the hash.
+ */
+export function perpParamsPreimage(perp: PerpIntentLike): string {
+  return PERP_PARAM_FIELDS.map((k) => {
+    const v = perp[k];
+    return `${k}=${typeof v === "number" && isFinite(v) ? String(v) : ""}`;
+  }).join("|");
+}
+
+/** True when the object is shaped like a perp intent: `instrument` present, `market` absent. */
+export function isPerpIntent(x: unknown): x is PerpIntentLike {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return typeof o.instrument === "string" && typeof o.market !== "string";
+}
+
+/**
+ * Wire intent -> v2 struct. Defaults are DOCUMENTED, never inferred: a third party
+ * recomputing intent_hash must not have to guess.
+ *
+ * PM (action "pm_trade"): venue "" unless supplied; missing numbers 0; params_hash ZERO32.
+ * Unchanged since v2 shipped; every existing intent_hash still recomputes.
+ *
+ * PERP (action "perp_trade", 2026-09-27): market = instrument; probability_basis =
+ * data_sources or ""; max_loss_usd_cents = 0 (a perp intent states levels, not a loss
+ * bound, and deriving one from entry/stop/size would be inference); exit_condition =
+ * invalidation, else "stop_loss <n>" when a stop is given, else ""; params_hash =
+ * keccak256(utf8(perpParamsPreimage(intent))) so the levels are bound into the key.
+ * Before this branch existed a perp intent threw here (market undefined) AFTER
+ * settlement, so a paying perp caller was charged and answered 503.
+ */
+export function toDJZSIntent(intent: PmIntentLike | PerpIntentLike): DJZSIntent {
   const cents = (x?: number) => BigInt(Math.round((typeof x === "number" && isFinite(x) ? x : 0) * 100));
+  if (isPerpIntent(intent)) {
+    const perp = intent;
+    const exit = typeof perp.invalidation === "string" && perp.invalidation !== ""
+      ? perp.invalidation
+      : typeof perp.stop_loss === "number" && isFinite(perp.stop_loss) ? `stop_loss ${String(perp.stop_loss)}` : "";
+    return {
+      action: "perp_trade", venue: perp.venue ?? "", market: perp.instrument, side: perp.side, thesis: perp.thesis,
+      probability_basis: perp.data_sources ?? "", size_usd_cents: cents(perp.size_usd),
+      max_loss_usd_cents: 0n, exit_condition: exit,
+      params_hash: keccak256(new TextEncoder().encode(perpParamsPreimage(perp))),
+    };
+  }
+  const pm = intent;
   return {
     action: "pm_trade", venue: pm.venue ?? "", market: pm.market, side: pm.side, thesis: pm.thesis,
     probability_basis: pm.probability_basis ?? "", size_usd_cents: cents(pm.size_usd),

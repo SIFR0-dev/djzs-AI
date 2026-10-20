@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DJZS · Try the audit</title>
+<meta name="description" content="State a trade. The deterministic engine returns PASS, WAIT or FAIL with the defects named. Free verdicts, capped per wallet. The attested receipt on Base costs 2.00 USDC.">
+  <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css">
+<style>
+  :root{--canvas:#0A0A0A;--panel:#0D0D0D;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;--pass:#3DFF88;--wait:#FFB000;--fail:#FF4D4D;--base:#0052FF;--mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--canvas);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:.01em;padding:clamp(16px,4vw,60px)}
+  .wrap{max-width:880px;margin:0 auto;position:relative;z-index:1}
+  a{color:var(--pass);text-decoration:none}a:hover{background:var(--pass);color:var(--canvas)}::selection{background:var(--pass);color:var(--canvas)}
+  header{border-bottom:1px solid var(--rule);padding-bottom:22px;margin-bottom:26px}
+  nav.site{display:flex;flex-wrap:wrap;gap:0 1.1rem;margin:0 0 1.1rem;text-transform:uppercase;letter-spacing:.12em;font-size:.72rem}
+  nav.site a{color:var(--muted);border-bottom:1px solid transparent}nav.site a:hover{color:var(--text);background:transparent}nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--pass)}nav.site a.home{color:var(--text)}
+  .path{color:var(--muted);font-size:13px;margin:0 0 18px}.path .p{color:var(--pass);font-weight:700}
+  .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
+  h1{font-size:clamp(19px,3.4vw,26px);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}.wordmark{color:var(--base);font-weight:800}a.wordmark:hover{background:transparent}
+  .boot{margin:20px 0 0;display:grid;gap:7px}.boot .row{display:grid;grid-template-columns:52px 128px 1fr;gap:12px;align-items:baseline;font-size:12.5px}.boot .ok{color:var(--pass);font-weight:700}.boot .k{color:var(--muted)}.boot .v{color:var(--text)}
+  .lede{color:var(--muted);margin:22px 0 0;max-width:74ch;font-size:13.5px}.lede b{color:var(--text);font-weight:700}
+  .label{color:var(--muted);font-size:12px;margin:0 0 8px}.label::before{content:"// ";color:var(--rule)}
+  section.step{margin:28px 0 0}
+  .panel{border:1px solid var(--rule);background:var(--panel);padding:16px 18px}
+  .status{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:baseline;font-size:12.5px;margin:0}.status .ok{color:var(--pass);font-weight:700}.status .xx{color:var(--fail);font-weight:700}.status .dd{color:var(--muted);font-weight:700}.status .v{color:var(--text);word-break:break-all}
+  .controls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  .btn{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;background:transparent;color:var(--pass);border:1px solid var(--pass);border-radius:0;padding:10px 18px}.btn:hover{background:var(--pass);color:var(--canvas)}.btn.ghost{color:var(--muted);border-color:var(--rule)}.btn.ghost:hover{background:transparent;color:var(--text);border-color:var(--muted)}.btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;background:transparent;color:var(--pass)}.btn.ghost:disabled:hover{color:var(--muted)}
+  .btn.on{background:var(--pass);color:var(--canvas)}
+  .kind{display:flex;gap:0;margin:0 0 14px}.kind .btn{border-color:var(--rule);color:var(--muted)}.kind .btn.on{border-color:var(--pass);color:var(--canvas);background:var(--pass)}
+  form{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}form .full{grid-column:1/3}
+  .f label{display:block;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 5px}.f label b{color:var(--pass);font-weight:700}
+  input,textarea{width:100%;background:#080808;color:var(--text);border:1px solid var(--rule);border-radius:0;padding:9px 11px;font-family:var(--mono);font-size:12.5px;line-height:1.5}input:focus,textarea:focus{outline:none;border-color:var(--pass)}textarea{min-height:96px;resize:vertical}
+  pre.json{margin:14px 0 0;background:#080808;border:1px solid var(--rule);padding:12px 14px;font-size:12px;line-height:1.5;color:var(--muted);white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto}pre.json .k{color:var(--text)}pre.json .s{color:var(--pass)}pre.json .n{color:var(--wait)}
+  .verdict{margin:22px 0 0;border:1px solid var(--rule);background:var(--panel)}.verdict[data-state="pass"]{border-color:var(--pass)}.verdict[data-state="wait"]{border-color:var(--wait)}.verdict[data-state="fail"]{border-color:var(--fail);border-width:2px}.verdict[data-state="refused"]{border-color:var(--muted)}
+  .verdict-head{padding:20px 20px 4px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}.stamp{display:inline-block;font-weight:800;letter-spacing:.14em;border:1px solid currentColor;padding:.2rem .6rem;font-size:13px}[data-state="pass"] .stamp{color:var(--pass)}[data-state="wait"] .stamp{color:var(--wait)}[data-state="fail"] .stamp{color:var(--fail);border-width:2px}[data-state="refused"] .stamp{color:var(--muted)}
+  .verdict-title{font-weight:700;font-size:14px}.verdict-meta{color:var(--muted);font-size:12px;margin-left:auto}
+  .verdict-note{color:var(--muted);font-size:13px;margin:0;padding:10px 20px 18px;max-width:76ch}.verdict-note b{color:var(--text)}
+  .ledger{border-top:1px solid var(--rule)}.claim{border-top:1px solid var(--rule);padding:14px 20px;display:grid;grid-template-columns:64px 1fr;gap:0 14px}.claim:first-child{border-top:0}
+  .claim .tok{font-weight:700;font-size:12px;letter-spacing:.06em;grid-row:1/3;padding-top:1px}.claim[data-r="fail"] .tok{color:var(--fail)}.claim[data-r="wait"] .tok{color:var(--wait)}.claim[data-r="idle"] .tok{color:var(--muted)}
+  .claim-name{font-weight:700;font-size:13.5px;margin:0}.claim-name .chip{font-weight:800;font-size:11px;letter-spacing:.06em;border:1px solid currentColor;padding:1px 6px;margin-left:10px;vertical-align:1px}[data-r="fail"] .chip{color:var(--fail)}[data-r="wait"] .chip{color:var(--wait)}[data-r="idle"] .chip{color:var(--muted)}
+  .claim-body{margin:6px 0 0;color:var(--muted);font-size:13px;max-width:76ch}.ev{display:block;color:var(--text);font-size:12px;margin-top:8px;white-space:pre-wrap;word-break:break-all;padding-left:10px;border-left:1px solid var(--rule)}
+  .keys{padding:14px 20px;border-top:1px solid var(--rule);font-size:12px;color:var(--muted);display:grid;grid-template-columns:120px 1fr;gap:4px 12px}.keys b{color:var(--text);font-weight:400;word-break:break-all}
+  .offer{margin:0;padding:16px 20px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}.offer .why{color:var(--muted);font-size:12.5px;max-width:52ch;margin:0}.offer .why b{color:var(--text)}
+  .receipt{margin:16px 0 0;border:1px solid var(--pass);background:var(--panel)}.receipt .keys{border-top:0}
+  .log{margin:12px 0 0;font-size:12px;color:var(--muted);min-height:1.6em}.log .xx{color:var(--fail)}.log .ok{color:var(--pass)}
+  .agents pre{margin:10px 0 0;background:#080808;border:1px solid var(--rule);padding:12px 14px;font-size:12px;line-height:1.55;color:var(--text);white-space:pre-wrap;word-break:break-all}
+  .agents p{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:76ch}
+  code.inl{background:#080808;border:1px solid var(--rule);padding:0 5px;font-size:12px}
+  footer{margin-top:28px;padding-top:18px;border-top:1px solid var(--rule);color:var(--muted);font-size:12px;line-height:1.9}footer .k::before{content:"// ";color:var(--rule)}footer .k b{color:var(--text);font-weight:700}footer .sig{margin-top:14px}footer .sig .p{color:var(--pass);font-weight:700}
+  [hidden]{display:none !important}
+  @media (prefers-reduced-motion:reduce){.cursor{animation:none}}
+  @media (max-width:560px){.boot .row{grid-template-columns:44px 1fr;gap:4px 10px}.boot .v{grid-column:1/3}form{grid-template-columns:1fr}form .full{grid-column:1}.keys{grid-template-columns:1fr}}
+</style>
+<link rel="canonical" href="https://djzs.ai/try">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+<link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try" aria-current="page">try</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/guide">connect &rarr;</a></nav>
+    <p class="path"><span class="p">~/djzs/try</span> $ <span id="cmd">audit --free --wallet</span><span class="cursor"></span></p>
+    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Try the audit</h1>
+    <div class="boot">
+      <div class="row"><span class="ok">OK</span><span class="k">MODE</span><span class="v">free verdict · <b id="boot-limit">5</b> per wallet per UTC day · same engine as the paid gate</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">RULESETS</span><span class="v">DJZS-PM-v1.0 prediction markets · DJZS-LF-v1.2 perps and spot</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">RECEIPT</span><span class="v">2.00 USDC on Base · EAS attestation, any outcome · recompute at <a href="/verify">/verify</a></span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">SIGNATURE</span><span class="v">one message per free verdict: your address, the day, the intent hash. No funds move.</span></div>
+    </div>
+    <p class="lede">State the trade. The engine audits the <b>reasoning</b>, not the price: it returns <b>PASS</b>, <b>WAIT</b> or <b>FAIL</b> and names each defect. Unknown resolves to WAIT, never to a guess. The verdict is free and capped; the <b>receipt</b>, an attestation on Base that a counterparty can check without trusting DJZS, is what costs 2.00 USDC.</p>
+  </header>
+
+  <section class="step" aria-labelledby="s1">
+    <p class="label" id="s1">step 01 · wallet</p>
+    <div class="panel">
+      <p class="status" id="wallet-status"><span class="dd">..</span><span class="v">No wallet connected. The wallet is the quota key and, if you want the receipt, the payer.</span></p>
+      <div class="controls">
+        <button class="btn" id="connect">Connect wallet</button>
+        <select id="provider-pick" hidden aria-label="Wallet"></select>
+        <span class="log" id="wallet-log"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <p class="label" id="s2">step 02 · intent</p>
+    <div class="panel">
+      <div class="kind" role="tablist" aria-label="Intent kind">
+        <button class="btn on" role="tab" id="kind-pm" aria-selected="true">Prediction market</button>
+        <button class="btn" role="tab" id="kind-perp" aria-selected="false">Perp / spot</button>
+      </div>
+
+      <form id="form-pm" autocomplete="off">
+        <div class="f"><label for="pm-market">market <b>*</b></label><input id="pm-market" placeholder="KXBTC-26OCT03-T80000 (venue ticker)"></div>
+        <div class="f"><label for="pm-side">side <b>*</b></label><input id="pm-side" placeholder="YES / NO"></div>
+        <div class="f full"><label for="pm-thesis">thesis <b>*</b></label><textarea id="pm-thesis" placeholder="The claim, stated plainly. What resolves this market, and why your way."></textarea></div>
+        <div class="f full"><label for="pm-basis">probability basis</label><input id="pm-basis" placeholder="implied 0.41 vs model 0.55; basis: Kalshi mid, 2026-09-27T14:00Z"></div>
+        <div class="f"><label for="pm-size">size usd</label><input id="pm-size" inputmode="decimal" placeholder="250"></div>
+        <div class="f"><label for="pm-maxloss">max loss usd</label><input id="pm-maxloss" inputmode="decimal" placeholder="250"></div>
+        <div class="f full"><label for="pm-exit">exit condition</label><input id="pm-exit" placeholder="daily close below 76000"></div>
+      </form>
+
+      <form id="form-perp" autocomplete="off" hidden>
+        <div class="f"><label for="pp-instrument">instrument <b>*</b></label><input id="pp-instrument" placeholder="BTC-PERP, ETH-USD spot"></div>
+        <div class="f"><label for="pp-side">side <b>*</b></label><input id="pp-side" placeholder="LONG / SHORT"></div>
+        <div class="f full"><label for="pp-thesis">thesis <b>*</b></label><textarea id="pp-thesis" placeholder="The REASON the price should move your way. Direction, size and levels alone are not a thesis."></textarea></div>
+        <div class="f"><label for="pp-leverage">leverage</label><input id="pp-leverage" inputmode="decimal" placeholder="5 (1 for spot)"></div>
+        <div class="f"><label for="pp-entry">entry</label><input id="pp-entry" inputmode="decimal" placeholder="78900"></div>
+        <div class="f"><label for="pp-stop">stop loss</label><input id="pp-stop" inputmode="decimal" placeholder="76200"></div>
+        <div class="f"><label for="pp-tp">take profit</label><input id="pp-tp" inputmode="decimal" placeholder="83000"></div>
+        <div class="f full"><label for="pp-invalidation">invalidation</label><input id="pp-invalidation" placeholder="daily close below 76,200 (if not a price stop)"></div>
+        <div class="f"><label for="pp-size">size usd</label><input id="pp-size" inputmode="decimal" placeholder="3000"></div>
+        <div class="f"><label for="pp-venue">venue</label><input id="pp-venue" placeholder="Binance (also the mark oracle unless stated)"></div>
+        <div class="f full"><label for="pp-sources">data sources</label><input id="pp-sources" placeholder="Binance funding, Coinglass OI, Farside ETF flows"></div>
+      </form>
+
+      <pre class="json" id="json" aria-label="Request body"></pre>
+      <div class="controls">
+        <button class="btn" id="run" disabled>Run free audit</button>
+        <button class="btn ghost" id="example">Load example</button>
+        <button class="btn ghost" id="clear">Clear</button>
+        <span class="log" id="run-log"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="out" hidden aria-labelledby="s3">
+    <p class="label" id="s3">step 03 · verdict</p>
+    <div class="verdict" id="verdict" data-state="idle">
+      <div class="verdict-head"><span class="stamp" id="vstamp">·</span><span class="verdict-title" id="vtitle"></span><span class="verdict-meta" id="vmeta"></span></div>
+      <p class="verdict-note" id="vnote"></p>
+      <div class="ledger" id="ledger"></div>
+      <div class="keys" id="keys"></div>
+      <div class="offer" id="offer">
+        <button class="btn" id="pay">Get the receipt · 2.00 USDC</button>
+        <p class="why">Same intent, audited again and <b>attested on Base</b> under EAS with your wallet as recipient. Any outcome. Out of scope is not charged. The receipt is what a counterparty can check.</p>
+        <span class="log" id="pay-log"></span>
+      </div>
+    </div>
+    <div class="receipt" id="receipt" hidden>
+      <div class="verdict-head"><span class="stamp" id="rstamp">·</span><span class="verdict-title">Receipt</span><span class="verdict-meta" id="rmeta"></span></div>
+      <div class="keys" id="rkeys"></div>
+      <div class="offer">
+        <a class="btn" id="verify-link" href="/verify" target="_blank" rel="noopener">Recompute at /verify</a>
+        <button class="btn ghost" id="copy-receipt">Copy receipt JSON</button>
+        <p class="why">The verifier reads settlement from Base, recomputes the binding key from the intent, and reads the attestation from EAS. Nothing there trusts DJZS.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="step agents" aria-labelledby="s4">
+    <p class="label" id="s4">for agents · no browser</p>
+    <p>The paid gate is plain x402 over HTTP; any x402 client pays it. Free verdicts need the same wallet signature this page makes: fetch <code class="inl">GET https://mcp.djzs.ai/try/quota</code> for the text, sign it, post it.</p>
+<pre>POST https://mcp.djzs.ai/x402/verify_pm_trade      # or /x402/verify_perp_trade
+{ "intent": { "market": "...", "side": "YES", "thesis": "...", "probability_basis": "...",
+              "size_usd": 250, "bounds": { "max_loss_usd": 250, "exit_condition": "..." } } }
+# 402 -> pay 2.00 USDC (exact, eip155:8453) -> 200 verdict + eas_uid + PAYMENT-RESPONSE
+
+POST https://mcp.djzs.ai/try/verdict                 # free, 5 per wallet per UTC day
+{ "kind": "pm", "intent": { ... }, "address": "0x...", "day": "YYYY-MM-DD", "signature": "0x..." }</pre>
+    <p>MCP clients: <code class="inl">claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code>, then <code class="inl">verify_pm_trade</code> or <code class="inl">verify_perp_trade</code>. Full guide at <a href="/guide">/guide</a>; the ruleset and every weight at <a href="/ruleset">/ruleset</a>.</p>
+  </section>
+
+  <footer>
+    <div class="k"><b>free verdict</b>: same engine, same ruleset, not attested, not anchored. Extraction contract stated in every response.</div>
+    <div class="k"><b>receipt</b>: EAS on Base, attester 0xfB0e…7824, your wallet as recipient. Under schema v3 the verdict is re-derived on chain from the attested tally.</div>
+    <div class="k"><b>audit, not advice</b>: a reasoning verdict says whether the thesis holds together, never whether the trade wins. <a href="/terms">Terms</a>.</div>
+    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/try · audit before act</p>
+  </footer>
+</div>
+
+<script type="module">
+import { getAddress } from "https://esm.sh/viem@2.56.1";
+
+// ── what this page believes it is buying. Restated, not fetched: a drift in the quote fails loudly before anything is signed.
+const WORKER = "https://mcp.djzs.ai";
+const ROUTE = { pm: WORKER + "/x402/verify_pm_trade", perp: WORKER + "/x402/verify_perp_trade" };
+const EXPECT = { amount: "2000000", asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", network: "eip155:8453", payTo: "0xc1923748669dFC3a79497d0403A90a275161eCCA", chainId: 8453 };
+const EAS_VIEW = "https://base.easscan.org/attestation/view/";
+const TX_VIEW = "https://basescan.org/tx/";
+
+const $ = (id) => document.getElementById(id);
+const state = { provider: null, address: null, kind: "pm", quota: null, last: null };
+
+// ── wallet discovery (EIP-6963, falling back to window.ethereum)
+const announced = [];
+window.addEventListener("eip6963:announceProvider", (e) => { if (!announced.some((p) => p.info.uuid === e.detail.info.uuid)) announced.push(e.detail); refreshProviderPick(); });
+window.dispatchEvent(new Event("eip6963:requestProvider"));
+function refreshProviderPick(){
+  const sel = $("provider-pick");
+  if (announced.length < 2) { sel.hidden = true; return; }
+  sel.innerHTML = announced.map((p, i) => `<option value="${i}">${esc(p.info.name)}</option>`).join("");
+  sel.hidden = false;
+}
+function pickProvider(){
+  if (announced.length >= 2) return announced[Number($("provider-pick").value) || 0].provider;
+  if (announced.length === 1) return announced[0].provider;
+  return window.ethereum ?? null;
+}
+
+// ── helpers
+function esc(s){ return String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function short(h){ return typeof h === "string" && h.length > 18 ? h.slice(0, 10) + "…" + h.slice(-6) : (h ?? ""); }
+function utf8ToHex(s){ return "0x" + Array.from(new TextEncoder().encode(s), (b) => b.toString(16).padStart(2, "0")).join(""); }
+function b64encodeUtf8(s){ return btoa(Array.from(new TextEncoder().encode(s), (b) => String.fromCharCode(b)).join("")); }
+function b64decodeUtf8(s){ const bin = atob(s); return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))); }
+async function sha256Hex(s){ const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return "0x" + Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, "0")).join(""); }
+function randomHex32(){ const a = new Uint8Array(32); crypto.getRandomValues(a); return "0x" + Array.from(a, (b) => b.toString(16).padStart(2, "0")).join(""); }
+// Byte-identical to the Worker's renderIntentText: keys sorted, strings verbatim, numbers and booleans as String(), everything else JSON.
+function renderIntentText(intent){
+  return Object.keys(intent).sort().map((k) => { const v = intent[k]; const r = typeof v === "string" ? v : (typeof v === "number" || typeof v === "boolean") ? String(v) : JSON.stringify(v); return `${k}: ${r}`; }).join("\n");
+}
+function num(id){ const raw = $(id).value.trim().replace(/,/g, ""); if (raw === "") return undefined; const n = Number(raw); return Number.isFinite(n) ? n : undefined; }
+function str(id){ const v = $(id).value.trim(); return v === "" ? undefined : v; }
+function log(id, msg, cls){ const el = $(id); el.innerHTML = msg ? `<span class="${cls ?? ""}">${esc(msg)}</span>` : ""; }
+function walletErr(e){ if (e && (e.code === 4001 || /rejected|denied/i.test(e.message ?? ""))) return "declined in the wallet; nothing was sent"; return (e && e.message) ? e.message.slice(0, 160) : String(e); }
+
+// ── intent assembly
+function currentIntent(){
+  if (state.kind === "pm") {
+    const intent = { market: str("pm-market"), side: str("pm-side"), thesis: str("pm-thesis"), probability_basis: str("pm-basis"), size_usd: num("pm-size") };
+    const bounds = { max_loss_usd: num("pm-maxloss"), exit_condition: str("pm-exit") };
+    Object.keys(bounds).forEach((k) => bounds[k] === undefined && delete bounds[k]);
+    if (Object.keys(bounds).length) intent.bounds = bounds;
+    Object.keys(intent).forEach((k) => intent[k] === undefined && delete intent[k]);
+    return intent;
+  }
+  const intent = { instrument: str("pp-instrument"), side: str("pp-side"), thesis: str("pp-thesis"), leverage: num("pp-leverage"), entry: num("pp-entry"), stop_loss: num("pp-stop"), take_profit: num("pp-tp"), invalidation: str("pp-invalidation"), size_usd: num("pp-size"), venue: str("pp-venue"), data_sources: str("pp-sources") };
+  Object.keys(intent).forEach((k) => intent[k] === undefined && delete intent[k]);
+  return intent;
+}
+function intentValid(intent){
+  const req = state.kind === "pm" ? ["market", "side", "thesis"] : ["instrument", "side", "thesis"];
+  return req.every((k) => typeof intent[k] === "string" && intent[k].length > 0) && intent.thesis.length >= 10;
+}
+function highlight(json){
+  return esc(json).replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:').replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>').replace(/: (-?\d+(\.\d+)?)/g, ': <span class="n">$1</span>');
+}
+function refresh(){
+  const intent = currentIntent();
+  $("json").innerHTML = highlight(JSON.stringify({ intent }, null, 2));
+  const ok = intentValid(intent) && !!state.address && (state.quota ? state.quota.remaining > 0 : true);
+  $("run").disabled = !ok;
+}
+document.querySelectorAll("input,textarea").forEach((el) => el.addEventListener("input", refresh));
+
+const EXAMPLE = {
+  pm: { "pm-market": "KXBTCD-26OCT0317-T79999.99", "pm-side": "YES", "pm-thesis": "BTC spot trades 1.1% above the 80,000 line with 5 hours to settlement; the contract resolves YES unless BTC closes below the line before then. Funding is flat, no scheduled macro print inside the window.", "pm-basis": "spot 80,880 on Coinbase at 2026-09-27T12:00Z vs 80,000 strike; Kalshi mid 0.78, model 0.84 from the 5-hour realized-vol distribution", "pm-size": "250", "pm-maxloss": "250", "pm-exit": "hourly close below 80,000 on Coinbase before settlement" },
+  perp: { "pp-instrument": "BTC-PERP", "pp-side": "LONG", "pp-thesis": "Funding reset to 2% after the weekend flush; 80K held on the daily close; ETF inflows resumed. Invalidation: daily close below 76,200. Oracle: Binance mark price.", "pp-leverage": "5", "pp-entry": "78900", "pp-stop": "76200", "pp-tp": "83000", "pp-invalidation": "", "pp-size": "3000", "pp-venue": "Binance", "pp-sources": "" },
+};
+$("example").addEventListener("click", () => { Object.entries(EXAMPLE[state.kind]).forEach(([id, v]) => { $(id).value = v; }); refresh(); });
+$("clear").addEventListener("click", () => { document.querySelectorAll(`#form-${state.kind} input, #form-${state.kind} textarea`).forEach((el) => { el.value = ""; }); refresh(); });
+function setKind(kind){
+  state.kind = kind;
+  $("kind-pm").classList.toggle("on", kind === "pm"); $("kind-pm").setAttribute("aria-selected", String(kind === "pm"));
+  $("kind-perp").classList.toggle("on", kind === "perp"); $("kind-perp").setAttribute("aria-selected", String(kind === "perp"));
+  $("form-pm").hidden = kind !== "pm"; $("form-perp").hidden = kind !== "perp";
+  $("cmd").textContent = `audit --free --wallet --${kind}`;
+  refresh();
+}
+$("kind-pm").addEventListener("click", () => setKind("pm"));
+$("kind-perp").addEventListener("click", () => setKind("perp"));
+
+// ── quota
+async function loadQuota(){
+  const r = await fetch(`${WORKER}/try/quota?address=${state.address}`, { cache: "no-store" });
+  const q = await r.json();
+  if (!r.ok || !q.ok) throw new Error(q.error ?? `quota HTTP ${r.status}`);
+  state.quota = q;
+  $("boot-limit").textContent = String(q.limit);
+  const resets = new Date(q.resets_at);
+  const left = q.remaining > 0 ? `${q.remaining} of ${q.limit} free verdicts left today` : `free verdicts used for today (${q.limit}/${q.limit})`;
+  $("wallet-status").innerHTML = `<span class="ok">OK</span><span class="v">${esc(state.address)} · ${esc(left)} · resets ${esc(resets.toISOString().slice(11, 16))} UTC${q.global_remaining === 0 ? " · free tier is exhausted for everyone today; the receipt still works" : ""}</span>`;
+  refresh();
+}
+
+// ── step 01: connect
+$("connect").addEventListener("click", async () => {
+  log("wallet-log", "");
+  const provider = pickProvider();
+  if (!provider) { $("wallet-status").innerHTML = `<span class="xx">XX</span><span class="v">No browser wallet found. Install one (Coinbase Wallet, Rabby, MetaMask), or use the agent path below.</span>`; return; }
+  try {
+    const accounts = await provider.request({ method: "eth_requestAccounts" });
+    if (!accounts || !accounts[0]) throw new Error("no account returned");
+    state.provider = provider;
+    state.address = getAddress(accounts[0]);
+    $("connect").textContent = "Reconnect";
+    $("wallet-status").innerHTML = `<span class="ok">OK</span><span class="v">${esc(state.address)} · reading quota…</span>`;
+    await loadQuota();
+    provider.on?.("accountsChanged", (acc) => { if (acc && acc[0]) { state.address = getAddress(acc[0]); state.quota = null; loadQuota().catch((e) => log("wallet-log", walletErr(e), "xx")); } });
+  } catch (e) {
+    log("wallet-log", walletErr(e), "xx");
+  }
+});
+
+// ── step 02: free verdict
+$("run").addEventListener("click", async () => {
+  const intent = currentIntent();
+  if (!intentValid(intent) || !state.address) return;
+  const btn = $("run"); btn.disabled = true;
+  try {
+    log("run-log", "fetching the day and the text to sign…");
+    const qr = await fetch(`${WORKER}/try/quota?address=${state.address}`, { cache: "no-store" });
+    const q = await qr.json();
+    if (!qr.ok || !q.ok) throw new Error(q.error ?? `quota HTTP ${qr.status}`);
+    state.quota = q;
+    const sha = await sha256Hex(renderIntentText(intent));
+    const message = q.message_format.replace("{address}", state.address).replace("{day}", q.day).replace("{intent_sha256}", sha);
+    log("run-log", "sign the message in your wallet (no funds move)…");
+    const signature = await state.provider.request({ method: "personal_sign", params: [utf8ToHex(message), state.address] });
+    log("run-log", "auditing (one extraction, three samples, then the deterministic engine)…");
+    const r = await fetch(`${WORKER}/try/verdict`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: state.kind, intent, address: state.address, day: q.day, signature }) });
+    const body = await r.json();
+    if (!r.ok || !body.ok) {
+      const why = body.error === "wallet_quota_exhausted" ? "this wallet has used its free verdicts for today; the receipt still works" : body.error === "free_tier_exhausted_today" ? "the free tier is exhausted for everyone today; the receipt still works" : body.error === "bad_signature" ? "signature did not verify for this address" : `${body.error ?? "error"}${body.detail ? ": " + body.detail : ""}`;
+      throw new Error(why);
+    }
+    state.last = { kind: state.kind, intent, body };
+    renderVerdict(body, intent);
+    if (body.quota) { state.quota = { ...state.quota, used: body.quota.used, remaining: body.quota.remaining }; }
+    await loadQuota().catch(() => {});
+    log("run-log", "");
+  } catch (e) {
+    log("run-log", walletErr(e), "xx");
+  } finally {
+    refresh();
+  }
+});
+
+function severityRow(f){
+  const r = f.severity === "CRITICAL" || f.severity === "HIGH" ? "fail" : "wait";
+  return `<div class="claim" data-r="${r}"><span class="tok">${esc(f.code.replace("DJZS-", ""))}</span><p class="claim-name">${esc(f.name ?? f.code)}<span class="chip">${esc(f.severity ?? "FLAG")}${f.weight != null ? " · " + esc(String(f.weight)) : ""}</span></p><p class="claim-body">${esc(f.description ?? "")}${f.evidence ? `<span class="ev">${esc(f.evidence)}</span>` : ""}</p></div>`;
+}
+function renderVerdict(b, intent){
+  $("out").hidden = false; $("receipt").hidden = true;
+  const v = $("verdict");
+  const st = b.verdict === "PASS" ? "pass" : b.verdict === "WAIT" ? "wait" : b.verdict === "FAIL" ? "fail" : "refused";
+  v.dataset.state = st;
+  $("vstamp").textContent = b.verdict === "REFUSED_SCOPE" ? "REFUSED" : b.verdict;
+  const unknown = Array.isArray(b.unknown_fields) ? b.unknown_fields : [];
+  const titles = { pass: "Reasoning holds", wait: "Unresolved fields", fail: "Defects found", refused: "Out of scope" };
+  $("vtitle").textContent = titles[st];
+  $("vmeta").textContent = st === "refused" ? "" : `risk ${b.risk_score} · ${b.ruleset ?? ""}`;
+  let note = "";
+  if (st === "pass") note = `No defect scored. The engine found a thesis, a bound, and a sourced basis. <b>A reasoning verdict, not a price call</b>: it says the thesis holds together, not that the trade wins.`;
+  if (st === "wait") note = `The engine could not resolve <b>${unknown.length}</b> field${unknown.length === 1 ? "" : "s"} from the text: <b>${esc(unknown.join(", ")) || "see ledger"}</b>. Abstain over guess: state ${unknown.length === 1 ? "it" : "them"} and run again.`;
+  if (st === "fail") note = `Risk score <b>${b.risk_score}</b> reached the FAIL threshold, or a critical defect fired on its own. The flags below are the reasons, each with the text that triggered it.`;
+  if (st === "refused") note = `${esc(b.reason ?? "out of scope")} <b>Not counted against your receipt price</b>; it did use one free slot. Switch the kind above and run again.`;
+  $("vnote").innerHTML = note;
+  const flags = Array.isArray(b.flags_detail) ? b.flags_detail : [];
+  const rows = flags.map(severityRow).join("") + unknown.map((u) => `<div class="claim" data-r="idle"><span class="tok">?</span><p class="claim-name">${esc(u)}<span class="chip">UNKNOWN</span></p><p class="claim-body">Not stated in the intent. The engine does not infer it.</p></div>`).join("");
+  $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="idle"><span class="tok">OK</span><p class="claim-name">No flags<span class="chip">0 codes</span></p><p class="claim-body">Every scored field resolved and no defect pattern matched.</p></div>` : "");
+  $("keys").innerHTML = st === "refused" ? "" : `<span>intent_sha256</span><b title="${esc(b.intent_sha256 ?? "")}">${esc(b.intent_sha256 ?? "")}</b><span>intent_hash</span><b>${esc(b.intent_hash ?? "n/a")}</b><span>verdict_hash</span><b>${esc(b.verdict_hash ?? "")}</b><span>attested</span><b>no. Free verdicts are not written anywhere.</b>`;
+  $("offer").hidden = st === "refused";
+  $("pay").disabled = false; log("pay-log", "");
+  $("out").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ── step 03: the receipt (x402 v2, exact EVM, EIP-3009 authorization signed in the wallet)
+async function ensureBase(){
+  const chainId = await state.provider.request({ method: "eth_chainId" });
+  if (parseInt(chainId, 16) === EXPECT.chainId) return;
+  try {
+    await state.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x2105" }] });
+  } catch (e) {
+    if (e && e.code === 4902) {
+      await state.provider.request({ method: "wallet_addEthereumChain", params: [{ chainId: "0x2105", chainName: "Base", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://mainnet.base.org"], blockExplorerUrls: ["https://basescan.org"] }] });
+    } else throw e;
+  }
+}
+$("pay").addEventListener("click", async () => {
+  if (!state.last || !state.provider) return;
+  const { kind, intent } = state.last;
+  const url = ROUTE[kind];
+  const body = JSON.stringify({ intent });
+  const btn = $("pay"); btn.disabled = true;
+  try {
+    log("pay-log", "switching to Base…"); await ensureBase();
+    log("pay-log", "requesting the quote…");
+    const unpaid = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body });
+    if (unpaid.status !== 402) throw new Error(`expected a 402 quote, got ${unpaid.status}`);
+    const prHeader = unpaid.headers.get("PAYMENT-REQUIRED");
+    const pr = prHeader ? JSON.parse(b64decodeUtf8(prHeader)) : await unpaid.json();
+    const acc = (pr.accepts ?? [])[0];
+    if (!acc) throw new Error("quote carries no payment requirement");
+    // The quote is asserted against what this page told you it costs. Any drift stops here, unsigned.
+    if (acc.scheme !== "exact" || acc.network !== EXPECT.network) throw new Error(`quote is ${acc.scheme}/${acc.network}, not exact/${EXPECT.network}`);
+    if (String(acc.amount) !== EXPECT.amount) throw new Error(`quote asks ${acc.amount} atomic, page promised ${EXPECT.amount} (2.00 USDC)`);
+    if (String(acc.asset).toLowerCase() !== EXPECT.asset.toLowerCase()) throw new Error("quote asset is not Base USDC");
+    if (String(acc.payTo).toLowerCase() !== EXPECT.payTo.toLowerCase()) throw new Error("quote payTo is not the DJZS treasury");
+    if (!acc.extra?.name || !acc.extra?.version) throw new Error("quote lacks the EIP-712 domain");
+    const now = Math.floor(Date.now() / 1000);
+    const authorization = { from: state.address, to: getAddress(acc.payTo), value: String(acc.amount), validAfter: "0", validBefore: String(now + Number(acc.maxTimeoutSeconds ?? 120)), nonce: randomHex32() };
+    const typedData = {
+      types: {
+        EIP712Domain: [{ name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }],
+        TransferWithAuthorization: [{ name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" }, { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" }],
+      },
+      primaryType: "TransferWithAuthorization",
+      domain: { name: acc.extra.name, version: acc.extra.version, chainId: EXPECT.chainId, verifyingContract: getAddress(acc.asset) },
+      message: authorization,
+    };
+    log("pay-log", "sign the 2.00 USDC authorization in your wallet…");
+    const signature = await state.provider.request({ method: "eth_signTypedData_v4", params: [state.address, JSON.stringify(typedData)] });
+    const payload = { x402Version: 2, payload: { authorization, signature }, ...(pr.extensions ? { extensions: pr.extensions } : {}), resource: pr.resource, accepted: acc };
+    log("pay-log", "settling and auditing…");
+    const paid = await fetch(url, { method: "POST", headers: { "content-type": "application/json", "PAYMENT-SIGNATURE": b64encodeUtf8(JSON.stringify(payload)) }, body });
+    const text = await paid.text();
+    let res; try { res = JSON.parse(text); } catch { res = null; }
+    if (!res) throw new Error(`gate answered ${paid.status} without JSON`);
+    const settleHeader = paid.headers.get("PAYMENT-RESPONSE");
+    const payment_response = settleHeader ? JSON.parse(b64decodeUtf8(settleHeader)) : null;
+    if (res.verdict === "REFUSED_SCOPE") throw new Error(`refused as out of scope, not charged: ${res.reason ?? ""}`);
+    if (!paid.ok) throw new Error(`${res.error ?? "error"}${res.detail ? ": " + res.detail : ""}${res.charged ? " (charged; keep the PAYMENT-RESPONSE below and contact support)" : " (not charged)"}`);
+    renderReceipt({ intent, payment_response, ...res });
+    log("pay-log", "");
+  } catch (e) {
+    log("pay-log", walletErr(e), "xx");
+    btn.disabled = false;
+  }
+});
+
+function renderReceipt(r){
+  const el = $("receipt"); el.hidden = false;
+  const st = r.verdict === "PASS" ? "pass" : r.verdict === "WAIT" ? "wait" : "fail";
+  $("rstamp").textContent = r.verdict; $("rstamp").style.color = `var(--${st})`;
+  $("rmeta").textContent = `risk ${r.risk_score} · charged ${r.charged ? "2.00 USDC" : "no"}`;
+  const easLink = r.eas_uid ? `<a href="${EAS_VIEW}${esc(r.eas_uid)}" target="_blank" rel="noopener">${esc(short(r.eas_uid))}</a>` : `<span>${esc(r.eas_error ? "not attested: " + r.eas_error : "pending")}</span>`;
+  const tx = r.payment_response?.transaction;
+  $("rkeys").innerHTML = `<span>attestation</span><b>${easLink}</b><span>settlement</span><b>${tx ? `<a href="${TX_VIEW}${esc(tx)}" target="_blank" rel="noopener">${esc(short(tx))}</a>` : "no PAYMENT-RESPONSE"}</b><span>intent_hash</span><b>${esc(r.intent_hash ?? "")}</b><span>verdict_hash</span><b>${esc(r.verdict_hash ?? "")}</b><span>flags</span><b>${esc((r.flags ?? []).join(", ") || "none")}</b><span>free vs paid</span><b>${state.last && state.last.body.verdict_hash === r.verdict_hash ? "identical verdict_hash: the paid run reproduced the free verdict byte for byte" : "verdict_hash differs from the free run: extraction is measured at 95 to 100 percent stable, and the receipt is the run that was attested"}</b>`;
+  const json = JSON.stringify(r, null, 2);
+  $("verify-link").href = "/verify#r=" + b64encodeUtf8(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  $("copy-receipt").onclick = async () => { try { await navigator.clipboard.writeText(json); $("copy-receipt").textContent = "Copied"; setTimeout(() => { $("copy-receipt").textContent = "Copy receipt JSON"; }, 1600); } catch { /* clipboard blocked: the verify link still carries it */ } };
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+setKind("pm");
+</script>
+</body>
+</html>

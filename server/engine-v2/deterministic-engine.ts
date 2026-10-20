@@ -15,10 +15,11 @@
  * frozen shared taxonomy (DJZS-LF-v1.2) so engine-v2 scores against the same
  * canonical table as everything else in the system.
  */
-import { LOGIC_FAILURE_TAXONOMY, type LFCode, type Severity } from "@shared/audit-schema";
-import { PM_TAXONOMY, PM_FAIL_THRESHOLD, type PMCode } from "@shared/pm-taxonomy";
+import { LOGIC_FAILURE_TAXONOMY, SCHEMA_VERSION, type LFCode, type Severity } from "@shared/audit-schema";
+import { PM_TAXONOMY, PM_FAIL_THRESHOLD, PM_SCHEMA_VERSION, type PMCode } from "@shared/pm-taxonomy";
 import { AUDIT_FIELDS, PM_AUDIT_FIELDS, type AuditField, type AuditInput, type Field, type PMAuditField } from "./audit-input-schema";
 import { canonicalize, sha256Hex } from "./hash";
+import type { VerdictTally } from "./verdict-rule";
 
 export type EngineVerdict = "PASS" | "WAIT" | "FAIL";
 
@@ -37,6 +38,13 @@ export interface EngineResult {
   unknown_fields: (AuditField | PMAuditField)[];
   verdict_hash: string;
   engine: "djzs-engine-v2/deterministic";
+  /**
+   * What the verdict was derived from (DJZS-VR-v1.0): the fired codes, the unknown count, and the
+   * two booleans the rungs below consult. verdict-rule.ts reproduces `verdict` and `risk_score`
+   * from this alone, and contracts/DJZSVerdictRule.sol does the same on Base. Additive: it is not
+   * part of verdict_hash, whose preimage is unchanged.
+   */
+  tally: VerdictTally;
 }
 
 /** A finding fired by `value` is below the FAIL line until weights cross this. */
@@ -216,11 +224,12 @@ export function runDeterministicAudit(input: AuditInput): EngineResult {
   const isBounded =
     input.stop_loss.state === "present" ||
     input.invalidation_condition.state === "present";
+  const thesisPresent = input.thesis_statement.state === "present";
 
   if (hasCritical || risk_score >= FAIL_THRESHOLD) {
     // A real finding on known facts always condemns — even amid open questions.
     verdict = "FAIL";
-  } else if (flags.length === 0 && isBounded && input.thesis_statement.state === "present") {
+  } else if (flags.length === 0 && isBounded && thesisPresent) {
     // Bounded position WITH a stated thesis and no flaw fired: remaining unknowns cannot change
     // a no-flag verdict. LF-v1.2: a stop alone no longer buys a PASS — an unknown thesis could
     // still resolve to S01, so it falls through to WAIT below.
@@ -250,6 +259,13 @@ export function runDeterministicAudit(input: AuditInput): EngineResult {
     unknown_fields,
     verdict_hash,
     engine: "djzs-engine-v2/deterministic",
+    tally: {
+      ruleset: SCHEMA_VERSION,
+      codes: flags.map((f) => f.code).sort(),
+      unknown_count: unknown_fields.length,
+      bounded: isBounded,
+      thesis_present: thesisPresent,
+    },
   };
 }
 
@@ -314,5 +330,13 @@ function runPredictionAudit(input: AuditInput): EngineResult {
     unknown_fields,
     verdict_hash,
     engine: "djzs-engine-v2/deterministic",
+    // PM does not consult a thesis flag: recorded as true so the rule's LF clause is inert here.
+    tally: {
+      ruleset: PM_SCHEMA_VERSION,
+      codes: flags.map((f) => f.code).sort(),
+      unknown_count: unknown_fields.length,
+      bounded: isBounded,
+      thesis_present: true,
+    },
   };
 }

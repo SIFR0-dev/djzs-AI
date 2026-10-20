@@ -28,6 +28,11 @@
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
   network "base", and maxPaymentValue 2000000n; the library's default cap is 0.10 USDC and
   refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
+- Free verdicts (2026-09-28): POST https://mcp.djzs.ai/try/verdict runs the same engine without
+  payment or attestation, 5 per wallet per UTC day. The caller signs an EIP-191 text naming its
+  address, the UTC day and the intent's sha256 (fetch the exact text from GET https://mcp.djzs.ai/try/quota).
+  Body: { kind: "pm" | "perp", intent, address, day, signature }. The response carries the paid
+  route's offer; the 2.00 USDC buys the attested receipt on any outcome. Browser flow: https://djzs.ai/try
 
 ## How it works
 

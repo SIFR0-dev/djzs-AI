@@ -6,8 +6,22 @@
  * real EIP-3009 authorizations against the live route, asserting that the two
  * money-path branches behave as the terms promise.
  *
- *   npx --no-install node djzs-trust-mcp/harness/buyer-probe.mjs --mode refuse
- *   npx --no-install node djzs-trust-mcp/harness/buyer-probe.mjs --mode settle
+ *   node djzs-trust-mcp/harness/buyer-probe.mjs --mode refuse
+ *   node djzs-trust-mcp/harness/buyer-probe.mjs --mode settle
+ *   node djzs-trust-mcp/harness/buyer-probe.mjs --mode settle --intent perp
+ *
+ * Set the key once per shell, with a VISIBLE prompt (zsh; what you type is not echoed):
+ *   read -rs 'BUYER_PRIVATE_KEY?buyer key (hidden, then Return): ' && export BUYER_PRIVATE_KEY && echo
+ * A bare `read -s` prints no prompt at all: pasted in one block with the commands under it, it looks
+ * like a hang while it waits for the key (2026-09-27). `unset BUYER_PRIVATE_KEY` when done.
+ *
+ * Run with plain `node` from the repo root: `npx node` resolves an npm package named "node" and
+ * refuses without it (seen 2026-09-27), it does not run the binary.
+ *
+ * --intent perp settles against /x402/verify_perp_trade with the in-scope perp intent from the
+ * route's own discovery block. The CDP Bazaar catalogs a route the first time it SETTLES a payment
+ * and drops it after 30 idle days (docs.cdp.coinbase.com/x402/bazaar), so one settle per route keeps
+ * both listed. verify_perp_trade had never settled as of 2026-09-27 and was not listed.
  *
  * Exit 0 => every check in the ledger passed.
  * Exit 1 => at least one missed; the full ledger is printed either way.
@@ -135,6 +149,21 @@ const SETTLE_INTENT = {
   bounds: { max_loss_usd: 250, exit_condition: "daily close below 66000" },
 };
 
+// In scope for /x402/verify_perp_trade: the discovery block's own example, verbatim. A position with a
+// stated reason, a stop, an oracle: the route must settle first and then return a verdict.
+const PERP_SETTLE_INTENT = {
+  instrument: "BTC-PERP",
+  side: "LONG",
+  leverage: 5,
+  entry: 78900,
+  stop_loss: 76200,
+  take_profit: 83000,
+  size_usd: 3000,
+  venue: "Binance",
+  thesis: "Funding reset to 2% after the weekend flush; 80K held on the daily close; ETF inflows resumed. Invalidation: daily close below 76,200. Oracle: Binance mark price.",
+};
+const PERP_URL = "https://mcp.djzs.ai/x402/verify_perp_trade";
+
 // Schema-valid and fully populated — every field the input schema names is
 // present and well-formed. The ONLY thing wrong with it is that a spot-equity
 // thesis is not a prediction-market trade. That is the point: the refusal must
@@ -151,7 +180,7 @@ const REFUSE_INTENT = {
 
 // ══ 4. ARGUMENTS ══════════════════════════════════════════════════════════
 function parseArgs(argv) {
-  const out = { mode: null, url: DEFAULT_URL, maxUsd: DEFAULT_MAX_USD, rpcUrl: null };
+  const out = { mode: null, url: null, maxUsd: DEFAULT_MAX_USD, rpcUrl: null, intent: "pm" };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -163,9 +192,13 @@ function parseArgs(argv) {
     else if (a === "--url") out.url = next();
     else if (a === "--max-usd") out.maxUsd = next();
     else if (a === "--rpc-url") out.rpcUrl = next();
+    else if (a === "--intent") out.intent = next();
     else if (a === "--help" || a === "-h") out.help = true;
     else throw new Error(`unknown flag: ${a}`);
   }
+  if (out.intent !== "pm" && out.intent !== "perp") throw new Error(`--intent must be pm or perp, got ${out.intent}`);
+  if (out.intent === "perp" && out.mode === "refuse") throw new Error("--intent perp has no refuse case; the PM refuse intent is the scope test");
+  if (out.url === null) out.url = out.intent === "perp" ? PERP_URL : DEFAULT_URL;
   return out;
 }
 
@@ -173,12 +206,15 @@ const USAGE = `
 buyer-probe.mjs — v2-exact x402 buyer for ${DEFAULT_URL}
 
   --mode refuse | settle   (required)
-  --url <url>              target route            [default ${DEFAULT_URL}]
+  --intent pm | perp       which paid route's in-scope intent to send [default pm]
+  --url <url>              target route            [default ${DEFAULT_URL}, or ${PERP_URL} with --intent perp]
   --max-usd <money>        per-payment spend cap   [default ${DEFAULT_MAX_USD}]
   --rpc-url <url>          EVM RPC for the exact scheme, if it needs one
 
 The wallet key is read ONLY from the environment variable BUYER_PRIVATE_KEY.
-There is no flag for it and it is never printed.
+There is no flag for it and it is never printed. Set it without shell history (zsh):
+
+  read -rs 'BUYER_PRIVATE_KEY?buyer key (hidden, then Return): ' && export BUYER_PRIVATE_KEY && echo
 `;
 
 // ══ 5. KEY INTAKE — the only door ═════════════════════════════════════════
@@ -190,7 +226,9 @@ function loadSigningKey() {
     console.error("Export it in the calling shell; this probe will not prompt for it,");
     console.error("read it from a file, or accept it as a flag:");
     console.error("");
-    console.error("  export BUYER_PRIVATE_KEY=0x…   # then re-run");
+    console.error("  read -rs 'BUYER_PRIVATE_KEY?buyer key (hidden, then Return): ' && export BUYER_PRIVATE_KEY && echo");
+    console.error("");
+    console.error("then re-run. Typed at a prompt, the key never lands in shell history.");
     console.error("");
     process.exit(1);
   }
@@ -233,7 +271,7 @@ async function main() {
   // the raw value through the environment (including any child process).
   delete process.env.BUYER_PRIVATE_KEY;
 
-  const intent = args.mode === "settle" ? SETTLE_INTENT : REFUSE_INTENT;
+  const intent = args.mode === "settle" ? (args.intent === "perp" ? PERP_SETTLE_INTENT : SETTLE_INTENT) : REFUSE_INTENT;
 
   console.log(`buyer-probe: mode=${args.mode}`);
   console.log(`  target : ${args.url}`);

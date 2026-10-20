@@ -31,8 +31,8 @@ import {
 import type { PaymentRequirements } from "@x402/core/types";
 import type { FacilitatorConfig } from "@x402/core/http";
 
-import { intentHash, attestVerdict, DJZS_SCHEMA_UID } from "./attest-worker";
-import { toDJZSIntent } from "./djzs-intent";
+import { intentHash, attestVerdict, schemaUIDFor } from "./attest-worker";
+import { toDJZSIntent, type PmIntentLike, type PerpIntentLike } from "./djzs-intent";
 
 /** Ruleset the attested verdict was scored under. Bump with the taxonomy, never silently. */
 const RULESET_VERSION = "DJZS-PM-v1.0";
@@ -72,6 +72,8 @@ export interface VerdictResult {
   risk_score: number;
   flags: string[];
   verdict_hash: string;
+  /** DJZS-VR-v1.0: the tally the verdict was derived from. Present when the engine emitted one. */
+  tally?: import("../../server/engine-v2/verdict-rule").VerdictTally;
   intent_sha256: string; // binding key — verdict_hash is not injective
   intent_hash?: string;        // v2 binding key — EIP-712, reproducible by anyone
   eas_uid?: string | null;     // EAS attestation UID on Base
@@ -95,6 +97,15 @@ export const NOT_WIRED: EngineAdapter = {
     throw new Error("ENGINE_ADAPTER_NOT_WIRED: wire deterministic-engine before deploy");
   },
 };
+
+/**
+ * Response media type for the audit verdict — one home, used by info and schema.
+ * Declared ABOVE the discovery blocks that read it through withDiscoveryFixups at module
+ * init: as a `const` below them it is in its temporal dead zone when they evaluate, which
+ * throws under any loader that keeps ESM semantics (tsx, node --import). The wrangler
+ * bundle hid this by hoisting top-level declarations to `var`.
+ */
+const OUTPUT_MIME_TYPE = "application/json";
 
 // ------------------------------------------------------------------
 // Discovery declaration — this is the Bazaar listing content.
@@ -260,8 +271,6 @@ function withDiscoveryFixups<T>(ext: T): T {
   return ext;
 }
 
-/** Response media type for the audit verdict — one home, used by info and schema. */
-const OUTPUT_MIME_TYPE = "application/json";
 
 /**
  * S4 — CORS. `Expose-Headers` is the load-bearing line: without it a browser
@@ -278,7 +287,7 @@ const CORS_BASE: Record<string, string> = {
 const CORS_PREFLIGHT: Record<string, string> = {
   ...CORS_BASE,
   "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Accept, X-PAYMENT",
+  "Access-Control-Allow-Headers": "Content-Type, Accept, X-PAYMENT, PAYMENT-SIGNATURE",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -290,6 +299,12 @@ export interface X402Env {
   ATTESTER_KEY?: string;
   /** Base RPC for attestation writes. Public endpoints refuse Worker egress; use the configured one. */
   BASE_RPC_URL?: string;
+  /**
+   * DJZSVerdictResolver address on Base (wrangler.toml var, not a secret). When set, verdicts are
+   * attested under schema v3, whose resolver refuses any attestation the on-chain rule contradicts.
+   * Absent: schema v2, exactly as before. See VERDICT_RULE.md.
+   */
+  EAS_RESOLVER_ADDRESS?: string;
   FACILITATOR_URL: string; // CDP: https://api.cdp.coinbase.com/platform/v2/x402
   /**
    * Auth seam: the CDP mainnet facilitator requires request auth headers.
@@ -563,6 +578,7 @@ export async function handleX402VerifyPmTrade(
         headers: {
           "content-type": "application/json",
           "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle),
+          ...CORS_BASE,
         },
       },
     );
@@ -570,7 +586,9 @@ export async function handleX402VerifyPmTrade(
 
   // 5a — v2 binding + EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
   // Fail-soft: a charged, valid verdict is never hostage to a second transaction.
-  const intent_hash = intentHash(toDJZSIntent(intent));
+  // PM and perp intents both map (perp: instrument -> market, levels -> params_hash; djzs-intent.ts).
+  // The engine has already accepted this object, so the shape cast states what was audited.
+  const intent_hash = intentHash(toDJZSIntent(intent as PmIntentLike | PerpIntentLike));
   let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: string | undefined;
   if (!env.ATTESTER_KEY) {
     eas_error = "attester_not_configured";
@@ -585,7 +603,11 @@ export async function handleX402VerifyPmTrade(
           flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
           rulesetVersion: spec.rulesetVersion,
           agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
+          // v3 (DJZS-VR-v1.0): the rest of the tally, so the resolver can derive the verdict itself.
+          // Used only when the Worker is configured with the v3 resolver; v2 ignores it.
+          ...(result.tally ? { tally: { unknownCount: result.tally.unknown_count, bounded: result.tally.bounded, thesisPresent: result.tally.thesis_present } } : {}),
         },
+        env.EAS_RESOLVER_ADDRESS,
       );
       eas_uid = a.uid; eas_tx = a.txHash;
     } catch (e) {
@@ -594,7 +616,7 @@ export async function handleX402VerifyPmTrade(
   }
   // 5 — verdict + settlement evidence.
   return new Response(
-    JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: DJZS_SCHEMA_UID, ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
+    JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: schemaUIDFor(env.EAS_RESOLVER_ADDRESS), ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
     {
       status: 200,
       headers: {
@@ -607,8 +629,10 @@ export async function handleX402VerifyPmTrade(
 }
 
 function json(obj: unknown, status: number): Response {
+  // CORS rides every JSON answer, not only the 402 and the 200: a browser payer that cannot
+  // READ a refusal ("payment_verification_failed", "missing_intent") sees a network error instead.
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...CORS_BASE },
   });
 }

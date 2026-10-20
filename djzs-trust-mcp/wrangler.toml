@@ -28,6 +28,10 @@ ENVIRONMENT = "production"
 # makes anchoring fail-open and paying callers get status:"error" — the weak
 # offer the spec rejects. Set the prod secret before deploy; probe /health/x402.
 IRYS_NODE_URL = "https://uploader.irys.xyz"
+# EAS schema v3 (DJZS-VR-v1.0): set to the deployed DJZSVerdictResolver address on Base to attest
+# verdicts under the resolver-checked schema; leave unset to keep attesting under schema v2.
+# VERDICT_RULE.md has the deploy order (rule, resolver, register schema, then this var).
+# EAS_RESOLVER_ADDRESS = "0x..."
 
 # Module aliasing (wrangler → esbuild): resolve the engine's `@shared/*` imports at
 # bundle time WITHOUT editing any file under shared/. esbuild remaps the "@shared"

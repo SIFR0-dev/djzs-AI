@@ -40,6 +40,7 @@ import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
 import { handleX402VerifyPmTrade, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
+import { handleTryQuota, handleTryVerdict } from "./try-route"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
 import { attesterBalance } from "./attest-worker"
@@ -139,6 +140,17 @@ interface Env {
   /** EAS attester key (v2 receipt). SECRET. Absent => verdicts served, attestation skipped with eas_error. */
   DJZS_ATTESTER_KEY?: string
   /**
+   * DJZSVerdictResolver address on Base (a [vars] entry, not a secret). Present => verdicts are
+   * attested under EAS schema v3, whose resolver refuses any verdict the on-chain rule
+   * (DJZSVerdictRule, DJZS-VR-v1.0) contradicts. Absent => schema v2, unchanged. VERDICT_RULE.md.
+   */
+  EAS_RESOLVER_ADDRESS?: string
+  /**
+   * Free-tier ceiling for POST /try/verdict: total free verdicts per UTC day across all wallets
+   * (plain var; default 200 in try-route.ts). The per-wallet cap is fixed at 5 there.
+   */
+  TRY_GLOBAL_DAILY_LIMIT?: string
+  /**
    * D1 telemetry database (wrangler binding TELEMETRY, db djzs-gate-telemetry).
    * OPTIONAL by design: absent binding => recording silently no-ops and every
    * surface still answers. Telemetry is never load-bearing for a response.
@@ -154,7 +166,11 @@ interface Env {
 /** The slice of the D1 client this worker actually calls. See Env.TELEMETRY. */
 interface TelemetryDB {
   prepare(query: string): {
-    bind(...values: unknown[]): { run(): Promise<unknown> }
+    bind(...values: unknown[]): {
+      run(): Promise<unknown>
+      /** Row read, used by the /try quota (try-route.ts). Telemetry writes never call it. */
+      first<T = Record<string, unknown>>(): Promise<T | null>
+    }
   }
 }
 
@@ -1485,12 +1501,26 @@ app.all("/x402/verify_pm_trade", async (c) => {
     FACILITATOR_AUTH: createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
     ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
     BASE_RPC_URL: env.BASE_RPC_URL,
+    EAS_RESOLVER_ADDRESS: env.EAS_RESOLVER_ADDRESS,
   }
   try {
     return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env))
   } catch (e) {
     const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
     return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)
+  }
+})
+
+// /try: the FREE, wallet-capped preview of the paid audit (ruling 2026-09-27, "sell the receipt").
+// Same pipeline, same verdict fields, nothing attested; the response carries the paid route's offer.
+// Quota lives in D1 (TELEMETRY); without the binding the route fails closed. Details in try-route.ts.
+app.all("/try/quota", (c) => handleTryQuota(c.req.raw, c.env))
+app.all("/try/verdict", async (c) => {
+  try {
+    return await handleTryVerdict(c.req.raw, c.env)
+  } catch (e) {
+    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
+    return c.json({ ok: false, error: "try_unavailable", detail }, 503)
   }
 })
 
@@ -1503,6 +1533,7 @@ app.all("/x402/verify_perp_trade", async (c) => {
     FACILITATOR_AUTH: createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
     ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
     BASE_RPC_URL: env.BASE_RPC_URL,
+    EAS_RESOLVER_ADDRESS: env.EAS_RESOLVER_ADDRESS,
   }
   try {
     return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env, undefined, runVerifyPerpTrade as unknown as typeof runVerifyPmTrade), PERP_RESOURCE)

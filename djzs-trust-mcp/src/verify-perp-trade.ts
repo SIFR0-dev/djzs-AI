@@ -64,6 +64,10 @@ export async function runVerifyPerpTrade(
     unknown_fields: result.unknown_fields,
     disagreements: r.disagreements,
     verdict_hash: result.verdict_hash,
+    // DJZS-VR-v1.0: the tally the verdict was derived from. The x402 adapter forwards it into the
+    // v3 EAS attestation, where the resolver re-derives the verdict on chain. Without this line the
+    // engine computed a tally nobody attested (found 2026-09-27 by the /try route test).
+    tally: result.tally,
     extraction_failsafe: r.failsafe,
     // Gate 2 is not this tool's job. Liquidation distance, funding cost, R:R are reported by the
     // caller's execution pipeline (or DJZS's gate2-mechanics) and never enter risk_score or the verdict.
