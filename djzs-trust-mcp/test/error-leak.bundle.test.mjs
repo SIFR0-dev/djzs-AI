@@ -17,13 +17,17 @@
  * ZERO keys, ZERO egress. The CDP key is generated here and signs nothing real; the attester and
  * writer keys are throwaway hex; every outbound host is answered by a stub or refused (599).
  *
+ * miniflare is wrangler's own dependency (hoisted into node_modules); a wrangler bump that nests it fails this
+ * import loudly, not silently. The compatibility settings are read from wrangler.toml, and FACILITATOR_URL is
+ * NOT set, so the canonical routes use the CDP default URL that ships.
+ *
  * Run from djzs-trust-mcp/:   npx tsx test/error-leak.bundle.test.mjs
  *   DJZS_BUNDLE=<path/to/index.js>  to test an already-built bundle (CI passes the dry-run output);
  *   otherwise it builds one with `wrangler deploy --dry-run` (no login, no secrets, no deploy).
  */
 import { execFileSync } from "node:child_process"
 import { generateKeyPairSync } from "node:crypto"
-import { existsSync, mkdtempSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Miniflare } from "miniflare"
@@ -31,6 +35,9 @@ import { encodePaymentSignatureHeader } from "@x402/core/http"
 
 const SENTINEL_URL = "https://rpc.sentinel.invalid/v2/KEYSENTINEL0123456789abcdef"
 const PARTS = ["KEYSENTINEL", "sentinel.invalid"]
+
+// A hung workerd request must fail the step, not hold the job for hours.
+setTimeout(() => { console.error("ERROR-LEAK: TIMEOUT after 240s"); process.exit(1) }, 240_000).unref()
 
 let checks = 0
 const failures = []
@@ -54,6 +61,7 @@ const F = (state, value, quote) => state === "present" ? { state, value } : stat
 const PM_X = { agent_type: "trader", intended_action: "buy YES", audit_context: "prediction_market", leverage: F("absent"), position_size: F("present", 250), stop_loss: F("present", "daily close below 66000"), take_profit: F("unknown"), invalidation_condition: F("present", "daily close below 66000"), resolution_engagement: F("unknown"), probability_basis: F("present", "implied 0.41 vs model 0.55"), edge_claim: F("unknown"), data_sources: F("unknown"), oracle_source: F("unknown"), confidence: F("unknown") }
 const PM_INTENT = { market: "KXBTC-26AUG29-T70000", side: "YES", thesis: "BTC closes above 70k by Aug 29 on ETF inflow continuation", probability_basis: "implied 0.41 vs model 0.55", size_usd: 250, bounds: { max_loss_usd: 250, exit_condition: "daily close below 66000" } }
 const STRING_INTENT = "BTC closes above 70k by Aug 29 on ETF inflow continuation; implied 0.41 vs model 0.55; stop on a daily close below 66000"
+const PERP_X = { agent_type: "trader", intended_action: "open", market_type: "perp", leverage: F("present", 5), position_size: F("present", 3000), stop_loss: F("present", 76200), take_profit: F("present", 83000), invalidation_condition: F("present", "daily close below 76,200"), resolution_engagement: F("unknown"), probability_basis: F("unknown"), edge_claim: F("unknown"), data_sources: F("present", ["Binance"]), oracle_source: F("present", "Binance mark price"), confidence: F("unknown"), thesis_statement: F("present", "funding reset after the weekend flush") }
 const PAYER = "0x1111111111111111111111111111111111111111"
 const TX = "0x" + "cd".repeat(32)
 
@@ -63,8 +71,11 @@ const seed = kp.privateKey.export({ format: "der", type: "pkcs8" }).subarray(-32
 const pub = kp.publicKey.export({ format: "der", type: "spki" }).subarray(-32)
 const CDP_SECRET = Buffer.concat([seed, pub]).toString("base64")
 
+const TOML = readFileSync(path.resolve(import.meta.dirname, "..", "wrangler.toml"), "utf8")
+if (!/^compatibility_date\s*=/m.test(TOML)) throw new Error("wrangler.toml has no compatibility_date")
+
 // ── stub world ──────────────────────────────────────────────────────────────────────
-const mode = { supported: "ok", verify: "ok", settle: "ok", anthropic: "ok", subgraph: "500", irysGraphql: "errors", irysUpload: "500" }
+const mode = { supported: "ok", verify: "ok", settle: "ok", anthropic: "ok", extraction: "pm", subgraph: "500", irysGraphql: "errors", irysUpload: "500" }
 const hits = { settle: 0 }
 const blocked = new Set()
 const jres = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json" } })
@@ -73,11 +84,10 @@ const mk = (extraBindings = {}) => new Miniflare({
   modules: true,
   modulesRoot: path.dirname(path.resolve(bundle)),
   scriptPath: path.resolve(bundle),
-  compatibilityDate: "2026-06-01",
-  compatibilityFlags: ["nodejs_compat"],
+  compatibilityDate: TOML.match(/^compatibility_date\s*=\s*"([^"]+)"/m)?.[1],
+  compatibilityFlags: JSON.parse((TOML.match(/^compatibility_flags\s*=\s*(\[[^\]]*\])/m)?.[1] ?? "[]")),
   bindings: {
     ENVIRONMENT: "production",
-    FACILITATOR_URL: "https://facilitator.test",
     ANTHROPIC_API_KEY: "stub-not-a-key",
     DJZS_ATTESTER_KEY: "0x" + "11".repeat(32),
     DJZS_WRITER_KEY: "0x" + "22".repeat(32),
@@ -106,16 +116,22 @@ const mk = (extraBindings = {}) => new Miniflare({
     if (u.host === "api.anthropic.com") {
       return mode.anthropic === "401"
         ? new Response(`{"error":{"message":"invalid x-api-key at ${SENTINEL_URL}"}}`, { status: 401 })
-        : jres({ content: [{ type: "text", text: JSON.stringify(PM_X) }] })
+        : jres({ content: [{ type: "text", text: JSON.stringify(mode.extraction === "perp" ? PERP_X : PM_X) }] })
     }
     if (u.host === "rpc.sentinel.invalid") {
       if (u.pathname.endsWith("/subgraph")) {
+        if (mode.subgraph === "badjson") return new Response(`<html>${SENTINEL_URL}`, { status: 200 })
+        if (mode.subgraph === "nullrow") return jres({ data: { agent: { id: "x", totalAudits: 1, audits: [null], flags: [] } } })
         return mode.subgraph === "graphql" ? jres({ errors: [{ message: `boom ${SENTINEL_URL}` }] }) : new Response(`subgraph said no ${SENTINEL_URL}`, { status: 500 })
       }
       return new Response(`rpc said no ${SENTINEL_URL}`, { status: 500 })
     }
     if (u.host === "uploader.irys.xyz" || u.host === "devnet.irys.xyz") {
-      if (u.pathname.endsWith("/graphql")) return jres({ errors: [{ message: `irys said no ${SENTINEL_URL}` }] })
+      if (u.pathname.endsWith("/graphql")) {
+        if (mode.irysGraphql === "badjson") return new Response(`<html>${SENTINEL_URL}`, { status: 200 })
+        if (mode.irysGraphql === "500") return new Response(`irys index said no ${SENTINEL_URL}`, { status: 500 })
+        return jres({ errors: [{ message: `irys said no ${SENTINEL_URL}` }] })
+      }
       if (mode.irysUpload === "ok" && u.pathname.startsWith("/tx/")) return jres({ id: "B".repeat(43) })
       return new Response(`irys upload rejected ${SENTINEL_URL}`, { status: 500 })
     }
@@ -330,6 +346,81 @@ try {
     check("200 with the verdict (not a bare 500 after the payer was charged)", res.status === 200 && typeof body.verdict === "string", `${res.status} ${text.slice(0, 200)}`)
     check("the certificate anchored and trust_score reports the failure as a fixed code", body.pol_certificate?.status === "anchored" && body.trust_score?.status === "error" && body.trust_score?.detail === "trust_write_failed", JSON.stringify({ pol: body.pol_certificate?.status, ts: body.trust_score }).slice(0, 240))
     check("nothing of the key or the error in the response", !PARTS.some((p) => text.includes(p)) && !/valid private key|got 0/.test(text), text.slice(0, 200))
+  }
+
+  console.log("14. every guarded /mcp tool, driven through a throwing dependency (a tool that lost its guard would return the raw text)")
+  {
+    const h = await mcpSession()
+    // verify_perp_trade, paid, extraction fails
+    const first = await mcpCall(h, "verify_perp_trade", { intent: STRING_INTENT })
+    const challenge = first.body.result?._meta?.["x402/error"]
+    const token = btoa(JSON.stringify({ x402Version: 2, resource: challenge.resource, accepted: challenge.accepts[0], payload: { signature: "0x" + "00".repeat(65), authorization: {} } }))
+    const s0 = hits.settle
+    mode.anthropic = "401"
+    let o = await mcpCall(h, "verify_perp_trade", { intent: STRING_INTENT }, { "x402/payment": token })
+    mode.anthropic = "ok"
+    check("verify_perp_trade: the result is the fixed TOOL_ERROR, isError, not settled", /TOOL_ERROR/.test(o.tool) && o.body.result?.isError === true && hits.settle === s0, `${o.tool.slice(0, 200)} settle +${hits.settle - s0}`)
+    check("verify_perp_trade: NO part of the sentinel, not 'Tool execution failed'", !leaked(o.text, o.headers) && !/Tool execution failed/.test(o.text), o.text.slice(0, 240))
+    // verify_perp_trade, paid, a perp-shaped extraction, the Irys upload rejects with the sentinel
+    mode.extraction = "perp"
+    o = await mcpCall(h, "verify_perp_trade", { intent: STRING_INTENT }, { "x402/payment": token })
+    mode.extraction = "pm"
+    check("verify_perp_trade: the verdict returns and pol_certificate.detail is anchor_failed", /anchor_failed/.test(o.tool), o.tool.slice(0, 300))
+    check("verify_perp_trade: NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 300))
+    // query_pol_certificates: the Irys index connection is lost (fetch rejects, outside any try in the tool)
+    mode.irysGraphql = "badjson" // .json() throws OUTSIDE any try in the tool
+    o = await mcpCall(h, "query_pol_certificates", { limit: 1 })
+    mode.irysGraphql = "errors"
+    check("query_pol_certificates: an exception outside its own try becomes the fixed TOOL_ERROR", /TOOL_ERROR/.test(o.tool) && o.body.result?.isError === true, o.tool.slice(0, 200))
+    // query_agent_trust: a malformed subgraph row throws OUTSIDE the tool's own try
+    const realSub = mode.subgraph
+    mode.subgraph = "nullrow"
+    o = await mcpCall(h, "query_agent_trust", { agentAddress: PAYER })
+    mode.subgraph = realSub
+    check("query_agent_trust: an exception outside its own try becomes the fixed TOOL_ERROR", /TOOL_ERROR/.test(o.tool) && o.body.result?.isError === true, o.tool.slice(0, 200))
+  }
+
+  console.log("15. paths the stub world used to never reach (an unreadable answer, a non-2xx index, a decline with free text, the real writer failing)")
+  {
+    const h = await mcpSession()
+    mode.subgraph = "badjson" // .json() throws INSIDE the tool's try: its own catch answers
+    let o = await mcpCall(h, "query_agent_trust", { agentAddress: PAYER })
+    mode.subgraph = "500"
+    check("query_agent_trust: an unreadable subgraph answer -> subgraph_unreachable, no body echoed", /subgraph_unreachable/.test(o.tool) && !leaked(o.text, o.headers), o.tool.slice(0, 200))
+    mode.irysGraphql = "500"
+    o = await mcpCall(h, "query_pol_certificates", { limit: 1 })
+    mode.irysGraphql = "errors"
+    check("query_pol_certificates: a non-2xx Irys index -> irys_http_500, no body echoed", /irys_http_500/.test(o.tool) && !leaked(o.text, o.headers), o.tool.slice(0, 200))
+
+    const legacyUrl = "https://mcp.djzs.ai/x402/verify"
+    const lh = await payHeader(legacyUrl)
+    mode.supported = "500"
+    o = await post(legacyUrl, lh, STRING_INTENT)
+    mode.supported = "ok"
+    check("legacy: the facilitator cannot initialise -> 503 FACILITATOR_UNAVAILABLE, fixed code, no body echoed", o.status === 503 && o.body.error === "FACILITATOR_UNAVAILABLE" && o.body.detail === "facilitator_unavailable" && !leaked(o.text, o.headers), `${o.status} ${o.text.slice(0, 200)}`)
+    mode.settle = "declineJunk"
+    o = await post(legacyUrl, lh, STRING_INTENT)
+    mode.settle = "ok"
+    check("legacy: settle declined with free text -> the free text is not relayed", o.status === 402 && !leaked(o.text, o.headers) && o.body.error === "SETTLEMENT_FAILED", `${o.status} ${o.text.slice(0, 200)}`)
+    o = await post(legacyUrl, lh, STRING_INTENT)
+    check("legacy: the Irys upload rejects with the sentinel -> 200 with the verdict and pol_certificate.detail anchor_failed", o.status === 200 && o.body.pol_certificate?.detail === "anchor_failed" && !leaked(o.text, o.headers), `${o.status} ${o.text.slice(0, 240)}`)
+
+    // the REAL trust writer (valid throwaway key) against an RPC that is the sentinel: viem's error begins with the URL
+    mode.irysUpload = "ok"
+    const res = await mf.dispatchFetch(legacyUrl, { method: "POST", headers: { "content-type": "application/json", "PAYMENT-SIGNATURE": lh }, body: JSON.stringify({ intent: STRING_INTENT, agent_address: PAYER }) })
+    const text = await res.text()
+    mode.irysUpload = "500"
+    let body = {}
+    try { body = JSON.parse(text) } catch { /* the checks say so */ }
+    check("legacy: the real trust-score write fails -> trust_score.detail trust_write_failed, the verdict still returned", res.status === 200 && body.pol_certificate?.status === "anchored" && body.trust_score?.status === "error" && body.trust_score?.detail === "trust_write_failed", `${res.status} ${text.slice(0, 280)}`)
+    check("legacy: NO part of the RPC URL in that response", !PARTS.some((p) => text.includes(p)), text.slice(0, 240))
+  }
+
+  console.log("16. the only outbound hosts the Worker was refused are the public fallback RPCs and devnet Irys")
+  {
+    const allowed = new Set(["mainnet.base.org", "base-rpc.publicnode.com", "devnet.irys.xyz"])
+    const stray = [...blocked].filter((h) => !allowed.has(h))
+    check("no unexpected outbound host (a new dependency calling out would show here)", stray.length === 0, stray.join(", "))
   }
 } finally {
   await mf.dispose()

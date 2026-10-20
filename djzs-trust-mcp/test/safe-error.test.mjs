@@ -3,6 +3,8 @@
  * Offline, no keys. Run from djzs-trust-mcp/:   npx tsx test/safe-error.test.mjs
  */
 import { reasonCode, addressOnly, hash32Only, scrub, logFault, FAULTS } from "../src/safe-error.ts"
+import { buildTrustWriter } from "../src/trust-writer.ts"
+import { breakevenMechanics } from "../src/verify-perp-trade.ts"
 
 let checks = 0
 const failures = []
@@ -29,6 +31,9 @@ const junk = [
   ["an empty string", ""],
   ["a word over 20 characters", "a".repeat(21)],
   ["more than 8 words", "a_b_c_d_e_f_g_h_i"],
+  ["a short URL (under the length cap, no spaces)", "https://x.invalid/k"],
+  ["a path-like string", "a/b/c"],
+  ["a vendor-key-shaped string (47 chars, hyphens)", "sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"],
   ["a number", 42],
   ["an object", { reason: "x" }],
   ["null", null],
@@ -87,6 +92,43 @@ console.log("the app's error handler (index.ts): the same fixed answer as Hono's
   const text = await res.text()
   check("500 with the fixed text", res.status === 500 && text === "Internal Server Error", `${res.status} ${text}`)
   check("one scrubbed log line ([fault] route.unhandled), not the raw error object with its stack", lines.length === 1 && lines[0].startsWith("[fault] route.unhandled") && !/\n\s+at /.test(lines[0]), lines.join(" | ").slice(0, 240))
+}
+
+console.log("a REAL trust-score write failing: the response and the log carry codes, never the RPC URL (viem begins its error with it)")
+{
+  const realFetch = globalThis.fetch
+  const SENT = "https://rpc.sentinel.invalid/v2/KEYSENTINEL0123456789abcdef"
+  globalThis.fetch = async () => new Response(`rpc said no ${SENT}`, { status: 500 })
+  const lines = []
+  const realErr = console.error, realLog = console.log
+  console.error = (...a) => { lines.push(a.map(String).join(" ")) }
+  console.log = (...a) => { lines.push(a.map(String).join(" ")) }
+  let out
+  try {
+    const write = buildTrustWriter("0x" + "22".repeat(32), SENT)
+    out = await write({ agentAddress: "0x" + "1".repeat(40), riskScore: 10, verdict: "PASS", flags: [], irysTxId: "B".repeat(43) })
+  } finally {
+    console.error = realErr; console.log = realLog; globalThis.fetch = realFetch
+  }
+  const dump = JSON.stringify(out)
+  check("status error, detail is the fixed code trust_write_failed, error_class from the closed vocabulary", out.status === "error" && out.detail === "trust_write_failed" && /^(rate_limited|insufficient_gas_funds|nonce_conflict|reverted|timeout|unauthorized_writer|network|unknown)$/.test(out.error_class), dump.slice(0, 200))
+  check("NO part of the RPC URL in the result", !dump.includes("sentinel.invalid") && !dump.includes("KEYSENTINEL"), dump.slice(0, 200))
+  check("the cause IS in the log (the [trust-writer] WRITE FAILED line) ...", lines.some((l) => l.includes("[trust-writer] WRITE FAILED")), lines.join(" | ").slice(0, 200))
+  check("... scrubbed: no part of the RPC URL in any log line", !lines.some((l) => l.includes("sentinel.invalid") || l.includes("KEYSENTINEL")), lines.join(" | ").slice(0, 300))
+  // viem's fallback transport surfaces the LAST transport's error (a public RPC), so the sentinel itself cannot appear here;
+  // the proof that scrub() ran on this line is that the request body's addresses (0x + 40 hex) are redacted too.
+  const failedLine = lines.find((l) => l.includes("[trust-writer] WRITE FAILED")) ?? ""
+  check("... and the WRITE FAILED line went through scrub(): no 0x-run survives in it, no URL either", failedLine.length > 0 && !/0x[0-9a-fA-F]{16,}/.test(failedLine) && !/https?:\/\//.test(failedLine), failedLine.slice(0, 240))
+}
+
+console.log("mechanics.breakeven.reason: a known validation sentence is relayed, anything else is bracket_invalid")
+{
+  const bad = breakevenMechanics({ side: "long", entry: 100, stop: 110, target: 120, taker_fee_bps: 1 })
+  check("a backwards long relays its own sentence", bad.status === "invalid" && bad.reason === "a long needs stop < entry < target", JSON.stringify(bad))
+  const nan = breakevenMechanics({ side: "short", entry: Number.NaN, stop: 1, target: 1, taker_fee_bps: 1 })
+  check("non-positive prices relay theirs", nan.status === "invalid" && nan.reason === "entry, stop and target must be positive prices", JSON.stringify(nan))
+  const odd = breakevenMechanics({ side: "flat", entry: 100, stop: 100, target: 120, taker_fee_bps: 1 })
+  check("an error outside the known sentences (floorDiv's own) becomes bracket_invalid, never its text", odd.status === "invalid" && odd.reason === "bracket_invalid", JSON.stringify(odd))
 }
 
 console.log("FAULTS")
