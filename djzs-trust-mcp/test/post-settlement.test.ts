@@ -33,12 +33,14 @@ import {
   PERP_RESOURCE,
   NETWORK,
   PAY_TO,
+  TERMS_URL,
   EXPECTED_ATOMIC_AMOUNT,
   type X402Env,
   type EngineAdapter,
   type VerdictResult,
   type ResourceSpec,
 } from "../src/http-x402-bazaar.v2"
+import * as attestWorker from "../src/attest-worker"
 import { intentHash } from "../src/attest-worker"
 import { toDJZSIntent } from "../src/djzs-intent"
 import { FAULTS } from "../src/safe-error"
@@ -111,7 +113,7 @@ interface StubFacilitator {
   verifyReason: string
   verifyHttp400: boolean
   declineReason: string
-  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup" | "pending" | "pendingJunk"
+  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup" | "pending" | "pendingJunk" | "decline402"
   close: () => Promise<void>
 }
 
@@ -143,6 +145,8 @@ async function startFacilitator(): Promise<StubFacilitator> {
         if (state.settleMode === "pending") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
         // A non-empty "transaction" that is not a transaction hash: still uncertain, and never relayed.
         if (state.settleMode === "pendingJunk") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: `see ${SENTINEL_URL}`, network: NETWORK })
+        // The realistic decline: HTTP 402 {success:false, errorReason}. @x402/core throws SettleError for it.
+        if (state.settleMode === "decline402") return reply(402, { success: false, errorReason: "insufficient_funds", payer: PAYER, transaction: "", network: NETWORK })
         if (state.settleMode === "fail") return reply(200, { success: false, errorReason: state.declineReason, payer: PAYER, transaction: "", network: NETWORK })
         return reply(200, { success: true, payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
       }
@@ -192,6 +196,8 @@ interface Outcome {
   paymentResponse: Headers
   settleDelta: number
   auditCalls: number
+  /** console.error lines written while the handler ran: the operator's only copy of the cause (ruling 3). */
+  logs: string[]
 }
 
 /** Get a challenge for `spec`, then wrap its accepts[0] in a v2 payment payload the stub facilitator will accept. */
@@ -224,14 +230,19 @@ async function paid(args: {
     body: JSON.stringify({ intent: args.intent }),
   })
   const s0 = FAC.hits.settle, a0 = auditSeen.length
+  const logs: string[] = []
+  const realErr = console.error
+  console.error = (...a: unknown[]) => { logs.push(a.map(String).join(" ")) }
   try {
     const res = await handleX402VerifyPmTrade(req, args.env, args.engine, args.spec, { attest: (args.attest ?? (async () => { throw new Error("default stub attester: must not be reached") })) as never })
     const text = await res.text()
     let body: Record<string, unknown> = {}
     try { body = JSON.parse(text) } catch { /* leave empty; the checks will say so */ }
-    return { threw: null, status: res.status, text, body, paymentResponse: res.headers, settleDelta: FAC.hits.settle - s0, auditCalls: auditSeen.length - a0 }
+    return { threw: null, status: res.status, text, body, paymentResponse: res.headers, settleDelta: FAC.hits.settle - s0, auditCalls: auditSeen.length - a0, logs }
   } catch (e) {
-    return { threw: e instanceof Error ? e.message : String(e), status: 0, text: "", body: {}, paymentResponse: new Headers(), settleDelta: FAC.hits.settle - s0, auditCalls: auditSeen.length - a0 }
+    return { threw: e instanceof Error ? e.message : String(e), status: 0, text: "", body: {}, paymentResponse: new Headers(), settleDelta: FAC.hits.settle - s0, auditCalls: auditSeen.length - a0, logs }
+  } finally {
+    console.error = realErr
   }
 }
 
@@ -245,6 +256,16 @@ function headerTx(h: Headers): string | null {
 /** Charged scenarios: exactly one settlement, and the engine ran only after it. */
 function settledOnceBeforeAudit(o: Outcome, before: number): boolean {
   return o.settleDelta === 1 && (o.auditCalls === 0 || auditSeen[auditSeen.length - 1] === before + 1)
+}
+
+/** A scenario where the verdict is delivered: the engine ran exactly once, after the one settlement. */
+function ranOnceAfterSettlement(o: Outcome, before: number): boolean {
+  return o.settleDelta === 1 && o.auditCalls === 1 && auditSeen[auditSeen.length - 1] === before + 1
+}
+
+/** The Worker log carries `[fault] <tag>` (the cause lives only there once responses carry codes). */
+function logged(o: Outcome, tag: string): boolean {
+  return o.logs.some((l) => l.startsWith(`[fault] ${tag} `))
 }
 
 /** After a settlement, the response must never claim the payment did not happen. */
@@ -300,6 +321,7 @@ async function main(): Promise<void> {
       check("the engine never ran and nothing was attested", o.auditCalls === 0 && att.calls.length === 0)
       check("no PAYMENT-RESPONSE header (nothing settled)", headerTx(o.paymentResponse) === null)
       check("detail is a fixed code, no raw text", codesFixed(o) && noLeak(o), o.text.slice(0, 160))
+      check("the cause is in the Worker log ([fault] x402.bind)", logged(o, "x402.bind"), o.logs.join(" | ").slice(0, 160))
       check("CORS: a browser payer can READ the 400; the body says what to send", o.paymentResponse.get("access-control-allow-origin") === "*" && /402 challenge/.test(String(o.body.remediation)))
 
       const sb2 = fac.hits.settle
@@ -330,7 +352,9 @@ async function main(): Promise<void> {
       check("attester got the FULL expected record", JSON.stringify(att.calls[0]) === JSON.stringify({ intentHash: PM_INTENT_HASH_PINNED, verdict: "PASS", riskScore: 0, flags: [], rulesetVersion: PM_RESOURCE.rulesetVersion, agent: PAYER }), JSON.stringify(att.calls[0]))
       check("content-type is application/json", (o.paymentResponse.get("content-type") ?? "").includes("application/json"))
       check("CORS: Expose-Headers lists PAYMENT-RESPONSE (browser payers can read the receipt)", /PAYMENT-RESPONSE/i.test(o.paymentResponse.get("access-control-expose-headers") ?? ""))
-      check("settled once, engine ran only after settlement", settledOnceBeforeAudit(o, settleBefore2), `delta=${o.settleDelta}`)
+      check("the engine ran EXACTLY once, after the one settlement", ranOnceAfterSettlement(o, settleBefore2), `settle=${o.settleDelta} audits=${o.auditCalls}`)
+      const expectedSchema = (attestWorker as Record<string, unknown>).schemaUIDFor ? (attestWorker as unknown as { schemaUIDFor: (r?: string) => string }).schemaUIDFor(undefined) : (attestWorker as unknown as { DJZS_SCHEMA_UID: string }).DJZS_SCHEMA_UID
+      check("the 200 body names the EAS schema it was attested under, and the terms", o.body.eas_schema === expectedSchema && o.body.terms === TERMS_URL, `${String(o.body.eas_schema)} ${String(o.body.terms)}`)
     }
 
     // ── 3. Attester not configured ──────────────────────────────────────────────────
@@ -346,15 +370,8 @@ async function main(): Promise<void> {
     console.log("4. prediction-market intent, attester throws (message begins with the RPC URL): the verdict is still returned, with a code")
     {
       const att = stubAttester("throw")
-      const logs: string[] = []
-      const realErr = console.error
-      console.error = (...a: unknown[]) => { logs.push(a.map(String).join(" ")) }
-      let o: Outcome
-      try {
-        o = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine({ audit: async () => ({ ...VERDICT_FAIL, flags: [{ code: "DJZS-S01" }, "DJZS-M03"] as never }) }), attest: att.fn, header: hdrPm })
-      } finally {
-        console.error = realErr
-      }
+      const o = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine({ audit: async () => ({ ...VERDICT_FAIL, flags: [{ code: "DJZS-S01" }, "DJZS-M03"] as never }) }), attest: att.fn, header: hdrPm })
+      const logs = o.logs
       check("attester got verdict FAIL, risk 30, flags = SORTED codes (object + string flags both mapped)", att.calls[0]?.verdict === "FAIL" && att.calls[0]?.riskScore === 30 && JSON.stringify(att.calls[0]?.flags) === JSON.stringify(["DJZS-M03", "DJZS-S01"]) && att.calls[0]?.rulesetVersion === PM_RESOURCE.rulesetVersion, JSON.stringify(att.calls[0]))
       check("200 with the verdict, charged:true", o.status === 200 && o.body.verdict === "FAIL" && o.body.charged === true, `${o.status}`)
       check("intent_hash kept; eas_uid null; eas_error is the fixed code attestation_failed", o.body.intent_hash === PM_INTENT_HASH_PINNED && o.body.eas_uid === null && o.body.eas_error === "attestation_failed", String(o.body.eas_error))
@@ -377,6 +394,7 @@ async function main(): Promise<void> {
       check("PAYMENT-RESPONSE header carries the settlement tx", headerTx(o.paymentResponse) === SETTLE_TX)
       check("never settled:false after settlement", neverSaysUnsettled(o))
       check("CORS: a browser payer can READ the AUDIT_ERROR (and its settlement_tx)", o.paymentResponse.get("access-control-allow-origin") === "*")
+      check("the cause is in the Worker log ([fault] x402.engine), scrubbed", logged(o, "x402.engine") && !o.logs.some((l) => SENTINEL_PARTS.some((p) => l.includes(p))), o.logs.join(" | ").slice(0, 200))
     }
 
     // ── 6. ANY other failure after settlement: same shape, never an escape ──────────
@@ -392,6 +410,7 @@ async function main(): Promise<void> {
       })
       check("handler RESOLVES (does not reject)", o.threw === null, o.threw ?? "")
       check("settled exactly once on the unexpected-failure path", o.settleDelta === 1, `delta=${o.settleDelta}`)
+      check("the cause is in the Worker log ([fault] x402.post_settlement)", logged(o, "x402.post_settlement"), o.logs.join(" | ").slice(0, 160))
       check("HTTP 500 AUDIT_ERROR, charged:true, settlement_tx present, detail post_settlement_error", o.status === 500 && o.body.verdict === "AUDIT_ERROR" && o.body.charged === true && o.body.settlement_tx === SETTLE_TX && o.body.detail === "post_settlement_error", `${o.status} ${o.text.slice(0, 160)}`)
       check("PAYMENT-RESPONSE header carries the settlement tx", headerTx(o.paymentResponse) === SETTLE_TX)
       check("never settled:false after settlement", neverSaysUnsettled(o))
@@ -427,6 +446,7 @@ async function main(): Promise<void> {
       fac.verifyHttp400 = false; fac.verifyReason = "stub_invalid"
       check("facilitator 4xx VerifyError is the PAYER's fault: 402 payment_verification_failed with the reason, not a 503 outage", v400.status === 402 && v400.body.error === "payment_verification_failed" && v400.body.detail === "invalid_exact_evm_payload_signature", `${v400.status} ${v400.text.slice(0, 160)}`)
       check("... nothing settled, no leak of the facilitator's message", fac.hits.settle === sbv && noLeak(v400), v400.text.slice(0, 160))
+      check("... and the cause (with the reason code) is in the log ([fault] x402.verify)", v400.logs.some((l) => l.startsWith("[fault] x402.verify ") && l.includes("invalid_exact_evm_payload_signature")), v400.logs.join(" | ").slice(0, 200))
     }
 
     // ── 8. settlement DECLINED: no verdict, nothing charged, engine never runs ──
@@ -453,7 +473,8 @@ async function main(): Promise<void> {
       check(`[${mode}] handler resolves; HTTP 502 SETTLEMENT_UNCERTAIN`, o.threw === null && o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN", `${o.threw} ${o.status} ${o.text.slice(0, 120)}`)
       check(`[${mode}] settled:null and charged:null (neither claim is available), never settled:false`, o.body.settled === null && o.body.charged === null && !/"settled"\s*:\s*false/.test(o.text) && !/"charged"\s*:\s*false/.test(o.text), o.text.slice(0, 160))
       check(`[${mode}] the payer is told not to sign again`, /do not sign a second payment/i.test(String(o.body.remediation)), String(o.body.remediation))
-      check(`[${mode}] settlePayment was attempted once, the engine and attester never ran`, fac.hits.settle - sb >= 1 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb} audits=${o.auditCalls}`)
+      check(`[${mode}] settlePayment was attempted EXACTLY once (no retry: a second request is the double charge), the engine and attester never ran`, fac.hits.settle - sb === 1 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb} audits=${o.auditCalls}`)
+      check(`[${mode}] the operator's lead on a possible lost payment is in the log: x402.settle with the payer and the intent_hash`, o.logs.some((l) => l.startsWith("[fault] x402.settle ") && l.includes(`payer=${PAYER}`) && l.includes(`intent_hash=${PM_INTENT_HASH_PINNED}`)), o.logs.join(" | ").slice(0, 300))
       check(`[${mode}] fixed code only: the facilitator's body / URL do not leak`, o.body.detail === "settlement_uncertain" && noLeak(o) && codesFixed(o), o.text.slice(0, 200))
       check(`[${mode}] the payer and the intent_hash ride along so the operator can reconcile; no tx is known`, o.body.payer === PAYER && o.body.intent_hash === PM_INTENT_HASH_PINNED && o.body.settlement_tx === null, o.text.slice(0, 260))
       check(`[${mode}] CORS: a browser payer can READ the 502 (Allow-Origin, Expose-Headers)`, o.paymentResponse.get("access-control-allow-origin") === "*" && /PAYMENT-RESPONSE/i.test(o.paymentResponse.get("access-control-expose-headers") ?? ""))
@@ -473,6 +494,17 @@ async function main(): Promise<void> {
       check(`[${mode}] settlement_tx is the facilitator's hash when it is a hash, else null (shape-validated, never raw text)`, o.body.settlement_tx === (mode === "pending" ? SETTLE_TX : null) && noLeak(o), o.text.slice(0, 260))
     }
 
+    // ── 9c. the realistic decline: the facilitator answers HTTP 402 {success:false, errorReason} ──
+    console.log("9c. a facilitator 4xx decline (SettleError): reported as uncertain, the safe direction, with the reason kept in the log")
+    {
+      fac.settleMode = "decline402"
+      const sb = fac.hits.settle
+      const o = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: stubAttester("ok").fn, header: hdrPm })
+      fac.settleMode = "ok"
+      check("502 SETTLEMENT_UNCERTAIN (the library throws SettleError and cannot tell a decline from a broadcast failure), one settle request, no engine", o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN" && fac.hits.settle - sb === 1 && o.auditCalls === 0, `${o.status} ${o.text.slice(0, 160)}`)
+      check("the facilitator's reason code survives in the log (snake_case words are not redacted)", o.logs.some((l) => l.startsWith("[fault] x402.settle ") && l.includes("insufficient_funds")), o.logs.join(" | ").slice(0, 300))
+    }
+
     // ── 10. an unexpected throw BEFORE settlement: 503, and there settled:false is true ──
     console.log("10. an unexpected throw before settlement (scope check blows up): 503 AUDIT_UNAVAILABLE with settled:false, which is true here")
     {
@@ -481,13 +513,19 @@ async function main(): Promise<void> {
       check("handler resolves; 503 AUDIT_UNAVAILABLE; settled:false charged:false", o.threw === null && o.status === 503 && o.body.error === "AUDIT_UNAVAILABLE" && o.body.settled === false && o.body.charged === false, `${o.threw} ${o.status} ${o.text.slice(0, 100)}`)
       check("and it IS true: settlePayment was never called", fac.hits.settle === sb)
       check("fixed code, no leak", o.body.detail === "audit_unavailable" && noLeak(o) && codesFixed(o), o.text.slice(0, 160))
+      check("the cause is in the Worker log ([fault] x402.handler)", logged(o, "x402.handler"), o.logs.join(" | ").slice(0, 160))
     }
 
     // ── 11. facilitator unreachable: a code, not the URL ────────────────────────────
     console.log("11. facilitator unreachable (its URL carries the sentinel): 503 FACILITATOR_UNAVAILABLE, fixed code")
     {
       const dead: X402Env = { FACILITATOR_URL: `http://127.0.0.1:9/${SENTINEL_URL.split("/").pop()}-${Date.now()}` }
-      const res = await handleX402VerifyPmTrade(new Request(PM_RESOURCE.url, { method: "POST", body: "" }), dead, stubEngine(), PM_RESOURCE)
+      const logs11: string[] = []
+      const realErr11 = console.error
+      console.error = (...a: unknown[]) => { logs11.push(a.map(String).join(" ")) }
+      let res: Response
+      try { res = await handleX402VerifyPmTrade(new Request(PM_RESOURCE.url, { method: "POST", body: "" }), dead, stubEngine(), PM_RESOURCE) } finally { console.error = realErr11 }
+      check("the cause is in the Worker log ([fault] x402.facilitator)", logs11.some((l) => l.startsWith("[fault] x402.facilitator ")), logs11.join(" | ").slice(0, 160))
       const text = await res.text()
       let body: Record<string, unknown> = {}
       try { body = JSON.parse(text) } catch { /* the check will say so */ }

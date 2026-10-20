@@ -41,6 +41,9 @@ jobs:
         run: npm ci
       - run: npm install
         working-directory: djzs-trust-mcp
+      - name: djzs-trust-mcp — typecheck (the fixed-code vocabulary is enforced by `satisfies Fault`; esbuild strips types)
+        run: npx tsc --noEmit -p .
+        working-directory: djzs-trust-mcp
       - name: djzs-trust-mcp — bundle (no deploy, no secrets)
         run: npx wrangler deploy --dry-run --outdir /tmp/dry
         working-directory: djzs-trust-mcp
@@ -78,6 +81,7 @@ jobs:
       - name: Error hygiene — no response carries raw error text (the built bundle in workerd, every dependency failing with a provider-URL sentinel)
         run: npx tsx test/error-leak.bundle.test.mjs
         working-directory: djzs-trust-mcp
+        timeout-minutes: 8
         env: { DJZS_BUNDLE: /tmp/dry/index.js }
       - name: Predeploy guard — refuses a dirty tree or a HEAD that is not origin/main; wired as wrangler's own [build] step
         run: npx tsx test/predeploy-guard.test.mjs
