@@ -603,7 +603,14 @@ async function run(
   } catch (e) {
     logFault("x402.bind", e);
     return json(
-      { error: "intent_unbindable", detail: "intent_unbindable" satisfies Fault, charged: false, settled: false, terms: TERMS_URL },
+      {
+        error: "intent_unbindable",
+        detail: "intent_unbindable" satisfies Fault,
+        charged: false,
+        settled: false,
+        remediation: "Send an intent shaped like the example in this route's 402 challenge (extensions.bazaar.info.input.body). Nothing was charged.",
+        terms: TERMS_URL,
+      },
       400,
     );
   }
@@ -617,11 +624,18 @@ async function run(
     // settlePayment signals failure by THROWING (facilitator 4xx/5xx, timeout, unparseable
     // 200). The transfer may already be broadcast, so "settled:false" would be a claim
     // nobody can back (invariant 7).
-    logFault("x402.settle", e);
-    return settlementUncertain();
+    logFault("x402.settle", e, { payer: verify.payer, intent_hash });
+    return settlementUncertain({ payer: verify.payer, intent_hash, transaction: (e as { transaction?: unknown })?.transaction });
   }
   if (!settle?.success) {
-    // The facilitator answered and said no: nothing moved.
+    // success:false WITH a transaction hash is the reference facilitator's settlement_pending
+    // (broadcast, receipt not yet confirmed), or a reverted / mismatched transfer: the transfer
+    // exists, so "nothing moved" is not a claim anyone can back (invariant 7).
+    if (typeof settle?.transaction === "string" && settle.transaction !== "") {
+      logFault("x402.settle", new Error(`success:false with a transaction (${reasonCode(settle.errorReason)})`), { payer: verify.payer, intent_hash, transaction: settle.transaction });
+      return settlementUncertain({ payer: settle.payer ?? verify.payer, intent_hash, transaction: settle.transaction });
+    }
+    // The facilitator answered, said no, and names no transaction: nothing moved.
     return json(
       { error: "settlement_failed", detail: reasonCode(settle?.errorReason), charged: false, terms: TERMS_URL },
       402,
@@ -695,15 +709,22 @@ async function run(
  * may or may not have been broadcast. 502, not 503: a 503 invites an automatic retry, and
  * a retry after a settled payment pays twice. Neither settled nor charged is claimed.
  */
-function settlementUncertain(): Response {
+export function settlementUncertain(ctx: { payer?: unknown; intent_hash?: unknown; transaction?: unknown } = {}): Response {
+  // What the payer and the operator need to reconcile, each kept only if it has the exact SHAPE of
+  // an address / 32-byte hash: a value can never smuggle error text into the answer.
+  const addr = (x: unknown) => (typeof x === "string" && /^0x[0-9a-fA-F]{40}$/.test(x) ? x : undefined);
+  const h32 = (x: unknown) => (typeof x === "string" && /^0x[0-9a-fA-F]{64}$/.test(x) ? x : undefined);
   return json(
     {
       error: "SETTLEMENT_UNCERTAIN",
       detail: "settlement_uncertain" satisfies Fault,
       settled: null,
       charged: null,
+      payer: addr(ctx.payer) ?? null,
+      intent_hash: h32(ctx.intent_hash) ?? null,
+      settlement_tx: h32(ctx.transaction) ?? null,
       remediation:
-        "The facilitator did not confirm the settlement and may have broadcast it. Do not sign a second payment until you have checked whether the first transfer left your wallet; then contact the operator with the time of this call.",
+        "The facilitator did not confirm the settlement and may have broadcast it. Do not sign a second payment until you have checked whether the first transfer left your wallet (settlement_tx, when present, is the transfer to look up); then contact the operator with the time of this call.",
       terms: TERMS_URL,
     },
     502,
@@ -727,7 +748,7 @@ function auditError(settle: SettleResult, detail: Fault): Response {
     }),
     {
       status: 500,
-      headers: { "content-type": "application/json", ...paymentResponseHeaders(settle) },
+      headers: { "content-type": "application/json", ...paymentResponseHeaders(settle), ...CORS_BASE },
     },
   );
 }
@@ -746,8 +767,10 @@ function paymentResponseHeaders(settle: SettleResult): Record<string, string> {
 }
 
 function json(obj: unknown, status: number): Response {
+  // CORS rides every JSON answer, not only the 402 and the 200: a browser payer that cannot READ
+  // "do not sign a second payment" (502) or a refusal (400) sees an opaque network error and retries.
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...CORS_BASE },
   });
 }

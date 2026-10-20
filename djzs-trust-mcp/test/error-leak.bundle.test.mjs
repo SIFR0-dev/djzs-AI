@@ -206,7 +206,7 @@ try {
     mode.settle = "http500"
     o = await post(legacyUrl, h, STRING_INTENT)
     mode.settle = "ok"
-    check("402 SETTLEMENT_FAILED, detail settlement_uncertain (the body does not say 'not charged')", o.status === 402 && o.body.error === "SETTLEMENT_FAILED" && o.body.detail === "settlement_uncertain", `${o.status} ${o.text.slice(0, 200)}`)
+    check("502 SETTLEMENT_UNCERTAIN, settled:null charged:null, and NO fresh 402 challenge that would invite a second payment", o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN" && o.body.settled === null && o.body.charged === null && !o.headers.get("payment-required"), `${o.status} ${o.text.slice(0, 200)}`)
     check("NO part of the sentinel", !leaked(o.text, o.headers), o.text.slice(0, 200))
   }
 

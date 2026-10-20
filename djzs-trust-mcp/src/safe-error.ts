@@ -43,11 +43,23 @@ export function scrub(s: string): string {
     .slice(0, 300)
 }
 
-/** Server-side only. The raw cause goes to the Worker log; the caller gets a `Fault` code. */
-export function logFault(where: string, e: unknown): void {
-  const name = e instanceof Error ? e.name : typeof e
-  const msg = e instanceof Error ? e.message : String(e)
-  console.error(`[fault] ${where} :: ${name} :: ${scrub(msg)}`)
+/**
+ * Server-side only. The raw cause goes to the Worker log; the caller gets a `Fault` code.
+ * `ctx` carries PUBLIC reconciliation values (payer address, intent hash, transaction hash): each is
+ * logged only if it has exactly that shape, so the line can be matched to on-chain events afterwards.
+ */
+export function logFault(where: string, e: unknown, ctx: { payer?: unknown; intent_hash?: unknown; transaction?: unknown } = {}): void {
+  let name = typeof e as string
+  let msg = String(e)
+  try {
+    if (e instanceof Error) { name = e.name; msg = e.message }
+  } catch { /* an exotic thrown value must not turn logging into a second failure */ }
+  const addr = (x: unknown) => (typeof x === "string" && /^0x[0-9a-fA-F]{40}$/.test(x) ? x : "-")
+  const h32 = (x: unknown) => (typeof x === "string" && /^0x[0-9a-fA-F]{64}$/.test(x) ? x : "-")
+  const extra = ctx.payer !== undefined || ctx.intent_hash !== undefined || ctx.transaction !== undefined
+    ? ` :: payer=${addr(ctx.payer)} intent_hash=${h32(ctx.intent_hash)} tx=${h32(ctx.transaction)}`
+    : ""
+  console.error(`[fault] ${where} :: ${scrub(String(name))} :: ${scrub(String(msg))}${extra}`)
 }
 
 /**

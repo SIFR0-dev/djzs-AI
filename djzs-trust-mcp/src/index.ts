@@ -39,7 +39,7 @@ import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRU
 import { logFault, reasonCode, type Fault } from "./safe-error"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
-import { handleX402VerifyPmTrade, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
+import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
@@ -1439,10 +1439,21 @@ app.post("/x402/verify", async (c) => {
   try {
     settle = await resourceServer.settlePayment(paymentPayload, matchingReq)
   } catch (e) {
-    logFault("x402.legacy.settle", e)
-    return paymentRequired("SETTLEMENT_FAILED", { detail: "settlement_uncertain" satisfies Fault })
+    // Same rule as the canonical routes (R2): a throw means the transfer may be broadcast. A 402 with a
+    // fresh challenge would invite a second payment, so answer 502 SETTLEMENT_UNCERTAIN instead.
+    const t = (e as { transaction?: unknown; payer?: unknown }) ?? {}
+    logFault("x402.legacy.settle", e, { payer: t.payer, transaction: t.transaction })
+    return settlementUncertain({ payer: t.payer, transaction: t.transaction })
   }
-  if (!settle.success) return paymentRequired(reasonCode(settle.errorReason, "SETTLEMENT_FAILED"))
+  if (!settle.success) {
+    // success:false WITH a transaction hash is settlement_pending (broadcast, not yet confirmed) or a
+    // reverted / mismatched transfer: the transfer exists, so this is uncertain too.
+    if (typeof settle.transaction === "string" && settle.transaction !== "") {
+      logFault("x402.legacy.settle", new Error(`success:false with a transaction (${reasonCode(settle.errorReason)})`), { payer: settle.payer, transaction: settle.transaction })
+      return settlementUncertain({ payer: settle.payer, transaction: settle.transaction })
+    }
+    return paymentRequired(reasonCode(settle.errorReason, "SETTLEMENT_FAILED"))
+  }
 
   // The payer is passed as the expected subject: on this transport the settling
   // address is cryptographically established, so the claim must recover to it.

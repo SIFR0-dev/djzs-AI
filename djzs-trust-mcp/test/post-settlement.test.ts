@@ -104,7 +104,7 @@ interface StubFacilitator {
   verifyValid: boolean
   verifyReason: string
   declineReason: string
-  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup"
+  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup" | "pending" | "pendingJunk"
   close: () => Promise<void>
 }
 
@@ -130,6 +130,10 @@ async function startFacilitator(): Promise<StubFacilitator> {
         if (state.settleMode === "http500") return reply(500, { error: `stub settle 500 ${SENTINEL_URL}` })
         if (state.settleMode === "garbage") { res.writeHead(200, { "content-type": "application/json" }); return res.end(`<html>${SENTINEL_URL}`) }
         if (state.settleMode === "hangup") return req.socket.destroy()
+        // The reference facilitator's settlement_pending: success:false, but the transfer WAS broadcast (a tx hash is named).
+        if (state.settleMode === "pending") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
+        // A non-empty "transaction" that is not a transaction hash: still uncertain, and never relayed.
+        if (state.settleMode === "pendingJunk") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: `see ${SENTINEL_URL}`, network: NETWORK })
         if (state.settleMode === "fail") return reply(200, { success: false, errorReason: state.declineReason, payer: PAYER, transaction: "", network: NETWORK })
         return reply(200, { success: true, payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
       }
@@ -278,6 +282,7 @@ async function main(): Promise<void> {
       check("the engine never ran and nothing was attested", o.auditCalls === 0 && att.calls.length === 0)
       check("no PAYMENT-RESPONSE header (nothing settled)", headerTx(o.paymentResponse) === null)
       check("detail is a fixed code, no raw text", codesFixed(o) && noLeak(o), o.text.slice(0, 160))
+      check("CORS: a browser payer can READ the 400; the body says what to send", o.paymentResponse.get("access-control-allow-origin") === "*" && /402 challenge/.test(String(o.body.remediation)))
 
       const sb2 = fac.hits.settle
       const miss = await paid({ env: envKey, spec: PM_RESOURCE, intent: { side: "YES", size_usd: 250 }, engine: stubEngine(), attest: att.fn, header: hdrPm })
@@ -352,6 +357,7 @@ async function main(): Promise<void> {
       check("settled exactly once on the engine-failure path", o.settleDelta === 1, `delta=${o.settleDelta}`)
       check("PAYMENT-RESPONSE header carries the settlement tx", headerTx(o.paymentResponse) === SETTLE_TX)
       check("never settled:false after settlement", neverSaysUnsettled(o))
+      check("CORS: a browser payer can READ the AUDIT_ERROR (and its settlement_tx)", o.paymentResponse.get("access-control-allow-origin") === "*")
     }
 
     // ── 6. ANY other failure after settlement: same shape, never an escape ──────────
@@ -416,6 +422,22 @@ async function main(): Promise<void> {
       check(`[${mode}] the payer is told not to sign again`, /do not sign a second payment/i.test(String(o.body.remediation)), String(o.body.remediation))
       check(`[${mode}] settlePayment was attempted once, the engine and attester never ran`, fac.hits.settle - sb >= 1 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb} audits=${o.auditCalls}`)
       check(`[${mode}] fixed code only: the facilitator's body / URL do not leak`, o.body.detail === "settlement_uncertain" && noLeak(o) && codesFixed(o), o.text.slice(0, 200))
+      check(`[${mode}] the payer and the intent_hash ride along so the operator can reconcile; no tx is known`, o.body.payer === PAYER && o.body.intent_hash === PM_INTENT_HASH_PINNED && o.body.settlement_tx === null, o.text.slice(0, 260))
+      check(`[${mode}] CORS: a browser payer can READ the 502 (Allow-Origin, Expose-Headers)`, o.paymentResponse.get("access-control-allow-origin") === "*" && /PAYMENT-RESPONSE/i.test(o.paymentResponse.get("access-control-expose-headers") ?? ""))
+    }
+
+    // ── 9b. the facilitator ANSWERS success:false, but names a transaction: the transfer exists ──
+    console.log("9b. success:false WITH a transaction hash (settlement_pending): the transfer was broadcast, so 'nothing moved' is not a claim anyone can back")
+    for (const mode of ["pending", "pendingJunk"] as const) {
+      fac.settleMode = mode
+      const sb = fac.hits.settle
+      const att = stubAttester("ok")
+      const o = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: att.fn, header: hdrPm })
+      fac.settleMode = "ok"
+      check(`[${mode}] 502 SETTLEMENT_UNCERTAIN, never the 402 settlement_failed / charged:false`, o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN" && o.body.settled === null && o.body.charged === null && !/"charged"\s*:\s*false/.test(o.text), `${o.status} ${o.text.slice(0, 200)}`)
+      check(`[${mode}] settled once, the engine and attester never ran`, fac.hits.settle - sb === 1 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb}`)
+      check(`[${mode}] the payer and intent_hash ride along`, o.body.payer === PAYER && o.body.intent_hash === PM_INTENT_HASH_PINNED, o.text.slice(0, 260))
+      check(`[${mode}] settlement_tx is the facilitator's hash when it is a hash, else null (shape-validated, never raw text)`, o.body.settlement_tx === (mode === "pending" ? SETTLE_TX : null) && noLeak(o), o.text.slice(0, 260))
     }
 
     // ── 10. an unexpected throw BEFORE settlement: 503, and there settled:false is true ──
