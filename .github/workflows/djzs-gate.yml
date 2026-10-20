@@ -69,6 +69,16 @@ jobs:
       - name: "/try: signature binds wallet, day and intent; 5 per wallet, global cap, fail closed without D1"
         run: npx tsx test/try-route.test.mjs
         working-directory: djzs-trust-mcp
+      - name: Post-settlement — bind before settle, 502 SETTLEMENT_UNCERTAIN, a settled payment never answers settled:false, error fields are fixed codes (offline)
+        run: npx tsx test/post-settlement.test.ts
+        working-directory: djzs-trust-mcp
+      - name: Error hygiene — no response carries raw error text (the built bundle in workerd, every dependency failing with a provider-URL sentinel)
+        run: npx tsx test/error-leak.bundle.test.mjs
+        working-directory: djzs-trust-mcp
+        env: { DJZS_BUNDLE: /tmp/dry/index.js }
+      - name: Predeploy guard — refuses a dirty tree or a HEAD that is not origin/main; wired as wrangler's own [build] step
+        run: npx tsx test/predeploy-guard.test.mjs
+        working-directory: djzs-trust-mcp
 
   q3-integrity:
     runs-on: ubuntu-latest

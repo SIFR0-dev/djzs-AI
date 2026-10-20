@@ -37,6 +37,7 @@ import { runVerifyPerpTrade } from "./verify-perp-trade"
 import { intentSha256, renderIntentText } from "./engine-adapter"
 import { intentHash, toDJZSIntent, type PmIntentLike, type PerpIntentLike } from "./djzs-intent"
 import { PERP_RESOURCE, PM_RESOURCE, PRICE_USD, NETWORK, TERMS_URL } from "./http-x402-bazaar.v2"
+import { logFault } from "./safe-error"
 import { PM_TAXONOMY } from "../../shared/pm-taxonomy"
 import { LOGIC_FAILURE_TAXONOMY } from "../../shared/audit-schema"
 
@@ -300,7 +301,9 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   } catch (e) {
     await releaseGlobal(db, day)
     await releaseWallet(db, day, address)
-    return json({ ok: false, error: "audit_unavailable", detail: (e instanceof Error ? e.message : String(e)).slice(0, 200), slot_released: true }, 503)
+    // The cause (an extraction provider's error body) goes to the log; a free, unauthenticated-by-payment route returns a code.
+    logFault("try.audit", e)
+    return json({ ok: false, error: "audit_unavailable", detail: "audit_unavailable", slot_released: true }, 503)
   }
 
   if (result.in_scope !== true) {
@@ -321,7 +324,8 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   }
   const verdict = result.verdict
   if (verdict !== "PASS" && verdict !== "WAIT" && verdict !== "FAIL") {
-    return json({ ok: false, error: "engine_contract_violation", detail: `unexpected verdict ${JSON.stringify(verdict)}` }, 500)
+    logFault("try.verdict", new Error(`unexpected verdict ${JSON.stringify(verdict)}`))
+    return json({ ok: false, error: "engine_contract_violation", detail: "engine_error" }, 500)
   }
   const flagsRaw = Array.isArray(result.flags) ? (result.flags as Array<Record<string, unknown>>) : []
   const flags_detail = flagsRaw

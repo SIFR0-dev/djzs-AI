@@ -93,9 +93,15 @@ export function breakevenMechanics(b: PerpBracket): Record<string, unknown> {
         ". With no drift the target prints first p0 of the time; R changes the payoff's shape, never its expectation. Not scored: never enters risk_score, the verdict or verdict_hash.",
     };
   } catch (e) {
-    return { status: "invalid", scored: false, reason: e instanceof Error ? e.message.replace(/^breakEven: /, "") : String(e) };
+    // The bracket math throws its own fixed validation sentences. Relay one of those, or a fixed code; never other text.
+    const m = e instanceof Error ? e.message.replace(/^breakEven: /, "") : "";
+    return { status: "invalid", scored: false, reason: BRACKET_REASON.test(m) ? m : "bracket_invalid" };
   }
 }
+
+/** Every caller-input sentence bracket.ts can throw (validateBracket, breakEven, noDriftHitE4, expectedHoldMs). */
+const BRACKET_REASON =
+  /^(entry, stop and target must be positive prices|a long needs stop < entry < target|a short needs target < entry < stop|bracket has no room after fees|(entryFeeBpsE2|exitFeeBpsE2|exitImpact|funding) must be an integer|noDriftHitE4: target and stop are on the wrong sides|expectedHoldMs: sigma must be positive)$/;
 
 export async function runVerifyPerpTrade(
   intent: string,

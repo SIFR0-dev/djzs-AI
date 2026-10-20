@@ -14,6 +14,19 @@
 //   2. Payment verifies, OUT of scope -> refusal returned, settlePayment NEVER called (uncharged)
 //   3. Payment verifies, IN scope   -> settle FIRST, then engine, then verdict + PAYMENT-RESPONSE
 //   4. Engine throws after settle   -> AUDIT_ERROR verdict WITH settlement receipt (manual remediation)
+//   5. NOTHING throws after settlePayment RETURNS SUCCESS -> a verdict that exists is returned 200. A failed
+//                                      attestation keeps intent_hash and gives eas_uid null, with eas_error set.
+//                                      Any other failure is AUDIT_ERROR, charged:true, with the settlement tx and
+//                                      PAYMENT-RESPONSE. settled:false is only ever answered while
+//                                      `progress.settleStarted` is false, so it cannot be a lie.
+//   6. The intent is BOUND (intentHash) BEFORE settlePayment -> an intent that cannot be bound is refused 400,
+//                                      uncharged. It is a pure function of the body, so it is the last thing
+//                                      that should be able to fail after money has moved.
+//   7. settlePayment THROWS (facilitator 4xx/5xx, timeout, unparseable 200) -> 502 SETTLEMENT_UNCERTAIN with
+//                                      settled:null charged:null. The transfer may have been broadcast, so neither
+//                                      "charged" nor "not charged" can be claimed, and the payer is told not to
+//                                      sign a second payment until the first is accounted for.
+//   8. Every error field returned to a caller is a fixed code (safe-error.ts), never raw error text.
 //
 // "LLM detects, TypeScript decides." Nothing in this file consults a model.
 
@@ -33,6 +46,7 @@ import type { FacilitatorConfig } from "@x402/core/http";
 
 import { intentHash, attestVerdict, schemaUIDFor } from "./attest-worker";
 import { toDJZSIntent, type PmIntentLike, type PerpIntentLike } from "./djzs-intent";
+import { logFault, reasonCode, type Fault } from "./safe-error";
 
 /** Ruleset the attested verdict was scored under. Bump with the taxonomy, never silently. */
 const RULESET_VERSION = "DJZS-PM-v1.0";
@@ -57,7 +71,6 @@ export const EXPECTED_ATOMIC_AMOUNT = "2000000" as const;
 export const RESOURCE_URL = "https://mcp.djzs.ai/x402/verify_pm_trade" as const;
 export const TERMS_URL = "https://djzs.ai/terms" as const;
 export const MAX_TIMEOUT_SECONDS = 120;
-
 // ------------------------------------------------------------------
 // Engine adapter seam — DJ wires this to deterministic-engine.
 // scopeCheck MUST be the same scope logic the MCP transport uses.
@@ -79,7 +92,7 @@ export interface VerdictResult {
   eas_uid?: string | null;     // EAS attestation UID on Base
   eas_tx?: string | null;
   eas_schema?: string;
-  eas_error?: string;          // set only when attestation failed; verdict still valid
+  eas_error?: string;          // a fixed code ("attester_not_configured" | "attestation_failed"), never raw error text; verdict still valid
   pol_certificate?: unknown;
 }
 
@@ -87,6 +100,18 @@ export interface EngineAdapter {
   scopeCheck(intent: unknown): Promise<ScopeResult>;
   audit(intent: unknown): Promise<VerdictResult>;
 }
+
+/**
+ * Injection seam for the one outbound call the handler cannot otherwise make
+ * offline. Production passes nothing and gets the real attestVerdict; the offline
+ * regression test passes a stub. Same convention as pol-certificate's UploadFn.
+ */
+export interface HandlerDeps {
+  attest?: typeof attestVerdict;
+}
+
+/** What settlePayment returns on the success path (kept derived from the library, not hand-typed). */
+type SettleResult = Awaited<ReturnType<x402ResourceServer["settlePayment"]>>;
 
 // Loud default: route is inert until wired. Replace at integration.
 export const NOT_WIRED: EngineAdapter = {
@@ -423,7 +448,29 @@ export async function handleX402VerifyPmTrade(
   env: X402Env,
   engine: EngineAdapter = NOT_WIRED,
   spec: ResourceSpec = PM_RESOURCE,
+  deps: HandlerDeps = {},
 ): Promise<Response> {
+  const progress = { settleStarted: false };
+  try {
+    return await run(request, env, engine, spec, deps, progress);
+  } catch (e) {
+    // Nothing that reaches here may be answered with a claim it cannot back. Before
+    // settlePayment began the payer was certainly not charged; once it began, nobody knows.
+    logFault("x402.handler", e);
+    if (progress.settleStarted) return settlementUncertain();
+    return json({ error: "AUDIT_UNAVAILABLE", detail: "audit_unavailable" satisfies Fault, settled: false, charged: false }, 503);
+  }
+}
+
+async function run(
+  request: Request,
+  env: X402Env,
+  engine: EngineAdapter,
+  spec: ResourceSpec,
+  deps: HandlerDeps,
+  progress: { settleStarted: boolean },
+): Promise<Response> {
+  const attest = deps.attest ?? attestVerdict;
   const method = request.method.toUpperCase();
 
   // S4 — preflight, answered before any facilitator work. No body, no challenge.
@@ -463,8 +510,9 @@ export async function handleX402VerifyPmTrade(
     reqs = await requirements(server);
   } catch (e) {
     // No challenge can be quoted: fail loudly, charge nobody.
+    logFault("x402.facilitator", e);
     return json(
-      { error: "FACILITATOR_UNAVAILABLE", detail: (e instanceof Error ? e.message : String(e)).slice(0, 200), terms: TERMS_URL },
+      { error: "FACILITATOR_UNAVAILABLE", detail: "facilitator_unavailable" satisfies Fault, terms: TERMS_URL },
       503,
     );
   }
@@ -510,7 +558,7 @@ export async function handleX402VerifyPmTrade(
   const verify = await server.verifyPayment(payload, reqs[0], spec.extensions);
   if (!verify?.isValid) {
     return json(
-      { error: "payment_verification_failed", detail: verify?.invalidReason ?? "unknown", terms: TERMS_URL },
+      { error: "payment_verification_failed", detail: reasonCode(verify?.invalidReason), terms: TERMS_URL },
       402,
     );
   }
@@ -551,81 +599,165 @@ export async function handleX402VerifyPmTrade(
     );
   }
 
-  // 4 — settle FIRST (no free verdicts), then run the deterministic engine.
-  const settle = await server.settlePayment(payload, reqs[0], spec.extensions);
-  if (!settle?.success) {
+  // 3a — BIND the intent BEFORE any money moves (invariant 6). intentHash(toDJZSIntent(intent))
+  // is a pure function of the body and the only caller-input step between the engine's verdict
+  // and the receipt that can throw (viem rejects a body the mapping cannot encode: a missing
+  // key, a negative size). An intent that cannot be bound is refused here, uncharged, rather
+  // than settled and then lost. On a tree whose toDJZSIntent maps prediction-market intents
+  // only, that includes every perp-shaped intent: fail closed. Ruled 2026-10-20: production's
+  // perp_trade action and perp branch in toDJZSIntent are the mapping.
+  let intent_hash: ReturnType<typeof intentHash>;
+  try {
+    // PM and perp intents both map (perp: instrument -> market, levels -> params_hash; djzs-intent.ts).
+    // The cast is the point: the body is untrusted, and whether it binds is what this try finds out.
+    intent_hash = intentHash(toDJZSIntent(intent as PmIntentLike | PerpIntentLike));
+  } catch (e) {
+    logFault("x402.bind", e);
     return json(
-      { error: "settlement_failed", detail: settle?.errorReason ?? "unknown", charged: false, terms: TERMS_URL },
+      { error: "intent_unbindable", detail: "intent_unbindable" satisfies Fault, charged: false, settled: false, terms: TERMS_URL },
+      400,
+    );
+  }
+
+  // 4 — settle FIRST (no free verdicts), then run the deterministic engine.
+  progress.settleStarted = true;
+  let settle: SettleResult;
+  try {
+    settle = await server.settlePayment(payload, reqs[0], spec.extensions);
+  } catch (e) {
+    // settlePayment signals failure by THROWING (facilitator 4xx/5xx, timeout, unparseable
+    // 200). The transfer may already be broadcast, so "settled:false" would be a claim
+    // nobody can back (invariant 7).
+    logFault("x402.settle", e);
+    return settlementUncertain();
+  }
+  if (!settle?.success) {
+    // The facilitator answered and said no: nothing moved.
+    return json(
+      { error: "settlement_failed", detail: reasonCode(settle?.errorReason), charged: false, terms: TERMS_URL },
       402,
     );
   }
 
-  let result: VerdictResult;
+  // ── payment SETTLED. ──────────────────────────────────────────────────────
+  // Invariant 5: from here to the end of this function NOTHING may throw. The
+  // route-level catch in index.ts can only speak for what happened before settlement, and
+  // after a settlement it would also lose the verdict the payer paid for. So the whole
+  // tail sits in one try: a verdict that exists is returned 200 (a failed attestation
+  // degrades to nulls + eas_error), and anything else is AUDIT_ERROR with
+  // charged:true, the settlement tx and the PAYMENT-RESPONSE header.
   try {
-    result = await engine.audit(intent);
-  } catch (e) {
-    // Charged-but-errored: surfaced honestly with the receipt for manual remediation.
+    let result: VerdictResult;
+    try {
+      result = await engine.audit(intent);
+    } catch (e) {
+      // Charged-but-errored: surfaced honestly with the receipt for manual remediation.
+      logFault("x402.engine", e);
+      return auditError(settle, "engine_error");
+    }
+
+    // 5a — EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
+    // The v2 binding key was computed before settlement (3a). The attestation is the one
+    // fallible step left and it is fail-soft: a charged, valid verdict is never hostage to it.
+    let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: Fault | undefined;
+    if (!env.ATTESTER_KEY) {
+      eas_error = "attester_not_configured";
+    } else {
+      try {
+        const a = await attest(
+          { DJZS_ATTESTER_KEY: env.ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL },
+          {
+            intentHash: intent_hash,
+            verdict: result.verdict as "PASS" | "WAIT" | "FAIL",
+            riskScore: result.risk_score,
+            flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
+            rulesetVersion: spec.rulesetVersion,
+            agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
+            // v3 (DJZS-VR-v1.0): the rest of the tally, so the resolver can derive the verdict itself.
+            // Used only when the Worker is configured with the v3 resolver; v2 ignores it.
+            ...(result.tally ? { tally: { unknownCount: result.tally.unknown_count, bounded: result.tally.bounded, thesisPresent: result.tally.thesis_present } } : {}),
+          },
+          env.EAS_RESOLVER_ADDRESS,
+        );
+        eas_uid = a.uid; eas_tx = a.txHash;
+      } catch (e) {
+        // viem's HttpRequestError message starts with the RPC URL: it stays in the log.
+        logFault("x402.attest", e);
+        eas_error = "attestation_failed";
+      }
+    }
+    // 5 — verdict + settlement evidence.
     return new Response(
-      JSON.stringify({
-        verdict: "AUDIT_ERROR",
-        detail: e instanceof Error ? e.message : "engine_error",
-        charged: true,
-        remediation: "contact operator with intent_sha256 + settlement tx",
-        terms: TERMS_URL,
-      }),
+      JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: schemaUIDFor(env.EAS_RESOLVER_ADDRESS), ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
       {
-        status: 500,
+        status: 200,
         headers: {
           "content-type": "application/json",
-          "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle),
+          ...paymentResponseHeaders(settle),
           ...CORS_BASE,
         },
       },
     );
+  } catch (e) {
+    // Anything else after settlement: same shape as an engine failure, never settled:false.
+    logFault("x402.post_settlement", e);
+    return auditError(settle, "post_settlement_error");
   }
+}
 
-  // 5a — v2 binding + EAS receipt. ADDITIVE: intent_sha256 is untouched (pipeline key, cert commit).
-  // Fail-soft: a charged, valid verdict is never hostage to a second transaction.
-  // PM and perp intents both map (perp: instrument -> market, levels -> params_hash; djzs-intent.ts).
-  // The engine has already accepted this object, so the shape cast states what was audited.
-  const intent_hash = intentHash(toDJZSIntent(intent as PmIntentLike | PerpIntentLike));
-  let eas_uid: string | null = null, eas_tx: string | null = null, eas_error: string | undefined;
-  if (!env.ATTESTER_KEY) {
-    eas_error = "attester_not_configured";
-  } else {
-    try {
-      const a = await attestVerdict(
-        { DJZS_ATTESTER_KEY: env.ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL },
-        {
-          intentHash: intent_hash,
-          verdict: result.verdict as "PASS" | "WAIT" | "FAIL",
-          riskScore: result.risk_score,
-          flags: (result.flags as unknown[]).map((f) => (typeof f === "string" ? f : (f as { code: string }).code)).sort(),
-          rulesetVersion: spec.rulesetVersion,
-          agent: (((settle as { payer?: string }).payer ?? "0x0000000000000000000000000000000000000000") as `0x${string}`),
-          // v3 (DJZS-VR-v1.0): the rest of the tally, so the resolver can derive the verdict itself.
-          // Used only when the Worker is configured with the v3 resolver; v2 ignores it.
-          ...(result.tally ? { tally: { unknownCount: result.tally.unknown_count, bounded: result.tally.bounded, thesisPresent: result.tally.thesis_present } } : {}),
-        },
-        env.EAS_RESOLVER_ADDRESS,
-      );
-      eas_uid = a.uid; eas_tx = a.txHash;
-    } catch (e) {
-      eas_error = (e instanceof Error ? e.message : String(e)).slice(0, 160);
-    }
-  }
-  // 5 — verdict + settlement evidence.
-  return new Response(
-    JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: schemaUIDFor(env.EAS_RESOLVER_ADDRESS), ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
+/**
+ * The facilitator did not confirm the settlement (settlePayment threw), so the transfer
+ * may or may not have been broadcast. 502, not 503: a 503 invites an automatic retry, and
+ * a retry after a settled payment pays twice. Neither settled nor charged is claimed.
+ */
+function settlementUncertain(): Response {
+  return json(
     {
-      status: 200,
-      headers: {
-        "content-type": "application/json",
-        "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle),
-        ...CORS_BASE,
-      },
+      error: "SETTLEMENT_UNCERTAIN",
+      detail: "settlement_uncertain" satisfies Fault,
+      settled: null,
+      charged: null,
+      remediation:
+        "The facilitator did not confirm the settlement and may have broadcast it. Do not sign a second payment until you have checked whether the first transfer left your wallet; then contact the operator with the time of this call.",
+      terms: TERMS_URL,
+    },
+    502,
+  );
+}
+
+/**
+ * Charged-but-errored: the payment SETTLED, so this answers charged:true with the
+ * settlement tx (body) and the PAYMENT-RESPONSE header, for manual remediation. The
+ * one shape for every failure after settlement. It cannot throw.
+ */
+function auditError(settle: SettleResult, detail: Fault): Response {
+  return new Response(
+    JSON.stringify({
+      verdict: "AUDIT_ERROR",
+      detail,
+      charged: true,
+      settlement_tx: (settle as { transaction?: string }).transaction ?? null,
+      remediation: "contact operator with intent_sha256 + settlement tx",
+      terms: TERMS_URL,
+    }),
+    {
+      status: 500,
+      headers: { "content-type": "application/json", ...paymentResponseHeaders(settle), ...CORS_BASE },
     },
   );
+}
+
+/**
+ * PAYMENT-RESPONSE for a settled payment. Encoding the receipt must never be what
+ * loses the verdict, so an encoding failure omits the header (on AUDIT_ERROR the tx is
+ * also in the body; the 200 verdict body does not carry it).
+ */
+function paymentResponseHeaders(settle: SettleResult): Record<string, string> {
+  try {
+    return { "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle) };
+  } catch {
+    return {};
+  }
 }
 
 function json(obj: unknown, status: number): Response {

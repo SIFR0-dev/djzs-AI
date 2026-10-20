@@ -36,6 +36,7 @@ export function wilsonLowerBound(successes: number, n: number, z = 1.96): number
   return Math.max(0, (centre - margin) / denom)
 }
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
+import { logFault, reasonCode, type Fault } from "./safe-error"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
 import { handleX402VerifyPmTrade, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
@@ -180,6 +181,26 @@ interface TelemetryDB {
  * the env binding, never on module scope. The two registry tools are env-independent
  * and behave identically to before; verify_pm_trade needs env.ANTHROPIC_API_KEY.
  */
+/**
+ * Wrap a tool handler so an exception becomes a fixed-code isError result. Without it the MCP SDK
+ * returns the exception's message to the caller, and agents/x402's withX402 returns
+ * `Tool execution failed: ${String(e)}`: an Anthropic, Irys or RPC error body, URL included.
+ * isError also keeps the paid tools UNCHARGED (withX402 settles only a non-error result).
+ */
+function guardTool<A extends unknown[], R>(tool: string, fn: (...a: A) => Promise<R>) {
+  return async (...a: A): Promise<R | { content: { type: "text"; text: string }[]; isError: true }> => {
+    try {
+      return await fn(...a)
+    } catch (e) {
+      logFault(`mcp.${tool}`, e)
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify({ tool, error: "TOOL_ERROR", detail: "tool_error" satisfies Fault }) }],
+        isError: true as const,
+      }
+    }
+  }
+}
+
 function buildServer(env: Env): McpServer {
   // A10: the facilitator is CDP, its config (url + createAuthHeaders JWT signer)
   // built from request-scoped secrets. createFacilitatorConfig takes the keys
@@ -204,7 +225,7 @@ function buildServer(env: Env): McpServer {
       from_ms: z.number().int().optional().describe("Window start (epoch ms). Default path auto-narrows (14d then 3d) to stay under the mainnet index timeout; pass an explicit value to reach older certificates (used as-is)."),
       to_ms: z.number().int().optional().describe("Window end (epoch ms). Defaults to now + 1h.")
     }
-  }, async ({ targetSystem, verdict, tier, limit, from_ms, to_ms }) => {
+  }, guardTool("query_pol_certificates", async ({ targetSystem, verdict, tier, limit, from_ms, to_ms }) => {
     const tags: Array<{ name: string; values: string[] }> = [
       { name: "Protocol", values: ["ProofOfLogic"] },
       { name: "application-id", values: ["DJZS-Oracle"] }
@@ -236,15 +257,15 @@ function buildServer(env: Env): McpServer {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, variables: { tags, first: limit } })
       })
-      if (!response.ok) { lastErr = `Irys HTTP ${response.status}`; continue }
+      if (!response.ok) { lastErr = `irys_http_${response.status}`; continue }
       const j = await response.json() as any
-      if (j.errors?.length) { lastErr = j.errors; continue }
+      if (j.errors?.length) { lastErr = "irys_graphql_error"; continue }
       data = j.data
       usedFromMs = fromMs
       break
     }
     if (!data) {
-      return { content: [{ type: "text" as const, text: `Irys query failed on all windows (pass a narrower from_ms/to_ms): ${JSON.stringify(lastErr)}` }], isError: true }
+      return { content: [{ type: "text" as const, text: `Irys query failed on all windows (pass a narrower from_ms/to_ms): ${lastErr}` }], isError: true }
     }
 
     const certs = await Promise.all(data.transactions.edges.map(async ({ node }: any) => {
@@ -292,7 +313,7 @@ function buildServer(env: Env): McpServer {
         certificates: certs
       }, null, 2) }]
     }
-  })
+  }))
 
   server.registerTool("query_agent_trust", {
     title: "Query DJZS Agent Trust Score",
@@ -300,7 +321,7 @@ function buildServer(env: Env): McpServer {
     inputSchema: {
       agentAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").describe("Agent wallet address (0x-prefixed)")
     }
-  }, async ({ agentAddress }) => {
+  }, guardTool("query_agent_trust", async ({ agentAddress }) => {
     const jsonText = (o: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(o, null, 2) }] })
     if (!env.SUBGRAPH_URL) {
       return { ...jsonText({ status: "unavailable", detail: "SUBGRAPH_URL not configured on this Worker; trust index not wired." }), isError: true }
@@ -328,12 +349,13 @@ function buildServer(env: Env): McpServer {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, variables: { id } })
       })
-      if (!resp.ok) return { ...jsonText({ status: "error", detail: `subgraph HTTP ${resp.status}` }), isError: true }
+      if (!resp.ok) return { ...jsonText({ status: "error", detail: `subgraph_http_${resp.status}` }), isError: true }
       const j = await resp.json() as { data?: { agent: Record<string, unknown> | null }, errors?: unknown[] }
-      if (j.errors?.length) return { ...jsonText({ status: "error", detail: `subgraph GraphQL errors: ${JSON.stringify(j.errors).slice(0, 200)}` }), isError: true }
+      if (j.errors?.length) return { ...jsonText({ status: "error", detail: "subgraph_graphql_error" satisfies Fault }), isError: true }
       agent = j.data?.agent ?? null
     } catch (e) {
-      return { ...jsonText({ status: "error", detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) }), isError: true }
+      logFault("mcp.subgraph", e)
+      return { ...jsonText({ status: "error", detail: "subgraph_unreachable" satisfies Fault }), isError: true }
     }
 
     if (!agent) {
@@ -400,7 +422,7 @@ function buildServer(env: Env): McpServer {
       interpretation:
         "No threshold is applied here and no action is returned. As a starting point a lower bound above 0.3, or DJZS-S01/DJZS-X01 firing more than once, is worth refusing on - but that is a recommendation for the caller to weigh against their own exposure, not a rule this tool enforces.",
     })
-  })
+  }))
 
   // Step 2 (Path B ruling 2026-07-12): the ONLY paid tool. The handler body is
   // the Step 1 handler byte-identical; withX402 owns the 402/verify/settle
@@ -445,7 +467,7 @@ function buildServer(env: Env): McpServer {
         .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
     { title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)" },
-    async ({ intent, target_system, target_system_subject, target_system_signature, agent_address }) => {
+    guardTool("verify_pm_trade", async ({ intent, target_system, target_system_subject, target_system_signature, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -498,10 +520,8 @@ function buildServer(env: Env): McpServer {
           )
           pol_certificate = { status: "anchored", node: nodeUrl, ...anchored }
         } catch (e) {
-          pol_certificate = {
-            status: "error",
-            detail: (e instanceof Error ? e.message : String(e)).slice(0, 300)
-          }
+          logFault("mcp.anchor", e)
+          pol_certificate = { status: "error", detail: "anchor_failed" satisfies Fault }
         }
       }
     }
@@ -536,7 +556,7 @@ function buildServer(env: Env): McpServer {
     if (pol_certificate) response = { ...response, pol_certificate }
     if (trust_score) response = { ...response, trust_score }
     return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
-    }
+    })
   )
 
   // S6a — top-level title, alongside the annotations.title kept above.
@@ -578,7 +598,7 @@ function buildServer(env: Env): McpServer {
         .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
     { title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)" },
-    async ({ intent, bracket, target_system, target_system_subject, target_system_signature, agent_address }) => {
+    guardTool("verify_perp_trade", async ({ intent, bracket, target_system, target_system_subject, target_system_signature, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
         content: [{ type: "text" as const, text: JSON.stringify({
@@ -632,10 +652,8 @@ function buildServer(env: Env): McpServer {
           )
           pol_certificate = { status: "anchored", node: nodeUrl, ...anchored }
         } catch (e) {
-          pol_certificate = {
-            status: "error",
-            detail: (e instanceof Error ? e.message : String(e)).slice(0, 300)
-          }
+          logFault("mcp.anchor", e)
+          pol_certificate = { status: "error", detail: "anchor_failed" satisfies Fault }
         }
       }
     }
@@ -670,7 +688,7 @@ function buildServer(env: Env): McpServer {
     if (pol_certificate) response = { ...response, pol_certificate }
     if (trust_score) response = { ...response, trust_score }
     return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
-    }
+    })
   )
 
   // S6a — top-level title, alongside the annotations.title kept above.
@@ -846,7 +864,8 @@ app.get("/health/x402", async (c) => {
         const b = await attesterBalance({ DJZS_ATTESTER_KEY: env.DJZS_ATTESTER_KEY, BASE_RPC_URL: env.BASE_RPC_URL })
         return { configured: true, address: b.address, eth: b.eth, low: b.low }
       } catch (e) {
-        return { configured: true, error: (e instanceof Error ? e.message : String(e)).slice(0, 120) }
+        logFault("health.attester", e)
+        return { configured: true, error: "attester_balance_unavailable" satisfies Fault }
       }
     })()
     const kinds = (supported?.kinds ?? []) as Array<{ network?: string }>
@@ -858,10 +877,11 @@ app.get("/health/x402", async (c) => {
       attester
     }, networkSupported ? 200 : 502)
   } catch (e) {
+    logFault("health.x402", e)
     return c.json({
       network: X402_NETWORK, caip2, facilitator_configured: true,
       network_supported: false,
-      detail: (e instanceof Error ? e.message : String(e)).slice(0, 200)
+      detail: "facilitator_unavailable" satisfies Fault
     }, 502)
   }
 })
@@ -884,7 +904,8 @@ app.post("/q3/anchor", async (c) => {
     const out = await anchorQ3(v.req, env.IRYS_UPLOAD_KEY, env.IRYS_NODE_URL ?? DEFAULT_IRYS_NODE_URL)
     return c.json({ status: "anchored", date: v.req.date, protocol_version: v.req.protocol_version, ...out })
   } catch (e) {
-    return c.json({ status: "error", detail: (e instanceof Error ? e.message : String(e)).slice(0, 300) }, 502)
+    logFault("q3.anchor", e)
+    return c.json({ status: "error", detail: "anchor_failed" satisfies Fault }, 502)
   }
 })
 
@@ -901,9 +922,9 @@ app.post("/q3/anchor", async (c) => {
  * Reads env + one eth_call. Moves no money, signs nothing, echoes no secret.
  */
 // Public error hygiene: /health/writer must never echo raw transport errors.
-// Known classes map to fixed strings; unknowns get URLs stripped to host and
-// user@host tokens removed, hard-capped. Raw messages can carry the RPC URL
-// (which embeds the API key) or pasted terminal content - both have happened.
+// Every outcome is a FIXED string, unknowns included. Raw messages can carry the RPC URL
+// (which embeds the API key) or pasted terminal content - both have happened - and the
+// scrub-and-truncate this replaced still let a provider hostname through (ruled 2026-10-20).
 const classifyRpcError = (s: unknown): string => {
   const t = String(s ?? "")
   if (!t) return "ok"
@@ -912,11 +933,8 @@ const classifyRpcError = (s: unknown): string => {
   if (/timeout|timed out/i.test(t)) return "rpc error: timeout"
   if (/401|403|unauthorized|authenticated/i.test(t)) return "rpc error: auth rejected by provider"
   if (/nonce/i.test(t)) return "rpc error: nonce conflict"
-  const scrubbed = t
-    .replace(/(https?:\/\/[^\/\s"']+)[^\s"']*/g, "$1/[redacted]")
-    .replace(/\S+@\S+/g, "[redacted]")
-    .slice(0, 80)
-  return "rpc error: " + scrubbed
+  if (/no result/i.test(t)) return "rpc error: no result"
+  return "rpc error: unclassified"
 }
 
 /**
@@ -1043,7 +1061,8 @@ async function anchorAndScore(
       )
       pol_certificate = { status: "anchored", node: nodeUrl, ...anchored }
     } catch (e) {
-      pol_certificate = { status: "error", detail: (e instanceof Error ? e.message : String(e)).slice(0, 300) }
+      logFault("x402.anchor", e)
+      pol_certificate = { status: "error", detail: "anchor_failed" satisfies Fault }
     }
   }
 
@@ -1335,7 +1354,8 @@ app.post("/x402/verify", async (c) => {
   try {
     await resourceServer.initialize()
   } catch (e) {
-    return c.json({ error: "FACILITATOR_UNAVAILABLE", detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) }, 503)
+    logFault("x402.legacy.facilitator", e)
+    return c.json({ error: "FACILITATOR_UNAVAILABLE", detail: "facilitator_unavailable" satisfies Fault }, 503)
   }
 
   let requirements
@@ -1382,7 +1402,7 @@ app.post("/x402/verify", async (c) => {
 
   try {
     const vr = await resourceServer.verifyPayment(paymentPayload, matchingReq)
-    if (!vr.isValid) return paymentRequired(vr.invalidReason ?? "INVALID_PAYMENT", { payer: vr.payer })
+    if (!vr.isValid) return paymentRequired(reasonCode(vr.invalidReason, "INVALID_PAYMENT"), { payer: vr.payer })
   } catch {
     return paymentRequired("INVALID_PAYMENT")
   }
@@ -1420,7 +1440,8 @@ app.post("/x402/verify", async (c) => {
     result = (await runVerifyPmTrade(intent, buildAnthropicModelFn(env.ANTHROPIC_API_KEY))) as unknown as Record<string, unknown>
   } catch (e) {
     // Handler failure is NOT the payer's fault: refuse and do not settle.
-    return paymentRequired("AUDIT_FAILED", { detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) })
+    logFault("x402.legacy.audit", e)
+    return paymentRequired("AUDIT_FAILED", { detail: "extraction_failed" satisfies Fault })
   }
 
   // OUT-OF-SCOPE = NOT CHARGED. Same rule as /mcp, enforced by returning before
@@ -1434,9 +1455,10 @@ app.post("/x402/verify", async (c) => {
   try {
     settle = await resourceServer.settlePayment(paymentPayload, matchingReq)
   } catch (e) {
-    return paymentRequired("SETTLEMENT_FAILED", { detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) })
+    logFault("x402.legacy.settle", e)
+    return paymentRequired("SETTLEMENT_FAILED", { detail: "settlement_uncertain" satisfies Fault })
   }
-  if (!settle.success) return paymentRequired(settle.errorReason ?? "SETTLEMENT_FAILED")
+  if (!settle.success) return paymentRequired(reasonCode(settle.errorReason, "SETTLEMENT_FAILED"))
 
   // The payer is passed as the expected subject: on this transport the settling
   // address is cryptographically established, so the claim must recover to it.
@@ -1507,8 +1529,10 @@ app.all("/x402/verify_pm_trade", async (c) => {
   try {
     return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env))
   } catch (e) {
-    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
-    return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)
+    // handleX402VerifyPmTrade answers its own failures and owns what settled and what did not.
+    // This is the last resort, so it claims nothing about the money.
+    logFault("x402.route", e)
+    return c.json({ error: "AUDIT_UNAVAILABLE", detail: "audit_unavailable" satisfies Fault }, 503)
   }
 })
 
@@ -1520,8 +1544,8 @@ app.all("/try/verdict", async (c) => {
   try {
     return await handleTryVerdict(c.req.raw, c.env)
   } catch (e) {
-    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
-    return c.json({ ok: false, error: "try_unavailable", detail }, 503)
+    logFault("try.route", e)
+    return c.json({ ok: false, error: "try_unavailable", detail: "audit_unavailable" satisfies Fault }, 503)
   }
 })
 
@@ -1539,8 +1563,10 @@ app.all("/x402/verify_perp_trade", async (c) => {
   try {
     return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env, undefined, runVerifyPerpTrade as unknown as typeof runVerifyPmTrade), PERP_RESOURCE)
   } catch (e) {
-    const detail = (e instanceof Error ? e.message : String(e)).slice(0, 200)
-    return c.json({ error: "AUDIT_UNAVAILABLE", detail, settled: false, charged: false }, 503)
+    // handleX402VerifyPmTrade answers its own failures and owns what settled and what did not.
+    // This is the last resort, so it claims nothing about the money.
+    logFault("x402.route", e)
+    return c.json({ error: "AUDIT_UNAVAILABLE", detail: "audit_unavailable" satisfies Fault }, 503)
   }
 })
 
