@@ -37,7 +37,11 @@ export const CORRECTION_ANCHOR_PATH = "/corrections/anchor"
  */
 function anchorFault(e: unknown): { detail: Fault; irys_id_unverified?: string } {
   const m = e instanceof Error ? e.message : ""
-  if (/gateway served different bytes/.test(m)) return { detail: "anchor_gateway_mismatch" }
+  if (/gateway served different bytes/.test(m)) {
+    // The item WAS uploaded (permanent): the operator must be able to find the orphan.
+    const id = /different bytes for ([A-Za-z0-9_-]{43}):/.exec(m)?.[1]
+    return { detail: "anchor_gateway_mismatch", ...(id ? { irys_id_unverified: id } : {}) }
+  }
   if (/gateway did not serve it/.test(m)) {
     const id = /uploaded as ([A-Za-z0-9_-]{43}) but/.exec(m)?.[1]
     return { detail: "anchor_unretrievable", ...(id ? { irys_id_unverified: id } : {}) }

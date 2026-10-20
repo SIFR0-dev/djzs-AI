@@ -46,7 +46,7 @@ import type { FacilitatorConfig } from "@x402/core/http";
 
 import { intentHash, attestVerdict, DJZS_SCHEMA_UID } from "./attest-worker";
 import { toDJZSIntent } from "./djzs-intent";
-import { logFault, reasonCode, type Fault } from "./safe-error";
+import { logFault, reasonCode, addressOnly, hash32Only, type Fault } from "./safe-error";
 
 /** Ruleset the attested verdict was scored under. Bump with the taxonomy, never silently. */
 const RULESET_VERSION = "DJZS-PM-v1.0";
@@ -545,7 +545,18 @@ async function run(
   } catch {
     return json({ error: "malformed_payment_header", terms: TERMS_URL }, 400);
   }
-  const verify = await server.verifyPayment(payload, reqs[0], spec.extensions);
+  let verify: Awaited<ReturnType<x402ResourceServer["verifyPayment"]>>;
+  try {
+    verify = await server.verifyPayment(payload, reqs[0], spec.extensions);
+  } catch (e) {
+    // @x402/core throws VerifyError when the facilitator answers a 4xx carrying {isValid:false, invalidReason}
+    // (a bad signature, an expired authorization): the PAYER's fault, nothing moved. It is a refusal, not an outage.
+    if ((e as { name?: unknown })?.name === "VerifyError") {
+      logFault("x402.verify", e, { payer: (e as { payer?: unknown }).payer });
+      return json({ error: "payment_verification_failed", detail: reasonCode((e as { invalidReason?: unknown }).invalidReason), terms: TERMS_URL }, 402);
+    }
+    throw e;
+  }
   if (!verify?.isValid) {
     return json(
       { error: "payment_verification_failed", detail: reasonCode(verify?.invalidReason), terms: TERMS_URL },
@@ -680,8 +691,9 @@ async function run(
         );
         eas_uid = a.uid; eas_tx = a.txHash;
       } catch (e) {
-        // viem's HttpRequestError message starts with the RPC URL: it stays in the log.
-        logFault("x402.attest", e);
+        // viem's HttpRequestError message starts with the RPC URL: it stays in the log. A broadcast attestation
+        // that did not confirm is permanent on chain, so its public tx hash is logged beside the scrubbed cause.
+        logFault("x402.attest", e, { transaction: (e as { txHash?: unknown })?.txHash });
         eas_error = "attestation_failed";
       }
     }
@@ -712,17 +724,15 @@ async function run(
 export function settlementUncertain(ctx: { payer?: unknown; intent_hash?: unknown; transaction?: unknown } = {}): Response {
   // What the payer and the operator need to reconcile, each kept only if it has the exact SHAPE of
   // an address / 32-byte hash: a value can never smuggle error text into the answer.
-  const addr = (x: unknown) => (typeof x === "string" && /^0x[0-9a-fA-F]{40}$/.test(x) ? x : undefined);
-  const h32 = (x: unknown) => (typeof x === "string" && /^0x[0-9a-fA-F]{64}$/.test(x) ? x : undefined);
   return json(
     {
       error: "SETTLEMENT_UNCERTAIN",
       detail: "settlement_uncertain" satisfies Fault,
       settled: null,
       charged: null,
-      payer: addr(ctx.payer) ?? null,
-      intent_hash: h32(ctx.intent_hash) ?? null,
-      settlement_tx: h32(ctx.transaction) ?? null,
+      payer: addressOnly(ctx.payer) ?? null,
+      intent_hash: hash32Only(ctx.intent_hash) ?? null,
+      settlement_tx: hash32Only(ctx.transaction) ?? null,
       remediation:
         "The facilitator did not confirm the settlement and may have broadcast it. Do not sign a second payment until you have checked whether the first transfer left your wallet (settlement_tx, when present, is the transfer to look up); then contact the operator with the time of this call.",
       terms: TERMS_URL,

@@ -59,6 +59,7 @@ function check(name: string, cond: boolean, detail?: string): void {
 // ── fixtures ────────────────────────────────────────────────────────────────────────
 const PAYER = "0x1111111111111111111111111111111111111111"
 const SETTLE_TX = "0x" + "cd".repeat(32)
+const ATTEST_TX = "0x" + "ee".repeat(32) // a broadcast attestation whose receipt never confirmed
 /** Shaped like a provider RPC URL with the key in the path. If any of it reaches a response, the leak is real. */
 const SENTINEL_URL = "https://rpc.sentinel.invalid/v2/KEYSENTINEL0123456789abcdef"
 const SENTINEL_PARTS = ["KEYSENTINEL", "sentinel.invalid"]
@@ -103,6 +104,7 @@ interface StubFacilitator {
   hits: Record<string, number>
   verifyValid: boolean
   verifyReason: string
+  verifyHttp400: boolean
   declineReason: string
   settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup" | "pending" | "pendingJunk"
   close: () => Promise<void>
@@ -111,7 +113,7 @@ interface StubFacilitator {
 /** Loopback facilitator speaking the real wire contract: GET /supported, POST /verify, POST /settle. */
 async function startFacilitator(): Promise<StubFacilitator> {
   const state: StubFacilitator = {
-    url: "", hits: { supported: 0, verify: 0, settle: 0 }, verifyValid: true, verifyReason: "stub_invalid",
+    url: "", hits: { supported: 0, verify: 0, settle: 0 }, verifyValid: true, verifyReason: "stub_invalid", verifyHttp400: false,
     declineReason: "stub_settle_declined", settleMode: "ok", close: async () => {},
   }
   const server: Server = createServer((req, res) => {
@@ -124,6 +126,8 @@ async function startFacilitator(): Promise<StubFacilitator> {
     req.on("data", () => {})
     req.on("end", () => {
       if (path === "supported") return reply(200, { kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK }], extensions: [], signers: {} })
+      // @x402/core throws VerifyError for a facilitator 4xx that carries {isValid:false, invalidReason}.
+      if (path === "verify" && state.verifyHttp400) return reply(400, { isValid: false, invalidReason: state.verifyReason, invalidMessage: `bad sig ${SENTINEL_URL}`, payer: PAYER })
       if (path === "verify") return reply(200, state.verifyValid ? { isValid: true, payer: PAYER } : { isValid: false, invalidReason: state.verifyReason, payer: PAYER })
       if (path === "settle") {
         // The 500 body and the garbage body carry the sentinel: the library may fold a response body into the error it throws.
@@ -168,7 +172,7 @@ function stubAttester(mode: "ok" | "throw") {
   const calls: AttestCall[] = []
   const fn = async (_env: unknown, v: AttestCall) => {
     calls.push(v)
-    if (mode === "throw") throw new Error(`HTTP request failed.\n\nURL: ${SENTINEL_URL}\nRequest body: {"method":"eth_sendRawTransaction"}\n\nDetails: fetch failed`)
+    if (mode === "throw") throw Object.assign(new Error(`HTTP request failed.\n\nURL: ${SENTINEL_URL}\nRequest body: {"method":"eth_sendRawTransaction"}\n\nDetails: fetch failed`), { txHash: ATTEST_TX })
     return { uid: ("0x" + "ee".repeat(32)) as `0x${string}`, txHash: ("0x" + "ff".repeat(32)) as `0x${string}`, block: 1n }
   }
   return { calls, fn: fn as never }
@@ -343,6 +347,7 @@ async function main(): Promise<void> {
       check("the RPC URL / key appear in NO response body or header", noLeak(o), o.text.slice(0, 200))
       check("every detail / eas_error is in the fixed vocabulary", codesFixed(o))
       check("the Worker log carries the cause ([fault] x402.attest) ...", logs.some((l) => l.includes("[fault] x402.attest")), logs.join(" | ").slice(0, 200))
+      check("... and the PUBLIC tx hash of the broadcast attestation, so the permanent record can be found", logs.some((l) => l.includes("[fault] x402.attest") && l.includes(`tx=${ATTEST_TX}`)), logs.join(" | ").slice(0, 300))
       check("... with the URL and key scrubbed from the log line too", !logs.some((l) => SENTINEL_PARTS.some((p) => l.includes(p))), logs.join(" | ").slice(0, 200))
       check("never settled:false after settlement", neverSaysUnsettled(o))
     }
@@ -394,6 +399,14 @@ async function main(): Promise<void> {
       fac.verifyValid = true
       check("invalid payment: 402 payment_verification_failed, code-shaped reason relayed, nothing settled", bad.status === 402 && bad.body.error === "payment_verification_failed" && bad.body.detail === "stub_invalid" && fac.hits.settle === settleBefore, `${bad.status} ${bad.text.slice(0, 100)}`)
       check("free-text facilitator reason is NOT relayed: detail becomes unknown, no sentinel", free.status === 402 && free.body.detail === "unknown" && noLeak(free), free.text.slice(0, 160))
+
+      // The facilitator answers a bad signature with HTTP 400 {isValid:false, invalidReason}: @x402/core throws VerifyError.
+      fac.verifyHttp400 = true; fac.verifyReason = "invalid_exact_evm_payload_signature"
+      const sbv = fac.hits.settle
+      const v400 = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), header: hdrPm })
+      fac.verifyHttp400 = false; fac.verifyReason = "stub_invalid"
+      check("facilitator 4xx VerifyError is the PAYER's fault: 402 payment_verification_failed with the reason, not a 503 outage", v400.status === 402 && v400.body.error === "payment_verification_failed" && v400.body.detail === "invalid_exact_evm_payload_signature", `${v400.status} ${v400.text.slice(0, 160)}`)
+      check("... nothing settled, no leak of the facilitator's message", fac.hits.settle === sbv && noLeak(v400), v400.text.slice(0, 160))
     }
 
     // ── 8. settlement DECLINED: no verdict, nothing charged, engine never runs ──

@@ -1,6 +1,7 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { McpServer, type RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StreamableHTTPTransport } from "@hono/mcp"
 import { Hono } from "hono"
+import { HTTPException } from "hono/http-exception"
 import type { Context, ExecutionContext } from "hono"
 import { z } from "zod"
 import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
@@ -36,7 +37,7 @@ export function wilsonLowerBound(successes: number, n: number, z = 1.96): number
   return Math.max(0, (centre - margin) / denom)
 }
 import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRUST_CONTRACT } from "./trust-writer"
-import { logFault, reasonCode, type Fault } from "./safe-error"
+import { logFault, reasonCode, addressOnly, hash32Only, type Fault } from "./safe-error"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
 import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
@@ -183,6 +184,41 @@ function guardTool<A extends unknown[], R>(tool: string, fn: (...a: A) => Promis
       }
     }
   }
+}
+
+/**
+ * agents/x402 builds its payment-required and receipt results ITSELF, outside the tool callback, so
+ * guardTool never sees them, and it relays the facilitator's `invalidReason`, `errorReason` and `payer`
+ * verbatim in content[0].text and in _meta["x402/error"]. Rewrite them through the same shape rules the
+ * HTTP routes use: a snake_case code or "PAYMENT_FAILED", an address-shaped payer, a hash-shaped tx.
+ */
+function cleanPaymentResult(r: any): unknown {
+  const meta = r?._meta
+  const err = meta?.["x402/error"]
+  if (err && typeof err === "object") {
+    const clean: Record<string, unknown> = { ...err, error: reasonCode(err.error, "PAYMENT_FAILED") }
+    if ("payer" in err) {
+      const p = addressOnly(err.payer)
+      if (p) clean.payer = p
+      else delete clean.payer
+    }
+    r._meta["x402/error"] = clean
+    if (r.content?.[0]?.type === "text") r.content[0] = { type: "text", text: JSON.stringify(clean) } // the library stringifies this same payload
+  }
+  const rec = meta?.["x402/payment-response"]
+  if (rec && typeof rec === "object") {
+    r._meta["x402/payment-response"] = {
+      success: rec.success === true,
+      transaction: hash32Only(rec.transaction) ?? "",
+      network: typeof rec.network === "string" && /^eip155:\d{1,12}$/.test(rec.network) ? rec.network : "",
+      payer: addressOnly(rec.payer) ?? "",
+    }
+  }
+  return r
+}
+function hardenPaidTool(tool: RegisteredTool): void {
+  const inner = tool.handler as unknown as (...a: unknown[]) => Promise<unknown>
+  tool.update({ callback: (async (...a: unknown[]) => cleanPaymentResult(await inner(...a))) as never })
 }
 
 function buildServer(env: Env): McpServer {
@@ -544,6 +580,7 @@ function buildServer(env: Env): McpServer {
   )
 
   // S6a — top-level title, alongside the annotations.title kept above.
+  hardenPaidTool(verifyPmTradeTool)
   verifyPmTradeTool.update({
     title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)",
   })
@@ -676,6 +713,7 @@ function buildServer(env: Env): McpServer {
   )
 
   // S6a — top-level title, alongside the annotations.title kept above.
+  hardenPaidTool(verifyPerpTradeTool)
   verifyPerpTradeTool.update({
     title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)",
   })
@@ -691,6 +729,14 @@ function buildServer(env: Env): McpServer {
  * exercised by deploying is a route nobody tests before deploying.
  */
 export const app = new Hono<{ Bindings: Env }>()
+
+// Hono's default handler console.errors the raw error object (a thrown key-material message would reach the log
+// unscrubbed). Same answer as the default, logged through logFault.
+app.onError((err, c) => {
+  if (err instanceof HTTPException) return err.getResponse()
+  logFault("route.unhandled", err)
+  return c.text("Internal Server Error", 500)
+})
 
 /** The six paths the enrichment recorder observes. Nothing else is recorded. */
 const ENRICHMENT_PATHS = new Set([
@@ -1057,17 +1103,24 @@ async function anchorAndScore(
     if (!anchoredId) {
       trust_score = { status: "skipped", reason: "no anchored certificate to link the on-chain score to" }
     } else {
-      const writeScore = buildTrustWriter(env.DJZS_WRITER_KEY, env.BASE_RPC_URL)
-      const flagCodes = Array.isArray(result.flags)
-        ? (result.flags as Array<Record<string, unknown>>).map((f) => String(f.code ?? f))
-        : []
-      trust_score = await writeScore({
-        agentAddress: agent_address,
-        riskScore: Number(result.risk_score ?? 0),
-        verdict: String(result.verdict ?? ""),
-        flags: flagCodes,
-        irysTxId: anchoredId,
-      })
+      // This runs AFTER settlement. buildTrustWriter derives an account from DJZS_WRITER_KEY and throws for a
+      // scalar outside the curve order, so a bad secret must degrade the receipt, never lose a paid verdict.
+      try {
+        const writeScore = buildTrustWriter(env.DJZS_WRITER_KEY, env.BASE_RPC_URL)
+        const flagCodes = Array.isArray(result.flags)
+          ? (result.flags as Array<Record<string, unknown>>).map((f) => String(f.code ?? f))
+          : []
+        trust_score = await writeScore({
+          agentAddress: agent_address,
+          riskScore: Number(result.risk_score ?? 0),
+          verdict: String(result.verdict ?? ""),
+          flags: flagCodes,
+          irysTxId: anchoredId,
+        })
+      } catch (e) {
+        logFault("x402.trust_write", e)
+        trust_score = { status: "error", error_class: "unknown", detail: "trust_write_failed" satisfies Fault }
+      }
     }
   }
   return { pol_certificate, trust_score }
@@ -1386,7 +1439,7 @@ app.post("/x402/verify", async (c) => {
 
   try {
     const vr = await resourceServer.verifyPayment(paymentPayload, matchingReq)
-    if (!vr.isValid) return paymentRequired(reasonCode(vr.invalidReason, "INVALID_PAYMENT"), { payer: vr.payer })
+    if (!vr.isValid) return paymentRequired(reasonCode(vr.invalidReason, "INVALID_PAYMENT"), { payer: addressOnly(vr.payer) })
   } catch {
     return paymentRequired("INVALID_PAYMENT")
   }
