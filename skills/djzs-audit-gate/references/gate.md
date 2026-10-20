@@ -42,10 +42,15 @@ settlement. The two canonical routes state their own scope in their 402
 descriptions:
 
 - `verify_pm_trade`: "Out-of-scope requests are refused WITHOUT CHARGE." A spot,
-  perp or equities thesis is out of scope. Proven on chain by balance deltas
-  (`djzs-trust-mcp/test/x402-roundtrip.mjs`, 25/25, run against the legacy
-  `/x402/verify` route).
+  perp or equities thesis is out of scope.
 - `verify_perp_trade`: "Prediction-market bets are refused WITHOUT CHARGE."
+
+**What is proven on chain, and for which route.** One route only:
+`djzs-trust-mcp/test/x402-roundtrip.mjs` (25/25, balance deltas on Base Sepolia)
+tests the legacy `POST /x402/verify` path and nothing else. It does not call
+`/x402/verify_pm_trade` or `/x402/verify_perp_trade`. So each canonical route's
+free refusal rests only on its own 402 description above, and the perp route's
+free refusal has no on-chain proof.
 
 A refusal returns no audit verdict. On the canonical routes it arrives as HTTP
 200 with `verdict: "REFUSED_SCOPE"` and `charged: false`; on the legacy route as
