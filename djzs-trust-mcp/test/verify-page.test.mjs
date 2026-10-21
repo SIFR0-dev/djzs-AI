@@ -12,11 +12,11 @@
  *   - a perp-route receipt whose body carries `market` instead of `instrument` recomputes;
  *   - the DJZS attester's only two attestations (2026-09-01, DJZS-PM-v1.0) still verify. An attestation binds
  *     the intent STRUCT (EIP-712 over toDJZSIntent's output), not the raw request body, and both carry the
- *     same intentHash 0x34c493a0...b206. The intent for both is SAMPLE.intent, read out of site/verify.html
- *     (const SAMPLE, the 2026-09-01 receipt of 0xc5995989...): for each uid the test decodes the attested
+ *     same intentHash 0x34c493a055e5b6b3683fb5bac14654190de392557aad09f8a48a74c6992cb206. The intent for both is SAMPLE.intent, read out of site/verify.html
+ *     (const SAMPLE, the 2026-09-01 receipt of 0xc59959896c7663314da81e153134f23782315887e643ca60e38bb9f915a05a89): for each uid the test decodes the attested
  *     payload, confirms DJZS-PM-v1.0 selects the PM mapping, and recomputes the hash from SAMPLE.intent.
- *     The 0x1eb78bcc... check is labelled for what it is: it SHARES SAMPLE's intent_hash, and the intent is
- *     recomputed from SAMPLE. THE LIMIT for 0x1eb78bcc... is its payment: no receipt naming that uid is on
+ *     The 0x1eb78bccf6038bb8e0c1575f96fa700e85125ffaeb2477e61607419de0edce28 check is labelled for what it is: it SHARES SAMPLE's intent_hash, and the intent is
+ *     recomputed from SAMPLE. THE LIMIT for 0x1eb78bccf6038bb8e0c1575f96fa700e85125ffaeb2477e61607419de0edce28 is its payment: no receipt naming that uid is on
  *     record, so its settlement tx and payer are not, and they are NOT checked. A git grep guard fails if
  *     such a receipt is ever added, and asks for the check to be upgraded;
  *   - the page's EIP-712 domain, types and field decoding equal the Worker's;
@@ -68,7 +68,7 @@ for (const [rs, want] of [["DJZS-LF-v1.2", "perp"], ["DJZS-LF-v1.1", "perp"], ["
 
 // ── 3. the two 2026-09-01 attestations ──────────────────────────────────────────────
 console.log("3. the two 2026-09-01 attestations: the intent is SAMPLE.intent, read out of site/verify.html")
-// SAMPLE is the live v2 receipt of 2026-09-01 embedded in the page (it names eas_uid 0xc5995989...). Its intent is
+// SAMPLE is the live v2 receipt of 2026-09-01 embedded in the page (it names eas_uid 0xc59959896c7663314da81e153134f23782315887e643ca60e38bb9f915a05a89). Its intent is
 // read out of the page here, not retyped. An attestation binds the intent STRUCT, and both attestations carry
 // the same intentHash, so SAMPLE.intent is the attested intent for both uids.
 const sampleSrc = /^const SAMPLE=(\{[\s\S]*?\n\});$/m.exec(script)?.[1] ?? ""
@@ -77,9 +77,9 @@ check("site/verify.html carries its 2026-09-01 receipt (const SAMPLE) with the i
 const PM_GOLDEN = SAMPLE?.intent
 const GOLDEN_HASH = SAMPLE?.intent_hash
 
-// Attested payloads: read from the EAS contract on Base (0x4200...0021, getAttestation) on 2026-10-21 and
-// cross-read from the EAS indexer. The DJZS attester 0xfB0e...7824 has made exactly these two attestations in
-// its lifetime. Both: schema 0x5ef67e2b...2030 (v2), recipient 0x4644...9d17, not revoked. Pinned one per uid.
+// Attested payloads: read from the EAS contract on Base (0x4200000000000000000000000000000000000021, getAttestation) on 2026-10-21 and
+// cross-read from the EAS indexer. The DJZS attester 0xfB0e11471D41f88D1eE43A1bA38d885fb6b77824 has made exactly these two attestations in
+// its lifetime. Both: schema 0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030 (v2), recipient 0x46448Ea69912Aa8E2191dde67839A4987D269d17, not revoked. Pinned one per uid.
 const ATTESTATIONS = [
   { uid: "0x1eb78bccf6038bb8e0c1575f96fa700e85125ffaeb2477e61607419de0edce28", time: 1788294255, receipt: null,
     data: "0x34c493a055e5b6b3683fb5bac14654190de392557aad09f8a48a74c6992cb20600000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000450415353000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c444a5a532d504d2d76312e300000000000000000000000000000000000000000" },
@@ -100,11 +100,20 @@ for (const att of ATTESTATIONS) {
     // are not either, and they are NOT checked here. The claim is machine-checked: no tracked file but this one
     // names the uid. If a receipt is ever added, this fails on purpose: upgrade the check to verify settlement
     // and payer from that file.
-    let mentions = null
-    try { mentions = execFileSync("git", ["grep", "-l", "-I", "-i", att.uid.slice(0, 18), "--", ".", ":(exclude)djzs-trust-mcp/test/verify-page.test.mjs"], { cwd: "..", encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim().split("\n").filter(Boolean) }
-    catch (e) { mentions = e.status === 1 ? [] : null } // exit 1 = no match; anything else = git unavailable
-    if (mentions === null) console.log(`  skip ${short}: git is unavailable here, so "no receipt on record" was not machine-checked`)
-    else check(`${short}: LIMIT: no tracked file names this uid, so its receipt (settlement tx, payer) is not on record and its payment is NOT checked. A receipt added later fails this on purpose: upgrade it`, mentions.length === 0, mentions.join(", "))
+    // Three spellings, because a receipt could be pasted whole, abbreviated, or without its 0x: the uid, its first 18
+    // characters, and its first 8 hex digits. The same search for the SAMPLE's uid must find site/verify.html: a control that
+    // proves the search, its scope and its exclusion work, so an empty result below means "absent" and not "broken".
+    const grep = (needle) => {
+      try { return execFileSync("git", ["grep", "-l", "-I", "-i", "-F", needle, "--", ".", ":(exclude)djzs-trust-mcp/test/verify-page.test.mjs"], { cwd: "..", encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim().split("\n").filter(Boolean) }
+      catch (e) { return e.status === 1 ? [] : null } // exit 1 = no match; anything else = git unavailable
+    }
+    const control = grep(ATTESTATIONS[1].uid.slice(2, 10))
+    const mentions = [att.uid, att.uid.slice(0, 18), att.uid.slice(2, 10)].map(grep)
+    if (control === null || mentions.includes(null)) console.log(`  skip ${short}: git is unavailable here, so "no receipt on record" was not machine-checked`)
+    else {
+      check(`${short}: control: the same search finds the SAMPLE's own uid fragment in site/verify.html (the search works)`, control.includes("site/verify.html"), control.join(", "))
+      check(`${short}: LIMIT: no tracked file names this uid (full, 18 characters, or 8 hex digits), so its receipt (settlement tx, payer) is not on record and its payment is NOT checked. A receipt added later fails this on purpose: upgrade it`, mentions.every((m) => m.length === 0), mentions.flat().join(", "))
+    }
   }
 }
 check("a receipt with NO ruleset at all (a v1 / pre-ruleset receipt) maps as PM: the SAMPLE intent recomputes", !!PM_GOLDEN && pageHash(PM_GOLDEN, undefined) === GOLDEN_HASH)
