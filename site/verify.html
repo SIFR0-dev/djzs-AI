@@ -190,19 +190,27 @@ ta.value=JSON.stringify(SAMPLE,null,2);
 (function fromFragment(){const m=/^#r=([A-Za-z0-9_-]+)$/.exec(location.hash||"");if(!m)return;try{const b64=m[1].replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-m[1].length%4)%4);const json=new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0)));JSON.parse(json);ta.value=json;history.replaceState(null,"",location.pathname);setTimeout(run,0)}catch{/* not a receipt: leave the sample */}})();
 function empty(){$("#ledger").innerHTML='<div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div>'}
 
-// same documented defaults as the engine's toDJZSIntent (djzs-trust-mcp/src/djzs-intent.ts):
-// PM: venue "" unless supplied, cents, ZERO32. PERP (instrument present, market absent): market=instrument,
-// probability_basis=data_sources or "", max_loss 0, exit_condition=invalidation else "stop_loss <n>" else "",
+// BEGIN intent-mapping · test/verify-page.test.mjs runs THIS text against the Worker's toDJZSIntent; keep it free of page globals
+// THE ATTESTED RULESET CHOOSES THE MAPPING, never the body's keys (ruled 2026-10-21): DJZS-LF-* means the perp
+// mapping, anything else (DJZS-PM-v1.0, or a receipt with no ruleset at all) means PM. Same documented defaults
+// as the engine's toDJZSIntent (djzs-trust-mcp/src/djzs-intent.ts): PM: venue "" unless supplied, cents, ZERO32.
+// PERP: market=instrument, falling back to market when instrument is not a string, probability_basis=data_sources
+// or "", max_loss 0, exit_condition=invalidation else "stop_loss <n>" else "",
 // params_hash=keccak256(utf8("leverage=..|entry=..|stop_loss=..|take_profit=..")), absent levels render empty.
+// Unlike the issuing route this does NOT refuse a missing or empty market, side or thesis: it recomputes whatever
+// receipt it is handed, including one issued before that rule, and a body it cannot hash falls to the ERROR row.
 const PERP_PARAM_FIELDS=["leverage","entry","stop_loss","take_profit"];
+const routeFor=rs=>typeof rs==="string"&&rs.startsWith("DJZS-LF-")?"perp":"pm";
 function perpParamsPreimage(p){return PERP_PARAM_FIELDS.map(k=>{const v=p[k];return k+"="+(typeof v==="number"&&isFinite(v)?String(v):"")}).join("|")}
-function toDJZSIntent(pm){const c=x=>BigInt(Math.round((typeof x==="number"&&isFinite(x)?x:0)*100));
-  if(typeof pm.instrument==="string"&&typeof pm.market!=="string"){
+function toDJZSIntent(pm,route){const c=x=>BigInt(Math.round((typeof x==="number"&&isFinite(x)?x:0)*100));
+  if(route!=="pm"&&route!=="perp")throw new Error("unknown route: "+String(route));
+  if(route==="perp"){
     const exit=typeof pm.invalidation==="string"&&pm.invalidation!==""?pm.invalidation:(typeof pm.stop_loss==="number"&&isFinite(pm.stop_loss)?"stop_loss "+String(pm.stop_loss):"");
-    return {action:"perp_trade",venue:pm.venue??"",market:pm.instrument,side:pm.side,thesis:pm.thesis,probability_basis:pm.data_sources??"",
+    return {action:"perp_trade",venue:pm.venue??"",market:typeof pm.instrument==="string"?pm.instrument:pm.market,side:pm.side,thesis:pm.thesis,probability_basis:pm.data_sources??"",
       size_usd_cents:c(pm.size_usd),max_loss_usd_cents:0n,exit_condition:exit,params_hash:keccak256(new TextEncoder().encode(perpParamsPreimage(pm)))};}
   return {action:"pm_trade",venue:pm.venue??"",market:pm.market,side:pm.side,thesis:pm.thesis,probability_basis:pm.probability_basis??"",
     size_usd_cents:c(pm.size_usd),max_loss_usd_cents:c(pm.bounds?.max_loss_usd),exit_condition:pm.bounds?.exit_condition??"",params_hash:ZERO32};}
+// END intent-mapping
 // exact port of engine-adapter.ts renderIntentText, the v1 binding rule
 function renderIntentText(i){if(typeof i==="string")return i;if(!i||typeof i!=="object")return String(i);return Object.keys(i).sort().map(k=>{const v=i[k];const s=typeof v==="string"?v:(typeof v==="number"||typeof v==="boolean")?String(v):JSON.stringify(v);return `${k}: ${s}`}).join("\n")}
 async function sha256hex(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return"0x"+[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
@@ -226,12 +234,22 @@ async function run(){
         ev:`status ${ok?"0x1 success":rc.status} · block ${parseInt(rc.blockNumber,16)} · node ${node}`+(x?`\nUSDC ${amt?.toFixed(2)} -> ${to}`:"\nno USDC Transfer log"),link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}}
   catch(e){C.push({r:"wait",tok:"WAIT",name:"Settlement on Base",chip:"UNREACHABLE",body:"No Base node reachable from this browser.",ev:e.message,link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}
 
+  // 2a: the attestation is READ before the binding is computed, because its rulesetVersion chooses the mapping.
+  let attRead=null,attRuleset=null;
+  if(r.eas_uid){try{const data=encodeFunctionData({abi:EAS_ABI,functionName:"getAttestation",args:[r.eas_uid]});
+      const {result,node}=await rpc("eth_call",[{to:EAS,data},"latest"]);
+      const a=decodeFunctionResult({abi:EAS_ABI,functionName:"getAttestation",data:result});attRead={a,node};
+      if(a&&norm(a.uid)===norm(r.eas_uid)&&!/^0x0+$/.test(a.uid)){try{attRuleset=decodeAbiParameters(norm(a.schema)===DJZS_SCHEMA_V3?FIELDS_V3:FIELDS,a.data)[4]}catch{/* undecodable: step 3 reports it */}}}
+    catch(e){attRead={err:e}}}
+  // attested ruleset > the ruleset the receipt declares > none (PM, the only mapping that existed before 2026-09-27)
+  const rulesetUsed=attRuleset??r?.tally?.ruleset??r?.ruleset??"",rulesetFrom=attRuleset!=null?"the attestation":(r?.tally?.ruleset??r?.ruleset)!=null?"the receipt (unattested)":"default",route=routeFor(rulesetUsed);
+
   // 2: binding; v2 EIP-712 (intent_hash) and v1 renderIntentText (intent_sha256), checked independently
   let recomputed=null,bindOK=false;
-  if(r.intent&&r.intent_hash){try{recomputed=hashTypedData({domain:DOMAIN,types:TYPES,primaryType:"DJZSIntent",message:toDJZSIntent(r.intent)});bindOK=norm(recomputed)===norm(r.intent_hash);
+  if(r.intent&&r.intent_hash){try{recomputed=hashTypedData({domain:DOMAIN,types:TYPES,primaryType:"DJZSIntent",message:toDJZSIntent(r.intent,route)});bindOK=norm(recomputed)===norm(r.intent_hash);
       C.push({r:bindOK?"pass":"fail",tok:bindOK?"OK":"FAIL",name:"Intent binding · v2",chip:bindOK?"PROVEN":"MISMATCH",
         body:bindOK?"intent_hash reproduced from the intent alone as EIP-712 typed data. The verdict is provably bound to this exact intent, by anyone, with no access to DJZS.":"Recomputed EIP-712 hash does not equal the receipt's intent_hash. Either the intent text differs from what was audited, or the engine's canonicalization has diverged from the published contract.",
-        ev:`receipt     ${r.intent_hash}\nrecomputed  ${recomputed}\ndomain      DJZS · 2 · eip155:8453`})}
+        ev:`receipt     ${r.intent_hash}\nrecomputed  ${recomputed}\ndomain      DJZS · 2 · eip155:8453\nmapping     ${route==="perp"?"perp_trade":"pm_trade"} · ruleset ${rulesetUsed||"none"} · from ${rulesetFrom}`})}
     catch(e){C.push({r:"wait",tok:"WAIT",name:"Intent binding · v2",chip:"ERROR",body:"Could not compute EIP-712 hash.",ev:e.message})}}
   if(r.intent&&r.intent_sha256){const v1=await sha256hex(renderIntentText(r.intent));const m=norm(v1)===norm(r.intent_sha256);
     C.push({r:m?"pass":"fail",tok:m?"OK":"FAIL",name:"Intent binding · v1 (intent_sha256)",chip:m?"PROVEN":"MISMATCH",
@@ -242,9 +260,8 @@ async function run(){
   // 3: attestation on EAS
   let attOK=false;
   if(!r.eas_uid)C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"ABSENT",body:r.eas_error?"Gate reported an attestation failure. The verdict was still delivered and charged; the on-chain record did not land.":"Receipt carries no eas_uid (pre-v2 receipt).",ev:r.eas_error||""});
-  else try{const data=encodeFunctionData({abi:EAS_ABI,functionName:"getAttestation",args:[r.eas_uid]});
-      const {result,node}=await rpc("eth_call",[{to:EAS,data},"latest"]);
-      const a=decodeFunctionResult({abi:EAS_ABI,functionName:"getAttestation",data:result});
+  else if(attRead?.err)C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"UNREACHABLE",body:"Could not read EAS from this browser.",ev:attRead.err.message,link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]});
+  else try{const {a,node}=attRead;
       if(!a||norm(a.uid)!==norm(r.eas_uid)||/^0x0+$/.test(a.uid))C.push({r:"fail",tok:"FAIL",name:"Attestation on Base",chip:"NOT FOUND",body:"No attestation exists at this UID.",ev:r.eas_uid});
       else{const isV3=!!DJZS_SCHEMA_V3&&norm(a.schema)===DJZS_SCHEMA_V3;
         const [ih,verdict,risk,flags,ruleset,unknownCount,bounded,thesisPresent]=decodeAbiParameters(isV3?FIELDS_V3:FIELDS,a.data);

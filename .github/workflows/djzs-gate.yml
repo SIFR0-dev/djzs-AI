@@ -66,6 +66,9 @@ jobs:
       - name: "intent_hash: PM golden unchanged; perp intents map and hash instead of throwing after settlement"
         run: npx tsx test/djzs-intent.test.mjs
         working-directory: djzs-trust-mcp
+      - name: "verify page: the binding mapping follows the attested ruleset, never the body keys; both 2026-09-01 attestations still verify"
+        run: npx tsx test/verify-page.test.mjs
+        working-directory: djzs-trust-mcp
       - name: "x402 adapter: ordering invariants offline; engine tally reaches the attestation seam"
         run: npx tsx harness/adapter-offline.ts
         working-directory: djzs-trust-mcp
