@@ -167,11 +167,52 @@ globalThis.fetch = async (url) => {
   if (u.includes("gateway.irys.xyz")) return new Response('{"tampered":true}', { status: 200 })
   return new Response("unexpected", { status: 500 })
 }
-r = await post(REC, auth)
+const faultLines = []
+const realConsoleError = console.error
+console.error = (...a) => { faultLines.push(a.map(String).join(" ")) }
+try { r = await post(REC, auth) } finally { console.error = realConsoleError }
 const tamperBody = await r.json()
+check(n++, "the mismatch cause is in the Worker log ([fault] corrections.anchor), where the codes took it from the response", faultLines.some((l) => l.startsWith("[fault] corrections.anchor ")))
 check(n++, "gateway serving different bytes -> 502", r.status === 502)
 check(n++, "...and returns NO irys_id to record", tamperBody.irys_id === undefined)
-check(n++, "...and says so", String(tamperBody.detail).includes("different bytes"))
+check(n++, "...and says so, as a fixed code", tamperBody.detail === "anchor_gateway_mismatch")
+check(n++, "...with no hash or raw error text in the body (ruled 2026-10-20: error fields are codes)", !/[0-9a-f]{64}/.test(JSON.stringify(tamperBody)) && !JSON.stringify(tamperBody).includes("NOTHING RECORDED"))
+
+// Gateway never serves it, THROUGH THE ROUTE: a code, plus the id (by shape) so the operator can re-check.
+const ID43 = "A".repeat(43)
+const slowApp = new Hono()
+slowApp.post(CORRECTION_ANCHOR_PATH, makeCorrectionAnchorHandler("https://devnet.irys.xyz", { verifyAttempts: 2, verifyDelayMs: 1 }))
+globalThis.fetch = async (url) => {
+  const u = String(url)
+  if (u.includes("/tx/")) return new Response(JSON.stringify({ id: ID43 }), { status: 200 })
+  return new Response("not found", { status: 404 })
+}
+r = await slowApp.request(CORRECTION_ANCHOR_PATH, { method: "POST", headers: { "content-type": "application/json", ...auth }, body: JSON.stringify(REC) }, ENV)
+const goneBody = await r.json()
+check(n++, "gateway never serving it, via the route -> 502 anchor_unretrievable", r.status === 502 && goneBody.detail === "anchor_unretrievable")
+check(n++, "...the id is returned as irys_id_unverified (by shape), never as irys_id", goneBody.irys_id_unverified === ID43 && goneBody.irys_id === undefined)
+check(n++, "...and no raw error text or URL", !JSON.stringify(goneBody).includes("gateway.irys.xyz") && !JSON.stringify(goneBody).includes("NOTHING RECORDED"))
+
+// An id that does not have the shape of an Irys id is never reflected, even on the branch that returns one.
+globalThis.fetch = async (url) => {
+  const u = String(url)
+  if (u.includes("/tx/")) return new Response(JSON.stringify({ id: "short-id-not-43-chars" }), { status: 200 })
+  return new Response("not found", { status: 404 })
+}
+r = await slowApp.request(CORRECTION_ANCHOR_PATH, { method: "POST", headers: { "content-type": "application/json", ...auth }, body: JSON.stringify(REC) }, ENV)
+const oddIdBody = await r.json()
+check(n++, "an id without the Irys id shape is NOT returned as irys_id_unverified", r.status === 502 && oddIdBody.detail === "anchor_unretrievable" && oddIdBody.irys_id_unverified === undefined)
+
+// A generic upload failure (the common case) through the route: the default code, no echo of the upstream body.
+globalThis.fetch = async (url) => {
+  const u = String(url)
+  if (u.includes("/tx/")) return new Response("irys said no https://rpc.sentinel.invalid/v2/KEYSENTINEL0123456789abcdef", { status: 500 })
+  return new Response("unexpected", { status: 500 })
+}
+r = await slowApp.request(CORRECTION_ANCHOR_PATH, { method: "POST", headers: { "content-type": "application/json", ...auth }, body: JSON.stringify(REC) }, ENV)
+const genericBody = await r.json()
+check(n++, "a generic upload failure -> 502 anchor_failed", r.status === 502 && genericBody.detail === "anchor_failed", JSON.stringify(genericBody).slice(0, 160))
+check(n++, "...with no part of the upstream body in the response", !JSON.stringify(genericBody).includes("sentinel") && !JSON.stringify(genericBody).includes("KEYSENTINEL"))
 
 // Gateway never serves it -> must fail.
 globalThis.fetch = async (url) => {

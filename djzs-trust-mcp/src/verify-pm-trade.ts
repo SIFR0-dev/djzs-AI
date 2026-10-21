@@ -110,6 +110,10 @@ export async function runVerifyPmTrade(
     unknown_fields: result.unknown_fields,
     disagreements: r.disagreements, // ratified telemetry; "(evidence)" variants included
     verdict_hash: result.verdict_hash,
+    // DJZS-VR-v1.0: the tally the verdict was derived from. The x402 adapter forwards it into the
+    // v3 EAS attestation, where the resolver re-derives the verdict on chain. Without this line the
+    // engine computed a tally nobody attested (found 2026-09-27 by the /try route test).
+    tally: result.tally,
     extraction_failsafe: r.failsafe, // true only when ALL samples failsafed
   };
 

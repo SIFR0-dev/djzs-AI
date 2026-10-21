@@ -19,6 +19,17 @@ jobs:
         run: npx tsx tests/merge-fix.test.ts
       - name: coerceField — bare stated values are PRESENT, never ABSENT
         run: npx tsx tests/coerce.test.ts
+      - name: "Verdict rule (DJZS-VR-v1.0): derives the engine's verdict on every input; fixture current"
+        run: npx tsx tests/verdict-rule-fixtures.ts --check
+  verdict-rule-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: "DJZSVerdictRule + DJZSVerdictResolver: the fixture replayed on chain; inconsistent attestations refused"
+        run: npx hardhat test test/DJZSVerdictRule.test.cjs test/DJZSVerdictResolver.test.cjs
   worker-builds:
     runs-on: ubuntu-latest
     steps:
@@ -30,9 +41,13 @@ jobs:
         run: npm ci
       - run: npm install
         working-directory: djzs-trust-mcp
+      - name: djzs-trust-mcp — typecheck (the fixed-code vocabulary is enforced by `satisfies Fault`; esbuild strips types)
+        run: npx tsc --noEmit -p .
+        working-directory: djzs-trust-mcp
       - name: djzs-trust-mcp — bundle (no deploy, no secrets)
         run: npx wrangler deploy --dry-run --outdir /tmp/dry
         working-directory: djzs-trust-mcp
+        env: { DJZS_BUILD_ONLY: "1" } # builds, uploads nothing; the predeploy guard stands down for it
       - name: Target-System — a signed claim or null, NEVER a bare unsigned value
         run: npx tsx test/target-system.test.mjs
         working-directory: djzs-trust-mcp
@@ -44,6 +59,32 @@ jobs:
         working-directory: djzs-trust-mcp
       - name: Correction anchor — key stays in the Worker; route refuses before it signs
         run: npx tsx test/correction-anchor.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: "EAS schema v3: v2 without a resolver, v3 with one, never v2 silently; engine tally derives the attested verdict"
+        run: npx tsx test/attest-v3.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: "intent_hash: PM golden unchanged; perp intents map and hash instead of throwing after settlement"
+        run: npx tsx test/djzs-intent.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: "x402 adapter: ordering invariants offline; engine tally reaches the attestation seam"
+        run: npx tsx harness/adapter-offline.ts
+        working-directory: djzs-trust-mcp
+      - name: "/try: signature binds wallet, day and intent; 5 per wallet, global cap, fail closed without D1"
+        run: npx tsx test/try-route.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: Post-settlement — bind before settle, 502 SETTLEMENT_UNCERTAIN, a settled payment never answers settled:false, error fields are fixed codes (offline)
+        run: npx tsx test/post-settlement.test.ts
+        working-directory: djzs-trust-mcp
+      - name: Error hygiene — the shape rules (reasonCode, scrub, logFault) and the app's own error handler
+        run: npx tsx test/safe-error.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: Error hygiene — no response carries raw error text (the built bundle in workerd, every dependency failing with a provider-URL sentinel)
+        run: npx tsx test/error-leak.bundle.test.mjs
+        working-directory: djzs-trust-mcp
+        timeout-minutes: 8
+        env: { DJZS_BUNDLE: /tmp/dry/index.js }
+      - name: Predeploy guard — refuses a dirty tree or a HEAD that is not origin/main; wired as wrangler's own [build] step
+        run: npx tsx test/predeploy-guard.test.mjs
         working-directory: djzs-trust-mcp
 
   q3-integrity:

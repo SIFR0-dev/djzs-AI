@@ -11,3 +11,20 @@ directory = "."
 # UX audit alike (2026-07-17). The 404 page links home — old deep links still find the truth
 # surface, now honestly.
 not_found_handling = "404-page"
+
+# Predeploy guard: refuse to deploy from a dirty tree, or from a HEAD that is not origin/main.
+# `wrangler deploy` uploads the WORKING TREE, and this directory is deployed by hand. On 2026-09-28
+# production /try was deployed from a tree with uncommitted changes (site/try.html and the Worker's
+# try-route.ts came from the same one), and nothing in the repo could reproduce what was live.
+# The check is repo-wide, so a dirty djzs-trust-mcp/ blocks a site deploy too, on purpose.
+#
+# wrangler runs [build].command before every `deploy` and `versions upload`, assets-only Workers
+# included (this one has no `main`; wrangler resolves its built-in no-op entry and still runs the
+# command first). It sets WRANGLER_COMMAND, so `wrangler dev` stands down.
+#
+# CWD: wrangler runs the command in the directory wrangler was INVOKED from, not this file's. Deploy
+# from site/ (DEPLOY_RUNBOOK.md). From anywhere else this path does not resolve, the command fails,
+# and wrangler aborts: it fails closed, never open. A dry run that uploads nothing: DJZS_BUILD_ONLY=1.
+# See djzs-trust-mcp/scripts/predeploy-guard.mjs and test/predeploy-guard.test.mjs.
+[build]
+command = "node ../djzs-trust-mcp/scripts/predeploy-guard.mjs"

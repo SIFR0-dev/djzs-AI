@@ -28,6 +28,18 @@ ENVIRONMENT = "production"
 # makes anchoring fail-open and paying callers get status:"error" — the weak
 # offer the spec rejects. Set the prod secret before deploy; probe /health/x402.
 IRYS_NODE_URL = "https://uploader.irys.xyz"
+# EAS schema v3 (DJZS-VR-v1.0): set to the deployed DJZSVerdictResolver address on Base to attest
+# verdicts under the resolver-checked schema; leave unset to keep attesting under schema v2.
+# VERDICT_RULE.md has the deploy order (rule, resolver, register schema, then this var).
+# EAS_RESOLVER_ADDRESS = "0x..."
+
+# Deploy guard. wrangler runs this before every `deploy` and `versions upload` (and sets
+# WRANGLER_COMMAND so it can stand down for `dev`). It refuses a dirty tree or a HEAD that is
+# not origin/main, because `wrangler deploy` ships the WORKING TREE: on 2026-09-28 production
+# ran an uncommitted tree that no ref could reproduce. A dry run that uploads nothing sets
+# DJZS_BUILD_ONLY=1. See scripts/predeploy-guard.mjs and test/predeploy-guard.test.mjs.
+[build]
+command = "node scripts/predeploy-guard.mjs"
 
 # Module aliasing (wrangler → esbuild): resolve the engine's `@shared/*` imports at
 # bundle time WITHOUT editing any file under shared/. esbuild remaps the "@shared"

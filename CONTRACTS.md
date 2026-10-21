@@ -256,3 +256,32 @@ To switch back to mainnet after testing, update:
 BASE_RPC_URL=https://mainnet.base.org
 NFT_CONTRACT_ADDRESS=0x<mainnet address>
 ```
+
+---
+
+## 5. DJZSVerdictRule (DJZS-VR-v1.0)
+
+**Purpose**: The verdict rule of the deterministic engine as bytecode. Given a tally (fired codes, unknown scored fields, bounded, thesis present), derives the risk score and the verdict for DJZS-PM-v1.0 and DJZS-LF-v1.2. Refuses unknown rulesets, unknown codes and duplicate codes. Held against the engine by `tests/fixtures/verdict-rule.json` (every distinct tally the engine produces over 59,157 inputs) in `test/DJZSVerdictRule.test.cjs`.
+
+**Deployed Address**: not yet deployed. `VERDICT_RULE.md` has the deploy order.
+
+### Key Functions
+
+| Function | Access | Description |
+|---|---|---|
+| `score(Tally)` | View | Returns `(riskScore, verdictCode)`; PASS 1, WAIT 2, FAIL 3 |
+| `isConsistent(Tally, riskScore, verdict)` | View | True when the attested pair is exactly what the rule derives |
+| `weightOf(rulesetId, codeId)` | View | `(weight, critical, known)`; `known` false for a code the ruleset lacks |
+| `verdictString(code)` | View | "PASS", "WAIT", "FAIL" |
+
+No owner, no setters, no state. A new taxonomy version is a new contract.
+
+## 6. DJZSVerdictResolver
+
+**Purpose**: EAS schema resolver for the DJZS verdict schema v3 (`bytes32 intentHash,string verdict,uint8 riskScore,string[] flags,string rulesetVersion,uint8 unknownCount,bool bounded,bool thesisPresent`, revocable = false). EAS accepts an attestation under the schema only when DJZSVerdictRule derives the stated verdict and risk score from the stated tally, whoever the attester is. `check(bytes)` is the same derivation as a free view.
+
+**Deployed Address**: not yet deployed. Schema v3 UID = `keccak256(abi.encodePacked(schema, resolver, false))`, printed by `scripts/deploy-verdict-rule.cjs`.
+
+### Environment Variables
+
+- `EAS_RESOLVER_ADDRESS` (djzs-trust-mcp wrangler.toml `[vars]`): when set, the Worker attests under schema v3; absent, schema v2 as before.

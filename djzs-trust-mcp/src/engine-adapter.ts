@@ -24,6 +24,15 @@ import { buildAnthropicModelFn, runVerifyPmTrade, type VerifyPmTradeResult } fro
 import type { ModelFn } from "../../server/engine-v2/extraction-layer"
 import { sha256Hex } from "../../server/engine-v2/hash"
 import type { EngineAdapter, ScopeResult, VerdictResult } from "./http-x402-bazaar.v2"
+import type { VerdictTally } from "../../server/engine-v2/verdict-rule"
+
+/** Structural check on the engine's tally, so a malformed one is dropped rather than attested. */
+function isTally(t: unknown): t is VerdictTally {
+  if (typeof t !== "object" || t === null) return false
+  const o = t as Record<string, unknown>
+  return typeof o.ruleset === "string" && Array.isArray(o.codes) && o.codes.every((c) => typeof c === "string")
+    && Number.isInteger(o.unknown_count) && typeof o.bounded === "boolean" && typeof o.thesis_present === "boolean"
+}
 
 /** Only the binding this adapter reads. Request-scoped, never module-scope. */
 export interface EngineAdapterEnv {
@@ -142,6 +151,8 @@ export function createEngineAdapter(
         flags: flagStrings(result),
         verdict_hash: typeof result.verdict_hash === "string" ? result.verdict_hash : "",
         intent_sha256: intentSha256(intent),
+        // DJZS-VR-v1.0: what the verdict was derived from, for the v3 attestation and its resolver.
+        ...(isTally((result as { tally?: unknown }).tally) ? { tally: (result as { tally: VerdictTally }).tally } : {}),
       }
     },
   }

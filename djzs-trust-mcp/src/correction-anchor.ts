@@ -86,7 +86,12 @@ export function validateCorrectionRecord(
   if (!r.statement.every((p) => typeof p === "string" && p.length)) return { ok: false, error: "statement entries must be non-empty strings" }
   // The double-anchor refusal. An Irys item is permanent; a second one does not
   // replace the first, it competes with it.
-  if (r.anchored_irys_id != null) return { ok: false, error: `already anchored as ${String(r.anchored_irys_id)}` }
+  // The id is echoed only if it has the shape of an Irys id (43 base64url characters); anything else is the caller's own
+  // noise and is not reflected back (ruled 2026-10-20: error fields are codes, not echoes).
+  if (r.anchored_irys_id != null) {
+    const prior = typeof r.anchored_irys_id === "string" && /^[A-Za-z0-9_-]{43}$/.test(r.anchored_irys_id) ? r.anchored_irys_id : "an unrecognised id"
+    return { ok: false, error: `already anchored as ${prior}` }
+  }
   return { ok: true, rec: r }
 }
 

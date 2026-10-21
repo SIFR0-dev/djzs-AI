@@ -24,6 +24,7 @@
 import { createWalletClient, http, fallback, type Hex } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { base } from "viem/chains"
+import { logFault, scrub, type Fault } from "./safe-error"
 
 /** DJZSLogicTrustScore on Base mainnet (subgraph.yaml address). */
 export const DJZS_TRUST_CONTRACT = "0xB3324D07A8713b354435FF0e2A982A504e81b137" as const
@@ -125,6 +126,20 @@ export function describeWriterKey(raw: string | undefined | null): WriterKeyDiag
   return { state: "ok", address: privateKeyToAccount(key).address, hex_length, has_0x_prefix }
 }
 
+/**
+ * A fixed phrase for an RPC failure. The message is never relayed: viem begins an
+ * HttpRequestError with the request URL, and a provider URL embeds its API key.
+ */
+function rpcFailureClass(message: string): string {
+  const m = message.toLowerCase()
+  if (/rate limit|ratelimit|429|too many requests/.test(m)) return "rate limit"
+  if (/invalid url/.test(m)) return "invalid url"
+  if (/timeout|timed out|aborted|abort/.test(m)) return "timeout"
+  if (/401|403|unauthorized|authenticated/.test(m)) return "unauthorized"
+  if (/nonce/.test(m)) return "nonce"
+  return "unclassified"
+}
+
 const AUTHORIZED_WRITERS_SELECTOR = "0x526241a8" // authorizedWriters(address) -> bool
 
 /**
@@ -147,11 +162,13 @@ export async function checkWriterAuthorization(
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: contract, data }, "latest"] }),
     })
     const j = (await r.json()) as { result?: string; error?: { message?: string } }
-    if (j.error) { lastDetail = `rpc error: ${j.error.message ?? "unknown"} (${url})`; continue }
-    if (!j.result) { lastDetail = `rpc returned no result (${url})`; continue }
+    if (j.error) { lastDetail = `rpc: ${rpcFailureClass(j.error.message ?? "")}`; continue }
+    if (!j.result) { lastDetail = "rpc: no result"; continue }
     return { authorized: BigInt(j.result) === 1n }
   } catch (e) {
-    lastDetail = `${(e instanceof Error ? e.message : String(e)).slice(0, 160)} (${url})`
+    // The message (and the URL viem puts in it) stays in the log; the detail is a fixed phrase.
+    logFault("trust-writer.authcheck", e)
+    lastDetail = `rpc: ${rpcFailureClass(e instanceof Error ? e.message : String(e))}`
   }
   }
   return { authorized: null, detail: lastDetail }
@@ -238,8 +255,8 @@ export function buildTrustWriter(
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e)
       const error_class = classifyWriteError(raw)
-      console.log(`[trust-writer] WRITE FAILED :: class=${error_class} :: ${raw.slice(0, 300)}`)
-      return { status: "error", error_class, detail: raw.slice(0, 300) }
+      console.log(`[trust-writer] WRITE FAILED :: class=${error_class} :: ${scrub(raw)}`)
+      return { status: "error", error_class, detail: "trust_write_failed" satisfies Fault }
     }
   }
 }

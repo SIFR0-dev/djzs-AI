@@ -91,7 +91,9 @@ console.log("GRADING · gradeRecord — v1.12 gate, grade_due gate, never retrof
   eq(sha256hex(canonical(strip(saved, PHASE_B_EXCLUDE))), before.record_hash, "record_hash recomputes unchanged after grading");
   const { outcome: _a, ...restAfter } = saved; const { outcome: _b, ...restBefore } = before;
   eq(canonical(restAfter), canonical(restBefore), "every non-outcome field byte-identical after grading");
-  const t = await gradeRecord(rec("q3-2026-09-14-001"), { now: NOW, fetchImpl: kalshiFinal("no") });
+  // The record as sealed, outcome removed: once a record is graded in the file, gradeRecord returns null for it.
+  const { outcome: _graded, ...ungradedThesis } = rec("q3-2026-09-14-001");
+  const t = await gradeRecord(ungradedThesis as any, { now: NOW, fetchImpl: kalshiFinal("no") });
   ok(!!t?.out && t.out.absence_recheck === undefined, "a thesis record grades without a re-check and carries none");
 }
 

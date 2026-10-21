@@ -101,6 +101,10 @@ The gate audits the internal logic of what you submitted. It does not predict wh
 - [POST /x402/verify_pm_trade](${RESOURCE_URL}): Adversarial audit of one prediction-market trade intent. ${PRICE_HUMAN}, x402 exact scheme, network ${NETWORK}, asset USDC (${USDC_BASE}), paid to ${PAY_TO}. Body: {"intent":{"market","side","thesis","probability_basis","size_usd","bounds"}}. Unpaid requests receive a 402 challenge carrying the full input schema.
 - [POST /x402/verify_perp_trade](${PERP_RESOURCE_URL}): Adversarial audit of one perpetual or spot TRADE intent (direction, size, leverage, entry, stop, target, venue, and the reason). Same price and rail: 2.00 USDC, x402 exact scheme, network eip155:8453. Body: {"intent":{"instrument","side","thesis","leverage","entry","stop_loss","take_profit","invalidation","size_usd","venue","data_sources"}}; instrument, side, and thesis are required. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets sent here are refused without charge. Ruleset DJZS-LF-v1.2, four codes live (E01, I01, X01, S01).
 
+## Free endpoint
+
+- [POST /try/verdict](${HOST}/try/verdict): The same audit, unpaid and unattested, 5 per wallet per UTC day. Body: {"kind":"pm"|"perp","intent":{...},"address":"0x...","day":"YYYY-MM-DD","signature":"0x..."}. The signature is EIP-191 over the exact text served by [GET /try/quota](${HOST}/try/quota?address=0x...) (address, UTC day, sha256 of the rendered intent); no funds move. The response carries the paid route's offer. Browser flow: https://djzs.ai/try
+
 ## Discovery
 
 - [x402 manifest](${HOST}/.well-known/x402.json): Machine-readable resource, price, and schema declaration.

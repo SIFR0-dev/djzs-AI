@@ -171,6 +171,14 @@ async function main(): Promise<void> {
   check(11, "verdict_hash is the engine's, byte-identical", verdict.verdict_hash === direct.verdict_hash)
   check(12, "verdict is the engine's", verdict.verdict === direct.verdict)
   check(13, "risk_score is the engine's", verdict.risk_score === direct.risk_score)
+  // DJZS-VR-v1.0: the tally must travel pipeline -> adapter -> attestation. Until 2026-09-27 the
+  // pipeline response dropped it, so the resolver-checked schema v3 could never have been fed.
+  check(
+    13.5,
+    "tally reaches the adapter (ruleset, codes, bounded, thesis_present)",
+    !!verdict.tally && verdict.tally.ruleset === "DJZS-PM-v1.0" && Array.isArray(verdict.tally.codes) && typeof verdict.tally.bounded === "boolean",
+    JSON.stringify(verdict.tally),
+  )
   const directCodes = (direct.flags as { code: string }[]).map((f) => f.code)
   const directUnknowns = (direct.unknown_fields as string[]).map((u) => `unknown:${u}`)
   check(

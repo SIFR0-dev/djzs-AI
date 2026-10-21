@@ -18,6 +18,7 @@
  */
 import type { Context } from "hono"
 import { keyMatches } from "./q3-anchor"
+import { logFault, type Fault } from "./safe-error"
 import { anchorCorrection, validateCorrectionRecord, CORRECTION_SCHEMA, type AnchorOptions } from "./correction-anchor"
 
 /** Mirrors the fields of index.ts's Env that this route needs. Structurally compatible. */
@@ -28,6 +29,25 @@ export interface CorrectionAnchorEnv {
 }
 
 export const CORRECTION_ANCHOR_PATH = "/corrections/anchor"
+
+/**
+ * The anchoring failures an operator must tell apart, as fixed codes. Both mean NOTHING WAS RECORDED.
+ * An unretrievable upload may still have landed, so its Irys id rides along, but only if it has the
+ * shape of an Irys id (43 base64url characters), which cannot carry a URL or a key.
+ */
+function anchorFault(e: unknown): { detail: Fault; irys_id_unverified?: string } {
+  const m = e instanceof Error ? e.message : ""
+  if (/gateway served different bytes/.test(m)) {
+    // The item WAS uploaded (permanent): the operator must be able to find the orphan.
+    const id = /different bytes for ([A-Za-z0-9_-]{43}):/.exec(m)?.[1]
+    return { detail: "anchor_gateway_mismatch", ...(id ? { irys_id_unverified: id } : {}) }
+  }
+  if (/gateway did not serve it/.test(m)) {
+    const id = /uploaded as ([A-Za-z0-9_-]{43}) but/.exec(m)?.[1]
+    return { detail: "anchor_unretrievable", ...(id ? { irys_id_unverified: id } : {}) }
+  }
+  return { detail: "anchor_failed" }
+}
 
 /**
  * KEY CUSTODY IS THE WHOLE POINT. IRYS_UPLOAD_KEY is a Worker secret and never
@@ -68,7 +88,9 @@ export function makeCorrectionAnchorHandler(defaultNodeUrl: string, opts?: Ancho
     } catch (e) {
       // 502: the upload or the retrievability proof failed. No irys_id is
       // returned, deliberately — there is nothing here safe to record.
-      return c.json({ status: "error", detail: (e instanceof Error ? e.message : String(e)).slice(0, 400) }, 502)
+      logFault("corrections.anchor", e)
+      const { detail, irys_id_unverified } = anchorFault(e)
+      return c.json({ status: "error", detail, ...(irys_id_unverified ? { irys_id_unverified } : {}) }, 502)
     }
   }
 }
