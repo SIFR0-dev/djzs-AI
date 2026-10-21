@@ -286,7 +286,7 @@ for (const payload of FIELD_PAYLOADS) {
 }
 check("setV(): a hostile note and coda come out as allow-listed markup and literal text (title and stamp are set via textContent)", setvBad.length === 0, setvBad.join(" | "))
 check("esc(): the six characters that matter are all neutralised, once (no double escaping of an escaped value)", page.esc(`&<>"'\``) === "&#38;&#60;&#62;&#34;&#39;&#96;" && page.esc("&#38;") === "&#38;#38;" && page.esc(null) === "" && page.esc(undefined) === "" && page.esc(0) === "0")
-check("safeHref(): only the three allow-listed https prefixes with an encoded tail survive", page.safeHref("https://basescan.org/tx/0xabc") === "https://basescan.org/tx/0xabc" && ["javascript:alert(1)", "https://evil.example/", "https://basescan.org/tx/a b", 'https://basescan.org/tx/a"b', "https://basescan.org/tx/a/../b", "//basescan.org/tx/a", "http://basescan.org/tx/a", "https://basescan.org.evil.example/tx/a", "https://basescan.org/tx/a?x=1", "https://basescan.org/tx/a#y", ""].every((u) => page.safeHref(u) === "#"))
+check("safeHref(): only the three allow-listed https prefixes with an encoded tail survive", page.safeHref("https://basescan.org/tx/0xabc") === "https://basescan.org/tx/0xabc" && ["javascript:alert(1)", "https://evil.example/", "https://basescan.org/tx/a b", 'https://basescan.org/tx/a"b', "https://basescan.org/tx/a/../b", "//basescan.org/tx/a", "http://basescan.org/tx/a", "https://basescan.org.evil.example/tx/a", "https://basescan.org/tx/a?x=1", "https://basescan.org/tx/a#y", "https://basescan.org/tx/a:b", "https://basescan.org/tx/a@b", ""].every((u) => page.safeHref(u) === "#"))
 
 // the dynamic tail of a link is encoded, so an odd but harmless value still links correctly instead of falling back to "#"
 reset()
