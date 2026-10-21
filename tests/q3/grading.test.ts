@@ -91,7 +91,10 @@ console.log("GRADING · gradeRecord — v1.12 gate, grade_due gate, never retrof
   eq(sha256hex(canonical(strip(saved, PHASE_B_EXCLUDE))), before.record_hash, "record_hash recomputes unchanged after grading");
   const { outcome: _a, ...restAfter } = saved; const { outcome: _b, ...restBefore } = before;
   eq(canonical(restAfter), canonical(restBefore), "every non-outcome field byte-identical after grading");
-  const t = await gradeRecord(rec("q3-2026-09-14-001"), { now: NOW, fetchImpl: kalshiFinal("no") });
+  // 001 was graded for real on 2026-10-18 (dd625b1); gradeRecord refuses an already-graded record, so the
+  // fixture drops the live outcome to exercise the thesis path. The sealed record itself is untouched.
+  const { outcome: _graded, ...thesisUngraded } = rec("q3-2026-09-14-001");
+  const t = await gradeRecord(thesisUngraded as ReturnType<typeof rec>, { now: NOW, fetchImpl: kalshiFinal("no") });
   ok(!!t?.out && t.out.absence_recheck === undefined, "a thesis record grades without a re-check and carries none");
 }
 
