@@ -86,6 +86,11 @@ jobs:
         working-directory: djzs-trust-mcp
         timeout-minutes: 8
         env: { DJZS_BUNDLE: /tmp/dry/index.js }
+      - name: "Route wiring: each paid URL serves its own resource; the published example hashes to its pinned pm_trade / perp_trade key (the built bundle in workerd)"
+        run: npx tsx test/route-wiring.bundle.test.mjs
+        working-directory: djzs-trust-mcp
+        timeout-minutes: 5
+        env: { DJZS_BUNDLE: /tmp/dry/index.js }
       - name: Predeploy guard — refuses a dirty tree or a HEAD that is not origin/main; wired as wrangler's own [build] step
         run: npx tsx test/predeploy-guard.test.mjs
         working-directory: djzs-trust-mcp

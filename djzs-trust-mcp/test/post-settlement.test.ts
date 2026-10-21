@@ -363,6 +363,16 @@ async function main(): Promise<void> {
       check("pm route, a PM body that also carries `instrument`/`leverage`: pm_trade, the pinned PM key, attested once under the PM ruleset", d.status === 200 && d.body.intent_hash === PM_INTENT_HASH_PINNED && att4.calls.length === 1 && att4.calls[0].rulesetVersion === PM_RESOURCE.rulesetVersion, `${d.status} ${String(d.body.intent_hash)}`)
     }
 
+    // ── 1b2. a resource's mapping and its ruleset string travel together ───────────────────────────────────
+    console.log("1b2. each resource pairs its mapping (route) with the ruleset the attestation carries and site/verify.html keys on")
+    {
+      // verify.html picks the perp mapping iff the attested ruleset starts with "DJZS-LF-". The two are separate fields of one spec,
+      // so a rename of either would issue permanent receipts that page recomputes with the wrong class. Pinned as literals.
+      check("PM_RESOURCE: route pm with ruleset DJZS-PM-v1.0", PM_RESOURCE.route === "pm" && PM_RESOURCE.rulesetVersion === "DJZS-PM-v1.0", `${PM_RESOURCE.route} ${PM_RESOURCE.rulesetVersion}`)
+      check("PERP_RESOURCE: route perp with ruleset DJZS-LF-v1.2, which starts DJZS-LF- (the prefix the verify page maps by)", PERP_RESOURCE.route === "perp" && PERP_RESOURCE.rulesetVersion === "DJZS-LF-v1.2" && PERP_RESOURCE.rulesetVersion.startsWith("DJZS-LF-"), `${PERP_RESOURCE.route} ${PERP_RESOURCE.rulesetVersion}`)
+      check("no PM ruleset carries the DJZS-LF- prefix", !PM_RESOURCE.rulesetVersion.startsWith("DJZS-LF-"))
+    }
+
     // ── 1c. A MISSING OR EMPTY market, side or thesis is refused by a NAMED error, uncharged (ruled 2026-10-21) ──────
     console.log("1c. missing / null / empty market, side or thesis: 400 intent_unbindable, uncharged, on both routes; the cause is named in the log")
     {
@@ -377,7 +387,9 @@ async function main(): Promise<void> {
       }
       const answers: Outcome[] = []
       for (const c of cases) {
-        const base: Record<string, unknown> = c.route === "pm" ? { ...PM_INTENT, note: TEXT } : { ...PERP_INTENT, note: TEXT }
+        const base: Record<string, unknown> = c.route === "pm"
+          ? { ...PM_INTENT, market: TEXT + "-market", side: TEXT + "-side", thesis: TEXT + "-thesis", note: TEXT }
+          : { ...PERP_INTENT, instrument: TEXT + "-market", side: TEXT + "-side", thesis: TEXT + "-thesis", note: TEXT }
         if (c.how === "missing") delete base[c.key]; else base[c.key] = c.how === "null" ? null : ""
         answers.push(await paid({ env: envKey, spec: c.route === "pm" ? PM_RESOURCE : PERP_RESOURCE, intent: base, engine: stubEngine(), attest: att.fn, header: c.route === "pm" ? hdrPm : hdrPerp }))
       }
@@ -385,7 +397,8 @@ async function main(): Promise<void> {
       check(`all ${cases.length} cases (2 routes x market/side/thesis x missing/null/empty): 400 intent_unbindable, charged:false, settled:false`, refused, answers.map((o, i) => (o.status === 400 ? "" : `${cases[i].route}/${cases[i].key}/${cases[i].how}=${o.status}`)).filter(Boolean).join(" "))
       check("settlePayment was NEVER called by any of them", fac.hits.settle === sb, `settle hits +${fac.hits.settle - sb}`)
       check("the engine never ran, nothing was attested, no PAYMENT-RESPONSE", answers.every((o) => o.auditCalls === 0 && headerTx(o.paymentResponse) === null) && att.calls.length === 0)
-      check("the 400 is byte-identical for every field and every route class (it names no field; same body as before)", new Set(answers.map((o) => o.text)).size <= 2, [...new Set(answers.map((o) => o.text.slice(0, 80)))].join(" || "))
+      check("the 400 is byte-identical for every field, every route class and missing/null/empty alike: exactly ONE distinct body (it names no field, no route, no reason)", new Set(answers.map((o) => o.text)).size === 1, [...new Set(answers.map((o) => o.text.slice(0, 120)))].join(" || "))
+      check("…and that one body has exactly the documented keys", JSON.stringify(Object.keys(answers[0].body).sort()) === JSON.stringify(["charged", "detail", "error", "remediation", "settled", "terms"]), Object.keys(answers[0].body).join(","))
       check("each cause is named in the Worker log: [fault] x402.bind :: IntentUnbindableError :: intent_unbindable: <field> is <missing|empty>", answers.every((o, i) => {
         const want = `IntentUnbindableError :: intent_unbindable: ${cases[i].field} is ${cases[i].how === "empty" ? "empty" : "missing"}`
         return o.logs.some((l) => l.startsWith("[fault] x402.bind ") && l.includes(want))
