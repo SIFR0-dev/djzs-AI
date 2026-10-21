@@ -10,12 +10,14 @@
  *   - two perp intents that differ only in a level differ in intent_hash;
  *   - THE ROUTE DECIDES THE ACTION CLASS (ruled 2026-10-21), never the body's fields: the perp route
  *     always attests perp_trade (market = instrument, falling back to market), the pm route always
- *     pm_trade, and an unknown route throws.
+ *     pm_trade, and an unknown route throws;
+ *   - a missing or empty market, side or thesis is refused by a NAMED error (IntentUnbindableError),
+ *     not by viem happening to throw on `undefined` (ruled 2026-10-21).
  *
  * Run: npx tsx test/djzs-intent.test.mjs
  */
 import { keccak256 } from "viem"
-import { ACTIONS, intentHash, perpParamsPreimage, toDJZSIntent } from "../src/djzs-intent.ts"
+import { ACTIONS, IntentUnbindableError, REQUIRED_TEXT_FIELDS, intentHash, perpParamsPreimage, toDJZSIntent } from "../src/djzs-intent.ts"
 
 let pass = 0
 const failures = []
@@ -92,9 +94,55 @@ check(24, "pm route, a perp-shaped body (instrument, no market): cannot bind. It
 
 // 5c. the class is a property of the route, so it cannot be steered from the body
 const keysets = [PM, PERP, marketOnly, both, pmWithPerpKeys]
-check(25, "across five body shapes the pm route only ever yields pm_trade", keysets.every((k) => toDJZSIntent(k, "pm").action === "pm_trade"))
-check(26, "across five body shapes the perp route only ever yields perp_trade", keysets.every((k) => toDJZSIntent(k, "perp").action === "perp_trade"))
+const actionOf = (k, r) => { try { return toDJZSIntent(k, r).action } catch (e) { return e instanceof IntentUnbindableError ? "REFUSED" : "THREW" } }
+check(25, "across five body shapes the pm route yields pm_trade or a named refusal, never perp_trade", keysets.every((k) => ["pm_trade", "REFUSED"].includes(actionOf(k, "pm"))) && keysets.filter((k) => actionOf(k, "pm") === "pm_trade").length === 4)
+check(26, "across five body shapes the perp route yields perp_trade or a named refusal, never pm_trade", keysets.every((k) => ["perp_trade", "REFUSED"].includes(actionOf(k, "perp"))) && keysets.filter((k) => actionOf(k, "perp") === "perp_trade").length === 5)
 check(27, "an unknown route throws instead of defaulting to a class", ["", "PM", "perp_trade", null].every((r) => { try { toDJZSIntent(PM, r); return false } catch { return true } }))
+
+// 6. A MISSING OR EMPTY market, side or thesis is refused by a NAMED error (ruled 2026-10-21), on both routes.
+//    viem would throw on `undefined` and null but binds "" without complaint, so before this a body with
+//    thesis: "" was settled, attested and permanent. The message is a fixed vocabulary; it never carries the body.
+const SENTINEL = "SENTINEL-BODY-TEXT-0123456789"
+function unbindable(i, r) { try { toDJZSIntent(i, r); return null } catch (e) { return e instanceof IntentUnbindableError ? e : { notNamed: e } } }
+const FIELDS = REQUIRED_TEXT_FIELDS
+check(28, "the guarded fields are exactly market, side, thesis", FIELDS.join() === "market,side,thesis")
+const baseFor = { pm: { ...PM }, perp: { ...PERP } }
+const marketKey = { pm: "market", perp: "instrument" }
+let namedAll = true, wrongField = [], leaked = false, instances = 0
+for (const route of ["pm", "perp"]) {
+  for (const field of FIELDS) {
+    const key = field === "market" ? marketKey[route] : field
+    for (const [problem, mutate] of [["missing", (b) => { delete b[key] }], ["missing", (b) => { b[key] = undefined }], ["missing", (b) => { b[key] = null }], ["empty", (b) => { b[key] = "" }]]) {
+      const body = { ...baseFor[route], extra: SENTINEL }; mutate(body)
+      if (route === "perp" && field === "market") delete body.market
+      const e = unbindable(body, route)
+      instances++
+      if (!e || e.notNamed) { namedAll = false; wrongField.push(`${route}/${key}/${problem}: ${e ? String(e.notNamed) : "no throw"}`); continue }
+      if (e.field !== field || e.problem !== problem && !(problem === "missing" && e.problem === "missing")) wrongField.push(`${route}/${key}/${problem}: got ${e.field}/${e.problem}`)
+      if (e.message.includes(SENTINEL)) leaked = true
+    }
+  }
+}
+check(29, `${instances} missing/undefined/null/empty cases on both routes each throw IntentUnbindableError`, namedAll && instances === 24, wrongField.join(" | "))
+check(30, "each names the right field and the right problem (missing vs empty)", wrongField.length === 0, wrongField.join(" | "))
+check(31, "the message is `intent_unbindable: <field> is <missing|empty>` and never carries any of the body", !leaked && unbindable({ ...PM, thesis: "" }, "pm").message === "intent_unbindable: thesis is empty" && unbindable({ ...PM, side: null }, "pm").message === "intent_unbindable: side is missing")
+const e0 = unbindable({ ...PM, thesis: "" }, "pm")
+check(32, "it is an Error with a stable name, field and problem a caller can switch on", e0 instanceof Error && e0.name === "IntentUnbindableError" && e0.field === "thesis" && e0.problem === "empty")
+
+// 6a. perp: the refusal comes AFTER the instrument -> market fallback
+const { instrument: _noInstrument, ...PERP_NO_INSTRUMENT } = PERP
+check(33, "perp, neither instrument nor market: market is missing (named), not an opaque viem error", unbindable(PERP_NO_INSTRUMENT, "perp")?.field === "market" && unbindable(PERP_NO_INSTRUMENT, "perp")?.problem === "missing")
+check(34, "perp, `market` only: the fallback supplies the market, so it still binds", unbindable({ ...PERP_NO_INSTRUMENT, market: "BTC-PERP" }, "perp") === null)
+check(35, "perp, instrument is an EMPTY string: a string wins the fallback, so market is empty (named); `market` is not consulted", unbindable({ ...PERP, instrument: "", market: "ETH-PERP" }, "perp")?.problem === "empty")
+check(36, "perp, instrument is not a string and `market` is empty: empty (named)", unbindable({ ...PERP, instrument: 7, market: "" }, "perp")?.problem === "empty")
+
+// 6b. what is NOT refused, so the next reader does not have to guess
+check(37, "a whitespace-only thesis is not empty: it still binds (a separate ruling if it should not)", unbindable({ ...PM, thesis: " " }, "pm") === null)
+check(38, "a non-string thesis/side/market is not refused here: it still binds, to a colliding hash (the 2026-10-20 mistyped-values finding stays open)", unbindable({ ...PM, thesis: 0 }, "pm") === null && unbindable({ ...PM, side: false }, "pm") === null)
+check(39, "an absent venue / probability_basis / bounds is NOT refused: they have documented defaults", unbindable({ market: "m", side: "YES", thesis: "t" }, "pm") === null)
+
+// 6c. nothing that bound before binds differently now
+check(40, "the PM golden and the perp example still produce their pinned keys (the guard only ever removes bodies)", hashOrNull(PM, "pm") === "0x34c493a055e5b6b3683fb5bac14654190de392557aad09f8a48a74c6992cb206" && hashOrNull(PERP, "perp") === PERP_PINNED)
 
 console.log(`\n${pass} passed, ${failures.length} failed`)
 if (failures.length) { console.log(failures.join("\n")); process.exit(1) }

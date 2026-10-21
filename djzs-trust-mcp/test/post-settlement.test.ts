@@ -363,6 +363,42 @@ async function main(): Promise<void> {
       check("pm route, a PM body that also carries `instrument`/`leverage`: pm_trade, the pinned PM key, attested once under the PM ruleset", d.status === 200 && d.body.intent_hash === PM_INTENT_HASH_PINNED && att4.calls.length === 1 && att4.calls[0].rulesetVersion === PM_RESOURCE.rulesetVersion, `${d.status} ${String(d.body.intent_hash)}`)
     }
 
+    // ── 1c. A MISSING OR EMPTY market, side or thesis is refused by a NAMED error, uncharged (ruled 2026-10-21) ──────
+    console.log("1c. missing / null / empty market, side or thesis: 400 intent_unbindable, uncharged, on both routes; the cause is named in the log")
+    {
+      const TEXT = "BODY-TEXT-THAT-MUST-NOT-REACH-THE-LOG-0123456789"
+      const sb = fac.hits.settle
+      const att = stubAttester("ok")
+      const cases: { route: "pm" | "perp"; key: string; field: string; how: "missing" | "null" | "empty" }[] = []
+      for (const route of ["pm", "perp"] as const) {
+        for (const [field, key] of [["market", route === "pm" ? "market" : "instrument"], ["side", "side"], ["thesis", "thesis"]] as const) {
+          for (const how of ["missing", "null", "empty"] as const) cases.push({ route, key, field, how })
+        }
+      }
+      const answers: Outcome[] = []
+      for (const c of cases) {
+        const base: Record<string, unknown> = c.route === "pm" ? { ...PM_INTENT, note: TEXT } : { ...PERP_INTENT, note: TEXT }
+        if (c.how === "missing") delete base[c.key]; else base[c.key] = c.how === "null" ? null : ""
+        answers.push(await paid({ env: envKey, spec: c.route === "pm" ? PM_RESOURCE : PERP_RESOURCE, intent: base, engine: stubEngine(), attest: att.fn, header: c.route === "pm" ? hdrPm : hdrPerp }))
+      }
+      const refused = answers.every((o) => o.threw === null && o.status === 400 && o.body.error === "intent_unbindable" && o.body.charged === false && o.body.settled === false)
+      check(`all ${cases.length} cases (2 routes x market/side/thesis x missing/null/empty): 400 intent_unbindable, charged:false, settled:false`, refused, answers.map((o, i) => (o.status === 400 ? "" : `${cases[i].route}/${cases[i].key}/${cases[i].how}=${o.status}`)).filter(Boolean).join(" "))
+      check("settlePayment was NEVER called by any of them", fac.hits.settle === sb, `settle hits +${fac.hits.settle - sb}`)
+      check("the engine never ran, nothing was attested, no PAYMENT-RESPONSE", answers.every((o) => o.auditCalls === 0 && headerTx(o.paymentResponse) === null) && att.calls.length === 0)
+      check("the 400 is byte-identical for every field and every route class (it names no field; same body as before)", new Set(answers.map((o) => o.text)).size <= 2, [...new Set(answers.map((o) => o.text.slice(0, 80)))].join(" || "))
+      check("each cause is named in the Worker log: [fault] x402.bind :: IntentUnbindableError :: intent_unbindable: <field> is <missing|empty>", answers.every((o, i) => {
+        const want = `IntentUnbindableError :: intent_unbindable: ${cases[i].field} is ${cases[i].how === "empty" ? "empty" : "missing"}`
+        return o.logs.some((l) => l.startsWith("[fault] x402.bind ") && l.includes(want))
+      }), answers.slice(0, 3).map((o) => o.logs.join(" | ").slice(0, 160)).join(" || "))
+      check("no part of the body in the response or the log", answers.every((o) => !o.text.includes(TEXT) && !o.logs.some((l) => l.includes(TEXT))))
+
+      // the paid, in-scope, BINDABLE twin of each still settles once: the guard removed bodies, it did not add a gate
+      const sb2 = fac.hits.settle
+      const att2 = stubAttester("ok")
+      const ok = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: att2.fn, header: hdrPm })
+      check("the same PM body with all three fields present: 200, settled exactly once, attested once", ok.status === 200 && fac.hits.settle === sb2 + 1 && att2.calls.length === 1, `${ok.status}`)
+    }
+
     // ── 2. A prediction-market intent is unchanged ─────────────────────────────────
     console.log("2. prediction-market intent: intent_hash is non-null, pinned, and attested")
     {
