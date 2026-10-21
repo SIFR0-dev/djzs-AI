@@ -10,7 +10,13 @@
  *
  * WHERE IT RUNS. wrangler.toml declares it as the [build] command, so wrangler runs it before
  * every `deploy` and `versions upload`, however wrangler was invoked (npm run deploy, npx wrangler
- * deploy, a pasted command). wrangler sets WRANGLER_COMMAND for that child; `dev` and `types`
+ * deploy, a pasted command). BOTH deployable directories declare it: djzs-trust-mcp/wrangler.toml
+ * (`node scripts/predeploy-guard.mjs`) and site/wrangler.toml (`node ../djzs-trust-mcp/scripts/...`).
+ * The 2026-09-28 tree that nothing could reproduce held the site's /try page AND the Worker's
+ * try-route.ts, so a guard on the Worker alone left half of it open. The check is repo-wide, so
+ * either deploy is refused while either directory is dirty. wrangler runs the command in the
+ * directory it was invoked from, so each deploy must be run from its own directory; from anywhere
+ * else the relative path does not resolve and wrangler aborts (fail closed). wrangler sets WRANGLER_COMMAND for that child; `dev` and `types`
  * build nothing that ships, so the guard stands down for them. Any other value, or none (the
  * script run by hand), is treated as a deploy.
  *

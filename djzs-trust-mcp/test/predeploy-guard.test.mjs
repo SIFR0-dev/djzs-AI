@@ -3,8 +3,12 @@
  * origin/main. Offline: every scenario builds a throwaway git repo and a local bare "origin" in a
  * temp directory; nothing touches the network, a key, or this repository's own state.
  *
- * Two layers:
+ * Three layers:
  *   1. the script, run directly against temp repos (every verdict and every reason);
+ *   1b. the SITE deploy (site/, an assets-only Worker): the exact command site/wrangler.toml declares,
+ *      run the way wrangler runs it (a shell, in the invoking directory) against a temp repo with the
+ *      real layout. This layer does not run wrangler; layer 2 below proves the Worker's wiring through
+ *      the real one, and wrangler's own handling of an assets-only config was read from its source.
  *   2. the wiring, through the REAL wrangler: `wrangler deploy --dry-run` must run the guard as
  *      its [build] step (so a bare `npx wrangler deploy` is covered too), and the guard must
  *      block it. The refusal is made deterministic by pointing GIT_DIR at nothing, so the result
@@ -13,12 +17,13 @@
  * Run from djzs-trust-mcp/:   npx tsx test/predeploy-guard.test.mjs
  */
 import { execFileSync, spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
 const WORKER = path.resolve(import.meta.dirname, "..")
 const GUARD = path.join(WORKER, "scripts", "predeploy-guard.mjs")
+const SITE = path.resolve(WORKER, "..", "site")
 
 let checks = 0
 const failures = []
@@ -61,6 +66,26 @@ function world() {
 
 function guard(w, extraEnv = {}) {
   const r = spawnSync("node", [GUARD], { cwd: w.cwd, encoding: "utf8", env: { ...CLEAN_ENV, ...extraEnv } })
+  return { status: r.status, out: `${r.stdout}${r.stderr}` }
+}
+
+/** The repo's real layout in miniature: djzs-trust-mcp/scripts/predeploy-guard.mjs and site/, committed and pushed. */
+function siteWorld() {
+  const w = world()
+  mkdirSync(path.join(w.work, "djzs-trust-mcp", "scripts"), { recursive: true })
+  copyFileSync(GUARD, path.join(w.work, "djzs-trust-mcp", "scripts", "predeploy-guard.mjs"))
+  mkdirSync(path.join(w.work, "site"))
+  writeFileSync(path.join(w.work, "site", "index.html"), "<h1>one</h1>\n")
+  git(w.work, "add", "-A")
+  git(w.work, "commit", "-m", "site + guard")
+  git(w.work, "push", "origin", "main")
+  return { ...w, site: path.join(w.work, "site") }
+}
+const SITE_TOML = readFileSync(path.join(SITE, "wrangler.toml"), "utf8")
+const SITE_COMMAND = /^\[build\]\s*\ncommand\s*=\s*"([^"\n]+)"/m.exec(SITE_TOML)?.[1] ?? ""
+/** Run the command the site's wrangler.toml declares, as wrangler does: a shell, in the directory it was invoked from. */
+function siteHook(w, extraEnv = {}, cwd = w.site) {
+  const r = spawnSync(SITE_COMMAND || "false", { shell: true, cwd, encoding: "utf8", env: { ...CLEAN_ENV, WRANGLER_COMMAND: "deploy", ...extraEnv } })
   return { status: r.status, out: `${r.stdout}${r.stderr}` }
 }
 
@@ -156,6 +181,47 @@ try {
     const bo = guard(w, { WRANGLER_COMMAND: "deploy", DJZS_BUILD_ONLY: "1" })
     check("DJZS_BUILD_ONLY=1 stands down, loudly", bo.status === 0 && /DJZS_BUILD_ONLY=1/.test(bo.out) && /Never set this on a real deploy/.test(bo.out), `${bo.status} ${bo.out}`)
     check("DJZS_BUILD_ONLY=0 / empty does NOT stand down", guard(w, { WRANGLER_COMMAND: "deploy", DJZS_BUILD_ONLY: "0" }).status === 1 && guard(w, { WRANGLER_COMMAND: "deploy", DJZS_BUILD_ONLY: "" }).status === 1)
+  }
+
+  console.log("2b. the site deploy (site/) is guarded too: production /try came from one uncommitted tree holding BOTH the page and the Worker")
+  {
+    check("site/wrangler.toml declares the guard as its [build] command", SITE_COMMAND === "node ../djzs-trust-mcp/scripts/predeploy-guard.mjs", SITE_COMMAND || "no [build] command found")
+    check("that command resolves to the real script from site/ (the path is not dead)", existsSync(path.resolve(SITE, "..", "djzs-trust-mcp", "scripts", "predeploy-guard.mjs")))
+    check("site/ stays assets-only, and .assetsignore keeps wrangler.toml (the hook config) out of the public bundle", !/^main\s*=/m.test(SITE_TOML) && /^\[assets\]/m.test(SITE_TOML) && readFileSync(path.join(SITE, ".assetsignore"), "utf8").split("\n").includes("wrangler.toml"))
+
+    const clean = siteWorld()
+    const ok = siteHook(clean)
+    check("clean tree, HEAD == origin/main: the site hook passes", ok.status === 0 && /OK: tree clean, HEAD [0-9a-f]{12} == origin\/main/.test(ok.out), `${ok.status} ${ok.out}`)
+
+    const edited = siteWorld()
+    writeFileSync(path.join(edited.site, "index.html"), "<h1>edited, not committed</h1>\n")
+    const e = siteHook(edited)
+    check("an edited site file: refused, and it names the file", e.status === 1 && /REFUSED/.test(e.out) && /working tree is dirty/.test(e.out) && /site\/index\.html/.test(e.out), `${e.status} ${e.out}`)
+
+    const added = siteWorld()
+    writeFileSync(path.join(added.site, "try.html"), "<h1>never added</h1>\n")
+    const a = siteHook(added)
+    check("a NEW untracked site file (the /try page of 2026-09-28): refused, and it names the file", a.status === 1 && /dirty/.test(a.out) && /site\/try\.html/.test(a.out), `${a.status} ${a.out}`)
+
+    const other = siteWorld()
+    writeFileSync(path.join(other.work, "djzs-trust-mcp", "a.txt"), "worker edit\n")
+    const o = siteHook(other)
+    check("a dirty djzs-trust-mcp/ blocks the SITE deploy too (one tree, one verdict)", o.status === 1 && /dirty/.test(o.out) && /djzs-trust-mcp\/a\.txt/.test(o.out), `${o.status} ${o.out}`)
+
+    const ahead = siteWorld()
+    writeFileSync(path.join(ahead.site, "index.html"), "<h1>committed, unpushed</h1>\n")
+    git(ahead.work, "add", "-A")
+    git(ahead.work, "commit", "-m", "unpushed")
+    const ah = siteHook(ahead)
+    check("site HEAD ahead of origin/main (committed, never pushed): refused", ah.status === 1 && /is not origin\/main/.test(ah.out) && !/dirty/.test(ah.out), `${ah.status} ${ah.out}`)
+
+    const dev = siteHook(edited, { WRANGLER_COMMAND: "dev" })
+    check("`wrangler dev` in site/ stands down on a dirty tree", dev.status === 0, `${dev.status} ${dev.out}`)
+    const bo = siteHook(edited, { DJZS_BUILD_ONLY: "1" })
+    check("DJZS_BUILD_ONLY=1 stands down, loudly (the dry-run opt-out works for the site too)", bo.status === 0 && /Never set this on a real deploy/.test(bo.out), `${bo.status} ${bo.out}`)
+
+    const wrongDir = siteHook(clean, {}, clean.work)
+    check("run from the wrong directory (the repo root) the command cannot run: non-zero, so wrangler would abort. It fails closed", wrongDir.status !== 0, `${wrongDir.status} ${wrongDir.out}`)
   }
 
   console.log("3. the wiring, through the real wrangler")
