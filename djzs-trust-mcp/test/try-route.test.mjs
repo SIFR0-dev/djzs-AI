@@ -197,5 +197,36 @@ check(2, "the text names the cap and that nothing moves", TRY_MESSAGE_FORMAT.inc
   check(30, "out of scope on the perp route: 200 REFUSED_SCOPE, slot kept", refused.status === 200 && refused.body.verdict === "REFUSED_SCOPE" && refused.body.quota.used === 1 && db._verdict.get(`${day}|${account.address}`) === 1)
 }
 
+// 8. THE ROUTE DECIDES the action class (ruled 2026-10-21): /try maps `kind` to the paid route's class,
+//    so a free verdict's intent_hash is the key the paid receipt for that kind would carry.
+{
+  // The perp route's published example: the same body whose paid hash is pinned in post-settlement.test.ts.
+  const PERP_INTENT = {
+    instrument: "BTC-PERP", side: "LONG", leverage: 5, entry: 78900, stop_loss: 76200, take_profit: 83000, size_usd: 3000, venue: "Binance",
+    thesis: "Funding reset to 2% after the weekend flush; 80K held on the daily close; ETF inflows resumed. Invalidation: daily close below 76,200. Oracle: Binance mark price.",
+  }
+  const PERP_PINNED = "0xb7fbfdab14efbc842bd235439b995791f160610b266ea154dd52a43631ed8c19"
+  const PERP_EXTRACTION = {
+    ...PM_EXTRACTION, audit_context: "perp", leverage: { state: "present", value: 5 }, take_profit: { state: "present", value: 83000 },
+    stop_loss: { state: "present", value: 76200 }, thesis_statement: { state: "present", value: "Funding reset after the weekend flush" },
+    oracle_source: { state: "present", value: "Binance mark price" },
+  }
+  const { instrument: _i, ...rest } = PERP_INTENT
+  const MARKET_ONLY = { ...rest, market: "BTC-PERP" }
+
+  let db = fakeD1()
+  const a = await j(await handleTryVerdict(post({ kind: "perp", intent: PERP_INTENT, address: account.address, day, signature: await sign(account, PERP_INTENT) }), { TELEMETRY: db }, stubModel(PERP_EXTRACTION)))
+  check(35, "kind perp, the published example: in-scope verdict whose intent_hash is the pinned perp_trade key", a.status === 200 && a.body.ok === true && a.body.intent_hash === PERP_PINNED && a.body.intent_hash === intentHash(toDJZSIntent(PERP_INTENT, "perp")), `${a.status} ${String(a.body.intent_hash)}`)
+  check(36, "…and its receipt offer points at the PERP route", a.body.receipt?.url === PERP_RESOURCE_URL)
+
+  db = fakeD1()
+  const b = await j(await handleTryVerdict(post({ kind: "perp", intent: MARKET_ONLY, address: account.address, day, signature: await sign(account, MARKET_ONLY) }), { TELEMETRY: db }, stubModel(PERP_EXTRACTION)))
+  check(37, "kind perp, `market` spelled instead of `instrument`: the SAME perp_trade intent_hash (the route decides, not the keys)", b.status === 200 && b.body.intent_hash === PERP_PINNED, `${b.status} ${String(b.body.intent_hash)}`)
+
+  db = fakeD1()
+  const c = await j(await handleTryVerdict(post({ kind: "pm", intent: PERP_INTENT, address: account.address, day, signature: await sign(account, PERP_INTENT) }), { TELEMETRY: db }, stubModel(PM_EXTRACTION)))
+  check(38, "kind pm, a perp-shaped body: a verdict, but intent_hash is null. The pm class cannot bind it, and it does not borrow perp_trade", c.status === 200 && c.body.ok === true && c.body.intent_hash === null, `${c.status} ${String(c.body.intent_hash)}`)
+}
+
 console.log(`\n${pass} passed, ${failures.length} failed`)
 if (failures.length) { console.log(failures.join("\n")); process.exit(1) }

@@ -65,11 +65,25 @@ export type PmIntentLike = {
   market: string; side: string; thesis: string; probability_basis?: string; size_usd?: number;
   bounds?: { max_loss_usd?: number; exit_condition?: string }; venue?: string;
 };
-/** A perp/spot intent as /x402/verify_perp_trade receives it (discovery block field names). */
+/**
+ * A perp/spot intent as /x402/verify_perp_trade receives it (discovery block field names).
+ * `instrument` is the documented key. `market` is read only as a fallback for the market field,
+ * when `instrument` is not a string.
+ */
 export type PerpIntentLike = {
-  instrument: string; side: string; thesis: string; leverage?: number; entry?: number; stop_loss?: number;
+  instrument?: string; market?: string; side: string; thesis: string; leverage?: number; entry?: number; stop_loss?: number;
   take_profit?: number; invalidation?: string; size_usd?: number; venue?: string; data_sources?: string;
 };
+
+/**
+ * The paid route that received an intent. THE ROUTE DECIDES THE RECEIPT'S ACTION CLASS, never the
+ * body's fields (ruled 2026-10-21): /x402/verify_perp_trade always attests "perp_trade" and
+ * /x402/verify_pm_trade always attests "pm_trade". Until then the body's shape chose (`instrument`
+ * present and `market` absent => perp), so a caller picked the class of a PERMANENT attestation by
+ * choosing which keys to send, and a body carrying `market` sent to the perp route was attested
+ * as a prediction-market trade under the perp ruleset.
+ */
+export type IntentRoute = "pm" | "perp";
 
 /** Level fields bound into params_hash for a perp intent, in this order, always all four. */
 export const PERP_PARAM_FIELDS = ["leverage", "entry", "stop_loss", "take_profit"] as const;
@@ -87,13 +101,6 @@ export function perpParamsPreimage(perp: PerpIntentLike): string {
   }).join("|");
 }
 
-/** True when the object is shaped like a perp intent: `instrument` present, `market` absent. */
-export function isPerpIntent(x: unknown): x is PerpIntentLike {
-  if (!x || typeof x !== "object") return false;
-  const o = x as Record<string, unknown>;
-  return typeof o.instrument === "string" && typeof o.market !== "string";
-}
-
 /**
  * Wire intent -> v2 struct. Defaults are DOCUMENTED, never inferred: a third party
  * recomputing intent_hash must not have to guess.
@@ -101,29 +108,39 @@ export function isPerpIntent(x: unknown): x is PerpIntentLike {
  * PM (action "pm_trade"): venue "" unless supplied; missing numbers 0; params_hash ZERO32.
  * Unchanged since v2 shipped; every existing intent_hash still recomputes.
  *
- * PERP (action "perp_trade", 2026-09-27): market = instrument; probability_basis =
+ * The ROUTE chooses the branch (see IntentRoute); the body's fields never do.
+ *
+ * PERP (action "perp_trade", 2026-09-27): market = instrument, falling back to market when
+ * instrument is not a string (neither => no market => intentHash throws, which the route reports
+ * as intent_unbindable, uncharged); probability_basis =
  * data_sources or ""; max_loss_usd_cents = 0 (a perp intent states levels, not a loss
  * bound, and deriving one from entry/stop/size would be inference); exit_condition =
  * invalidation, else "stop_loss <n>" when a stop is given, else ""; params_hash =
  * keccak256(utf8(perpParamsPreimage(intent))) so the levels are bound into the key.
  * Before this branch existed a perp intent threw here (market undefined) AFTER
  * settlement, so a paying perp caller was charged and answered 503.
+ *
+ * `route` defaults to "pm" for exactly one reason: tests/q3/q3-log.ts hashes prediction-market
+ * records and calls this with the intent alone. Every paid route passes its own.
  */
-export function toDJZSIntent(intent: PmIntentLike | PerpIntentLike): DJZSIntent {
+export function toDJZSIntent(intent: PmIntentLike | PerpIntentLike, route: IntentRoute = "pm"): DJZSIntent {
+  // Fail loud: an unrecognised route must never fall through to a class by default.
+  if (route !== "pm" && route !== "perp") throw new Error(`unknown route: ${String(route)}`);
   const cents = (x?: number) => BigInt(Math.round((typeof x === "number" && isFinite(x) ? x : 0) * 100));
-  if (isPerpIntent(intent)) {
-    const perp = intent;
+  if (route === "perp") {
+    const perp = intent as PerpIntentLike;
     const exit = typeof perp.invalidation === "string" && perp.invalidation !== ""
       ? perp.invalidation
       : typeof perp.stop_loss === "number" && isFinite(perp.stop_loss) ? `stop_loss ${String(perp.stop_loss)}` : "";
     return {
-      action: "perp_trade", venue: perp.venue ?? "", market: perp.instrument, side: perp.side, thesis: perp.thesis,
+      // A missing market is left undefined on purpose: intentHash throws on it, and the route refuses it uncharged.
+      action: "perp_trade", venue: perp.venue ?? "", market: (typeof perp.instrument === "string" ? perp.instrument : perp.market) as string, side: perp.side, thesis: perp.thesis,
       probability_basis: perp.data_sources ?? "", size_usd_cents: cents(perp.size_usd),
       max_loss_usd_cents: 0n, exit_condition: exit,
       params_hash: keccak256(new TextEncoder().encode(perpParamsPreimage(perp))),
     };
   }
-  const pm = intent;
+  const pm = intent as PmIntentLike;
   return {
     action: "pm_trade", venue: pm.venue ?? "", market: pm.market, side: pm.side, thesis: pm.thesis,
     probability_basis: pm.probability_basis ?? "", size_usd_cents: cents(pm.size_usd),

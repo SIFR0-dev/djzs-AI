@@ -335,7 +335,7 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   const flags = [...flags_detail.map((f) => f.code), ...unknown.map((u) => `unknown:${u}`)]
   let intent_hash: string | null = null
   try {
-    intent_hash = intentHash(toDJZSIntent(intent as PmIntentLike | PerpIntentLike))
+    intent_hash = intentHash(toDJZSIntent(intent as PmIntentLike | PerpIntentLike, kind))
   } catch {
     intent_hash = null // the paid route computes the binding key; a shape it cannot map is reported as null here, not as a failure
   }

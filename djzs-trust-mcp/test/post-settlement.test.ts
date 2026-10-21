@@ -334,6 +334,35 @@ async function main(): Promise<void> {
       check("the attester was never reached by any of the three refusals", att.calls.length === 0)
     }
 
+    // ── 1b. THE ROUTE DECIDES THE ACTION CLASS (ruled 2026-10-21), not the body's fields ──────────
+    console.log("1b. each route attests ITS class: perp_trade on the perp route, pm_trade on the pm route, whatever keys the body carries")
+    {
+      // perp route, a body that spells the instrument `market`: used to be attested as pm_trade under the perp ruleset.
+      const { instrument: _i, ...perpRest } = PERP_INTENT
+      const perpMarketOnly = { ...perpRest, market: "BTC-PERP" }
+      const sb = fac.hits.settle
+      const att = stubAttester("ok")
+      const a = await paid({ env: envKey, spec: PERP_RESOURCE, intent: perpMarketOnly, engine: stubEngine({ audit: async () => VERDICT_FAIL }), attest: att.fn, header: hdrPerp })
+      check("perp route, `market` instead of `instrument`: 200, charged once, attested as the SAME perp_trade key as the instrument spelling", a.status === 200 && a.body.charged === true && a.settleDelta === 1 && a.body.intent_hash === PERP_INTENT_HASH_PINNED && att.calls.length === 1 && att.calls[0].intentHash === PERP_INTENT_HASH_PINNED && att.calls[0].rulesetVersion === PERP_RESOURCE.rulesetVersion, `${a.status} ${String(a.body.intent_hash)} ${JSON.stringify(att.calls)}`)
+
+      // perp route, both keys: instrument wins for the market field
+      const att2 = stubAttester("ok")
+      const b = await paid({ env: envKey, spec: PERP_RESOURCE, intent: { ...PERP_INTENT, market: "KXBTC-OTHER" }, engine: stubEngine({ audit: async () => VERDICT_FAIL }), attest: att2.fn, header: hdrPerp })
+      check("perp route, BOTH keys: perp_trade with market = instrument (the pinned key), not the pm projection of `market`", b.status === 200 && b.body.intent_hash === PERP_INTENT_HASH_PINNED && att2.calls.length === 1, `${b.status} ${String(b.body.intent_hash)}`)
+
+      // pm route, a perp-shaped body: used to be attested as perp_trade UNDER THE PM RULESET. Now unbindable, uncharged.
+      const sb3 = fac.hits.settle
+      const att3 = stubAttester("ok")
+      const c = await paid({ env: envKey, spec: PM_RESOURCE, intent: PERP_INTENT, engine: stubEngine(), attest: att3.fn, header: hdrPm })
+      check("pm route, a perp-shaped body (instrument, no market): 400 intent_unbindable, uncharged, settlePayment never called", c.status === 400 && c.body.error === "intent_unbindable" && c.body.charged === false && c.body.settled === false && fac.hits.settle === sb3, `${c.status} ${c.text.slice(0, 120)}`)
+      check("…the engine never ran and nothing was attested", c.auditCalls === 0 && att3.calls.length === 0)
+
+      // pm route, a PM body that ALSO carries perp keys: still pm_trade, the pinned PM key
+      const att4 = stubAttester("ok")
+      const d = await paid({ env: envKey, spec: PM_RESOURCE, intent: { ...PM_INTENT, instrument: "BTC-PERP", leverage: 5 }, engine: stubEngine(), attest: att4.fn, header: hdrPm })
+      check("pm route, a PM body that also carries `instrument`/`leverage`: pm_trade, the pinned PM key, attested once under the PM ruleset", d.status === 200 && d.body.intent_hash === PM_INTENT_HASH_PINNED && att4.calls.length === 1 && att4.calls[0].rulesetVersion === PM_RESOURCE.rulesetVersion, `${d.status} ${String(d.body.intent_hash)}`)
+    }
+
     // ── 2. A prediction-market intent is unchanged ─────────────────────────────────
     console.log("2. prediction-market intent: intent_hash is non-null, pinned, and attested")
     {

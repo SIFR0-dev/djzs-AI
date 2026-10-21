@@ -45,7 +45,7 @@ import type { PaymentRequirements } from "@x402/core/types";
 import type { FacilitatorConfig } from "@x402/core/http";
 
 import { intentHash, attestVerdict, schemaUIDFor } from "./attest-worker";
-import { toDJZSIntent, type PmIntentLike, type PerpIntentLike } from "./djzs-intent";
+import { toDJZSIntent, type IntentRoute, type PmIntentLike, type PerpIntentLike } from "./djzs-intent";
 import { logFault, reasonCode, addressOnly, hash32Only, type Fault } from "./safe-error";
 
 /** Ruleset the attested verdict was scored under. Bump with the taxonomy, never silently. */
@@ -384,11 +384,18 @@ export interface ResourceSpec {
   rulesetVersion: string;
   tags: string[];
   extensions: typeof discoveryExtensions;
+  /**
+   * Which binding this resource uses. THE ROUTE DECIDES the receipt's action class, not the body's
+   * fields: "pm" always attests pm_trade, "perp" always attests perp_trade (see IntentRoute).
+   * Required, so a new resource cannot be added without choosing.
+   */
+  route: IntentRoute;
 }
 export const PM_RESOURCE: ResourceSpec = {
   url: RESOURCE_URL,
   description: DESCRIPTION,
   rulesetVersion: RULESET_VERSION,
+  route: "pm",
   tags: ["audit", "prediction-markets", "trading", "verification"],
   extensions: discoveryExtensions,
 };
@@ -399,6 +406,7 @@ export const PERP_RESOURCE: ResourceSpec = {
   url: PERP_RESOURCE_URL,
   description: PERP_DESCRIPTION,
   rulesetVersion: "DJZS-LF-v1.2",
+  route: "perp",
   tags: ["audit", "perpetuals", "trading", "verification"],
   extensions: discoveryExtensionsPerp,
 };
@@ -619,9 +627,11 @@ async function run(
   // perp_trade action and perp branch in toDJZSIntent are the mapping.
   let intent_hash: ReturnType<typeof intentHash>;
   try {
-    // PM and perp intents both map (perp: instrument -> market, levels -> params_hash; djzs-intent.ts).
-    // The cast is the point: the body is untrusted, and whether it binds is what this try finds out.
-    intent_hash = intentHash(toDJZSIntent(intent as PmIntentLike | PerpIntentLike));
+    // The ROUTE (spec.route) picks the mapping, never the body's fields: this route always attests
+    // pm_trade, the perp route always perp_trade (perp: instrument -> market, falling back to market;
+    // levels -> params_hash; djzs-intent.ts). The cast is the point: the body is untrusted, and
+    // whether it binds is what this try finds out.
+    intent_hash = intentHash(toDJZSIntent(intent as PmIntentLike | PerpIntentLike, spec.route));
   } catch (e) {
     logFault("x402.bind", e);
     return json(
