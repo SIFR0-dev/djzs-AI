@@ -94,7 +94,7 @@ function assetsIgnoreMatcher(root) {
 
 /** Run git, return trimmed stdout, or throw with git's own message. */
 function git(args, cwd) {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim()
+  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trimEnd() // not trim(): the first status line starts with a significant space (" M path")
 }
 
 const problems = []
