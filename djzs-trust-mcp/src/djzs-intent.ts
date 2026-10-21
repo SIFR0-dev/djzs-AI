@@ -85,6 +85,38 @@ export type PerpIntentLike = {
  */
 export type IntentRoute = "pm" | "perp";
 
+/** The three fields every route binds as plain text and cannot bind without. */
+export const REQUIRED_TEXT_FIELDS = ["market", "side", "thesis"] as const;
+export type RequiredTextField = typeof REQUIRED_TEXT_FIELDS[number];
+
+/**
+ * An intent that cannot be bound because a required field is missing (undefined or null) or empty
+ * (""). A NAMED error, so the refusal does not depend on viem happening to throw on `undefined`
+ * (it does not throw on ""), and so the cause in the Worker log says which field. The message is a
+ * fixed vocabulary, field name plus reason, and never carries any of the body: the route logs it,
+ * and the caller sees only the unchanged 400 intent_unbindable.
+ *
+ * Deliberately NOT checked: that the value is a string. A number or object in one of these fields
+ * still binds today (a colliding hash; the 2026-10-20 "mistyped values bind" finding is a separate
+ * ruling), and a whitespace-only string is not empty.
+ */
+export class IntentUnbindableError extends Error {
+  readonly field: RequiredTextField;
+  readonly problem: "missing" | "empty";
+  constructor(field: RequiredTextField, problem: "missing" | "empty") {
+    super(`intent_unbindable: ${field} is ${problem}`);
+    this.name = "IntentUnbindableError";
+    this.field = field;
+    this.problem = problem;
+  }
+}
+
+function requireText<T>(value: T, field: RequiredTextField): T {
+  if (value === undefined || value === null) throw new IntentUnbindableError(field, "missing");
+  if ((value as unknown) === "") throw new IntentUnbindableError(field, "empty");
+  return value;
+}
+
 /** Level fields bound into params_hash for a perp intent, in this order, always all four. */
 export const PERP_PARAM_FIELDS = ["leverage", "entry", "stop_loss", "take_profit"] as const;
 
@@ -111,14 +143,17 @@ export function perpParamsPreimage(perp: PerpIntentLike): string {
  * The ROUTE chooses the branch (see IntentRoute); the body's fields never do.
  *
  * PERP (action "perp_trade", 2026-09-27): market = instrument, falling back to market when
- * instrument is not a string (neither => no market => intentHash throws, which the route reports
- * as intent_unbindable, uncharged); probability_basis =
+ * instrument is not a string; probability_basis =
  * data_sources or ""; max_loss_usd_cents = 0 (a perp intent states levels, not a loss
  * bound, and deriving one from entry/stop/size would be inference); exit_condition =
  * invalidation, else "stop_loss <n>" when a stop is given, else ""; params_hash =
  * keccak256(utf8(perpParamsPreimage(intent))) so the levels are bound into the key.
  * Before this branch existed a perp intent threw here (market undefined) AFTER
  * settlement, so a paying perp caller was charged and answered 503.
+ *
+ * After the route's own market resolution, a missing or empty market, side or thesis throws
+ * IntentUnbindableError (named, see above) on BOTH routes; the paid route reports it as 400
+ * intent_unbindable, uncharged, before any money moves.
  *
  * `route` defaults to "pm" for exactly one reason: tests/q3/q3-log.ts hashes prediction-market
  * records and calls this with the intent alone. Every paid route passes its own.
@@ -133,8 +168,9 @@ export function toDJZSIntent(intent: PmIntentLike | PerpIntentLike, route: Inten
       ? perp.invalidation
       : typeof perp.stop_loss === "number" && isFinite(perp.stop_loss) ? `stop_loss ${String(perp.stop_loss)}` : "";
     return {
-      // A missing market is left undefined on purpose: intentHash throws on it, and the route refuses it uncharged.
-      action: "perp_trade", venue: perp.venue ?? "", market: (typeof perp.instrument === "string" ? perp.instrument : perp.market) as string, side: perp.side, thesis: perp.thesis,
+      action: "perp_trade", venue: perp.venue ?? "",
+      market: requireText(typeof perp.instrument === "string" ? perp.instrument : perp.market, "market") as string,
+      side: requireText(perp.side, "side"), thesis: requireText(perp.thesis, "thesis"),
       probability_basis: perp.data_sources ?? "", size_usd_cents: cents(perp.size_usd),
       max_loss_usd_cents: 0n, exit_condition: exit,
       params_hash: keccak256(new TextEncoder().encode(perpParamsPreimage(perp))),
@@ -142,7 +178,8 @@ export function toDJZSIntent(intent: PmIntentLike | PerpIntentLike, route: Inten
   }
   const pm = intent as PmIntentLike;
   return {
-    action: "pm_trade", venue: pm.venue ?? "", market: pm.market, side: pm.side, thesis: pm.thesis,
+    action: "pm_trade", venue: pm.venue ?? "", market: requireText(pm.market, "market"),
+    side: requireText(pm.side, "side"), thesis: requireText(pm.thesis, "thesis"),
     probability_basis: pm.probability_basis ?? "", size_usd_cents: cents(pm.size_usd),
     max_loss_usd_cents: cents(pm.bounds?.max_loss_usd), exit_condition: pm.bounds?.exit_condition ?? "",
     params_hash: ZERO32,

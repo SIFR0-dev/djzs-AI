@@ -1,0 +1,193 @@
+{
+  "accepts": [
+    {
+      "amount": "2000000",
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "extra": {
+        "name": "USD Coin",
+        "termsOfService": "https://djzs.ai/terms",
+        "version": "2"
+      },
+      "maxTimeoutSeconds": 120,
+      "network": "eip155:8453",
+      "payTo": "0xc1923748669dFC3a79497d0403A90a275161eCCA",
+      "scheme": "exact"
+    }
+  ],
+  "extensions": {
+    "bazaar": {
+      "info": {
+        "input": {
+          "body": {
+            "intent": {
+              "entry": 78900,
+              "instrument": "BTC-PERP",
+              "leverage": 5,
+              "side": "LONG",
+              "size_usd": 3000,
+              "stop_loss": 76200,
+              "take_profit": 83000,
+              "thesis": "Funding reset to 2% after the weekend flush; 80K held on the daily close; ETF inflows resumed. Invalidation: daily close below 76,200. Oracle: Binance mark price.",
+              "venue": "Binance"
+            }
+          },
+          "bodyType": "json",
+          "method": "POST",
+          "type": "http"
+        },
+        "output": {
+          "example": {
+            "charged": true,
+            "eas_schema": "0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030",
+            "eas_uid": "\u2026EAS attestation uid\u2026",
+            "flags": [
+              "DJZS-S01"
+            ],
+            "intent_hash": "\u2026EIP-712 binding key (v2)\u2026",
+            "intent_sha256": "\u2026binding key\u2026",
+            "risk_score": 30,
+            "terms": "https://djzs.ai/terms",
+            "verdict": "FAIL",
+            "verdict_hash": "0x7c\u2026e1"
+          },
+          "mimeType": "application/json",
+          "type": "json"
+        }
+      },
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "input": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "properties": {
+                  "intent": {
+                    "description": "A perpetual or spot TRADE intent to be adversarially audited before capital is committed. Deterministic engine: the LLM layer detects, TypeScript decides. A position stated with no reason FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused WITHOUT CHARGE (use verify_pm_trade).",
+                    "properties": {
+                      "data_sources": {
+                        "description": "Where the inputs came from. Social/sentiment-only sourcing is flagged (DJZS-I01), not blocked.",
+                        "type": "string"
+                      },
+                      "entry": {
+                        "description": "Intended entry price.",
+                        "type": "number"
+                      },
+                      "instrument": {
+                        "description": "Instrument, e.g. BTC-PERP, ETH-USD spot.",
+                        "type": "string"
+                      },
+                      "invalidation": {
+                        "description": "The condition that proves the thesis wrong, if not a price stop.",
+                        "type": "string"
+                      },
+                      "leverage": {
+                        "description": "Leverage multiplier (1 for spot).",
+                        "type": "number"
+                      },
+                      "side": {
+                        "description": "LONG or SHORT.",
+                        "type": "string"
+                      },
+                      "size_usd": {
+                        "description": "Notional in USD.",
+                        "type": "number"
+                      },
+                      "stop_loss": {
+                        "description": "Stop level. A position with neither a stop nor an invalidation condition cannot PASS.",
+                        "type": "number"
+                      },
+                      "take_profit": {
+                        "description": "Target level.",
+                        "type": "number"
+                      },
+                      "thesis": {
+                        "description": "The REASON the price should move the chosen way. Direction, size and levels alone are not a thesis.",
+                        "type": "string"
+                      },
+                      "venue": {
+                        "description": "Execution venue; also the mark-price oracle unless stated otherwise.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "side",
+                      "thesis"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "intent"
+                ],
+                "type": "object"
+              },
+              "bodyType": {
+                "enum": [
+                  "json",
+                  "form-data",
+                  "text"
+                ],
+                "type": "string"
+              },
+              "method": {
+                "enum": [
+                  "POST",
+                  "PUT",
+                  "PATCH"
+                ],
+                "type": "string"
+              },
+              "type": {
+                "const": "http",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "method",
+              "bodyType",
+              "body"
+            ],
+            "type": "object"
+          },
+          "output": {
+            "properties": {
+              "example": {
+                "type": "object"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "resource": {
+    "description": "DJZS adversarial logic audit of a perpetual or spot TRADE intent \u2014 direction, size, leverage, entry, stop, target, venue, and the REASON. Deterministic verdict (PASS/WAIT/FAIL) with risk score, defect flags, verdict_hash, and on-chain Proof-of-Logic receipt. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused WITHOUT CHARGE. Audit, not advice.",
+    "mimeType": "application/json",
+    "serviceName": "DJZS Audit Gate",
+    "tags": [
+      "audit",
+      "perpetuals",
+      "trading",
+      "verification"
+    ],
+    "url": "https://mcp.djzs.ai/x402/verify_perp_trade"
+  },
+  "x402Version": 2
+}

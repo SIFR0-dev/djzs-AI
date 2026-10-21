@@ -224,6 +224,85 @@ try {
     check("run from the wrong directory (the repo root) the command cannot run: non-zero, so wrangler would abort. It fails closed", wrongDir.status !== 0, `${wrongDir.status} ${wrongDir.out}`)
   }
 
+  console.log("2c. assets-only deploys: what wrangler would UPLOAD is what is checked (the 2026-10-21 review: gitignored files, and the untracked build_og.py)")
+  {
+    const REAL_IGNORE = readFileSync(path.join(SITE, ".assetsignore"), "utf8")
+    /** siteWorld plus the real site/wrangler.toml and the real site/.assetsignore, and a .gitignore that also hides a scratch file. */
+    const assetsWorld = (assetsignore = REAL_IGNORE) => {
+      const w = siteWorld()
+      writeFileSync(path.join(w.site, "wrangler.toml"), SITE_TOML)
+      writeFileSync(path.join(w.site, ".assetsignore"), assetsignore)
+      writeFileSync(path.join(w.work, ".gitignore"), ".dev.vars\nnode_modules\n.env\n.DS_Store\nsecret-notes.txt\n")
+      git(w.work, "add", "-A")
+      git(w.work, "commit", "-m", "assets config")
+      git(w.work, "push", "origin", "main")
+      return w
+    }
+    check("the real site/.assetsignore excludes the junk and secrets names added in this change (and still wrangler.toml, .wrangler, build_og.py)", ["wrangler.toml", ".wrangler", "build_og.py", ".env", ".env.*", ".dev.vars", ".DS_Store", "node_modules", "*.log", "*.bak", "*.bak.*"].every((l) => REAL_IGNORE.split("\n").includes(l)), REAL_IGNORE)
+
+    const clean = assetsWorld()
+    check("assets mode, clean: the site hook passes", siteHook(clean).status === 0, siteHook(clean).out)
+
+    // (b) a gitignored file wrangler would upload while `git status` reads clean
+    const leak = assetsWorld()
+    writeFileSync(path.join(leak.site, "secret-notes.txt"), "not for the internet\n")
+    const l = siteHook(leak)
+    check("a gitignored file under site/ that .assetsignore does NOT exclude is REFUSED, named, and described as an upload", l.status === 1 && /would be UPLOADED/.test(l.out) && /site\/secret-notes\.txt/.test(l.out) && !/working tree is dirty/.test(l.out), `${l.status} ${l.out}`)
+    check("…git status itself reads clean (that is why the guard has to look)", git(leak.work, "status", "--porcelain", "--untracked-files=all") === "")
+    writeFileSync(path.join(leak.site, ".assetsignore"), REAL_IGNORE + "secret-notes.txt\n")
+    git(leak.work, "add", "-A"); git(leak.work, "commit", "-m", "exclude it"); git(leak.work, "push", "origin", "main")
+    check("…once .assetsignore excludes it, the same file passes (it can no longer ship)", siteHook(leak).status === 0, siteHook(leak).out)
+
+    // the names the real .assetsignore now excludes can sit there without blocking or shipping
+    const junk = assetsWorld()
+    writeFileSync(path.join(junk.site, ".DS_Store"), "x")
+    writeFileSync(path.join(junk.site, ".env"), "PLACEHOLDER=1\n")
+    mkdirSync(path.join(junk.site, "node_modules", "x"), { recursive: true })
+    writeFileSync(path.join(junk.site, "node_modules", "x", "index.js"), "1\n")
+    check("gitignored .DS_Store, .env and node_modules that .assetsignore excludes: pass (they cannot ship)", siteHook(junk).status === 0, siteHook(junk).out)
+
+    // (a) the untracked scratch file next to the pages
+    const scratch = assetsWorld()
+    writeFileSync(path.join(scratch.site, "build_og.py"), "print('scratch')\n")
+    check("an UNTRACKED site/build_og.py (excluded by .assetsignore) does not block a site deploy", siteHook(scratch).status === 0, siteHook(scratch).out)
+    const fromWorker = spawnSync("node", [GUARD], { cwd: scratch.cwd, encoding: "utf8", env: { ...CLEAN_ENV, WRANGLER_COMMAND: "deploy" } })
+    check("…nor a WORKER deploy (run from djzs-trust-mcp/): no assets directory there, but the repo's assets config still says the file cannot ship", fromWorker.status === 0, `${fromWorker.status} ${fromWorker.stdout}${fromWorker.stderr}`)
+
+    // what must still block
+    const added = assetsWorld()
+    writeFileSync(path.join(added.site, "try2.html"), "<h1>never added</h1>\n")
+    const ad = siteHook(added)
+    check("an untracked page that is NOT excluded still blocks, named", ad.status === 1 && /dirty/.test(ad.out) && /site\/try2\.html/.test(ad.out), `${ad.status} ${ad.out}`)
+    const both = assetsWorld()
+    writeFileSync(path.join(both.site, "build_og.py"), "x\n")
+    writeFileSync(path.join(both.site, "try2.html"), "<h1>x</h1>\n")
+    const bo2 = siteHook(both)
+    check("with both present only the real page is listed (the scratch file is not counted)", bo2.status === 1 && /1 path\(s\)/.test(bo2.out) && /try2\.html/.test(bo2.out) && !/build_og/.test(bo2.out), `${bo2.status} ${bo2.out}`)
+    const tomlEdit = assetsWorld()
+    writeFileSync(path.join(tomlEdit.site, "wrangler.toml"), SITE_TOML + "\n# edited, not committed\n")
+    const te = siteHook(tomlEdit)
+    check("a MODIFIED tracked file still counts even when .assetsignore excludes its name (wrangler.toml changes what a deploy does)", te.status === 1 && /dirty/.test(te.out) && /M site\/wrangler\.toml/.test(te.out), `${te.status} ${te.out}`)
+    writeFileSync(path.join(tomlEdit.site, "index.html"), "<h1>also edited</h1>\n")
+    const te2 = siteHook(tomlEdit)
+    check("…and it is listed whatever its position in git's output (the first status line keeps its leading space)", te2.status === 1 && /2 path\(s\)/.test(te2.out) && /M site\/index\.html/.test(te2.out) && /M site\/wrangler\.toml/.test(te2.out), `${te2.status} ${te2.out}`)
+    const negated = assetsWorld(REAL_IGNORE + "!keep.txt\n")
+    writeFileSync(path.join(negated.site, "build_og.py"), "x\n")
+    const ng = siteHook(negated)
+    check("an .assetsignore with a negation line is not honoured (fail closed): nothing is assumed excluded, so build_og.py blocks", ng.status === 1 && /build_og\.py/.test(ng.out), `${ng.status} ${ng.out}`)
+    const globbed = assetsWorld()
+    writeFileSync(path.join(globbed.site, "debug.log"), "x\n")
+    writeFileSync(path.join(globbed.site, "index.html.bak.2"), "x\n")
+    check("glob entries work: an untracked debug.log and index.html.bak.2 (*.log, *.bak.*) do not block", siteHook(globbed).status === 0, siteHook(globbed).out)
+    const nested = assetsWorld()
+    mkdirSync(path.join(nested.site, "assets", "deep"), { recursive: true })
+    writeFileSync(path.join(nested.site, "assets", "deep", "build_og.py"), "x\n")
+    check("a bare name matches at any depth, as in gitignore (site/assets/deep/build_og.py)", siteHook(nested).status === 0, siteHook(nested).out)
+    const worker = assetsWorld()
+    writeFileSync(path.join(worker.site, "secret-notes.txt"), "x\n")
+    const wk = spawnSync("node", [GUARD], { cwd: worker.cwd, encoding: "utf8", env: { ...CLEAN_ENV, WRANGLER_COMMAND: "deploy" } })
+    check("a gitignored file under site/ does NOT block a WORKER deploy (it never goes into the Worker bundle)", wk.status === 0, `${wk.status} ${wk.stdout}${wk.stderr}`)
+  }
+
   console.log("3. the wiring, through the real wrangler")
   {
     const toml = readFileSync(path.join(WORKER, "wrangler.toml"), "utf8")
