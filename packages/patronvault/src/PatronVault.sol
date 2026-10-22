@@ -4,8 +4,9 @@ pragma solidity ^0.8.24;
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IERC20Permit} from "./interfaces/IERC20Permit.sol";
 import {IERC4626} from "./interfaces/IERC4626.sol";
+import {ICreatorRegistry} from "./interfaces/ICreatorRegistry.sol";
 
-/// @title PatronVault v1
+/// @title PatronVault v1.2
 /// @notice One deposit, many creators. A member parks USDC once; the vault lends it through an
 ///         ERC-4626 yield source and streams only the yield to the creators the member routes it to.
 ///
@@ -48,11 +49,24 @@ contract PatronVault {
     uint256 public immutable feeBps;
     /// @notice Where collected fees go. collectFees() is permissionless.
     address public immutable feeRecipient;
+    /// @notice When set, routes may only go to addresses this registry lists (removal never consults it). 0 = any
+    ///         address. A principal-only vault without a registry cannot keep yield from a member who routes to a
+    ///         second wallet of their own, so the pilot deploys with FixedCreators([the Scan Room payee]).
+    address public immutable creatorRegistry;
 
     uint256 public constant MAX_ROUTES = 16;
     uint256 public constant MAX_FEE_BPS = 1_000; // 10%: the most any PatronVault can ever take
     /// @dev A settle whose yield covers at least this share of what is owed keeps the member funded.
     uint256 public constant FUNDED_BPS = 9_500;
+    /// @notice Gas handed to the source for every creator payment, and the least a caller must still hold before
+    ///         each one. A payment the source cannot complete is held (see _pay), so without this floor a caller
+    ///         whose gas limit came from eth_estimateGas would find the cheapest path: the source call starved of
+    ///         gas, caught, and the creator silently unpaid. With it, too little gas reverts the whole call.
+    uint256 public constant PAYOUT_GAS = 1_500_000;
+    /// @notice A third party may settle a member at most once per `settleInterval` (period / 30: one day for a
+    ///         30-day period). The member's own calls always settle first. Every settle costs the member up to one
+    ///         source share per route to rounding, so settling a member every block is not free for them.
+    uint256 public immutable settleInterval;
 
     // ─────────────────────────────── state ───────────────────────────────
 
@@ -80,6 +94,9 @@ contract PatronVault {
 
     /// @notice Source shares set aside as protocol fee, not yet collected. Not part of any member's position.
     uint256 public feeShares;
+    /// @notice Principal-only mode: exit buffers the source could not pay out, or a recipient refused, at the
+    ///         moment a member left. Not part of any member's position; forwardSink() delivers them to yieldSink.
+    uint256 public sinkShares;
 
     /// @notice creator => smallest amountPerPeriod the creator accepts on new or changed routes (0 = any)
     mapping(address => uint256) public creatorMin;
@@ -107,6 +124,8 @@ contract PatronVault {
     event FeeAccrued(address indexed member, address indexed creator, uint256 amount);
     event FeesCollected(address indexed to, uint256 amount);
     event CreatorMinSet(address indexed creator, uint256 amountPerPeriod);
+    event SinkParked(address indexed member, uint256 shares);
+    event SinkForwarded(address indexed to, uint256 amount);
 
     // ─────────────────────────────── errors ───────────────────────────────
 
@@ -129,6 +148,12 @@ contract PatronVault {
     error Reentrancy();
     error TransferFailed();
     error Overflow();
+    error InvalidRecipient();
+    error SettleTooSoon();
+    error InsufficientGas();
+    error SourceOutOfGas();
+    error CreatorNotAllowed();
+    error NothingParked();
 
     // ─────────────────────────────── constructor ───────────────────────────────
 
@@ -141,7 +166,8 @@ contract PatronVault {
         uint256 joinDeadline_,
         address yieldSink_,
         uint256 feeBps_,
-        address feeRecipient_
+        address feeRecipient_,
+        address creatorRegistry_
     ) {
         if (address(source_) == address(0)) revert ZeroAddress();
         if (period_ == 0 || termsHash_ == bytes32(0)) revert BadTerms();
@@ -149,19 +175,28 @@ contract PatronVault {
         if (feeBps_ != 0 && feeRecipient_ == address(0)) revert ZeroAddress();
         address asset_ = source_.asset();
         if (asset_ == address(0)) revert ZeroAddress();
+        // the vault, the source and the token can receive the asset but nothing can ever move it out of them again
+        _requireRecipient(yieldSink_, source_, asset_);
+        _requireRecipient(feeRecipient_, source_, asset_);
         source = source_;
         asset = IERC20(asset_);
         minDeposit = minDeposit_;
         period = period_;
+        settleInterval = period_ / 30;
         termsHash = termsHash_;
         maxTotalPrincipal = maxTotalPrincipal_;
         joinDeadline = joinDeadline_;
         yieldSink = yieldSink_;
         feeBps = feeBps_;
         feeRecipient = feeRecipient_;
+        creatorRegistry = creatorRegistry_;
         // One approval, forever. The vault never holds `asset` between transactions, so the
         // allowance only ever covers what deposit() hands to the source in the same call.
         _call(abi.encodeWithSelector(IERC20.approve.selector, address(source_), type(uint256).max));
+    }
+
+    function _requireRecipient(address who, IERC4626 source_, address asset_) internal view {
+        if (who == address(this) || who == address(source_) || who == asset_) revert InvalidRecipient();
     }
 
     modifier nonReentrant() {
@@ -308,6 +343,9 @@ contract PatronVault {
     function _setRoute(address member, address creator, uint96 amountPerPeriod) internal {
         if (creator == address(0)) revert ZeroAddress();
         if (creator == member) revert SelfRoute();
+        if (creator == address(this) || creator == address(source) || creator == address(asset)) {
+            revert InvalidRecipient();
+        }
         Route[] storage rs = _routes[member];
         uint256 n = rs.length;
         for (uint256 i = 0; i < n; i++) {
@@ -317,12 +355,13 @@ contract PatronVault {
                 // liquidity) or the creator address cannot receive (blocked token address). The second must not
                 // trap the member.
                 uint256 unpaid = rs[i].carry / period;
-                if (unpaid != 0 && source.maxWithdraw(address(this)) < unpaid) revert OwedButIlliquid();
+                if (unpaid != 0 && _liquid() < unpaid) revert OwedButIlliquid();
                 if (unpaid != 0) emit CreatorForgiven(creator, member, unpaid);
                 rs[i] = rs[n - 1];
                 rs.pop();
             } else {
                 if (amountPerPeriod < creatorMin[creator]) revert BelowCreatorMinimum();
+                _requireCreator(creator);
                 rs[i].amountPerPeriod = amountPerPeriod;
             }
             emit RouteSet(member, creator, amountPerPeriod);
@@ -331,21 +370,32 @@ contract PatronVault {
         if (amountPerPeriod == 0) return; // removing a route that does not exist is a no-op
         if (n >= MAX_ROUTES) revert TooManyRoutes();
         if (amountPerPeriod < creatorMin[creator]) revert BelowCreatorMinimum();
+        _requireCreator(creator);
         rs.push(Route({creator: creator, amountPerPeriod: amountPerPeriod, carry: 0}));
         emit RouteSet(member, creator, amountPerPeriod);
     }
 
+    function _requireCreator(address creator) internal view {
+        if (creatorRegistry != address(0) && !ICreatorRegistry(creatorRegistry).isCreator(creator)) {
+            revert CreatorNotAllowed();
+        }
+    }
+
     /// @notice Anyone may settle any member: pays the member's creators from the member's yield, never principal.
+    ///         A third party may do so once per settleInterval; the member themselves at any time.
     function settle(address member) external nonReentrant {
         Member storage m = _requireMember(member);
+        if (msg.sender != member && block.timestamp < m.lastSettled + settleInterval) revert SettleTooSoon();
         _settle(member, m);
     }
 
-    /// @notice The keeper's loop. Addresses that are not members are skipped, not reverted on.
+    /// @notice The keeper's loop. Addresses that are not members, or were settled by a third party less than
+    ///         settleInterval ago, are skipped, not reverted on.
     function settleMany(address[] calldata members) external nonReentrant {
         for (uint256 i = 0; i < members.length; i++) {
             Member storage m = _members[members[i]];
             if (m.principal == 0) continue;
+            if (members[i] != msg.sender && block.timestamp < m.lastSettled + settleInterval) continue;
             _settle(members[i], m);
         }
     }
@@ -359,6 +409,22 @@ contract PatronVault {
         emit FeesCollected(feeRecipient, amount);
     }
 
+    /// @notice Deliver parked exit buffers (sinkShares) to yieldSink, as much as the source can pay today. Anyone may
+    ///         call. A sink the token refuses reverts here and the shares stay parked; no member is involved.
+    function forwardSink() external nonReentrant returns (uint256 amount) {
+        uint256 s = sinkShares;
+        amount = source.previewRedeem(s);
+        if (amount == 0) revert NothingParked(); // nothing, or dust worth less than a unit
+        uint256 liquid = _liquid();
+        if (amount > liquid) amount = liquid;
+        if (amount == 0) revert OwedButIlliquid();
+        uint256 burned = source.withdraw(amount, yieldSink, address(this));
+        if (burned > s) burned = s; // never below zero: a source that burns more than previewed is paid from the pool
+        sinkShares = s - burned;
+        creatorPaid[yieldSink] += amount;
+        emit SinkForwarded(yieldSink, amount);
+    }
+
     // ─────────────────────────────── creator actions ───────────────────────────────
 
     /// @notice A creator sets the smallest route they accept. Existing routes are unaffected; removal is always allowed.
@@ -369,16 +435,35 @@ contract PatronVault {
 
     // ─────────────────────────────── views ───────────────────────────────
 
-    /// @notice True while `member` routes to `creator` and the member's last settle was covered by yield.
-    ///         Gate access on this. Call settle(member) first if you need it fresh; it is permissionless.
+    /// @notice True while `member` routes to `creator` and the yield available right now covers what all the
+    ///         member's routes are owed right now (FUNDED_BPS), computed live, not read from the last settle.
+    ///         With nothing owed yet (a route set this block) it is the last settle's reading, provided the
+    ///         position is not in shortfall. Gate access on this, or on isPatronAtLeast with your own floor.
     function isPatron(address creator, address member) external view returns (bool) {
+        return _isPatron(creator, member, 1);
+    }
+
+    /// @notice isPatron with a floor: the route to `creator` must be at least `minAmountPerPeriod`. A creator's
+    ///         creatorMin only binds routes set after it, so a gate carries its own floor here.
+    function isPatronAtLeast(address creator, address member, uint256 minAmountPerPeriod) external view returns (bool) {
+        return _isPatron(creator, member, minAmountPerPeriod);
+    }
+
+    function _isPatron(address creator, address member, uint256 minAmount) internal view returns (bool) {
         Member storage m = _members[member];
-        if (m.principal == 0 || !m.funded) return false;
+        if (m.principal == 0) return false;
         Route[] storage rs = _routes[member];
-        for (uint256 i = 0; i < rs.length; i++) {
-            if (rs[i].creator == creator) return rs[i].amountPerPeriod != 0;
+        uint256 n = rs.length;
+        bool routed;
+        for (uint256 i = 0; i < n; i++) {
+            if (rs[i].creator != creator) continue;
+            routed = rs[i].amountPerPeriod != 0 && rs[i].amountPerPeriod >= minAmount;
+            break;
         }
-        return false;
+        if (!routed) return false;
+        uint256 owed = _owedNow(m, rs);
+        if (owed == 0) return m.funded && m.shares + 1 >= source.previewWithdraw(m.principal);
+        return _fromYield(m, feeBps == 0 ? n : 2 * n) * 10_000 >= owed * FUNDED_BPS;
     }
 
     function memberOf(address member) external view returns (Member memory) {
@@ -409,28 +494,34 @@ contract PatronVault {
         uint256 n = rs.length;
         owed = _owedNow(m, rs);
         if (owed == 0) return (0, 0, 0);
-        fromYield = _fromYield(m, n);
+        fromYield = _fromYield(m, feeBps == 0 ? n : 2 * n); // the same reserve _settle uses
         if (fromYield > owed) fromYield = owed;
-        uint256 liquid = source.maxWithdraw(address(this));
+        uint256 liquid = _liquid();
         pay = fromYield > liquid ? liquid : fromYield;
     }
 
     /// @notice A conservative lower bound on what claimYield() would accept right now.
     ///         claimYield(claimableYield(member)) does not revert; the exact figure after settle may be a little higher.
+    /// @dev Mirrors the settle that claimYield runs first: one share is kept back per rounding step of that settle
+    ///      (the creator's withdraw, plus the fee's share move when there is a fee) and one more for the claim itself.
+    ///      Those shares, in asset units, are also the most the vault's redeemable balance can lose to rounding
+    ///      before the liquidity cap is applied, so the same margin comes off that cap.
     function claimableYield(address member) external view returns (uint256) {
         if (yieldSink != address(0)) return 0;
         Member storage m = _members[member];
         if (m.principal == 0) return 0;
         Route[] storage rs = _routes[member];
         uint256 n = rs.length;
+        uint256 reserve = (feeBps == 0 ? n : 2 * n) + 1;
         uint256 ys = _yieldShares(m);
-        if (ys <= n + 1) return 0;
-        uint256 free = source.previewRedeem(ys - n - 1);
+        if (ys <= reserve) return 0;
+        uint256 free = source.previewRedeem(ys - reserve);
         uint256 owed = _owedNow(m, rs);
         if (free <= owed) return 0;
         free -= owed;
-        uint256 liquid = source.maxWithdraw(address(this));
-        liquid = liquid > owed ? liquid - owed : 0;
+        uint256 margin = owed + source.previewRedeem(reserve) + 1;
+        uint256 liquid = _liquid();
+        liquid = liquid > margin ? liquid - margin : 0;
         return free < liquid ? free : liquid;
     }
 
@@ -481,7 +572,7 @@ contract PatronVault {
         }
         if (free <= held) return 0;
         free -= held;
-        uint256 liquid = source.maxWithdraw(address(this));
+        uint256 liquid = _liquid();
         return free < liquid ? free : liquid;
     }
 
@@ -495,10 +586,7 @@ contract PatronVault {
         uint256 n = rs.length;
         uint256 elapsed = block.timestamp - m.lastSettled;
         m.lastSettled = uint64(block.timestamp); // forge-lint: disable-line(unsafe-typecast)
-        if (n == 0) {
-            m.funded = true;
-            return;
-        }
+        if (n == 0) return; // nothing owed; `funded` keeps its last real reading (a route set later starts from it)
 
         (uint256[] memory owedBy, uint256 owed) = _accrue(rs, elapsed);
         if (owed == 0) return;
@@ -506,13 +594,15 @@ contract PatronVault {
         // one share kept back per rounding step: the creator's withdraw, and the fee's share move when there is a fee
         uint256 fromYield = _fromYield(m, feeBps == 0 ? n : 2 * n);
         if (fromYield > owed) fromYield = owed;
-        uint256 liquid = source.maxWithdraw(address(this));
+        uint256 liquid = _liquid();
         uint256 pay = fromYield > liquid ? liquid : fromYield;
 
-        uint256 burned = _distribute(member, rs, owedBy, owed, fromYield, pay);
+        (uint256 burned, uint256 paid) = _distribute(member, rs, owedBy, owed, fromYield, pay);
         if (burned != 0) m.shares = _u128(m.shares - burned);
-        m.funded = fromYield * 10_000 >= owed * FUNDED_BPS;
-        emit Settled(member, owed, fromYield, pay, m.funded);
+        // the flag is the reading of a settle that covers at least a settleInterval; a member settling themselves
+        // seconds after a join or a route change neither loses it (no yield has had time to accrue) nor gains it
+        if (elapsed >= settleInterval) m.funded = fromYield * 10_000 >= owed * FUNDED_BPS;
+        emit Settled(member, owed, fromYield, paid, m.funded);
     }
 
     function _accrue(Route[] storage rs, uint256 elapsed) internal returns (uint256[] memory owedBy, uint256 owed) {
@@ -527,8 +617,10 @@ contract PatronVault {
         }
     }
 
-    /// @dev Split `pay` across routes pro rata to what each is owed. `fromYield - pay` is held (liquidity),
-    ///      `owed - fromYield` is forgiven (yield). Returns the source shares burned.
+    /// @dev Split `pay` across routes pro rata to what each is owed. Of each route's share of what the yield
+    ///      covers, the part the source can pay today goes out and the rest is held; what the yield does not
+    ///      cover is forgiven. The pro-rata floors fall on the forgiven side only when yield is short, never on
+    ///      a liquidity hold. Returns the source shares burned and the amount that actually reached creators.
     function _distribute(
         address member,
         Route[] storage rs,
@@ -536,26 +628,33 @@ contract PatronVault {
         uint256 owed,
         uint256 fromYield,
         uint256 pay
-    ) internal returns (uint256 burned) {
+    ) internal returns (uint256 burned, uint256 paid) {
         for (uint256 i = 0; i < owedBy.length; i++) {
             uint256 o = owedBy[i];
             if (o == 0) continue;
             Route storage r = rs[i];
             uint256 p = (pay * o) / owed;
-            uint256 held = ((fromYield - pay) * o) / owed;
-            r.carry = r.carry - o * period + held * period; // the rest, o - p - held, is forgiven
-            if (p != 0) burned += _pay(member, r, p);
+            // covered = fromYield * o / owed; covered - p is held, o - covered is forgiven
+            r.carry = r.carry - o * period + ((fromYield * o) / owed - p) * period;
+            if (p == 0) continue;
+            uint256 taken = _pay(member, r, p);
+            burned += taken;
+            if (taken != 0) paid += p; // a paid creator always costs at least one share
         }
     }
 
     /// @dev Pays a creator `p` less the protocol fee, and moves the fee's worth of shares from the member to the
     ///      fee pool. A payment the source refuses, or a creator address the token refuses, must never block the
     ///      member's own actions (every one of them settles first): keep the whole amount owed and move on, with
-    ///      no fee taken on what was not paid. Returns the shares that left the member's position.
+    ///      no fee taken on what was not paid. The source gets exactly PAYOUT_GAS, and the caller must hold it
+    ///      beforehand, so a payment can only fail by being refused, never by being starved of gas (see PAYOUT_GAS).
+    ///      Returns the shares that left the member's position: zero exactly when the creator was not paid.
     function _pay(address member, Route storage r, uint256 p) internal returns (uint256 taken) {
         uint256 fee = (p * feeBps) / 10_000;
         uint256 net = p - fee;
-        try source.withdraw(net, r.creator, address(this)) returns (uint256 b) {
+        _requirePayoutGas();
+        uint256 g = gasleft();
+        try source.withdraw{gas: PAYOUT_GAS}(net, r.creator, address(this)) returns (uint256 b) {
             taken = b;
             creatorPaid[r.creator] += net;
             emit CreatorPaid(r.creator, member, net);
@@ -566,8 +665,31 @@ contract PatronVault {
                 emit FeeAccrued(member, r.creator, fee);
             }
         } catch {
+            _requireNotStarved(g); // a call that used every unit it was given was starved, not refused
             r.carry += p * period;
             emit CreatorUnpaid(r.creator, member, p);
+        }
+    }
+
+    /// @dev The 63/64 rule: to hand a callee PAYOUT_GAS, the caller needs PAYOUT_GAS * 64 / 63 plus its own work.
+    function _requirePayoutGas() internal view {
+        if (gasleft() < PAYOUT_GAS + PAYOUT_GAS / 63 + 30_000) revert InsufficientGas();
+    }
+
+    /// @dev After a caught source call: a refusal (a blacklisted receiver, a paused source) leaves most of the
+    ///      stipend unused; running out of gas consumes all of it. The second is the whole call's failure, never a
+    ///      held payment, so a source that needs more than PAYOUT_GAS cannot be mistaken for a frozen creator.
+    function _requireNotStarved(uint256 gasBefore) internal view {
+        if (gasBefore - gasleft() >= PAYOUT_GAS) revert SourceOutOfGas();
+    }
+
+    /// @dev What the source can pay out today. A source whose view reverts is treated as illiquid, which holds
+    ///      payments and waits, rather than trapping every routed member behind the revert.
+    function _liquid() internal view returns (uint256) {
+        try source.maxWithdraw(address(this)) returns (uint256 l) {
+            return l;
+        } catch {
+            return 0;
         }
     }
 
@@ -575,6 +697,12 @@ contract PatronVault {
         uint256 shares = m.shares;
         uint256 principal = m.principal;
         if (yieldSink != address(0)) shares -= _forwardYield(member, m);
+        Route[] storage rs = _routes[member];
+        for (uint256 i = 0; i < rs.length; i++) {
+            // whatever a route was still owed (held for liquidity, or unpaid to a refusing address) ends here
+            uint256 unpaid = rs[i].carry / period;
+            if (unpaid != 0) emit CreatorForgiven(rs[i].creator, member, unpaid);
+        }
         totalPrincipal -= principal;
         memberCount -= 1;
         delete _members[member];
@@ -584,25 +712,46 @@ contract PatronVault {
     }
 
     /// @dev Principal-only mode, on leave: the yield above principal shares goes to the member's routes pro rata
-    ///      to their amounts, or to yieldSink when there are none. A recipient the token refuses falls back to
-    ///      yieldSink, and if that fails too the member keeps it: nothing may trap an exit. One share per
-    ///      recipient is kept back for rounding, exactly as in settle. Returns the shares burned.
-    function _forwardYield(address member, Member storage m) internal returns (uint256 burned) {
+    ///      to their amounts, or to yieldSink when there are none. The member's own redeem comes first: only what the
+    ///      source can pay beyond the member's remaining shares is forwarded now; the rest, and anything a recipient
+    ///      refuses, is parked as sinkShares for forwardSink() to deliver later. Nothing here can revert the exit and
+    ///      nothing here ever reaches the member. One share per recipient is kept back for rounding, exactly as in
+    ///      settle. Returns the shares that left the member's position.
+    function _forwardYield(address member, Member storage m) internal returns (uint256) {
         Route[] storage rs = _routes[member];
-        uint256 n = rs.length;
+        uint256 recipients = rs.length == 0 ? 1 : rs.length;
         uint256 ys = _yieldShares(m);
-        uint256 recipients = n == 0 ? 1 : n;
         if (ys <= recipients) return 0;
-        uint256 total = source.previewRedeem(ys - recipients);
-        uint256 liquid = source.maxWithdraw(address(this));
-        if (total > liquid) total = liquid;
-        if (total == 0) return 0;
+        uint256 spare = ys - recipients;
+        uint256 total = _forwardable(m, spare);
+        uint256 burned = total == 0 ? 0 : _forwardSplit(member, rs, total);
+        // whatever did not go out now (illiquid, refused, or rounding) is parked for the sink, never kept by the member
+        if (burned < spare) {
+            sinkShares += spare - burned;
+            emit SinkParked(member, spare - burned);
+            return spare;
+        }
+        return burned; // forwards may round up into the kept-back shares; the member still holds principal shares
+    }
+
+    /// @dev The value of `spare` shares, capped so the member's own redeem (their remaining shares) still fits in
+    ///      what the source can pay today.
+    function _forwardable(Member storage m, uint256 spare) internal view returns (uint256 total) {
+        total = source.previewRedeem(spare);
+        uint256 liquid = _liquid();
+        uint256 memberValue = source.previewRedeem(m.shares - spare);
+        uint256 room = liquid > memberValue ? liquid - memberValue : 0;
+        if (total > room) total = room;
+    }
+
+    /// @dev `total` to the routes pro rata to their amounts, or to the sink with no routes. Returns shares burned.
+    function _forwardSplit(address member, Route[] storage rs, uint256 total) internal returns (uint256 burned) {
+        uint256 n = rs.length;
         if (n == 0) return _forwardTo(yieldSink, member, total);
         uint256 weight;
         for (uint256 i = 0; i < n; i++) {
             weight += rs[i].amountPerPeriod;
         }
-        if (weight == 0) return _forwardTo(yieldSink, member, total);
         for (uint256 i = 0; i < n; i++) {
             uint256 p = (total * rs[i].amountPerPeriod) / weight;
             if (p != 0) burned += _forwardTo(rs[i].creator, member, p);
@@ -610,17 +759,23 @@ contract PatronVault {
     }
 
     function _forwardTo(address to, address member, uint256 amount) internal returns (uint256) {
-        try source.withdraw(amount, to, address(this)) returns (uint256 b) {
+        _requirePayoutGas();
+        uint256 g = gasleft();
+        try source.withdraw{gas: PAYOUT_GAS}(amount, to, address(this)) returns (uint256 b) {
             creatorPaid[to] += amount;
             emit YieldForwarded(to, member, amount);
             return b;
         } catch {
+            _requireNotStarved(g);
             if (to == yieldSink) return 0;
-            try source.withdraw(amount, yieldSink, address(this)) returns (uint256 b2) {
+            _requirePayoutGas();
+            g = gasleft();
+            try source.withdraw{gas: PAYOUT_GAS}(amount, yieldSink, address(this)) returns (uint256 b2) {
                 creatorPaid[yieldSink] += amount;
                 emit YieldForwarded(yieldSink, member, amount);
                 return b2;
             } catch {
+                _requireNotStarved(g);
                 return 0;
             }
         }

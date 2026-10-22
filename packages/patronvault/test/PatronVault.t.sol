@@ -27,7 +27,7 @@ contract PatronVaultTest is Test {
         vm.warp(1_760_000_000);
         usdc = new MockUSDC();
         src = new MockERC4626(usdc);
-        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0));
+        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0), address(0));
         _fund(alice, 100_000e6);
         _fund(bob, 100_000e6);
         _fund(outsider, 1_000_000e6);
@@ -85,16 +85,18 @@ contract PatronVaultTest is Test {
 
     function test_constructor_rejectsBadParams() public {
         vm.expectRevert(PatronVault.ZeroAddress.selector);
-        new PatronVault(IERC4626(address(0)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0));
+        new PatronVault(IERC4626(address(0)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0), address(0));
         vm.expectRevert(PatronVault.BadTerms.selector);
-        new PatronVault(IERC4626(address(src)), MIN, 0, TERMS, 0, 0, address(0), 0, address(0));
+        new PatronVault(IERC4626(address(src)), MIN, 0, TERMS, 0, 0, address(0), 0, address(0), address(0));
         vm.expectRevert(PatronVault.BadTerms.selector);
-        new PatronVault(IERC4626(address(src)), MIN, PERIOD, bytes32(0), 0, 0, address(0), 0, address(0));
+        new PatronVault(IERC4626(address(src)), MIN, PERIOD, bytes32(0), 0, 0, address(0), 0, address(0), address(0));
     }
 
     function test_pilotLimits_capAndJoinWindow() public {
         uint256 closes = block.timestamp + 60 days;
-        PatronVault capped = new PatronVault(IERC4626(address(src)), 3_500e6, PERIOD, TERMS, 49_000e6, closes, address(0), 0, address(0));
+        PatronVault capped = new PatronVault(
+            IERC4626(address(src)), 3_500e6, PERIOD, TERMS, 49_000e6, closes, address(0), 0, address(0), address(0)
+        );
         vm.prank(alice);
         usdc.approve(address(capped), type(uint256).max);
         vm.prank(bob);
@@ -330,8 +332,8 @@ contract PatronVaultTest is Test {
 
         uint256 start = block.timestamp;
         for (uint256 t = 1; t <= 300; t++) {
-            vm.warp(start + t); // one settle per second
-            vm.prank(keeper);
+            vm.warp(start + t); // one settle per second, by the member (a third party is spaced to settleInterval)
+            vm.prank(alice);
             vault.settle(alice);
         }
         assertEq(usdc.balanceOf(creatorA), (1e6 * 300) / PERIOD, "paid exactly the floor of 300 seconds of stream");
@@ -356,7 +358,7 @@ contract PatronVaultTest is Test {
 
         // settling again with no time elapsed and no liquidity at all: nothing changes, nothing is lost
         src.setLiquidity(0);
-        vm.prank(keeper);
+        vm.prank(alice);
         vault.settle(alice);
         assertEq(usdc.balanceOf(creatorA), 2e6);
         assertTrue(vault.memberOf(alice).funded);
@@ -366,9 +368,10 @@ contract PatronVaultTest is Test {
         vm.expectRevert(PatronVault.OwedButIlliquid.selector);
         vault.setRoute(creatorA, 0);
 
-        // liquidity returns: the held 3 USDC is paid with no time elapsed
+        // liquidity returns: the held 3 USDC is paid with no time elapsed (the member retries; a third party
+        // would wait for settleInterval)
         src.setLiquidity(type(uint256).max);
-        vm.prank(keeper);
+        vm.prank(alice);
         vault.settle(alice);
         assertEq(usdc.balanceOf(creatorA), 5e6);
         _route(alice, creatorA, 0);
@@ -399,7 +402,7 @@ contract PatronVaultTest is Test {
 
         // unfreeze: the next settle delivers what was held
         usdc.setBlocked(creatorA, false);
-        vm.prank(keeper);
+        vm.prank(alice);
         vault.settle(alice);
         assertEq(usdc.balanceOf(creatorA), 5e6);
 
@@ -623,7 +626,9 @@ contract PatronVaultTest is Test {
 
         assertEq(usdc.balanceOf(creatorA), 9e6);
         assertEq(_shares(bob), bobShares, "bob's shares untouched");
-        assertApproxEqAbs(vault.positionValue(bob), bobValue, 1, "bob's value moves only by the source's own 1-unit rounding");
+        assertApproxEqAbs(
+            vault.positionValue(bob), bobValue, 1, "bob's value moves only by the source's own 1-unit rounding"
+        );
         assertGe(_shares(alice), _principalShares(alice));
     }
 
@@ -651,7 +656,7 @@ contract PatronVaultTest is Test {
     address sink = makeAddr("sink");
 
     function _sinkVault() internal returns (PatronVault v) {
-        v = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, sink, 0, address(0));
+        v = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, sink, 0, address(0), address(0));
         vm.prank(alice);
         usdc.approve(address(v), type(uint256).max);
         vm.prank(bob);
@@ -688,7 +693,9 @@ contract PatronVaultTest is Test {
         assertGe(usdc.balanceOf(alice), 100_000e6, "the deposit came back in full");
         assertLe(usdc.balanceOf(alice), 100_000e6 + 10, "and nothing beyond rounding dust");
         assertEq(usdc.balanceOf(sink), 0);
-        assertEq(src.balanceOf(address(v)), 0);
+        // the pro-rata floors leave a share or two: parked for the sink, not held by anyone
+        assertEq(src.balanceOf(address(v)), v.sinkShares(), "every share left is parked for the sink");
+        assertLe(v.sinkShares(), 2);
     }
 
     function test_sinkMode_leaveWithNoRoutesPaysTheSink() public {
@@ -718,7 +725,8 @@ contract PatronVaultTest is Test {
         assertApproxEqAbs(usdc.balanceOf(sink), 11e6, 3, "the creator could not receive, so the sink did");
         assertGe(usdc.balanceOf(alice), 100_000e6);
 
-        // both the creator and the sink frozen: the member still leaves, and keeps what nobody could take
+        // both the creator and the sink frozen: the member still leaves with the deposit, and what nobody could
+        // take is parked for the sink, never handed to the member
         vm.prank(bob);
         v.join(3_000e6, TERMS);
         vm.prank(bob);
@@ -727,7 +735,20 @@ contract PatronVaultTest is Test {
         usdc.setBlocked(sink, true);
         vm.prank(bob);
         v.leave();
-        assertGe(usdc.balanceOf(bob), 100_000e6 + 11e6 - 4);
+        assertGe(usdc.balanceOf(bob), 100_000e6, "the deposit came back");
+        assertLe(usdc.balanceOf(bob), 100_000e6 + 4, "and no yield");
+        assertApproxEqAbs(src.previewRedeem(v.sinkShares()), 11e6, 4, "the buffer is parked");
+        assertEq(v.memberOf(bob).principal, 0);
+
+        // the sink cannot receive: forwardSink reverts and the shares stay parked; once it can, anyone delivers them
+        vm.expectRevert();
+        v.forwardSink();
+        usdc.setBlocked(sink, false);
+        uint256 sinkBefore = usdc.balanceOf(sink);
+        v.forwardSink();
+        assertApproxEqAbs(usdc.balanceOf(sink) - sinkBefore, 11e6, 4);
+        assertEq(v.sinkShares(), 0);
+        assertEq(src.balanceOf(address(v)), 0);
     }
 
     function test_sinkMode_unroutedYieldBuffersALowMonth() public {
@@ -841,7 +862,7 @@ contract PatronVaultTest is Test {
 
         uint256 ps = _principalShares(alice);
         bool healthyBefore = _shares(alice) >= ps;
-        vm.prank(keeper);
+        vm.prank(alice); // the member may settle at any time; a third party only once per settleInterval
         vault.settle(alice);
 
         if (healthyBefore) assertGe(_shares(alice), ps, "settle took principal shares");

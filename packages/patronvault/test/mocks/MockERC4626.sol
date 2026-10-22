@@ -7,7 +7,8 @@ import {MockUSDC} from "./MockUSDC.sol";
 ///      virtual share and asset of 1 each) plus three test levers:
 ///        gain(x)  mints x assets into the vault: the share price rises, like interest.
 ///        loss(x)  burns x assets from the vault: the share price falls, like bad debt.
-///        setLiquidity(x) caps maxWithdraw/withdraw/redeem at x assets, like an illiquid lending market.
+///        setLiquidity(x) caps maxWithdraw/withdraw/redeem at x assets, like an illiquid lending market; every
+///                        withdrawal then consumes the cap, as it would consume a real market's free liquidity.
 contract MockERC4626 {
     MockUSDC public immutable usdc;
     string public constant name = "Mock yield source";
@@ -21,11 +22,15 @@ contract MockERC4626 {
     uint256 public liquidity = type(uint256).max;
     uint256 public gains; // lifetime assets injected by gain()
     uint256 public losses; // lifetime assets removed by loss()
+    uint256 public withdrawGasBurn; // gas every withdraw burns before doing anything, to model a heavy source
+    bool public maxWithdrawReverts; // a broken view, to prove the vault treats it as illiquid rather than trapping
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
+    );
 
     error Illiquid();
 
@@ -47,6 +52,22 @@ contract MockERC4626 {
 
     function setLiquidity(uint256 assets) external {
         liquidity = assets;
+    }
+
+    function setWithdrawGasBurn(uint256 gas) external {
+        withdrawGasBurn = gas;
+    }
+
+    function setMaxWithdrawReverts(bool yes) external {
+        maxWithdrawReverts = yes;
+    }
+
+    function _burnGas() internal view {
+        uint256 start = gasleft();
+        bytes32 h;
+        while (start - gasleft() < withdrawGasBurn) {
+            h = keccak256(abi.encode(h));
+        }
     }
 
     // ───── ERC-4626 ─────
@@ -88,6 +109,11 @@ contract MockERC4626 {
     }
 
     function maxWithdraw(address owner) public view returns (uint256) {
+        require(!maxWithdrawReverts, "view broken"); // only the view breaks; withdraw and redeem keep working
+        return _maxWithdraw(owner);
+    }
+
+    function _maxWithdraw(address owner) internal view returns (uint256) {
         uint256 own = _toAssets(balanceOf[owner], false);
         uint256 cap = liquidity < totalAssets() ? liquidity : totalAssets();
         return own < cap ? own : cap;
@@ -112,21 +138,28 @@ contract MockERC4626 {
     }
 
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares) {
-        if (assets > maxWithdraw(owner)) revert Illiquid();
+        if (withdrawGasBurn != 0) _burnGas();
+        if (assets > _maxWithdraw(owner)) revert Illiquid();
         shares = _toShares(assets, true);
         _spend(owner, shares);
         _burn(owner, shares);
+        _consumeLiquidity(assets);
         require(usdc.transfer(receiver, assets));
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
         assets = _toAssets(shares, false);
-        if (assets > maxWithdraw(owner)) revert Illiquid();
+        if (assets > _maxWithdraw(owner)) revert Illiquid();
         _spend(owner, shares);
         _burn(owner, shares);
+        _consumeLiquidity(assets);
         require(usdc.transfer(receiver, assets));
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
+    }
+
+    function _consumeLiquidity(uint256 assets) internal {
+        if (liquidity != type(uint256).max) liquidity -= assets;
     }
 
     // ───── ERC-20 ─────

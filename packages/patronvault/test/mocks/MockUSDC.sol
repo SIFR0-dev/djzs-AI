@@ -53,7 +53,9 @@ contract MockUSDC {
         );
     }
 
-    function permit(address owner, address spender, uint256 value, uint256 deadline, bytes calldata signature) external {
+    function permit(address owner, address spender, uint256 value, uint256 deadline, bytes calldata signature)
+        external
+    {
         if (block.timestamp > deadline) revert PermitExpired();
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -63,8 +65,7 @@ contract MockUSDC {
             )
         );
         if (owner.code.length != 0) {
-            (bool ok, bytes memory ret) =
-                owner.staticcall(abi.encodeWithSelector(0x1626ba7e, digest, signature));
+            (bool ok, bytes memory ret) = owner.staticcall(abi.encodeWithSelector(0x1626ba7e, digest, signature));
             if (!ok || ret.length < 32 || abi.decode(ret, (bytes4)) != bytes4(0x1626ba7e)) revert BadSignature();
         } else {
             if (signature.length != 65) revert BadSignature();
