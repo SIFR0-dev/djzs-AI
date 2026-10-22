@@ -91,7 +91,9 @@ contract PatronHandler is Test {
             if (vault.memberOf(m).principal == 0) {
                 _left(m);
             } else if (healthy && !lossSinceClean) {
-                assertGe(vault.memberOf(m).shares, src.previewWithdraw(p - amount), "withdraw dipped into principal shares");
+                assertGe(
+                    vault.memberOf(m).shares, src.previewWithdraw(p - amount), "withdraw dipped into principal shares"
+                );
             }
         } catch (bytes memory reason) {
             _onlyIlliquid(reason);
@@ -140,6 +142,8 @@ contract PatronHandler is Test {
         if (vault.memberOf(m).principal == 0) return;
         calls++;
         (bool healthy,) = _healthy(m);
+        // a third party may settle once per settleInterval; inside it, the member settles themselves
+        if (block.timestamp < vault.memberOf(m).lastSettled + vault.settleInterval()) vm.prank(m);
         vault.settle(m);
         _postSettle(m, healthy, 0);
     }
@@ -175,6 +179,13 @@ contract PatronHandler is Test {
         } catch (bytes memory reason) {
             _onlyIlliquid(reason);
         }
+    }
+
+    /// @dev Principal-only mode: deliver parked exit buffers to the sink when the source can pay.
+    function forwardSink() external {
+        if (src.previewRedeem(vault.sinkShares()) == 0 || src.maxWithdraw(address(vault)) == 0) return;
+        calls++;
+        vault.forwardSink();
     }
 
     // ───────────────────────────── world ─────────────────────────────
