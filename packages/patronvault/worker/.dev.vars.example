@@ -1,0 +1,2 @@
+# Copy to .dev.vars (gitignored) for `wrangler dev`. Never commit a real key.
+# KEEPER_KEY=0x<dedicated gas-only key, product doc R15>
