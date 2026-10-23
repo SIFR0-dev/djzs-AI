@@ -19,6 +19,8 @@ jobs:
         run: npx tsx tests/merge-fix.test.ts
       - name: coerceField — bare stated values are PRESENT, never ABSENT
         run: npx tsx tests/coerce.test.ts
+      - name: "Attested detector (DJZS-AD-v0.1): ACI spec vectors reproduced byte-for-byte; receipt chain verified offline; tamper cases fail closed"
+        run: npx tsx tests/attested-detector.test.ts
       - name: "Verdict rule (DJZS-VR-v1.0): derives the engine's verdict on every input; fixture current"
         run: npx tsx tests/verdict-rule-fixtures.ts --check
   verdict-rule-contracts:
