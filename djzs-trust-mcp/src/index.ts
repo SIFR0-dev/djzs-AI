@@ -4,8 +4,9 @@ import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
 import type { Context, ExecutionContext } from "hono"
 import { z } from "zod"
-import { VERIFY_PM_TRADE_INPUT, buildAnthropicModelFn, runVerifyPmTrade } from "./verify-pm-trade"
+import { VERIFY_PM_TRADE_INPUT, runVerifyPmTrade } from "./verify-pm-trade"
 import { VERIFY_PERP_TRADE_INPUT, runVerifyPerpTrade } from "./verify-perp-trade"
+import { createDetector, detectorFault, runDetected, type DetectorHandle } from "./detector"
 import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { renderTargetSystem, verifyTargetSystemClaim, canonicalTargetSystemMessage, TARGET_SYSTEM_CLAIM_VERSION, UNVERIFIED_PREFIX } from "./target-system"
 import { correctionsFor } from "./corrections"
@@ -109,6 +110,12 @@ const VERIFY_PERP_TRADE_PRICE_USD = 2.00 // same price, same rail — no second 
  */
 interface Env {
   ANTHROPIC_API_KEY?: string
+  /** SECRET. Phala Confidential AI key for the attested detector (DJZS-AD-v0.1). Read only when DJZS_DETECTOR=phala. */
+  PHALA_API_KEY?: string
+  /** Plain var. "phala" routes every detector call through the ACI gateway with verified receipts; unset = Anthropic, unchanged. */
+  DJZS_DETECTOR?: string
+  /** Plain var. TEE model id for the attested detector; default in attested-detector.ts. A Q2 A/B result, not a guess. */
+  PHALA_MODEL?: string
   /** EVM private key hex signing PoL DataItems. Absent => anchoring reports "disabled"; audits still run. */
   IRYS_UPLOAD_KEY?: string
   /** Irys upload node. Defaults to devnet (D3 ruling); mainnet cutover flips this var. */
@@ -504,17 +511,28 @@ function buildServer(env: Env): McpServer {
     },
     { title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)" },
     guardTool("verify_pm_trade", async ({ intent, target_system, target_system_subject, target_system_signature, agent_address }) => {
-    if (!env.ANTHROPIC_API_KEY) {
+    // The detector switch (detector.ts): Anthropic, or the attested Phala lane. Not configured, or a
+    // receipt that does not verify, is an isError result: the x402 middleware settles only non-error
+    // results, so a detector failure is never charged and never sold as attested.
+    let detector: DetectorHandle
+    try {
+      detector = createDetector(env)
+    } catch (e) {
+      logFault("mcp.verify_pm_trade.detector", e)
       return {
-        content: [{ type: "text" as const, text: JSON.stringify({
-          tool: "verify_pm_trade",
-          error: "ANTHROPIC_API_KEY secret not configured on this Worker — extraction cannot run."
-        }, null, 2) }],
+        content: [{ type: "text" as const, text: JSON.stringify({ tool: "verify_pm_trade", error: "DETECTOR_NOT_CONFIGURED", detail: detectorFault(e) ?? ("detector_not_configured" satisfies Fault) }, null, 2) }],
         isError: true
       }
     }
-    const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
-    const result = await runVerifyPmTrade(intent, modelFn)
+    let result: Awaited<ReturnType<typeof runVerifyPmTrade>>
+    try {
+      result = await runDetected(() => runVerifyPmTrade(intent, detector.modelFn), detector, intent)
+    } catch (e) {
+      const fault = detectorFault(e)
+      if (!fault) throw e
+      logFault("mcp.verify_pm_trade.attested", e)
+      return { content: [{ type: "text" as const, text: JSON.stringify({ tool: "verify_pm_trade", error: "DETECTOR_UNVERIFIED", detail: fault }, null, 2) }], isError: true }
+    }
 
     // OUT-OF-SCOPE = NOT CHARGED. The agents/x402 middleware settles payment
     // only when the tool result carries no isError flag (settlePayment guard
@@ -636,18 +654,29 @@ function buildServer(env: Env): McpServer {
     },
     { title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)" },
     guardTool("verify_perp_trade", async ({ intent, bracket, target_system, target_system_subject, target_system_signature, agent_address }) => {
-    if (!env.ANTHROPIC_API_KEY) {
+    // The detector switch (detector.ts): Anthropic, or the attested Phala lane. Not configured, or a
+    // receipt that does not verify, is an isError result: the x402 middleware settles only non-error
+    // results, so a detector failure is never charged and never sold as attested.
+    let detector: DetectorHandle
+    try {
+      detector = createDetector(env)
+    } catch (e) {
+      logFault("mcp.verify_perp_trade.detector", e)
       return {
-        content: [{ type: "text" as const, text: JSON.stringify({
-          tool: "verify_perp_trade",
-          error: "ANTHROPIC_API_KEY secret not configured on this Worker — extraction cannot run."
-        }, null, 2) }],
+        content: [{ type: "text" as const, text: JSON.stringify({ tool: "verify_perp_trade", error: "DETECTOR_NOT_CONFIGURED", detail: detectorFault(e) ?? ("detector_not_configured" satisfies Fault) }, null, 2) }],
         isError: true
       }
     }
-    const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
     // bracket feeds only the non-scoring mechanics block (break-even hit rate); never the verdict or its hash.
-    const result = await runVerifyPerpTrade(intent, modelFn, bracket)
+    let result: Awaited<ReturnType<typeof runVerifyPerpTrade>>
+    try {
+      result = await runDetected(() => runVerifyPerpTrade(intent, detector.modelFn, bracket), detector, intent)
+    } catch (e) {
+      const fault = detectorFault(e)
+      if (!fault) throw e
+      logFault("mcp.verify_perp_trade.attested", e)
+      return { content: [{ type: "text" as const, text: JSON.stringify({ tool: "verify_perp_trade", error: "DETECTOR_UNVERIFIED", detail: fault }, null, 2) }], isError: true }
+    }
 
     // OUT-OF-SCOPE = NOT CHARGED. The agents/x402 middleware settles payment
     // only when the tool result carries no isError flag (settlePayment guard
@@ -1485,16 +1514,20 @@ app.post("/x402/verify", async (c) => {
   }
 
   // ── the audit runs first. ─────────────────────────────────────────────────
-  if (!env.ANTHROPIC_API_KEY) {
-    return c.json({ error: "EXTRACTION_UNAVAILABLE", detail: "ANTHROPIC_API_KEY not configured" }, 503)
+  let detector: DetectorHandle
+  try {
+    detector = createDetector(env)
+  } catch (e) {
+    logFault("x402.legacy.detector", e)
+    return c.json({ error: "EXTRACTION_UNAVAILABLE", detail: "detector_not_configured" satisfies Fault }, 503)
   }
   let result: Record<string, unknown>
   try {
-    result = (await runVerifyPmTrade(intent, buildAnthropicModelFn(env.ANTHROPIC_API_KEY))) as unknown as Record<string, unknown>
+    result = (await runDetected(() => runVerifyPmTrade(intent, detector.modelFn), detector, intent)) as unknown as Record<string, unknown>
   } catch (e) {
-    // Handler failure is NOT the payer's fault: refuse and do not settle.
+    // Handler failure is NOT the payer's fault: refuse and do not settle. An unverified attested detection refuses the same way.
     logFault("x402.legacy.audit", e)
-    return paymentRequired("AUDIT_FAILED", { detail: "extraction_failed" satisfies Fault })
+    return paymentRequired("AUDIT_FAILED", { detail: (detectorFault(e) ?? "extraction_failed") satisfies Fault })
   }
 
   // OUT-OF-SCOPE = NOT CHARGED. Same rule as /mcp, enforced by returning before

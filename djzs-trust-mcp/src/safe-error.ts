@@ -26,6 +26,8 @@ export const FAULTS = [
   "anchor_unretrievable",
   "trust_write_failed",
   "extraction_failed",
+  "detector_not_configured",
+  "detector_unverified",
   "tool_error",
   "subgraph_unreachable",
   "subgraph_graphql_error",

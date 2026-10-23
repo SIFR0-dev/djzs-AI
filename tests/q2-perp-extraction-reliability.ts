@@ -20,6 +20,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { extractAuditInputConsensus, type ModelFn } from "../server/engine-v2/extraction-layer";
+import { buildPhalaDetector, PHALA_DEFAULT_MODEL, UnverifiedDetectionError, WorkloadNotEstablishedError, type AttestedDetection } from "../djzs-trust-mcp/src/attested-detector";
 import { runDeterministicAudit } from "../server/engine-v2/deterministic-engine";
 
 // ── production-identical rendering (port of engine-adapter.ts renderIntentText) ─────────────────
@@ -94,7 +95,10 @@ const K = Number(process.env.K ?? 5); const CONC = 3;
 const FIELDS = ["leverage", "position_size", "thesis_statement", "stop_loss", "invalidation_condition", "data_sources", "oracle_source"] as const;
 type Run = { verdict: string; risk: number; codes: string[]; in_scope: boolean; states: Record<string, string>; disagreements: string[]; failsafe: boolean };
 
-const model: ModelFn = STUB ? stubModelFn(args.has("--stub-noisy")) : (() => { const k = readDevVar("ANTHROPIC_API_KEY"); if (!k) { console.error("ANTHROPIC_API_KEY not found in djzs-trust-mcp/.dev.vars or env"); process.exit(2); } return anthropicModelFn(k); })();
+// --detector=phala: the attested lane (fill34). PHALA_API_KEY / PHALA_MODEL from djzs-trust-mcp/.dev.vars or env. Network errors retry; an unverified receipt never does.
+const PHALA = !STUB && args.has("--detector=phala"); const PHALA_MODEL_ID = readDevVar("PHALA_MODEL") ?? PHALA_DEFAULT_MODEL; const PHALA_SINK: AttestedDetection[] = [];
+const retrying = (fn: ModelFn): ModelFn => async (p) => { for (let a = 1; ; a++) { try { return await fn(p); } catch (e) { if (a >= 4 || e instanceof UnverifiedDetectionError || e instanceof WorkloadNotEstablishedError) throw e; console.error(`  [phala] attempt ${a}: ${(e as Error).message.slice(0, 80)} - retrying`); await new Promise(r => setTimeout(r, 2000 * a)); } } };
+const model: ModelFn = STUB ? stubModelFn(args.has("--stub-noisy")) : PHALA ? (() => { const k = readDevVar("PHALA_API_KEY"); if (!k) { console.error("PHALA_API_KEY not found in djzs-trust-mcp/.dev.vars or env"); process.exit(2); } return retrying(buildPhalaDetector({ apiKey: k, model: PHALA_MODEL_ID, sink: PHALA_SINK })); })() : (() => { const k = readDevVar("ANTHROPIC_API_KEY"); if (!k) { console.error("ANTHROPIC_API_KEY not found in djzs-trust-mcp/.dev.vars or env"); process.exit(2); } return anthropicModelFn(k); })();
 
 async function oneRun(text: string): Promise<Run> {
   const r = await extractAuditInputConsensus(text, model, 3, "perp");
@@ -138,8 +142,8 @@ const mode = (xs: string[]) => { const c: Record<string, number> = {}; for (cons
   console.log(`failsafe            ${failsafes}/${totalRuns} runs (${(fsRate * 100).toFixed(1)}%)`);
   console.log(`designed-class match ${designedMatch}/${n} (reported, not scored)`);
   mkdirSync("tests/out", { recursive: true });
-  const out = `tests/out/q2-${STUB ? "stub" : "live"}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
-  writeFileSync(out, JSON.stringify({ mode: STUB ? "stub" : "live", model: STUB ? null : CLAUDE_MODEL, K, thresholds: { reliable: "mean>=0.95 && full>=0.8", marginal: "mean>=0.85", failsafe_max: 0.02 }, grade, meanStab, pctFull, fsRate, fieldFlip, designedMatch, results }, null, 2));
+  const out = `tests/out/q2-${STUB ? "stub" : PHALA ? "live-phala" : "live"}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
+  writeFileSync(out, JSON.stringify({ mode: STUB ? "stub" : "live", model: STUB ? null : PHALA ? `phala:${PHALA_MODEL_ID}` : CLAUDE_MODEL, attested: PHALA ? { samples: PHALA_SINK.length, verified: PHALA_SINK.filter(d => d.verified).length } : null, K, thresholds: { reliable: "mean>=0.95 && full>=0.8", marginal: "mean>=0.85", failsafe_max: 0.02 }, grade, meanStab, pctFull, fsRate, fieldFlip, designedMatch, results }, null, 2));
   console.log(`\nraw runs → ${out}`);
   if (STUB) { const expect = args.has("--stub-noisy") ? grade !== "RELIABLE" : grade === "RELIABLE"; console.log(expect ? "\nSELF-TEST PASS — harness measures what it claims" : "\nSELF-TEST FAIL — harness metrics wrong"); process.exit(expect ? 0 : 1); }
 })();

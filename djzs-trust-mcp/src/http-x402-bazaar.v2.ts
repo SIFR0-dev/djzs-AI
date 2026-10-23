@@ -94,6 +94,8 @@ export interface VerdictResult {
   eas_schema?: string;
   eas_error?: string;          // a fixed code ("attester_not_configured" | "attestation_failed"), never raw error text; verdict still valid
   pol_certificate?: unknown;
+  /** DJZS-AD-v0.1: present when the detector ran through the attested lane (detector.ts). Additive. */
+  attested_detection?: unknown;
 }
 
 export interface EngineAdapter {

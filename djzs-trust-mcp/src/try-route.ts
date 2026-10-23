@@ -32,7 +32,8 @@
 import { createPublicClient, http, getAddress, isAddress, verifyMessage as verifyMessageOffline, type Hex } from "viem"
 import { base } from "viem/chains"
 import type { ModelFn } from "../../server/engine-v2/extraction-layer"
-import { buildAnthropicModelFn, runVerifyPmTrade, type VerifyPmTradeResult } from "./verify-pm-trade"
+import { runVerifyPmTrade, type VerifyPmTradeResult } from "./verify-pm-trade"
+import { createDetector, detectorFault, runDetected, type DetectorEnv, type DetectorHandle } from "./detector"
 import { runVerifyPerpTrade } from "./verify-perp-trade"
 import { intentSha256, renderIntentText } from "./engine-adapter"
 import { intentHash, toDJZSIntent, type PmIntentLike, type PerpIntentLike } from "./djzs-intent"
@@ -76,8 +77,7 @@ export interface QuotaDB {
   }
 }
 
-export interface TryEnv {
-  ANTHROPIC_API_KEY?: string
+export interface TryEnv extends DetectorEnv {
   BASE_RPC_URL?: string
   TELEMETRY?: QuotaDB
   /** Plain var. Total free verdicts per UTC day across all wallets. Default TRY_GLOBAL_DAILY_LIMIT_DEFAULT. */
@@ -268,8 +268,16 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   const db = env.TELEMETRY
   if (!db) return json({ ok: false, error: "quota_store_unavailable" }, 503)
   await ensureSchema(db)
-  const model = modelFn ?? (env.ANTHROPIC_API_KEY ? buildAnthropicModelFn(env.ANTHROPIC_API_KEY) : undefined)
-  if (!model) return json({ ok: false, error: "audit_unavailable", detail: "extraction not configured" }, 503)
+  // The detector switch (detector.ts). A test passes modelFn; production resolves it from the env.
+  let detector: DetectorHandle | undefined
+  if (!modelFn) {
+    try {
+      detector = createDetector(env)
+    } catch (e) {
+      logFault("try.detector", e)
+      return json({ ok: false, error: "audit_unavailable", detail: detectorFault(e) ?? "audit_unavailable" }, 503)
+    }
+  }
 
   // Kill switch first. TRY_GLOBAL_DAILY_LIMIT="0" must refuse every free verdict: SQLite's upsert
   // INSERTS a new day row whatever the DO UPDATE's WHERE says, so reserveGlobal alone would let the
@@ -297,13 +305,15 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   const runner: Runner = kind === "perp" ? (runVerifyPerpTrade as unknown as Runner) : runVerifyPmTrade
   let result: VerifyPmTradeResult
   try {
-    result = await runner(renderIntentText(intent), model)
+    const text = renderIntentText(intent)
+    const d = detector
+    result = d ? await runDetected(() => runner(text, d.modelFn), d, text) : await runner(text, modelFn as ModelFn)
   } catch (e) {
     await releaseGlobal(db, day)
     await releaseWallet(db, day, address)
     // The cause (an extraction provider's error body) goes to the log; a free, unauthenticated-by-payment route returns a code.
     logFault("try.audit", e)
-    return json({ ok: false, error: "audit_unavailable", detail: "audit_unavailable", slot_released: true }, 503)
+    return json({ ok: false, error: "audit_unavailable", detail: detectorFault(e) ?? "audit_unavailable", slot_released: true }, 503)
   }
 
   if (result.in_scope !== true) {

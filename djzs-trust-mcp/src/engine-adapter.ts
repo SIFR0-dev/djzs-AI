@@ -20,7 +20,8 @@
  *
  * The engine itself is untouched and still pure: same struct -> same verdict_hash.
  */
-import { buildAnthropicModelFn, runVerifyPmTrade, type VerifyPmTradeResult } from "./verify-pm-trade"
+import { runVerifyPmTrade, type VerifyPmTradeResult } from "./verify-pm-trade"
+import { createDetector, runDetected, type DetectorEnv, type DetectorHandle, type DetectorOptions } from "./detector"
 import type { ModelFn } from "../../server/engine-v2/extraction-layer"
 import { sha256Hex } from "../../server/engine-v2/hash"
 import type { EngineAdapter, ScopeResult, VerdictResult } from "./http-x402-bazaar.v2"
@@ -34,10 +35,8 @@ function isTally(t: unknown): t is VerdictTally {
     && Number.isInteger(o.unknown_count) && typeof o.bounded === "boolean" && typeof o.thesis_present === "boolean"
 }
 
-/** Only the binding this adapter reads. Request-scoped, never module-scope. */
-export interface EngineAdapterEnv {
-  ANTHROPIC_API_KEY?: string
-}
+/** The bindings this adapter reads, request-scoped, never module-scope: the detector switch's (detector.ts). */
+export type EngineAdapterEnv = DetectorEnv
 
 /** Shape of an engine flag as the deterministic engine returns it. */
 interface EngineFlagLike {
@@ -104,6 +103,8 @@ export function createEngineAdapter(
   modelFn?: ModelFn,
   /** Which pipeline audits the intent. Default: the PM pipeline (unchanged behavior). */
   runner: (text: string, model: ModelFn) => Promise<VerifyPmTradeResult> = runVerifyPmTrade,
+  /** Offline seam for the attested path (stub gateway). Production never passes it. */
+  detectorOpts: DetectorOptions = {},
 ): EngineAdapter {
   /** intent_sha256 -> in-flight/settled pipeline run. One entry per request in practice. */
   const runs = new Map<string, Promise<VerifyPmTradeResult>>()
@@ -112,12 +113,24 @@ export function createEngineAdapter(
     const key = intentSha256(intent)
     const existing = runs.get(key)
     if (existing) return existing
-    const model = modelFn ?? (env.ANTHROPIC_API_KEY ? buildAnthropicModelFn(env.ANTHROPIC_API_KEY) : undefined)
-    if (!model) {
-      // Fail CLOSED and fail EARLY: thrown from scopeCheck this is an uncharged refusal.
-      return Promise.reject(new Error("EXTRACTION_UNAVAILABLE: ANTHROPIC_API_KEY not configured"))
+    const text = renderIntentText(intent)
+    let p: Promise<VerifyPmTradeResult>
+    if (modelFn) {
+      p = runner(text, modelFn)
+    } else {
+      // The detector switch (DJZS_DETECTOR): Anthropic, or the attested Phala lane. A missing key, a
+      // failed report binding or an unverified receipt all reject HERE, from scopeCheck - before
+      // settlePayment - so every detector failure is an uncharged refusal.
+      let handle: DetectorHandle
+      try {
+        handle = createDetector(env, detectorOpts)
+      } catch (e) {
+        // Fail CLOSED and fail EARLY: thrown from scopeCheck this is an uncharged refusal.
+        return Promise.reject(e)
+      }
+      const h = handle
+      p = runDetected(() => runner(text, h.modelFn), h, text)
     }
-    const p = runner(renderIntentText(intent), model)
     runs.set(key, p)
     return p
   }
@@ -153,6 +166,8 @@ export function createEngineAdapter(
         intent_sha256: intentSha256(intent),
         // DJZS-VR-v1.0: what the verdict was derived from, for the v3 attestation and its resolver.
         ...(isTally((result as { tally?: unknown }).tally) ? { tally: (result as { tally: VerdictTally }).tally } : {}),
+        // DJZS-AD-v0.1: the attested lane's receipts and binding ride the wire untouched; absent on the Anthropic path.
+        ...(result.attested_detection !== undefined ? { attested_detection: result.attested_detection } : {}),
       }
     },
   }
