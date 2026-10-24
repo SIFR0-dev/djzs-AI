@@ -1,0 +1,64 @@
+name = "patronvault"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The pilot's surface on scan.djzs.ai (product doc R11 keeps the product at patron.djzs.ai later).
+# A Route, not a Custom Domain: scan.djzs.ai already has DNS (Railway hosts the Scan Room agent),
+# so this Worker takes only /patron* in front of it. Zero DNS edits; rollback = delete the route.
+# Keep workers_dev true (the alias is how the deploy is probed before the route is trusted).
+workers_dev = true
+routes = [
+  { pattern = "scan.djzs.ai/patron*", zone_name = "djzs.ai" }
+]
+
+# The keeper's clock. Every run settles the members whose last settle is a full period old,
+# so a member is settled about once a month, on their own anniversary, not daily (see src/keeper.ts).
+[triggers]
+crons = ["17 */6 * * *"]
+
+# The member registry (addresses seen in Joined events, last scanned block, last run summary).
+# Create it once: `wrangler kv namespace create KEEPER_KV`, paste the id here, commit.
+[[kv_namespaces]]
+binding = "KEEPER_KV"
+id = "REPLACE_WITH_THE_NAMESPACE_ID"
+
+# The terms text is generated into src/terms.generated.ts from ../terms/member-terms-v1.md by every build
+# (scripts/gen-terms.mjs), so the page serves the exact bytes the vault's termsHash was computed from;
+# /patron/health compares the two on every probe.
+
+# The member page and the terms: static files under assets/, built by `npm run build:site`
+# (assets/app.js is gitignored and rebuilt on every deploy). The Worker runs first for the API,
+# the health probe and the exact-bytes terms route.
+[assets]
+directory = "./assets"
+# /__scheduled is wrangler dev's --test-scheduled hook; in production the Worker answers it with a JSON 404.
+run_worker_first = ["/patron/api/*", "/patron/health", "/patron/terms", "/patron/terms.md", "/__scheduled"]
+not_found_handling = "404-page"
+
+# Non-secrets. The vault address, its deploy block and the source are written here after the
+# pilot deploy (docs/pilot-runbook.md, step 6) and committed, so the deployed Worker is reproducible.
+[vars]
+CHAIN_ID = "8453"
+RPC_URL = "https://mainnet.base.org"
+VAULT_ADDRESS = "0x0000000000000000000000000000000000000000"
+DEPLOY_BLOCK = "0"
+# The Scan Room payee the page offers as the route: the pilot's one creator, the only address its registry lists.
+PAYEE_ADDRESS = "0x0000000000000000000000000000000000000000"
+# The gate's floor in asset units (10 USDC per 30 days): the page and the API read isPatronAtLeast with it.
+PAYEE_MIN = "10000000"
+# "true" until the first real settle is wanted: the cron logs what it would send and sends nothing.
+DRY_RUN = "true"
+# Blocks per eth_getLogs call while scanning for Joined events; public Base RPCs cap the range.
+SCAN_CHUNK = "2000"
+# Alert line in /patron/health when the keeper's ETH balance falls under this (0.002 ETH, product doc R15).
+MIN_KEEPER_BALANCE_WEI = "2000000000000000"
+
+# SECRET: KEEPER_KEY, the dedicated gas-only key (R15), via `wrangler secret put KEEPER_KEY`.
+# Never a [vars] entry, never in .dev.vars committed. Absent => the cron reports "no key" and sends nothing.
+
+# Deploy guard, shared with the other deployable directories: refuses a dirty tree or a HEAD that
+# is not origin/main, because `wrangler deploy` ships the working tree. Run every wrangler command
+# from this folder. A dry run that uploads nothing sets DJZS_BUILD_ONLY=1.
+[build]
+command = "node ../../../djzs-trust-mcp/scripts/predeploy-guard.mjs"
