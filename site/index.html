@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DJZS: the reasoning gate every trading agent calls before it acts</title>
-  <meta name="description" content="DJZS is a deterministic pre-execution audit for autonomous agents: it audits the reasoning behind a move and returns PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as an MCP tool." />
+  <title>DJZS: stops your bot's bad trade before it fires</title>
+  <meta name="description" content="DJZS reads the reason behind a trade and refuses it when the reason does not hold up. For Kalshi and Polymarket bots, perps agents, and treasuries with an agent on the keys. Five free verdicts a day; 2.00 USDC for a receipt on Base anyone can check." />
   <link rel="canonical" href="https://djzs.ai/" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="DJZS: the reasoning gate every trading agent calls before it acts" />
-  <meta property="og:description" content="Deterministic pre-execution audit: PASS, WAIT, or FAIL with a reproducible verdict_hash. Live as a paid MCP tool on Base." />
+  <meta property="og:title" content="DJZS: stops your bot's bad trade before it fires" />
+  <meta property="og:description" content="Reads the reason behind a trade. Refuses it when the reason does not hold up. Live on Base; try it free in the browser." />
   <meta property="og:url" content="https://djzs.ai/" />
   <meta property="og:image" content="https://djzs.ai/og.png" />
   <meta property="og:image:width" content="1200" />
@@ -33,8 +33,8 @@
   <div class="wrap">
     <a class="brand" href="/"><img class="brandmark" src="/favicon.svg" alt="" width="26" height="26" />DJZS<span class="dot">.</span></a>
     <nav aria-label="Main">
-      <a href="#architecture">Architecture</a>
-      <a href="#taxonomies">Taxonomies</a>
+      <a href="#how">How it works</a>
+      <a href="#who">Who it is for</a>
       <a href="#proof">Proof</a>
       <a href="/try">Try</a>
       <a href="/verify">Verify</a>
@@ -52,50 +52,34 @@
 
   <!-- 1: HERO -->
   <section id="hero">
-    <h1>The reasoning gate every trading agent calls before it acts.</h1>
+    <h1>Your bot's next bad trade gets stopped before it fires.</h1>
     <div class="status">
-      <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">ENGINE</span><span class="val">deterministic v2. Verdict is computed, not improvised.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">GATE</span><span class="val">verify_pm_trade · verify_perp_trade · LIVE · PAID 2.00 USDC each via x402 [MCP] [streamable-HTTP]</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">TAXONOMY</span><span class="val">DJZS-PM-v1.0 4/4 calibrated · DJZS-LF-v1.2 11 frozen / 4 live</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">LEDGER</span><span class="val">Irys mainnet. Every in-scope audit anchors a permanent ProofOfLogic certificate; readable via query_pol_certificates</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">RECEIPT</span><span class="val">EIP-712 intent_hash + EAS attestation on Base · extraction contract DJZS-X-v1.1 · recompute any receipt at <a href="/verify">djzs.ai/verify</a></span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">OPERATIONAL<span class="cursor"></span></span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">WHAT</span><span class="val">Reads the reason behind a trade. Refuses it when the reason does not hold up.</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">WHO</span><span class="val">Kalshi and Polymarket bots, perps agents, treasuries with an agent on the keys.</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">COST</span><span class="val">Five verdicts a day free. 2.00 USDC for a receipt on Base anyone can check.</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">LIVE ON BASE MAINNET<span class="cursor"></span></span></div>
     </div>
-    <p class="lede">It checks the claim before the money moves. A budget clamp is not a firewall. A spend cap limits how much you can lose, never whether you should have been in the trade.
-    It produces a receipt <a href="/verify">anyone can recompute</a>.
-    It never guesses: unknown means <strong>WAIT</strong>, and WAIT means <strong>HALT</strong>.</p>
-    <p>It's live now as a Model Context Protocol tool (streamable HTTP). Add it in one line:</p>
-    <pre><code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code></pre>
-    <p class="muted">Then call <code>verify_pm_trade</code> with a free-text prediction-market thesis.</p>
-    <p><a class="btn" href="/try">Try it free, in the browser -&gt;</a> <a class="btn" href="/guide">Connect the gate -&gt;</a></p>
-    <p class="muted">Five free verdicts per wallet per day, same engine. The attested receipt on Base is 2.00 USDC on any outcome.</p>
+    <p class="lede">No source for the probability, no condition that would prove it wrong, "everyone knows" as the edge: the order never leaves.
+    Spend caps limit how much you lose. <strong>This limits whether you should have been in at all.</strong></p>
+    <p><a class="btn" href="/try">Run a verdict free -&gt;</a> <a class="btn" href="/guide">Wire it into your bot -&gt;</a></p>
+    <p class="muted">Five free verdicts per wallet per day. When you want the proof on record, 2.00 USDC buys a receipt on Base that anyone can check later, whichever way the verdict went.</p>
     <p class="doctrine">Audit before act.</p>
+  </section>
+
+  <!-- 1.2: HOW IT WORKS -->
+  <section id="how">
+    <h2>How it works <span class="k">// three steps, no guessing</span></h2>
+    <div class="ladder">
+      <div class="rung"><span class="verdict">1</span><br /><span class="muted">Your bot sends its trade idea in plain text. One line of setup, no account.</span></div>
+      <div class="rung"><span class="verdict">2</span><br /><span class="muted">DJZS checks it for the four ways trade ideas go wrong and answers <strong>PASS</strong>, <strong>WAIT</strong>, or <strong>FAIL</strong>. WAIT means stop and clarify. Nothing is guessed.</span></div>
+      <div class="rung"><span class="verdict">3</span><br /><span class="muted">PASS clears the logic. The trade is still yours. FAIL or WAIT and the order never leaves.</span></div>
+    </div>
+    <p>Same idea in, same answer out, every time, on any machine. That is what makes the receipt worth paying for: it proves what the reasoning was before the money moved.</p>
   </section>
 
   <!-- 1.5: THE LOOP, LIVE -->
   <section id="loop">
-    <h2>The loop, run for real <span class="k">// a wallet paid, an engine decided</span></h2>
-    <video poster="/assets/poster-pass.svg" controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
-      <source src="/assets/djzs-demo-pass.mp4" type="video/mp4" />
-    </video>
-    <details class="transcript"><summary>Transcript (39 s, no audio)</summary>
-      <p>Terminal. <code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code> adds the gate to Claude Code. <code>node demo-call.mjs</code> sends a 445-character prediction-market thesis to <code>verify_pm_trade</code>. The server answers <code>402 Payment Required</code>: scheme exact, network eip155:8453, amount 2000000 (2.00 USDC), asset USDC on Base, payTo 0xc192…eCCA. The client signs the payment and retries with <code>X-PAYMENT</code>. Settled in 12.4 s; the verdict is written to <code>last-verdict.json</code>.</p>
-      <p>Card. DJZS-M taxonomy, frozen: M01 30, M02 30, M03 25, M04 15, fail threshold 25. Verdict PASS, action PROCEED, risk_score 0, flags none, unknown none, price 2.00 USDC, network base 8453, proof_of_logic anchored. Captions: "the agent pays 2 USDC over x402" and "same input, same score, same hash. forever."</p>
-    </details>
-    <p class="muted">One command to add. The agent pays 2.00 USDC over x402 on Base and the verdict
-    returns with a hash that reproduces on any machine. The payment and the certificate are public;
-    <a href="https://djzs.link" rel="noopener">the launch record</a> archives every receipt.</p>
-    <h3>How payment works</h3>
-    <p>Every verdict is paid for by the wallet that asks for it. The server answers with a price:
-    <strong>2.00 USDC</strong>. Your agent pays it on Base over x402 and the verdict comes back in the
-    same breath. No account, no API key, no subscription. The caller's wallet is the identity and the
-    bill. Out-of-scope requests are refused <em>free</em>: an auditor that stretches past its taxonomy
-    to take your money is not an auditor.</p>
-    <p class="muted">Humans without an x402 setup: watch the loop above; that is the whole product,
-    end to end. Agents replicate it natively.</p>
-  
-    <h3>The gate, doing its job <span class="k">// this one says no</span></h3>
+    <h2>Watch it say no <span class="k">// this one costs two dollars to refuse</span></h2>
     <video poster="/assets/poster-fail.svg" controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
       <source src="/assets/djzs-demo-fail.mp4" type="video/mp4" />
     </video>
@@ -106,6 +90,41 @@
     <p class="muted">Fed it a consensus thesis: no invalidation, no source, "everyone knows." <strong>FAIL,
     risk 75</strong>, and it charged two dollars to say no. An auditor that only ever says yes is not an
     auditor. The refusal is the product.</p>
+
+    <h3>And when the reasoning holds <span class="k">// a wallet paid, an engine decided</span></h3>
+    <video poster="/assets/poster-pass.svg" controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
+      <source src="/assets/djzs-demo-pass.mp4" type="video/mp4" />
+    </video>
+    <details class="transcript"><summary>Transcript (39 s, no audio)</summary>
+      <p>Terminal. <code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code> adds the gate to Claude Code. <code>node demo-call.mjs</code> sends a 445-character prediction-market thesis to <code>verify_pm_trade</code>. The server answers <code>402 Payment Required</code>: scheme exact, network eip155:8453, amount 2000000 (2.00 USDC), asset USDC on Base, payTo 0xc192…eCCA. The client signs the payment and retries with <code>X-PAYMENT</code>. Settled in 12.4 s; the verdict is written to <code>last-verdict.json</code>.</p>
+      <p>Card. DJZS-M taxonomy, frozen: M01 30, M02 30, M03 25, M04 15, fail threshold 25. Verdict PASS, action PROCEED, risk_score 0, flags none, unknown none, price 2.00 USDC, network base 8453, proof_of_logic anchored. Captions: "the agent pays 2 USDC over x402" and "same input, same score, same hash. forever."</p>
+    </details>
+    <p class="muted">One command to add. The agent pays 2.00 USDC over x402 on Base and the verdict
+    returns with a hash that reproduces on any machine. The payment and the certificate are public;
+    <a href="https://djzs.link" rel="noopener">the launch record</a> archives every receipt.</p>
+  </section>
+
+  <!-- 1.7: WHO IT IS FOR -->
+  <section id="who">
+    <h2>Who it is for <span class="k">// three ways in</span></h2>
+    <div class="ladder">
+      <div class="rung pass"><span class="verdict">SOLO BOT OPERATORS</span><br /><span class="muted">Add one line to Claude Code or any x402 client. Your bot pays per call from its own wallet. No account, no API key, no subscription.</span><br /><a href="/guide">Connect the gate -&gt;</a></div>
+      <div class="rung wait"><span class="verdict">TREASURIES AND DAOS</span><br /><span class="muted">Require the receipt before an agent's order can execute. Safe Guard and Zodiac integrations documented for builders.</span><br /><a href="/builders">For builders -&gt;</a></div>
+      <div class="rung fail"><span class="verdict">METAMASK AGENT WALLET</span><br /><span class="muted">MetaMask checks whether the transaction is safe. DJZS checks whether the trade was worth making. Both gates, in order.</span><br /><a href="#upstream">How the two gates stack -&gt;</a></div>
+    </div>
+    <h3>How payment works</h3>
+    <p>Every receipt is paid for by the wallet that asks for it. The server answers with a price:
+    <strong>2.00 USDC</strong>. Your agent pays it on Base over x402 and the verdict comes back in the
+    same breath. The caller's wallet is the identity and the bill. Out-of-scope requests are refused <em>free</em>: an auditor that stretches past its taxonomy
+    to take your money is not an auditor.</p>
+    <p class="muted">Humans without an x402 setup: the browser route at <a href="/try">/try</a> runs the same engine, no wallet plumbing required to see a verdict.</p>
+  </section>
+
+  <!-- DIVIDER: everything below is for builders and agents -->
+  <section id="builders-line">
+    <h2>Below this line <span class="k">// for builders and agents</span></h2>
+    <p class="muted">Everything above is the product in plain language. Everything below is the proof: how the engine is built, the rules it scores against, the measurements, what is live and what is not, and how to call it from code. If you are deciding whether to care, you are done. If you are deciding whether to trust it, keep reading.</p>
+    <p class="doctrine">Evidence before record.</p>
   </section>
 
   <!-- 2: ARCHITECTURE C -->
