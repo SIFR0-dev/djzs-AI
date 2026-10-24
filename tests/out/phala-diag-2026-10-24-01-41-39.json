@@ -1,0 +1,3157 @@
+{
+  "model": "qwen/qwen3.8-27b",
+  "gateway": "https://inference.phala.com/v1",
+  "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+  "configs": [
+    {
+      "id": "C0",
+      "maxTokens": 1024,
+      "note": "as run 2026-10-23: no reasoning control, 1024"
+    },
+    {
+      "id": "C1",
+      "reasoning": "off",
+      "maxTokens": 1024,
+      "note": "reasoning off, same 1024 budget as the Anthropic path"
+    },
+    {
+      "id": "C2",
+      "maxTokens": 8192,
+      "note": "no reasoning control, 8x budget"
+    },
+    {
+      "id": "C3",
+      "reasoning": "low",
+      "maxTokens": 8192,
+      "note": "reasoning low, 8x budget"
+    }
+  ],
+  "rows": [
+    {
+      "config": "C0",
+      "intent": "F1",
+      "ctx": "pm",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "length",
+      "prompt_tokens": 2720,
+      "completion_tokens": 1024,
+      "reasoning_tokens": 769,
+      "reasoning_chars": 3589,
+      "content_chars": 711,
+      "empty": false,
+      "parsed": false,
+      "audit_context": null,
+      "verdict": "OUT_OF_SCOPE",
+      "codes": [],
+      "content_head": " { \"agent_type\": \"prediction_market_trader\", \"intended_action\": \"buy YES on KXBTCD-26SEP02",
+      "raw": "\n\n{\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"buy YES on KXBTCD-26SEP0217-T76999.99\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": {\n    \"state\": \"unknown\"\n  },\n  \"position_size\": {\n    \"state\": \"present\",\n    \"value\": 250\n  },\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"present\",\n    \"value\": \"absent a close under $77,000 at the Sep 2 settlement, KXBTCD-",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-f2cafe60e5df5a565114ab05",
+        "chat_id": "req_de75041a71081d2e74883f59bafd9fc7",
+        "served_at": 1792806014,
+        "request_sha256": "sha256:c570b9f5bd4195952726933a34659af9fffa57386cd6dacca8ab6383cc120cb7",
+        "response_sha256": "sha256:b54d8dffab8fa7b82c37b0019908a7a36d3c95f4e9785afb3d3360aee532e680",
+        "detector_output_sha256": "c727c515471440923ecbb9b0c8333ac3d0d551010f59fecac21ef42d76d55bd9",
+        "finish_reason": "length",
+        "usage": {
+          "prompt_tokens": 2720,
+          "completion_tokens": 1024,
+          "reasoning_tokens": 769
+        },
+        "reasoning_chars": 3589,
+        "max_tokens": 1024,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "eb12c6b76352ed12409f6e19f23b0ac3c1c081d68fdae7079e994e20ae136a9a",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_de75041a71081d2e74883f59bafd9fc7",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:c570b9f5bd4195952726933a34659af9fffa57386cd6dacca8ab6383cc120cb7",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:345a7baaabae70bf8456529d74ed2a1948d156ebfbeea11cfbb9c2e2a6d956d1",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:345a7baaabae70bf8456529d74ed2a1948d156ebfbeea11cfbb9c2e2a6d956d1",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "eb12c6b76352ed12409f6e19f23b0ac3c1c081d68fdae7079e994e20ae136a9a",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:77380efa1bdc21c3ca94700840661928660498b3c66054b968ce977d6d5a8149",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:b54d8dffab8fa7b82c37b0019908a7a36d3c95f4e9785afb3d3360aee532e680",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-f2cafe60e5df5a565114ab05",
+          "served_at": 1792806014,
+          "signature": "a27c6971984e9aff9554a6847c74ddbfb8065d372a7d22dd135b744cea6cd302e1d02a6b5666267d64825d9818855baa43d1c8ba6fb62bd73440d072d01f850c",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C0",
+      "intent": "P1",
+      "ctx": "pm",
+      "designed": "FAIL",
+      "error": null,
+      "verified": true,
+      "finish_reason": "length",
+      "prompt_tokens": 2594,
+      "completion_tokens": 1024,
+      "reasoning_tokens": 769,
+      "reasoning_chars": 3032,
+      "content_chars": 669,
+      "empty": false,
+      "parsed": false,
+      "audit_context": null,
+      "verdict": "OUT_OF_SCOPE",
+      "codes": [],
+      "content_head": " { \"agent_type\": \"prediction_market_trader\", \"intended_action\": \"Buy YES on KXBTCD-26SEP02",
+      "raw": "\n\n{\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"Buy YES on KXBTCD-26SEP0217-T76999.99 for $250\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": {\n    \"state\": \"unknown\"\n  },\n  \"position_size\": {\n    \"state\": \"present\",\n    \"value\": 250\n  },\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"exit on an hourly close below $77,000\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"hourly close below $77,000\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"present\",\n    \"value\": \"Resolves YES on a Sep 2 close above $77,000\"\n  },\n  \"probability_basis\": {\n    \"state\":",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-b85defc04ca0cbe9653bc69b",
+        "chat_id": "req_530ed2f2717c5ab17e3d1c7e66b55961",
+        "served_at": 1792806016,
+        "request_sha256": "sha256:a0c66659c2d58e426e9dbbc2872f0fd617443d15a179b071e0767abf12402bce",
+        "response_sha256": "sha256:1955a4af3683b8db51c74b323185564f60bd0d84c84c67bc6f55facbe4885284",
+        "detector_output_sha256": "de30818f52eb9c0f2dd62b695aa03fe732409701d2747fa4eeade97fb944e754",
+        "finish_reason": "length",
+        "usage": {
+          "prompt_tokens": 2594,
+          "completion_tokens": 1024,
+          "reasoning_tokens": 769
+        },
+        "reasoning_chars": 3032,
+        "max_tokens": 1024,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "ac977b6755964bd9422fb028e35b4a0113dfa08ff00b00d0eb581fc7c32e7af9",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_530ed2f2717c5ab17e3d1c7e66b55961",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:a0c66659c2d58e426e9dbbc2872f0fd617443d15a179b071e0767abf12402bce",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:debebc6a4e6708622f7e5b82cb00abb295c513901cfd42055dc01115a70d97fa",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:debebc6a4e6708622f7e5b82cb00abb295c513901cfd42055dc01115a70d97fa",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "ac977b6755964bd9422fb028e35b4a0113dfa08ff00b00d0eb581fc7c32e7af9",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:95af19a43d1fb3ea288d64a478f7542d4c59021e3d882a04f3d2bf488ec21a0f",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:1955a4af3683b8db51c74b323185564f60bd0d84c84c67bc6f55facbe4885284",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-b85defc04ca0cbe9653bc69b",
+          "served_at": 1792806016,
+          "signature": "7307870474cca507b9ec05e4e5f7230b79fd303cadbf93ae152cdb80399102ac66a9ad4841c4dce90da2c674ced486ec855b0c47dc24139e4f2a7a369c1b0e0f",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C0",
+      "intent": "A1",
+      "ctx": "pm",
+      "designed": "WAIT",
+      "error": null,
+      "verified": true,
+      "finish_reason": "length",
+      "prompt_tokens": 2503,
+      "completion_tokens": 1024,
+      "reasoning_tokens": 769,
+      "reasoning_chars": 3216,
+      "content_chars": 690,
+      "empty": false,
+      "parsed": false,
+      "audit_context": null,
+      "verdict": "OUT_OF_SCOPE",
+      "codes": [],
+      "content_head": " { \"agent_type\": { \"state\": \"present\", \"value\": \"prediction_market_trader\" }, \"intended_ac",
+      "raw": "\n\n{\n  \"agent_type\": {\n    \"state\": \"present\",\n    \"value\": \"prediction_market_trader\"\n  },\n  \"intended_action\": {\n    \"state\": \"present\",\n    \"value\": \"buy YES on KXBTCD for $100\"\n  },\n  \"market_type\": {\n    \"state\": \"present\",\n    \"value\": \"prediction_market\"\n  },\n  \"leverage\": {\n    \"state\": \"unknown\"\n  },\n  \"position_size\": {\n    \"state\": \"present\",\n    \"value\": 100\n  },\n  \"stop_loss\": {\n    \"state\": \"unknown\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"unknown\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"unknown\"\n  },\n  \"probability_basis\": {\n    \"state\": \"unknown\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-ffe4170819d75ff7f888f684",
+        "chat_id": "req_91f84e1d092dbfb17126323f3e7c0835",
+        "served_at": 1792806016,
+        "request_sha256": "sha256:c441e5928d42a5f9f2ac73dc6ed6e0fc6718c2d26ddbf2b99439dc0cbbba5b90",
+        "response_sha256": "sha256:d9f6380156e70373b98a26a8581392396071ca02d16324ea6de188c0e6e9ce54",
+        "detector_output_sha256": "7206e00e677d4e89db4429dae4da8c337eb4908e048310e83baddf94e16a849c",
+        "finish_reason": "length",
+        "usage": {
+          "prompt_tokens": 2503,
+          "completion_tokens": 1024,
+          "reasoning_tokens": 769
+        },
+        "reasoning_chars": 3216,
+        "max_tokens": 1024,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "ac977b6755964bd9422fb028e35b4a0113dfa08ff00b00d0eb581fc7c32e7af9",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_91f84e1d092dbfb17126323f3e7c0835",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:c441e5928d42a5f9f2ac73dc6ed6e0fc6718c2d26ddbf2b99439dc0cbbba5b90",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:42b704161c4ae6e9fae344a77705933be64bbeffb7ec49f19f468fc663d6e935",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:42b704161c4ae6e9fae344a77705933be64bbeffb7ec49f19f468fc663d6e935",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "ac977b6755964bd9422fb028e35b4a0113dfa08ff00b00d0eb581fc7c32e7af9",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:21a574471ea8ce6737e83f4b5f62e80b744182dd54d02e1ae5e63ba07215373f",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:d9f6380156e70373b98a26a8581392396071ca02d16324ea6de188c0e6e9ce54",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-ffe4170819d75ff7f888f684",
+          "served_at": 1792806016,
+          "signature": "a261d5a432b89f9fcd742128b516efe3e1e32beb2a07a5b95e0cea45144a1138e0a7b5030ca3e5ad6add73fc4a16d4ba4bf6787b8577677e49d20d4565e23c03",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C0",
+      "intent": "PF1",
+      "ctx": "perp",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2710,
+      "completion_tokens": 1002,
+      "reasoning_tokens": 769,
+      "reasoning_chars": 3488,
+      "content_chars": 633,
+      "empty": false,
+      "parsed": true,
+      "audit_context": null,
+      "verdict": "PASS",
+      "codes": [],
+      "content_head": " { \"agent_type\": \"trader\", \"intended_action\": \"long BTC-PERP\", \"market_type\": \"perpetual\",",
+      "raw": "\n{\n  \"agent_type\": \"trader\",\n  \"intended_action\": \"long BTC-PERP\",\n  \"market_type\": \"perpetual\",\n  \"leverage\": 5,\n  \"position_size\": 3000,\n  \"stop_loss\": 76200,\n  \"take_profit\": 83000,\n  \"invalidation_condition\": \"a daily close below 76,200\",\n  \"thesis_statement\": \"Funding reset from 8% to 2% annualized after the weekend flush; 82K rejected four times but 80K held on the daily close; ETF inflows resumed (+$174M Sep 4, Farside).\",\n  \"resolution_engagement\": \"unknown\",\n  \"probability_basis\": \"unknown\",\n  \"edge_claim\": \"unknown\",\n  \"data_sources\": [\n    \"Farside\"\n  ],\n  \"oracle_source\": \"Binance mark price\",\n  \"confidence\": 65\n}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-b889ebdb35e9967461633881",
+        "chat_id": "req_98788c3682d6d655a4e2c1063d93a72f",
+        "served_at": 1792806014,
+        "request_sha256": "sha256:30d303a5dc0696c27a27116d0630c55b39f502700922b7c82527954356132d8b",
+        "response_sha256": "sha256:898fb3ed016b448ea3a728c07f7c6307385c33ee06eab1743515c789096cbfa6",
+        "detector_output_sha256": "b6d5088923659d0f615a781b2843d2a9fd395e8e13e8f469d7a6e99ed8ae2373",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2710,
+          "completion_tokens": 1002,
+          "reasoning_tokens": 769
+        },
+        "reasoning_chars": 3488,
+        "max_tokens": 1024,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "eb12c6b76352ed12409f6e19f23b0ac3c1c081d68fdae7079e994e20ae136a9a",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_98788c3682d6d655a4e2c1063d93a72f",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:30d303a5dc0696c27a27116d0630c55b39f502700922b7c82527954356132d8b",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:16c26ff555740c915c9c5c579414b8d216da42d8cfcd39151babda84a265e57b",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:16c26ff555740c915c9c5c579414b8d216da42d8cfcd39151babda84a265e57b",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "eb12c6b76352ed12409f6e19f23b0ac3c1c081d68fdae7079e994e20ae136a9a",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:f54c0c15f11bd6dddbb4ed454b0d29a1ab28b650801ac7d5a75d698a88dd653b",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:898fb3ed016b448ea3a728c07f7c6307385c33ee06eab1743515c789096cbfa6",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-b889ebdb35e9967461633881",
+          "served_at": 1792806014,
+          "signature": "4efafc20f55f58083593c87a27762fbbdb841a7b973d67e1a6363ab41dea2b6a4ea8d2a7d36ead8ef87ad9ee5f32e25f5f4f2962ad4ac033384740d2b97a720c",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C1",
+      "intent": "F1",
+      "ctx": "pm",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2680,
+      "completion_tokens": 410,
+      "reasoning_tokens": 0,
+      "reasoning_chars": 0,
+      "content_chars": 1151,
+      "empty": false,
+      "parsed": true,
+      "audit_context": "prediction_market",
+      "verdict": "PASS",
+      "codes": [],
+      "content_head": "{ \"agent_type\": \"prediction_market_trader\", \"intended_action\": \"Buy YES on KXBTCD-26SEP021",
+      "raw": "{\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"Buy YES on KXBTCD-26SEP0217-T76999.99\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": 1,\n  \"position_size\": 250,\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"present\",\n    \"value\": \"Engages the market's specific strike price ($77,000), resolution source (Coinbase), and settlement window (Sep 2) by deriving the outcome from spot price relative to these criteria.\"\n  },\n  \"probability_basis\": {\n    \"state\": \"present\",\n    \"value\": \"spot $77,263 vs $77,000 strike = +0.34% ITM; model P(YES) approx 0.70; basis Coinbase spot 2026-09-01T20:08Z\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data_sources\": [\n    \"Coinbase spot price\",\n    \"Kalshi book\"\n  ],\n  \"oracle_source\": \"Coinbase\",\n  \"confidence\": 70,\n  \"audit_context\": \"prediction_market\"\n}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-d578d5711e6d948ca7463acb",
+        "chat_id": "req_28183896d81c0ab30d7f0301f49d37ae",
+        "served_at": 1792806020,
+        "request_sha256": "sha256:e9f482026335a003a3b67225dc9b5d446b459917fbff43d9098a0767a7cf3871",
+        "response_sha256": "sha256:e73d493f3ccecd60c84ce8121b5feaaf08b0f93782426dcf275b5709295527c6",
+        "detector_output_sha256": "cfae1c3bd1f63fbbe3bb858cbc486f01e377fc29b1dcfb5ffc5df8f4f053ba1b",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2680,
+          "completion_tokens": 410,
+          "reasoning_tokens": 0
+        },
+        "reasoning_chars": 0,
+        "max_tokens": 1024,
+        "reasoning": "off",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "a2f14d93d743f3518ca87aecdf8d13adf41ea727152731bdfc94d2c572da2fbd",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_28183896d81c0ab30d7f0301f49d37ae",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:e9f482026335a003a3b67225dc9b5d446b459917fbff43d9098a0767a7cf3871",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:fe82cfc5ea22434728fb3086e195f3e81e3b130a0c378f97a509613a1375eb6f",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:fe82cfc5ea22434728fb3086e195f3e81e3b130a0c378f97a509613a1375eb6f",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "a2f14d93d743f3518ca87aecdf8d13adf41ea727152731bdfc94d2c572da2fbd",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:5d7b5ad2fbdf771d4ce4751b35ea1f877836d843e3132ac34bddd52f33a8de38",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:e73d493f3ccecd60c84ce8121b5feaaf08b0f93782426dcf275b5709295527c6",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-d578d5711e6d948ca7463acb",
+          "served_at": 1792806020,
+          "signature": "37d9144095bb041b4150f650169fe63b109d780f692cc4dcaa38d3e4ecec395e9008a034d99d19e6ed8390c2221b2eb4b06ff9a112ff710baad171eae6436a0a",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C1",
+      "intent": "P1",
+      "ctx": "pm",
+      "designed": "FAIL",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2554,
+      "completion_tokens": 318,
+      "reasoning_tokens": 0,
+      "reasoning_chars": 0,
+      "content_chars": 817,
+      "empty": false,
+      "parsed": true,
+      "audit_context": "prediction_market",
+      "verdict": "FAIL",
+      "codes": [
+        "DJZS-M03"
+      ],
+      "content_head": "{ \"agent_type\": \"prediction_market_trader\", \"intended_action\": \"Buy YES on KXBTCD-26SEP021",
+      "raw": "{\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"Buy YES on KXBTCD-26SEP0217-T76999.99\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": 1,\n  \"position_size\": 250,\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"exit on an hourly close below $77,000\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"hourly close below $77,000\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"present\",\n    \"value\": \"Resolves YES on a Sep 2 close above $77,000\"\n  },\n  \"probability_basis\": {\n    \"state\": \"absent\",\n    \"quote\": \"it just looks strong\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data_sources\": [],\n  \"oracle_source\": \"KXBTCD-26SEP0217-T76999.99\",\n  \"confidence\": 50,\n  \"audit_context\": \"prediction_market\"\n}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-000096128b5b7cb5beb0e09b",
+        "chat_id": "req_820a96c5443cfe43a7903620236022ac",
+        "served_at": 1792806019,
+        "request_sha256": "sha256:a93e4449b6aa583a5cc8703535d1d99d517a36b6c7e5d88ae7341b00489ff2cc",
+        "response_sha256": "sha256:441cea94aa9b5edf6bb49158f5aadf9f94100d712c0a499965043647c7d21063",
+        "detector_output_sha256": "05e34a91eeb33d7aa744d23d61ef2114ef7a430dedefb267fbb3221eebeaf085",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2554,
+          "completion_tokens": 318,
+          "reasoning_tokens": 0
+        },
+        "reasoning_chars": 0,
+        "max_tokens": 1024,
+        "reasoning": "off",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "f1e7966f6cae980ead3b51097643f583a5b892853fd672c49c9e24f1869940a9",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_820a96c5443cfe43a7903620236022ac",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:a93e4449b6aa583a5cc8703535d1d99d517a36b6c7e5d88ae7341b00489ff2cc",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:e3c26b5381b07da1e9279424b84694dac285825c274ccf0ca94d81af0f39212e",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:e3c26b5381b07da1e9279424b84694dac285825c274ccf0ca94d81af0f39212e",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "f1e7966f6cae980ead3b51097643f583a5b892853fd672c49c9e24f1869940a9",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:462fd771911e6bc54db3801d6660367e3c9d8c77272f3c19120a75042ad6cc53",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:441cea94aa9b5edf6bb49158f5aadf9f94100d712c0a499965043647c7d21063",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-000096128b5b7cb5beb0e09b",
+          "served_at": 1792806019,
+          "signature": "a70d502a017b86079539f601cae59003d79b2cf37acb6d140345f2e8d1412192bae76090f314e5a45aa33310408ffe7184f9750ad77151453c7e4be257525505",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C1",
+      "intent": "A1",
+      "ctx": "pm",
+      "designed": "WAIT",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2463,
+      "completion_tokens": 211,
+      "reasoning_tokens": 0,
+      "reasoning_chars": 0,
+      "content_chars": 596,
+      "empty": false,
+      "parsed": true,
+      "audit_context": "prediction_market",
+      "verdict": "WAIT",
+      "codes": [],
+      "content_head": "```json { \"agent_type\": \"prediction_market_trader\", \"intended_action\": \"Buy YES on KXBTCD\"",
+      "raw": "```json\n{\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"Buy YES on KXBTCD\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": 1,\n  \"position_size\": 100,\n  \"stop_loss\": {\n    \"state\": \"unknown\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"unknown\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"unknown\"\n  },\n  \"probability_basis\": {\n    \"state\": \"unknown\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data_sources\": [],\n  \"oracle_source\": \"unknown\",\n  \"confidence\": 0,\n  \"audit_context\": \"prediction_market\"\n}\n```",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-d58ac1499d9e13f0ef9895e7",
+        "chat_id": "req_b3fbd120dbd4dc5b14068e9e36572c9a",
+        "served_at": 1792806018,
+        "request_sha256": "sha256:946c7d6e99e1210ee33b3926c6a5354e48e7fec70a23a13112281dc150aa4032",
+        "response_sha256": "sha256:f72fe71da8bd2f3b8a04c899c39cbfe4cb3d839d6525686b86a21f55fa3cb9db",
+        "detector_output_sha256": "948070a01809a8ef430696e4f1e348d39c37d9acc718b77c199a985fe6da8fab",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2463,
+          "completion_tokens": 211,
+          "reasoning_tokens": 0
+        },
+        "reasoning_chars": 0,
+        "max_tokens": 1024,
+        "reasoning": "off",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "f1e7966f6cae980ead3b51097643f583a5b892853fd672c49c9e24f1869940a9",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_b3fbd120dbd4dc5b14068e9e36572c9a",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:946c7d6e99e1210ee33b3926c6a5354e48e7fec70a23a13112281dc150aa4032",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:561e77af7850af0b657a9e46bea7f5ed9e69bbe64f09284fc165eaeacea5a494",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:561e77af7850af0b657a9e46bea7f5ed9e69bbe64f09284fc165eaeacea5a494",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "f1e7966f6cae980ead3b51097643f583a5b892853fd672c49c9e24f1869940a9",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:8b664e78da8ab71ec1b858bebe0d26574ae22c3a579bb66d2094b29e8b4f518a",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:f72fe71da8bd2f3b8a04c899c39cbfe4cb3d839d6525686b86a21f55fa3cb9db",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-d58ac1499d9e13f0ef9895e7",
+          "served_at": 1792806018,
+          "signature": "2227406be76ceb64bf5cb32977156a079744533ba0a429a5ca8024cbfef40b6c2936209e58317b2e8a583128d5ef316fbba3ec5fcb0774e1d7db1219bebcbc0e",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C1",
+      "intent": "PF1",
+      "ctx": "perp",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2670,
+      "completion_tokens": 294,
+      "reasoning_tokens": 0,
+      "reasoning_chars": 0,
+      "content_chars": 795,
+      "empty": false,
+      "parsed": true,
+      "audit_context": null,
+      "verdict": "PASS",
+      "codes": [],
+      "content_head": "{ \"agent_type\": \"trader\", \"intended_action\": \"LONG\", \"market_type\": \"perpetual\", \"leverage",
+      "raw": "{\n  \"agent_type\": \"trader\",\n  \"intended_action\": \"LONG\",\n  \"market_type\": \"perpetual\",\n  \"leverage\": 5,\n  \"position_size\": 3000,\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": 76200\n  },\n  \"take_profit\": {\n    \"state\": \"present\",\n    \"value\": 83000\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"a daily close below 76,200\"\n  },\n  \"thesis_statement\": {\n    \"state\": \"present\",\n    \"value\": \"Funding reset from 8% to 2% annualized after the weekend flush; 82K rejected four times but 80K held on the daily close; ETF inflows resumed (+$174M Sep 4, Farside).\"\n  },\n  \"resolution_engagement\": \"unknown\",\n  \"probability_basis\": \"unknown\",\n  \"edge_claim\": \"unknown\",\n  \"data_sources\": [\n    \"Farside\"\n  ],\n  \"oracle_source\": \"Binance mark price\",\n  \"confidence\": 65\n}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-f1d8e636f8347c598cb074c7",
+        "chat_id": "req_dd7509f53591d717c92bc860364e91ac",
+        "served_at": 1792806019,
+        "request_sha256": "sha256:7f14d74b20301442bcaaa69b1373a9d443fe1b0df3db2105c9de4116ed76becf",
+        "response_sha256": "sha256:ee72d4ff87d76ffa96b09a7cc71fb154ba6fdca3006c2fcde0378d632a34be2a",
+        "detector_output_sha256": "bdbcbad3d544b47d07e39b24ec10d3ba78ede4637950ebdeba94bfa4c5a97d5f",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2670,
+          "completion_tokens": 294,
+          "reasoning_tokens": 0
+        },
+        "reasoning_chars": 0,
+        "max_tokens": 1024,
+        "reasoning": "off",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "a2f14d93d743f3518ca87aecdf8d13adf41ea727152731bdfc94d2c572da2fbd",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_dd7509f53591d717c92bc860364e91ac",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:7f14d74b20301442bcaaa69b1373a9d443fe1b0df3db2105c9de4116ed76becf",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:7fdc063c5ad6c50f1cf0451f71bf5a05ce1e89ffb4f8eb389a99c9db346bc3ab",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:7fdc063c5ad6c50f1cf0451f71bf5a05ce1e89ffb4f8eb389a99c9db346bc3ab",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "a2f14d93d743f3518ca87aecdf8d13adf41ea727152731bdfc94d2c572da2fbd",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:5259121e2a119d3b198e39d3eca69a786b0b7c2a2508e0d205d43bd9f2dd567a",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:ee72d4ff87d76ffa96b09a7cc71fb154ba6fdca3006c2fcde0378d632a34be2a",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-f1d8e636f8347c598cb074c7",
+          "served_at": 1792806019,
+          "signature": "f98592659e7a8dc99952b19d1bbd436478548cbcea2b07c4e45f830106693cfa2293a3e054e48320002793e810ee053be6e250c88349f37ad06fa440b1b3380d",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C2",
+      "intent": "F1",
+      "ctx": "pm",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "length",
+      "prompt_tokens": 2720,
+      "completion_tokens": 8192,
+      "reasoning_tokens": 7937,
+      "reasoning_chars": 29605,
+      "content_chars": 710,
+      "empty": false,
+      "parsed": false,
+      "audit_context": null,
+      "verdict": "OUT_OF_SCOPE",
+      "codes": [],
+      "content_head": " { \"audit_context\": \"prediction_market\", \"agent_type\": \"prediction_market_trader\", \"intend",
+      "raw": "\n\n{\n  \"audit_context\": \"prediction_market\",\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"Buy YES on KXBTCD-26SEP0217-T76999.99 for $250\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": 1,\n  \"position_size\": 250,\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"close under $77,000 at the Sep 2 settlement\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"present\",\n    \"value\": \"absent a close under $77,000 at the Sep 2 settlement\"\n  },\n  \"probability_basis\": {\n    \"state\": \"present\",\n",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-f3ffb12707297b4b5ff435e6",
+        "chat_id": "req_3004f940af98bad19091cba5155827e8",
+        "served_at": 1792806087,
+        "request_sha256": "sha256:7a7058c2e0184d7333f0f01b86bfeb15e47dc643a43a7c949c9d2dbeec1bd924",
+        "response_sha256": "sha256:e4b938e5d01735ce1fa15c596fb4952a2d6e2c2b92b3dea557f450be42657e9e",
+        "detector_output_sha256": "582ba57e9dacb24a0e892b511bbe9b40600a46f9153d313a9356aa887bafd67e",
+        "finish_reason": "length",
+        "usage": {
+          "prompt_tokens": 2720,
+          "completion_tokens": 8192,
+          "reasoning_tokens": 7937
+        },
+        "reasoning_chars": 29605,
+        "max_tokens": 8192,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "c143015d287dc4fb2a759a732b94bdfb2f89859b5a2c6abf682b16fabd19241c",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_3004f940af98bad19091cba5155827e8",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:7a7058c2e0184d7333f0f01b86bfeb15e47dc643a43a7c949c9d2dbeec1bd924",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:2222d94ba90f72d34e95355ca958c105221078a25cac52b89d7e666f9a085891",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:2222d94ba90f72d34e95355ca958c105221078a25cac52b89d7e666f9a085891",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "c143015d287dc4fb2a759a732b94bdfb2f89859b5a2c6abf682b16fabd19241c",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:ae12fdc88290e2454ada0b2f8eba138f30bf7b418c6849fb455ad39d666d1e24",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:e4b938e5d01735ce1fa15c596fb4952a2d6e2c2b92b3dea557f450be42657e9e",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-f3ffb12707297b4b5ff435e6",
+          "served_at": 1792806087,
+          "signature": "4e756f84ed7be21e4802317d1460826f61cdc49786c9aff740a4b215318972ad4731280de0d1e02a460de122367088f73a25d1b92a73c8ffc349ea65522f5401",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C2",
+      "intent": "P1",
+      "ctx": "pm",
+      "designed": "FAIL",
+      "error": null,
+      "verified": true,
+      "finish_reason": "length",
+      "prompt_tokens": 2594,
+      "completion_tokens": 8192,
+      "reasoning_tokens": 7937,
+      "reasoning_chars": 33300,
+      "content_chars": 675,
+      "empty": false,
+      "parsed": false,
+      "audit_context": null,
+      "verdict": "OUT_OF_SCOPE",
+      "codes": [],
+      "content_head": " { \"audit_context\": \"prediction_market\", \"agent_type\": { \"state\": \"present\", \"value\": \"pre",
+      "raw": "\n\n{\n  \"audit_context\": \"prediction_market\",\n  \"agent_type\": {\n    \"state\": \"present\",\n    \"value\": \"prediction_market_trader\"\n  },\n  \"intended_action\": {\n    \"state\": \"present\",\n    \"value\": \"Buy YES on KXBTCD-26SEP0217-T76999.99 for $250\"\n  },\n  \"market_type\": {\n    \"state\": \"present\",\n    \"value\": \"prediction_market\"\n  },\n  \"leverage\": {\n    \"state\": \"unknown\"\n  },\n  \"position_size\": {\n    \"state\": \"present\",\n    \"value\": 250\n  },\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"exit on an hourly close below $77,000\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"hourly close below $77,0",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-ea9c08ce9202cd61155b241b",
+        "chat_id": "req_7f6a96463ff8b579a1cecc41e8cfdede",
+        "served_at": 1792806095,
+        "request_sha256": "sha256:df5cca0562e24e0ff2470569b0ec52082d877cec84a98b69a0e6d0e034ddfe2d",
+        "response_sha256": "sha256:77627d4fba13301581b070de5781602c65ef25bbd6491d6add7f8aeeab8c26e6",
+        "detector_output_sha256": "9fe8346064cf581cdb748143b134a59b5d2ab217bc38964e3f4c4ce671ba191d",
+        "finish_reason": "length",
+        "usage": {
+          "prompt_tokens": 2594,
+          "completion_tokens": 8192,
+          "reasoning_tokens": 7937
+        },
+        "reasoning_chars": 33300,
+        "max_tokens": 8192,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "241a0f2030c7daf70b6c5dc1c55a0c64abf0d30cf8418f558d5952aeb3f14d50",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_7f6a96463ff8b579a1cecc41e8cfdede",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:df5cca0562e24e0ff2470569b0ec52082d877cec84a98b69a0e6d0e034ddfe2d",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:893b8394ecbd916b5f26ccbffc1396ec6c19ac97c9b537191381f936de39a431",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:893b8394ecbd916b5f26ccbffc1396ec6c19ac97c9b537191381f936de39a431",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "241a0f2030c7daf70b6c5dc1c55a0c64abf0d30cf8418f558d5952aeb3f14d50",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:a80e8f0cdec33524a167108504432e8543cc20c04187b83468e279bb68958bbc",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:77627d4fba13301581b070de5781602c65ef25bbd6491d6add7f8aeeab8c26e6",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-ea9c08ce9202cd61155b241b",
+          "served_at": 1792806095,
+          "signature": "4306e16d13666d3fbdbb1af729894c7cad181d826b931301d52374ed1510dca1998d83d5fbae555545589bee9aad33dbee7bf93cb5e43aef58d7a32bfd85ed04",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C2",
+      "intent": "A1",
+      "ctx": "pm",
+      "designed": "WAIT",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2503,
+      "completion_tokens": 3985,
+      "reasoning_tokens": 3654,
+      "reasoning_chars": 15670,
+      "content_chars": 915,
+      "empty": false,
+      "parsed": true,
+      "audit_context": "prediction_market",
+      "verdict": "FAIL",
+      "codes": [
+        "DJZS-M02"
+      ],
+      "content_head": " { \"agent_type\": { \"state\": \"present\", \"value\": \"prediction_market_trader\" }, \"intended_ac",
+      "raw": "\n\n{\n  \"agent_type\": {\n    \"state\": \"present\",\n    \"value\": \"prediction_market_trader\"\n  },\n  \"intended_action\": {\n    \"state\": \"present\",\n    \"value\": \"place a YES bet of 100 USD on KXBTCD\"\n  },\n  \"market_type\": {\n    \"state\": \"present\",\n    \"value\": \"prediction_market\"\n  },\n  \"leverage\": {\n    \"state\": \"unknown\"\n  },\n  \"position_size\": {\n    \"state\": \"present\",\n    \"value\": 100\n  },\n  \"stop_loss\": {\n    \"state\": \"unknown\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"absent\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"unknown\"\n  },\n  \"probability_basis\": {\n    \"state\": \"present\",\n    \"value\": \"no probability asserted\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data_sources\": {\n    \"state\": \"unknown\"\n  },\n  \"oracle_source\": {\n    \"state\": \"unknown\"\n  },\n  \"confidence\": {\n    \"state\": \"unknown\"\n  },\n  \"audit_context\": \"prediction_market\"\n}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-bfc07e4d56726b2368787aa6",
+        "chat_id": "req_18d1a04a11fa4b76b2828adb3895469d",
+        "served_at": 1792806059,
+        "request_sha256": "sha256:d935db07de140ea18d1e1441f3129493f97680af111bdf701fa0a301b8240611",
+        "response_sha256": "sha256:1bfcc466008e2f5c81735bdea6aa3365331776c023ff404415c353aa7330c1bd",
+        "detector_output_sha256": "352ff522e7e822ddad331f99002683f5ae7a2736c635d35fd593a6f85931892b",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2503,
+          "completion_tokens": 3985,
+          "reasoning_tokens": 3654
+        },
+        "reasoning_chars": 15670,
+        "max_tokens": 8192,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "241a0f2030c7daf70b6c5dc1c55a0c64abf0d30cf8418f558d5952aeb3f14d50",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_18d1a04a11fa4b76b2828adb3895469d",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:d935db07de140ea18d1e1441f3129493f97680af111bdf701fa0a301b8240611",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:8857cbca074832b5d91a0c563c80377f43cce0e189a00c7213b82743ecaad1df",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:8857cbca074832b5d91a0c563c80377f43cce0e189a00c7213b82743ecaad1df",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "241a0f2030c7daf70b6c5dc1c55a0c64abf0d30cf8418f558d5952aeb3f14d50",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:c6e968ff1c2311393caa82859f77b86e5807a24503d02d220aba8eeb2f82beb8",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:1bfcc466008e2f5c81735bdea6aa3365331776c023ff404415c353aa7330c1bd",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-bfc07e4d56726b2368787aa6",
+          "served_at": 1792806059,
+          "signature": "4a828204992d3b644ff9f9a540ae5c67cba2bf62425882102b108e44f6b15ab44179d14deddcd09e587149e7a29ce6a5c19230a06b4f5b4b9b0fde3d48b2a40d",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C2",
+      "intent": "PF1",
+      "ctx": "perp",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2710,
+      "completion_tokens": 4867,
+      "reasoning_tokens": 4388,
+      "reasoning_chars": 17734,
+      "content_chars": 1260,
+      "empty": false,
+      "parsed": true,
+      "audit_context": null,
+      "verdict": "PASS",
+      "codes": [],
+      "content_head": " { \"agent_type\": { \"state\": \"present\", \"value\": \"trader\" }, \"intended_action\": { \"state\": ",
+      "raw": "\n\n{\n  \"agent_type\": {\n    \"state\": \"present\",\n    \"value\": \"trader\"\n  },\n  \"intended_action\": {\n    \"state\": \"present\",\n    \"value\": \"LONG BTC-PERP at 78900 with 5x leverage and $3000 size\"\n  },\n  \"market_type\": {\n    \"state\": \"present\",\n    \"value\": \"perpetual futures\"\n  },\n  \"leverage\": {\n    \"state\": \"present\",\n    \"value\": 5\n  },\n  \"position_size\": {\n    \"state\": \"present\",\n    \"value\": 3000\n  },\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": 76200\n  },\n  \"take_profit\": {\n    \"state\": \"present\",\n    \"value\": 83000\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"a daily close below 76,200\"\n  },\n  \"thesis_statement\": {\n    \"state\": \"present\",\n    \"value\": \"Funding reset from 8% to 2% annualized after the weekend flush; 82K rejected four times but 80K held on the daily close; ETF inflows resumed (+$174M Sep 4, Farside).\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"unknown\"\n  },\n  \"probability_basis\": {\n    \"state\": \"unknown\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data_sources\": {\n    \"state\": \"present\",\n    \"value\": [\n      \"Farside\"\n    ]\n  },\n  \"oracle_source\": {\n    \"state\": \"present\",\n    \"value\": \"Binance mark price\"\n  },\n  \"confidence\": {\n    \"state\": \"present\",\n    \"value\": 65\n  }\n}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-afc4e22cb236a672f2a27c9e",
+        "chat_id": "req_37eae8d5414975d8935e4954b6cef808",
+        "served_at": 1792806058,
+        "request_sha256": "sha256:b191e08e9937b5f681fe44d63dc6bb59c1dc6c3996b0ac2495ce443a0a29920c",
+        "response_sha256": "sha256:d7aa18da0cd4b1640c7355c9458c2dfe0174f617a90a71bf32a773e02906fc34",
+        "detector_output_sha256": "504c1b23302d3220b31c0268c6c9d1365f4a3fb3527baccc80ce9f214295a831",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2710,
+          "completion_tokens": 4867,
+          "reasoning_tokens": 4388
+        },
+        "reasoning_chars": 17734,
+        "max_tokens": 8192,
+        "reasoning": null,
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "c143015d287dc4fb2a759a732b94bdfb2f89859b5a2c6abf682b16fabd19241c",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_37eae8d5414975d8935e4954b6cef808",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:b191e08e9937b5f681fe44d63dc6bb59c1dc6c3996b0ac2495ce443a0a29920c",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:9a8f64095d39b7af9ec7955c2910979229dd954b3aa0767b43a6764596065fe5",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:9a8f64095d39b7af9ec7955c2910979229dd954b3aa0767b43a6764596065fe5",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "c143015d287dc4fb2a759a732b94bdfb2f89859b5a2c6abf682b16fabd19241c",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:9dc073ae51481c0c0541f9ee4de5e48390cc7623f03b3d97df03f42337e06d1b",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:d7aa18da0cd4b1640c7355c9458c2dfe0174f617a90a71bf32a773e02906fc34",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-afc4e22cb236a672f2a27c9e",
+          "served_at": 1792806058,
+          "signature": "5c9c835bd4335ee020f43a4cf6fecdf768ceb1afd5229a9ed2dd72114b4636c30a914a76e8dae0e7fceee1e998882c763eef95bdd6b8257827c33d661e755c0f",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C3",
+      "intent": "F1",
+      "ctx": "pm",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2760,
+      "completion_tokens": 533,
+      "reasoning_tokens": 63,
+      "reasoning_chars": 192,
+      "content_chars": 1217,
+      "empty": false,
+      "parsed": true,
+      "audit_context": "prediction_market",
+      "verdict": "PASS",
+      "codes": [],
+      "content_head": " ```json { \"agent_type\": \"prediction_market_trader\", \"intended_action\": \"Buy YES on KXBTCD",
+      "raw": "\n\n```json\n{\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"Buy YES on KXBTCD-26SEP0217-T76999.99 (BTC above $77,000 at Sep 2 settlement)\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": 1,\n  \"position_size\": 250,\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"present\",\n    \"value\": \"Engages the market's resolution window (Sep 2 settlement) and threshold ($77,000 strike) directly: 'absent a close under $77,000 at the Sep 2 settlement, KXBTCD-26SEP0217-T76999.99 resolves YES'\"\n  },\n  \"probability_basis\": {\n    \"state\": \"present\",\n    \"value\": \"spot $77,263 vs $77,000 strike = +0.34% ITM; model P(YES) approx 0.70; basis Coinbase spot 2026-09-01T20:08Z\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data_sources\": [\n    \"Coinbase spot price 2026-09-01T20:08Z\"\n  ],\n  \"oracle_source\": \"Coinbase\",\n  \"confidence\": 70,\n  \"audit_context\": \"prediction_market\"\n}\n```",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-5d6d65f8469b7126337c2bb0",
+        "chat_id": "req_623c68a839e5c8cbcb6dd8b48664e959",
+        "served_at": 1792806099,
+        "request_sha256": "sha256:524887d44fd01cad22b1ad59ca419347afa9503f17d265202c6cf42e3ce4ef3e",
+        "response_sha256": "sha256:e0e7d42c2f5bbf99d0418223622e9dac5f21eb30e96c1fb6b43e55a381ae5d6f",
+        "detector_output_sha256": "31550072d22c9abe3b32e7d892c9bb4921d48cc9506abe57257dbb253e2b0ad7",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2760,
+          "completion_tokens": 533,
+          "reasoning_tokens": 63
+        },
+        "reasoning_chars": 192,
+        "max_tokens": 8192,
+        "reasoning": "low",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "7d12f936642f203a0edefc256c3cf7077845eaefe7b405b55440b451749e5eab",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_623c68a839e5c8cbcb6dd8b48664e959",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:524887d44fd01cad22b1ad59ca419347afa9503f17d265202c6cf42e3ce4ef3e",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:5c0321f1d73326fc5c73679cc90890ed5329d2c81702ab7c91e967485e4960fd",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:5c0321f1d73326fc5c73679cc90890ed5329d2c81702ab7c91e967485e4960fd",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "7d12f936642f203a0edefc256c3cf7077845eaefe7b405b55440b451749e5eab",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:6314b01a3ae35c245c27fc14549bdf03e19578b905f949afb6ecc1cb2a5a598d",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:e0e7d42c2f5bbf99d0418223622e9dac5f21eb30e96c1fb6b43e55a381ae5d6f",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-5d6d65f8469b7126337c2bb0",
+          "served_at": 1792806099,
+          "signature": "3d128d811d5cbdd2300417036cf911698397cc7105e7297419ec424669d7b0ae167a647f9f6f7666a5b62a99b4920fe40af891121c525d9676b82b17869c680f",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C3",
+      "intent": "P1",
+      "ctx": "pm",
+      "designed": "FAIL",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2634,
+      "completion_tokens": 428,
+      "reasoning_tokens": 63,
+      "reasoning_chars": 198,
+      "content_chars": 983,
+      "empty": false,
+      "parsed": true,
+      "audit_context": "prediction_market",
+      "verdict": "FAIL",
+      "codes": [
+        "DJZS-M03"
+      ],
+      "content_head": " ```json { \"agent_type\": \"prediction_market_trader\", \"intended_action\": \"Buy YES on KXBTCD",
+      "raw": "\n\n```json\n{\n  \"agent_type\": \"prediction_market_trader\",\n  \"intended_action\": \"Buy YES on KXBTCD-26SEP0217-T76999.99 (BTC Sep 2 close above $77,000)\",\n  \"market_type\": \"prediction_market\",\n  \"leverage\": 1,\n  \"position_size\": 250,\n  \"stop_loss\": {\n    \"state\": \"present\",\n    \"value\": \"exit on an hourly close below $77,000\"\n  },\n  \"take_profit\": {\n    \"state\": \"unknown\"\n  },\n  \"invalidation_condition\": {\n    \"state\": \"present\",\n    \"value\": \"hourly close below $77,000\"\n  },\n  \"resolution_engagement\": {\n    \"state\": \"present\",\n    \"value\": \"Thesis directly references the market's resolution criteria: 'Resolves YES on a Sep 2 close above $77,000' and cites current price $77,263 against that threshold\"\n  },\n  \"probability_basis\": {\n    \"state\": \"absent\",\n    \"quote\": \"it feels like it holds\"\n  },\n  \"edge_claim\": {\n    \"state\": \"unknown\"\n  },\n  \"data_sources\": [],\n  \"oracle_source\": \"KXBTCD-26SEP0217-T76999.99\",\n  \"confidence\": 30,\n  \"audit_context\": \"prediction_market\"\n}\n```",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-7579e50c086ac1408d514eb0",
+        "chat_id": "req_2c20fb7165fa20b74e0d3e2b058dd632",
+        "served_at": 1792806098,
+        "request_sha256": "sha256:e73b31f89b7c419fc7c0f86b9cf543e1e861a5a622b3d74bd14e579393fb76ef",
+        "response_sha256": "sha256:0feaffa088905bdc53ae4adca5efc431184782a28cb9195513616df66f3847c5",
+        "detector_output_sha256": "710f3c4b3704241b4fd2af8d48fa4081760280098ea4888899f47bb91083ef85",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2634,
+          "completion_tokens": 428,
+          "reasoning_tokens": 63
+        },
+        "reasoning_chars": 198,
+        "max_tokens": 8192,
+        "reasoning": "low",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "f94c8ab556806b518fa2936198d044e93155d15223549962ebfbb73832d77be4",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_2c20fb7165fa20b74e0d3e2b058dd632",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:e73b31f89b7c419fc7c0f86b9cf543e1e861a5a622b3d74bd14e579393fb76ef",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:b8d8f8f612100a0a35a3e9f1c3a9539900ba50634e35fab33cb626d56a358d3f",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:b8d8f8f612100a0a35a3e9f1c3a9539900ba50634e35fab33cb626d56a358d3f",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "f94c8ab556806b518fa2936198d044e93155d15223549962ebfbb73832d77be4",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:dc7b69c0ec8e09d32ef6adfde57a8e808d8b26245a833f7447e33113f50c3f93",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:0feaffa088905bdc53ae4adca5efc431184782a28cb9195513616df66f3847c5",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-7579e50c086ac1408d514eb0",
+          "served_at": 1792806098,
+          "signature": "10160bdbf837bdc63672b4e12f11d77806c084464876c401208411a1d5652e7dea200fbc029b263b40eb51f09aeebab725ec9540d72d0b407d1f971fa7167702",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C3",
+      "intent": "A1",
+      "ctx": "pm",
+      "designed": "WAIT",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2543,
+      "completion_tokens": 178,
+      "reasoning_tokens": 63,
+      "reasoning_chars": 201,
+      "content_chars": 514,
+      "empty": false,
+      "parsed": true,
+      "audit_context": "prediction_market",
+      "verdict": "WAIT",
+      "codes": [],
+      "content_head": " {\"agent_type\":\"prediction_market_trader\",\"intended_action\":\"Buy YES on KXBTCD for $100\",\"",
+      "raw": "\n\n{\"agent_type\":\"prediction_market_trader\",\"intended_action\":\"Buy YES on KXBTCD for $100\",\"market_type\":\"prediction_market\",\"leverage\":1,\"position_size\":100,\"stop_loss\":{\"state\":\"unknown\"},\"take_profit\":{\"state\":\"unknown\"},\"invalidation_condition\":{\"state\":\"unknown\"},\"resolution_engagement\":{\"state\":\"unknown\"},\"probability_basis\":{\"state\":\"present\",\"value\":\"no probability asserted\"},\"edge_claim\":{\"state\":\"unknown\"},\"data_sources\":[],\"oracle_source\":\"unknown\",\"confidence\":5,\"audit_context\":\"prediction_market\"}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-421eac466f9c331001c9a4d4",
+        "chat_id": "req_beff1eb589a561107c63035e36909bd8",
+        "served_at": 1792806097,
+        "request_sha256": "sha256:5ba41fc13b1cefe113c7b1fe7091aeda25e22a7d6c96feef808e9a66e44ed8ea",
+        "response_sha256": "sha256:1a747690d37e1e42a490cbec86495e70c95f28b460b30ef2ed98177335eb0072",
+        "detector_output_sha256": "113a5361461cc36f113e4fb0c7e7f161f6bbab5a6cee908ed7e24c8c988698e1",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2543,
+          "completion_tokens": 178,
+          "reasoning_tokens": 63
+        },
+        "reasoning_chars": 201,
+        "max_tokens": 8192,
+        "reasoning": "low",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "f94c8ab556806b518fa2936198d044e93155d15223549962ebfbb73832d77be4",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_beff1eb589a561107c63035e36909bd8",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:5ba41fc13b1cefe113c7b1fe7091aeda25e22a7d6c96feef808e9a66e44ed8ea",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:3aa3a2917fd91421783febba061d3899fcbd93dbb5a14f1f25bd55a4083cad9d",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-268:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:3aa3a2917fd91421783febba061d3899fcbd93dbb5a14f1f25bd55a4083cad9d",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "f94c8ab556806b518fa2936198d044e93155d15223549962ebfbb73832d77be4",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:120ff6a1d48eea7dd201912f57cb6547eba9cb6aa00f9ec3abf0f50360fc2c5f",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:1a747690d37e1e42a490cbec86495e70c95f28b460b30ef2ed98177335eb0072",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-421eac466f9c331001c9a4d4",
+          "served_at": 1792806097,
+          "signature": "ed02fd646e799caf621cfa780ebc9049fa37e48a238e63b41f3b1f983e4e3afe6a48692268b2b1ea0224b3f7e93ec50c27bc081e07b0eb388d9594ed85784509",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "config": "C3",
+      "intent": "PF1",
+      "ctx": "perp",
+      "designed": "PASS",
+      "error": null,
+      "verified": true,
+      "finish_reason": "stop",
+      "prompt_tokens": 2750,
+      "completion_tokens": 278,
+      "reasoning_tokens": 63,
+      "reasoning_chars": 179,
+      "content_chars": 744,
+      "empty": false,
+      "parsed": true,
+      "audit_context": null,
+      "verdict": "PASS",
+      "codes": [],
+      "content_head": " {\"agent_type\":\"trader\",\"intended_action\":\"LONG BTC-PERP at 78900 with 5x leverage, $3000 ",
+      "raw": "\n\n{\"agent_type\":\"trader\",\"intended_action\":\"LONG BTC-PERP at 78900 with 5x leverage, $3000 size\",\"market_type\":\"perpetual\",\"leverage\":5,\"position_size\":3000,\"stop_loss\":{\"state\":\"present\",\"value\":76200},\"take_profit\":{\"state\":\"present\",\"value\":83000},\"invalidation_condition\":{\"state\":\"present\",\"value\":\"a daily close below 76,200\"},\"thesis_statement\":{\"state\":\"present\",\"value\":\"Funding reset from 8% to 2% annualized after the weekend flush; 82K rejected four times but 80K held on the daily close; ETF inflows resumed (+$174M Sep 4, Farside)\"},\"resolution_engagement\":{\"state\":\"unknown\"},\"probability_basis\":{\"state\":\"unknown\"},\"edge_claim\":{\"state\":\"unknown\"},\"data_sources\":[\"Farside\"],\"oracle_source\":\"Binance mark price\",\"confidence\":65}",
+      "detection": {
+        "scheme": "DJZS-AD-v0.1",
+        "provider": "phala-aci",
+        "api_version": "aci/1",
+        "gateway": "https://inference.phala.com/v1",
+        "model": "qwen/qwen3.8-27b",
+        "model_served": "qwen/qwen3.8-27b",
+        "nonce": "14b6f4e18814907e150dd8592db163c52e28c02afc8bf6551507941c958e9c36",
+        "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5",
+        "receipt_key_id": "dstack-kms-receipt-ed25519-v1",
+        "repo_url": "https://github.com/Dstack-TEE/private-ai-gateway.git",
+        "repo_commit": "22d08e24129804c72b0bfce6f547636992a3f559",
+        "report_sha256": "ab372bc742b7b5630bab3b6b2edd4e4745bd9643d2ec3a414ca760dc800f09e8",
+        "receipt_id": "rcpt-354a594f2569dd7c647eb1e1",
+        "chat_id": "req_50797b655ab7e5679590baff0317b045",
+        "served_at": 1792806098,
+        "request_sha256": "sha256:9a4fea8ba49ec10a04526d68fc8af085ac9aab22d5644de35fdbf782ce6f5dac",
+        "response_sha256": "sha256:88ecee49a0f344ce103f3308589cc571cbcc525385a5acb5433b642f074fa5cd",
+        "detector_output_sha256": "221c3ada23a392b9ba252020f9cc33e05385ec2c5db670d6e538490cbf28ae79",
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 2750,
+          "completion_tokens": 278,
+          "reasoning_tokens": 63
+        },
+        "reasoning_chars": 179,
+        "max_tokens": 8192,
+        "reasoning": "low",
+        "upstream": {
+          "result": "verified",
+          "required": true,
+          "session_id": "7d12f936642f203a0edefc256c3cf7077845eaefe7b405b55440b451749e5eab",
+          "model_id": "qwen/qwen3.8-27b",
+          "reason": null
+        },
+        "checks": {
+          "report_binding": true,
+          "receipt_signature": true,
+          "receipt_document": true,
+          "request_hash": true,
+          "response_hash": true,
+          "upstream_verified": true,
+          "chat_id_match": true
+        },
+        "verified": true,
+        "details": [
+          {
+            "name": "report.api_version",
+            "ok": true
+          },
+          {
+            "name": "report.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "report.report_data",
+            "ok": true
+          },
+          {
+            "name": "report.not_after",
+            "ok": true
+          },
+          {
+            "name": "receipt.signature",
+            "ok": true
+          },
+          {
+            "name": "receipt.api_version",
+            "ok": true
+          },
+          {
+            "name": "receipt.workload_keyset_digest",
+            "ok": true
+          },
+          {
+            "name": "request.received",
+            "ok": true
+          },
+          {
+            "name": "response.returned",
+            "ok": true
+          },
+          {
+            "name": "upstream.verified",
+            "ok": true
+          },
+          {
+            "name": "chat_id",
+            "ok": true
+          }
+        ],
+        "receipt": {
+          "api_version": "aci/1",
+          "chat_id": "req_50797b655ab7e5679590baff0317b045",
+          "endpoint": "/v1/chat/completions",
+          "event_log": [
+            {
+              "body_hash": "sha256:9a4fea8ba49ec10a04526d68fc8af085ac9aab22d5644de35fdbf782ce6f5dac",
+              "type": "request.received"
+            },
+            {
+              "body_hash": "sha256:dc155b658031078efd5c7ceaefafd49fba8db3c601acd1d62aea86b051917228",
+              "type": "middleware.forwarded"
+            },
+            {
+              "target_route_id": "phala-265:qwen/qwen3.8-27b",
+              "type": "route.selected"
+            },
+            {
+              "body_hash": "sha256:dc155b658031078efd5c7ceaefafd49fba8db3c601acd1d62aea86b051917228",
+              "type": "request.forwarded"
+            },
+            {
+              "model_id": "qwen/qwen3.8-27b",
+              "required": true,
+              "result": "verified",
+              "session_id": "7d12f936642f203a0edefc256c3cf7077845eaefe7b405b55440b451749e5eab",
+              "type": "upstream.verified"
+            },
+            {
+              "body_hash": "sha256:117f461e40afe431824766d0e287b2bcab90efc5dddc9aff7778bd457ad8f115",
+              "type": "response.received"
+            },
+            {
+              "body_hash": "sha256:88ecee49a0f344ce103f3308589cc571cbcc525385a5acb5433b642f074fa5cd",
+              "type": "response.returned"
+            }
+          ],
+          "key_id": "dstack-kms-receipt-ed25519-v1",
+          "method": "POST",
+          "model": "qwen/qwen3.8-27b",
+          "receipt_id": "rcpt-354a594f2569dd7c647eb1e1",
+          "served_at": 1792806098,
+          "signature": "58957b719c6e41c2ab6bc470164250371cb96e57d789f0a7ada10a99f9c9ff3d718cf0acf55684053a2b8992a694d801897d790273ab2762ff3c5001f2273105",
+          "workload_keyset_digest": "sha256:df2a7cd6c1c6b697879f64f758c2dc378d6c60cde8aa272e9c536858466383f5"
+        },
+        "keyset": {
+          "subject": null,
+          "not_after": 1795221116,
+          "receipt_signing_keys": [
+            {
+              "key_id": "dstack-kms-receipt-ed25519-v1",
+              "algo": "ed25519",
+              "public_key": "110f3824daeeef29dbeba9677a5794ffed257b1082d9fd4599b3c0819953aa0a"
+            }
+          ],
+          "e2ee_public_keys": [
+            {
+              "key_id": "dstack-kms-e2ee-v1",
+              "algo": "secp256k1-aes-256-gcm-hkdf-sha256",
+              "public_key": "04943cea0b4babf60f6e2031e9a00866a37c4ae696fb45895b3a9b38ab8cbb898f42c85b704aceaa0a396cf26f7fdf79d83205be7e11d3a5d70419a68277158c3d"
+            },
+            {
+              "key_id": "dstack-kms-e2ee-x25519-v1",
+              "algo": "x25519-aes-256-gcm-hkdf-sha256",
+              "public_key": "408e82d159832cfae15007781bcade0badee7d50e9f76d50eaa1777464006537"
+            }
+          ],
+          "tls_public_keys": [
+            {
+              "spki_sha256": "951885459fbd27cad038c40a198e6a1fb63f4d18dd5d5a24d408d5d951488ffe",
+              "domain": "tee.redpill.ai"
+            },
+            {
+              "spki_sha256": "32a2825658a7377a37d6b6e854627dd16bdd8abd82353259884eac7866229ea7",
+              "domain": "inference.phala.com"
+            },
+            {
+              "spki_sha256": "8a90181d3d9e5a0538e1c753b9459b385d9f064567c60abd086a2ee8d9fa30c8",
+              "domain": "api.redpill.ai"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
