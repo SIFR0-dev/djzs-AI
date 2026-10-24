@@ -15,7 +15,7 @@
  * Run: npx tsx test/try-route.test.mjs
  */
 import { privateKeyToAccount } from "viem/accounts"
-import { handleTryQuota, handleTryVerdict, tryMessage, TRY_MESSAGE_FORMAT, TRY_DAILY_LIMIT, utcDay } from "../src/try-route.ts"
+import { handleTryQuota, handleTryVerdict, handleTryExample, tryMessage, TRY_MESSAGE_FORMAT, TRY_DAILY_LIMIT, TRY_ANON_DAILY_LIMIT, TRY_EXAMPLES, renderExampleThesis, utcDay } from "../src/try-route.ts"
 import { intentSha256 } from "../src/engine-adapter.ts"
 import { intentHash, toDJZSIntent } from "../src/djzs-intent.ts"
 import { RESOURCE_URL, PERP_RESOURCE_URL } from "../src/http-x402-bazaar.v2.ts"
@@ -226,6 +226,40 @@ check(2, "the text names the cap and that nothing moves", TRY_MESSAGE_FORMAT.inc
   db = fakeD1()
   const c = await j(await handleTryVerdict(post({ kind: "pm", intent: PERP_INTENT, address: account.address, day, signature: await sign(account, PERP_INTENT) }), { TELEMETRY: db }, stubModel(PM_EXTRACTION)))
   check(38, "kind pm, a perp-shaped body: a verdict, but intent_hash is null. The pm class cannot bind it, and it does not borrow perp_trade", c.status === 200 && c.body.ok === true && c.body.intent_hash === null, `${c.status} ${String(c.body.intent_hash)}`)
+}
+
+// ── wallet-free path (2026-10-24): `anon` id instead of address + signature ──
+{
+  const db = fakeD1()
+  const model = stubModel(PM_EXTRACTION)
+  const env = { TELEMETRY: db }
+  const ANON = "0123456789abcdef0123456789abcdef"
+  const r = await j(await handleTryVerdict(post({ kind: "pm", intent: { thesis: PM_INTENT.thesis, market: PM_INTENT.market, side: PM_INTENT.side }, anon: ANON }), env, model))
+  check(39, "anon: a verdict with no address, no day, no signature", r.status === 200 && r.body.ok === true && ["PASS", "WAIT", "FAIL"].includes(r.body.verdict), JSON.stringify(r.body).slice(0, 160))
+  check(40, "anon quota is 3, not 5; still not attested", r.body.quota.limit === TRY_ANON_DAILY_LIMIT && r.body.quota.used === 1 && r.body.attested === false)
+  let last = r
+  for (let i = 1; i < TRY_ANON_DAILY_LIMIT; i++) last = await j(await handleTryVerdict(post({ kind: "pm", intent: PM_INTENT, anon: ANON }), env, model))
+  const fourth = await j(await handleTryVerdict(post({ kind: "pm", intent: PM_INTENT, anon: ANON }), env, model))
+  check(41, "the fourth anon call is 429 with the offer attached", last.body.quota.remaining === 0 && fourth.status === 429 && fourth.body.error === "wallet_quota_exhausted" && fourth.body.limit === TRY_ANON_DAILY_LIMIT)
+  const bad = await j(await handleTryVerdict(post({ kind: "pm", intent: PM_INTENT, anon: "not-hex" }), env, model))
+  check(42, "malformed anon id: 400, no extraction", bad.status === 400 && bad.body.error === "bad_anon_id")
+  const both = await j(await handleTryVerdict(post({ kind: "pm", intent: PM_INTENT, anon: ANON, address: account.address }), env, model))
+  check(43, "anon alongside an address takes the wallet path (signature required)", both.status === 400 && both.body.error === "day_mismatch" || both.body.error === "bad_signature_format")
+  const wallet = await j(await handleTryVerdict(post({ kind: "pm", intent: PM_INTENT, address: account.address, day, signature: await sign(account, PM_INTENT) }), env, model))
+  check(44, "a wallet's 5/day is independent of the anon cap", wallet.status === 200 && wallet.body.quota.limit === TRY_DAILY_LIMIT && wallet.body.quota.used === 1)
+  const q = await j(await handleTryQuota(new Request(`https://mcp.djzs.ai/try/quota?anon=${ANON}`), env))
+  check(45, "GET /try/quota?anon= reports the anon count against the anon limit", q.status === 200 && q.body.used === TRY_ANON_DAILY_LIMIT && q.body.limit === TRY_ANON_DAILY_LIMIT && q.body.remaining === 0)
+  const qbad = await j(await handleTryQuota(new Request("https://mcp.djzs.ai/try/quota?anon=zz"), env))
+  check(46, "GET /try/quota with a malformed anon id: 400", qbad.status === 400 && qbad.body.error === "bad_anon_id")
+}
+
+// ── /try/example: real markets, thesis rendered from the quoted price ──
+{
+  check(47, "every curated example names a real venue id and carries a dated snapshot", TRY_EXAMPLES.every((e) => ["kalshi", "polymarket"].includes(e.venue) && e.market_id.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(e.snapshot.captured)))
+  const t = renderExampleThesis(TRY_EXAMPLES[0], { yes_bid: 92, yes_ask: 93 })
+  check(48, "thesis text states market id, side, executable price, sourced probability, falsifier and edge", t.includes(TRY_EXAMPLES[0].market_id) && t.includes("The ask on NO is 8c") && t.includes("Sourced probability") && t.includes("Falsification") && t.includes("Why the edge exists"))
+  const unknown = await j(await handleTryExample(new Request("https://mcp.djzs.ai/try/example?id=nope")))
+  check(49, "unknown example id: 404 listing the ids", unknown.status === 404 && Array.isArray(unknown.body.ids))
 }
 
 console.log(`\n${pass} passed, ${failures.length} failed`)
