@@ -1,0 +1,22 @@
+[
+  {
+    "at": "2026-10-18T16:54:59.071Z",
+    "op": "polymarket-trades",
+    "args": [
+      "--condition-id",
+      "0x9cb23d04b2ded06147482076688b69b487a8d982c63ebdda2ab3678cf27cf390",
+      "--outcome-label",
+      "Yes",
+      "--type",
+      "trade",
+      "--from",
+      "1789411200",
+      "--to",
+      "1789414800",
+      "--limit",
+      "500"
+    ],
+    "credits": 2,
+    "cached": false
+  }
+]
