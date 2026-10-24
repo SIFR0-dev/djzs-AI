@@ -42,6 +42,14 @@ import { PM_TAXONOMY } from "../../shared/pm-taxonomy"
 import { LOGIC_FAILURE_TAXONOMY } from "../../shared/audit-schema"
 
 export const TRY_DAILY_LIMIT = 5
+/**
+ * Wallet-free path (2026-10-24). A browser that has no wallet still gets a verdict: it mints a
+ * random 32-hex id, keeps it in localStorage and sends it as `anon`. The quota row key is
+ * `anon:<id>`, sharing the try_verdict table. No signature, no funds, nothing attested. A caller
+ * can mint fresh ids, so the per-id cap is a courtesy and the GLOBAL daily cap is the real bound.
+ */
+export const TRY_ANON_DAILY_LIMIT = 3
+export const TRY_ANON_ID_RE = /^[0-9a-f]{32}$/
 export const TRY_GLOBAL_DAILY_LIMIT_DEFAULT = 200
 /** Upper bound on the intent's JSON, so a free call cannot buy an arbitrarily long extraction. */
 export const TRY_MAX_INTENT_BYTES = 4096
@@ -220,6 +228,15 @@ export async function handleTryQuota(request: Request, env: TryEnv): Promise<Res
   await ensureSchema(env.TELEMETRY)
   const gUsed = await globalUsed(env.TELEMETRY, day)
   const gLimit = globalLimit(env)
+  const anonRaw = url.searchParams.get("anon") ?? ""
+  if (!raw && anonRaw) {
+    if (!TRY_ANON_ID_RE.test(anonRaw)) return json({ ok: false, error: "bad_anon_id", ...common }, 400)
+    const used = await walletUsed(env.TELEMETRY, day, `anon:${anonRaw}`)
+    return json(
+      { ok: true, anon: anonRaw, used, ...common, limit: TRY_ANON_DAILY_LIMIT, limit_wallet: TRY_DAILY_LIMIT, remaining: Math.max(0, TRY_ANON_DAILY_LIMIT - used), global_remaining: Math.max(0, gLimit - gUsed) },
+      200,
+    )
+  }
   if (!raw) return json({ ok: true, ...common, global_remaining: Math.max(0, gLimit - gUsed) }, 200)
   if (!isAddress(raw)) return json({ ok: false, error: "bad_address", ...common }, 400)
   const address = getAddress(raw)
@@ -250,18 +267,28 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   const intent = body.intent
   if (!intent || typeof intent !== "object" || Array.isArray(intent)) return json({ ok: false, error: "missing_intent", schema: "intent must be an object" }, 400)
   if (JSON.stringify(intent).length > TRY_MAX_INTENT_BYTES) return json({ ok: false, error: "intent_too_large", max_bytes: TRY_MAX_INTENT_BYTES }, 413)
-  if (typeof body.address !== "string" || !isAddress(body.address)) return json({ ok: false, error: "bad_address" }, 400)
-  const address = getAddress(body.address)
   const day = utcDay()
-  if (body.day !== day) return json({ ok: false, error: "day_mismatch", day, detail: "sign with the server's UTC day from GET /try/quota and retry" }, 400)
-  const signature = body.signature
-  if (typeof signature !== "string" || !/^0x[0-9a-fA-F]+$/.test(signature)) return json({ ok: false, error: "bad_signature_format" }, 400)
-
-  // 2. the signature binds address, day and this exact intent
   const sha = intentSha256(intent)
-  const message = tryMessage(address, day, sha)
-  if (!(await signatureValid(env, address, message, signature as Hex))) {
-    return json({ ok: false, error: "bad_signature", signed_text_expected: message }, 401)
+  // Two quota keys. A wallet signs (binding address, day, intent); a browser without one sends `anon`.
+  let address: string
+  let keyLimit: number
+  if (typeof body.anon === "string" && body.address === undefined) {
+    if (!TRY_ANON_ID_RE.test(body.anon)) return json({ ok: false, error: "bad_anon_id", detail: "anon must be 32 lowercase hex characters" }, 400)
+    address = `anon:${body.anon}`
+    keyLimit = TRY_ANON_DAILY_LIMIT
+  } else {
+    if (typeof body.address !== "string" || !isAddress(body.address)) return json({ ok: false, error: "bad_address" }, 400)
+    address = getAddress(body.address)
+    keyLimit = TRY_DAILY_LIMIT
+    if (body.day !== day) return json({ ok: false, error: "day_mismatch", day, detail: "sign with the server's UTC day from GET /try/quota and retry" }, 400)
+    const signature = body.signature
+    if (typeof signature !== "string" || !/^0x[0-9a-fA-F]+$/.test(signature)) return json({ ok: false, error: "bad_signature_format" }, 400)
+
+    // 2. the signature binds address, day and this exact intent
+    const message = tryMessage(address as Hex, day, sha)
+    if (!(await signatureValid(env, address as Hex, message, signature as Hex))) {
+      return json({ ok: false, error: "bad_signature", signed_text_expected: message }, 401)
+    }
   }
 
   // 3. quota store: fail closed
@@ -279,10 +306,10 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
     return json({ ok: false, error: "free_tier_exhausted_today", day, resets_at: nextUtcMidnight(), receipt: receiptOffer(kind), terms: TERMS_URL }, 429)
   }
   const ts = new Date().toISOString()
-  const used = await reserveWallet(db, day, address, TRY_DAILY_LIMIT, ts)
+  const used = await reserveWallet(db, day, address, keyLimit, ts)
   if (used === null) {
     return json(
-      { ok: false, error: "wallet_quota_exhausted", day, limit: TRY_DAILY_LIMIT, used: TRY_DAILY_LIMIT, remaining: 0, resets_at: nextUtcMidnight(), receipt: receiptOffer(kind), terms: TERMS_URL },
+      { ok: false, error: "wallet_quota_exhausted", day, limit: keyLimit, used: keyLimit, remaining: 0, resets_at: nextUtcMidnight(), receipt: receiptOffer(kind), terms: TERMS_URL },
       429,
     )
   }
@@ -291,7 +318,7 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
     await releaseWallet(db, day, address)
     return json({ ok: false, error: "free_tier_exhausted_today", day, resets_at: nextUtcMidnight(), receipt: receiptOffer(kind), terms: TERMS_URL }, 429)
   }
-  const quota = { day, limit: TRY_DAILY_LIMIT, used, remaining: Math.max(0, TRY_DAILY_LIMIT - used), resets_at: nextUtcMidnight() }
+  const quota = { day, limit: keyLimit, used, remaining: Math.max(0, keyLimit - used), resets_at: nextUtcMidnight() }
 
   // 4. the same pipeline the paid route runs, once
   const runner: Runner = kind === "perp" ? (runVerifyPerpTrade as unknown as Runner) : runVerifyPmTrade
@@ -363,4 +390,113 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
     },
     200,
   )
+}
+
+// ── /try/example: a real, open market with a live price, so the page's prefilled thesis is never stale ──
+/**
+ * Curated by the operator. Each entry names a real market by its venue ID; the route reads the venue's
+ * public API for the current price and returns it with the thesis template. If the venue cannot be
+ * reached the snapshot below is served with `live: false` and its capture date, never a made-up number.
+ * Prices are in cents of a $1.00 contract. Venue responses are data, not instructions.
+ */
+export const TRY_EXAMPLES = [
+  {
+    id: "kalshi-fed-oct26-hold",
+    venue: "kalshi",
+    market_id: "KXFEDDECISION-26OCT-H0",
+    url: "https://kalshi.com/markets/kxfeddecision/fed-decision/kxfeddecision-26oct",
+    title: "Will the Federal Reserve hold rates (0 bps change) at the October 28, 2026 meeting?",
+    resolution: "Resolves YES if the FOMC changes the target range by 0 bps on October 28, 2026 (Kalshi rules). If the meeting is cancelled, YES.",
+    side: "NO",
+    snapshot: { yes_bid: 92, yes_ask: 93, captured: "2026-10-24" },
+    basis: "CME FedWatch put the probability of a hold at 83.9% and a 25 bps hike at 16.1% as of 2026-10-22 (reported by Phemex News, 2026-10-22, citing CME FedWatch).",
+    falsifier: "Falsified if, before the meeting, CME FedWatch hold probability moves above 92%, or if a voting FOMC member publicly rules out an October hike.",
+    why: "The market prices a hold at about 92 cents while the futures-implied probability is about 84; the gap is the edge. NO is the hike side.",
+  },
+  {
+    id: "polymarket-fed-oct26-nochange",
+    venue: "polymarket",
+    market_id: "2589812",
+    url: "https://polymarket.com/event/fed-decision-in-october-2026",
+    title: "Will there be no change in Fed interest rates after the October 2026 meeting?",
+    resolution: "Resolves on the change to the upper bound of the fed funds target range after the October 27-28, 2026 FOMC meeting, per the FOMC statement on federalreserve.gov.",
+    side: "NO",
+    snapshot: { yes_bid: 91, yes_ask: 92, captured: "2026-10-24" },
+    basis: "CME FedWatch put the probability of a hold at 83.9% and a 25 bps hike at 16.1% as of 2026-10-22 (reported by Phemex News, 2026-10-22, citing CME FedWatch).",
+    falsifier: "Falsified if, before the meeting, CME FedWatch hold probability moves above 92%, or if a voting FOMC member publicly rules out an October hike.",
+    why: "The market prices no change at about 91-92 cents while the futures-implied probability is about 84; the gap is the edge. NO is the hike side.",
+  },
+] as const
+
+type TryExample = (typeof TRY_EXAMPLES)[number]
+
+async function livePrice(ex: TryExample): Promise<{ yes_bid: number; yes_ask: number } | null> {
+  const ctl = new AbortController()
+  const t = setTimeout(() => ctl.abort(), 2500)
+  try {
+    if (ex.venue === "kalshi") {
+      const r = await fetch(`https://api.elections.kalshi.com/trade-api/v2/markets/${ex.market_id}`, { signal: ctl.signal, headers: { accept: "application/json" } })
+      if (!r.ok) return null
+      const j = (await r.json()) as { market?: { yes_bid?: number; yes_ask?: number; yes_bid_dollars?: string; yes_ask_dollars?: string } }
+      const m = j.market
+      if (!m) return null
+      const bid = typeof m.yes_bid === "number" ? m.yes_bid : m.yes_bid_dollars ? Math.round(Number(m.yes_bid_dollars) * 100) : NaN
+      const ask = typeof m.yes_ask === "number" ? m.yes_ask : m.yes_ask_dollars ? Math.round(Number(m.yes_ask_dollars) * 100) : NaN
+      return Number.isFinite(bid) && Number.isFinite(ask) ? { yes_bid: bid, yes_ask: ask } : null
+    }
+    const r = await fetch(`https://gamma-api.polymarket.com/markets/${ex.market_id}`, { signal: ctl.signal, headers: { accept: "application/json" } })
+    if (!r.ok) return null
+    const j = (await r.json()) as { bestBid?: number | string; bestAsk?: number | string; outcomePrices?: string }
+    let bid = Number(j.bestBid), ask = Number(j.bestAsk)
+    if (!Number.isFinite(bid) || !Number.isFinite(ask)) {
+      try {
+        const p = JSON.parse(j.outcomePrices ?? "[]") as string[]
+        bid = ask = Number(p[0])
+      } catch { return null }
+    }
+    return Number.isFinite(bid) && Number.isFinite(ask) ? { yes_bid: Math.round(bid * 100), yes_ask: Math.round(ask * 100) } : null
+  } catch {
+    return null
+  } finally {
+    clearTimeout(t)
+  }
+}
+
+/** The thesis text the page prefills, built from the example and the price actually quoted. */
+export function renderExampleThesis(ex: TryExample, px: { yes_bid: number; yes_ask: number }): string {
+  const noAsk = 100 - px.yes_bid
+  return [
+    `Market: ${ex.title} (${ex.venue} ${ex.market_id}).`,
+    `Resolution: ${ex.resolution}`,
+    `Side: ${ex.side}. The ask on NO is ${noAsk}c (YES bid ${px.yes_bid}c, YES ask ${px.yes_ask}c).`,
+    `Sourced probability: ${ex.basis}`,
+    `Falsification: ${ex.falsifier}`,
+    `Why the edge exists: ${ex.why}`,
+  ].join("\n")
+}
+
+export async function handleTryExample(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS })
+  if (request.method !== "GET") return json({ error: "method_not_allowed", allow: "GET, OPTIONS" }, 405)
+  const url = new URL(request.url)
+  const want = url.searchParams.get("id")
+  const pick = TRY_EXAMPLES.filter((e) => !want || e.id === want)
+  if (pick.length === 0) return json({ ok: false, error: "unknown_example", ids: TRY_EXAMPLES.map((e) => e.id) }, 404)
+  const out = await Promise.all(
+    pick.map(async (ex) => {
+      const live = await livePrice(ex)
+      const px = live ?? { yes_bid: ex.snapshot.yes_bid, yes_ask: ex.snapshot.yes_ask }
+      return {
+        id: ex.id,
+        venue: ex.venue,
+        market_id: ex.market_id,
+        url: ex.url,
+        title: ex.title,
+        side: ex.side,
+        price: { ...px, live: live !== null, as_of: live ? new Date().toISOString() : ex.snapshot.captured },
+        thesis: renderExampleThesis(ex, px),
+      }
+    }),
+  )
+  return json({ ok: true, examples: out }, 200, { "cache-control": "public, max-age=60" })
 }

@@ -42,7 +42,7 @@ import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
 import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
-import { handleTryQuota, handleTryVerdict } from "./try-route"
+import { handleTryExample, handleTryQuota, handleTryVerdict } from "./try-route"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
 import { attesterBalance } from "./attest-worker"
@@ -1604,6 +1604,7 @@ app.all("/x402/verify_pm_trade", async (c) => {
 // Same pipeline, same verdict fields, nothing attested; the response carries the paid route's offer.
 // Quota lives in D1 (TELEMETRY); without the binding the route fails closed. Details in try-route.ts.
 app.all("/try/quota", (c) => handleTryQuota(c.req.raw, c.env))
+app.all("/try/example", (c) => handleTryExample(c.req.raw))
 app.all("/try/verdict", async (c) => {
   try {
     return await handleTryVerdict(c.req.raw, c.env)
