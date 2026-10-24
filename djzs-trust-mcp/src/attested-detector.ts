@@ -45,6 +45,53 @@ export const PHALA_ACI_BASE = "https://inference.phala.com/v1" as const;
  */
 export const PHALA_DEFAULT_MODEL = "qwen/qwen3.8-27b" as const;
 
+/**
+ * Reasoning control for thinking models (fill35). Sent as the gateway's unified `reasoning`
+ * request field, which the ACI gateway re-encodes in the serving route's own dialect
+ * (`reasoning`, `reasoning_effort`, chat_template_kwargs or `thinking`; private-ai-gateway
+ * src/middleware/request_transform.rs). "off" = { enabled: false }; the others = { effort }.
+ * Unset sends NOTHING: the request bytes are then exactly fill33's.
+ *
+ * Why it exists: the first attested Q2 run (2026-10-23, qwen/qwen3.8-27b, max_tokens 1024, no
+ * reasoning control) failsafed 60 of 80 consensus runs: 11 of the 12 full PM theses 5/5 (R1 3/5),
+ * the one-line A2 2/5, A1 and both perp intents never. A thinking model's reasoning counts against
+ * max_tokens; tests/phala-extraction-diag.ts measures whether that is the cause before any
+ * configuration is ruled.
+ */
+export type ReasoningMode = "off" | "low" | "medium" | "high";
+export const REASONING_MODES: readonly ReasoningMode[] = ["off", "low", "medium", "high"];
+
+/** The request field for a mode. */
+export function reasoningField(mode: ReasoningMode): Record<string, unknown> {
+  return mode === "off" ? { enabled: false } : { effort: mode };
+}
+
+/**
+ * Parse an operator-set reasoning value (Worker var / .dev.vars). Unset, empty or "default"
+ * -> undefined (send nothing). A value outside REASONING_MODES -> null: the caller refuses,
+ * never guesses.
+ */
+export function parseReasoningMode(v: string | undefined): ReasoningMode | undefined | null {
+  if (v === undefined) return undefined;
+  const t = v.trim().toLowerCase();
+  if (t === "" || t === "default") return undefined;
+  return (REASONING_MODES as readonly string[]).includes(t) ? (t as ReasoningMode) : null;
+}
+
+/** The gateway's own bound (private-ai-gateway errors.rs: max_tokens must be between 0 and 393216). */
+export const MAX_TOKENS_CEILING = 393216;
+export const DEFAULT_MAX_TOKENS = 1024;
+
+/** Parse an operator-set max_tokens. Unset/empty -> DEFAULT_MAX_TOKENS; not an integer in 1..393216 -> null (refuse). */
+export function parseMaxTokens(v: string | undefined): number | null {
+  if (v === undefined || v.trim() === "") return DEFAULT_MAX_TOKENS;
+  const n = Number(v.trim());
+  return Number.isInteger(n) && n >= 1 && n <= MAX_TOKENS_CEILING ? n : null;
+}
+
+/** sha256 of the empty string: a detector_output_sha256 equal to this is an EMPTY output. */
+export const EMPTY_OUTPUT_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
 // --- Wire shapes (only the members this module touches are typed) --------------------
 
 export interface KeysetKey {
@@ -384,6 +431,8 @@ export interface AttestedCallOptions {
   model?: string;
   maxTokens?: number;
   temperature?: number;
+  /** fill35: reasoning control for thinking models; unset sends nothing (fill33 request bytes). */
+  reasoning?: ReasoningMode;
   /** sec.5.3 `provider.aci_verified: true` - the gateway refuses rather than serve unverified. Default true. */
   requireVerified?: boolean;
   base?: string;
@@ -440,6 +489,15 @@ export interface AttestedDetection {
   response_sha256: string;
   /** bare-hex sha256 of the detector's text output (choices[0].message.content) - the value fill34 hashes into the verdict. */
   detector_output_sha256: string;
+  /** fill35 telemetry: why generation stopped ("stop", "length" = the output budget ran out, ...). */
+  finish_reason: string | null;
+  /** fill35 telemetry: the gateway's usage block, when it sends one. reasoning_tokens counts against max_tokens. */
+  usage: DetectionUsage | null;
+  /** fill35 telemetry: characters of reasoning text returned beside the answer (0 when none came back). */
+  reasoning_chars: number;
+  /** fill35: the request configuration, as sent (the exact bytes are committed by request_sha256). */
+  max_tokens: number;
+  reasoning: ReasoningMode | null;
   upstream: UpstreamVerified | null;
   checks: AttestedChecks;
   /** All applicable checks true. An unverified call must never feed the engine silently. */
@@ -448,6 +506,12 @@ export interface AttestedDetection {
   /** The signed receipt and the keyset it binds to - archived so the chain re-verifies without the gateway. */
   receipt: ReceiptDocument;
   keyset: WorkloadKeyset;
+}
+
+export interface DetectionUsage {
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  reasoning_tokens: number | null;
 }
 
 export interface AttestedCallResult {
@@ -468,10 +532,11 @@ export async function attestedChatCompletion(opts: AttestedCallOptions): Promise
   const payload: Record<string, unknown> = {
     model,
     messages: [{ role: "user", content: opts.prompt }],
-    max_tokens: opts.maxTokens ?? 1024,
+    max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
     temperature: opts.temperature ?? 0,
     stream: false,
   };
+  if (opts.reasoning) payload.reasoning = reasoningField(opts.reasoning);
   if (opts.requireVerified ?? true) payload.provider = { aci_verified: true };
   const requestBody = JSON.stringify(payload);
 
@@ -489,11 +554,27 @@ export async function attestedChatCompletion(opts: AttestedCallOptions): Promise
 
   let text = "";
   let chatId: string | null = null;
+  let finishReason: string | null = null;
+  let usage: DetectionUsage | null = null;
+  let reasoningChars = 0;
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   try {
-    const parsed = JSON.parse(responseBody) as { id?: unknown; choices?: { message?: { content?: unknown } }[] };
+    const parsed = JSON.parse(responseBody) as {
+      id?: unknown;
+      choices?: { finish_reason?: unknown; message?: { content?: unknown; reasoning?: unknown; reasoning_content?: unknown } }[];
+      usage?: { prompt_tokens?: unknown; completion_tokens?: unknown; completion_tokens_details?: { reasoning_tokens?: unknown } };
+    };
     chatId = typeof parsed.id === "string" ? parsed.id : null;
-    const c = parsed.choices?.[0]?.message?.content;
+    const choice = parsed.choices?.[0];
+    const c = choice?.message?.content;
     text = typeof c === "string" ? c : "";
+    finishReason = typeof choice?.finish_reason === "string" ? choice.finish_reason : null;
+    const r = choice?.message?.reasoning ?? choice?.message?.reasoning_content;
+    reasoningChars = typeof r === "string" ? r.length : 0;
+    const u = parsed.usage;
+    usage = u && typeof u === "object"
+      ? { prompt_tokens: num(u.prompt_tokens), completion_tokens: num(u.completion_tokens), reasoning_tokens: num(u.completion_tokens_details?.reasoning_tokens) }
+      : null;
   } catch {
     text = "";
   }
@@ -549,6 +630,11 @@ export async function attestedChatCompletion(opts: AttestedCallOptions): Promise
     request_sha256: await sha256Prefixed(requestBody),
     response_sha256: await sha256Prefixed(responseBytes),
     detector_output_sha256: await sha256Hex(text),
+    finish_reason: finishReason,
+    usage,
+    reasoning_chars: reasoningChars,
+    max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+    reasoning: opts.reasoning ?? null,
     upstream,
     checks,
     verified,
@@ -572,6 +658,8 @@ export interface PhalaDetectorOptions {
   requireVerified?: boolean;
   maxTokens?: number;
   temperature?: number;
+  /** fill35: reasoning control for thinking models; unset sends nothing. */
+  reasoning?: ReasoningMode;
   /** Every call's AttestedDetection lands here (N=3 consensus -> three records). */
   sink: AttestedDetection[];
   /** "throw" (default): an unverified call rejects, so the consensus extraction fails closed. "record": return the text regardless (probes only). */

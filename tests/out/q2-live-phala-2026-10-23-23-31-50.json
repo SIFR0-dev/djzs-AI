@@ -1,0 +1,1613 @@
+{
+  "mode": "live",
+  "model": "phala:qwen/qwen3.8-27b",
+  "attested": {
+    "samples": 210,
+    "verified": 210
+  },
+  "K": 5,
+  "thresholds": {
+    "reliable": "mean>=0.95 && full>=0.8",
+    "marginal": "mean>=0.85",
+    "failsafe_max": 0.02
+  },
+  "grade": "MARGINAL",
+  "meanStab": 0.9428571428571428,
+  "pctFull": 0.7857142857142857,
+  "fsRate": 0.5142857142857142,
+  "fieldFlip": {
+    "leverage": 10,
+    "position_size": 10,
+    "thesis_statement": 4,
+    "stop_loss": 8,
+    "invalidation_condition": 4,
+    "data_sources": 0,
+    "oracle_source": 0,
+    "audit_context": 0
+  },
+  "designedMatch": 2,
+  "results": [
+    {
+      "id": "PF1",
+      "cls": "FULL_LONG",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "oracle_source",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "present",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "oracle_source",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "oracle_source",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "oracle_source",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "PF2",
+      "cls": "FULL_SHORT",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "oracle_source",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PF3",
+      "cls": "HEDGED",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PT1",
+      "cls": "NO_THESIS",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PT2",
+      "cls": "NO_THESIS",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "present",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PX1",
+      "cls": "UNBOUNDED",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "invalidation_condition",
+            "data_sources",
+            "oracle_source",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 15,
+          "codes": [
+            "DJZS-X01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "present",
+            "stop_loss": "absent",
+            "invalidation_condition": "absent",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "invalidation_condition",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PX2",
+      "cls": "UNBOUNDED_NO_THESIS",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "absent",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "invalidation_condition",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 15,
+          "codes": [
+            "DJZS-X01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "present",
+            "stop_loss": "absent",
+            "invalidation_condition": "absent",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "invalidation_condition",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PI1",
+      "cls": "SOCIAL_ADVISORY",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PE1",
+      "cls": "ORACLE_ADVISORY",
+      "designed": "PASS",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "present",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "data_sources",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "present",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "invalidation_condition",
+            "data_sources",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "present",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "data_sources",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "PW1",
+      "cls": "NO_REASON_SOFT",
+      "designed": "FAIL",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "present",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "take_profit",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "PW2",
+      "cls": "VAGUE_STOP",
+      "designed": "WAIT",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "data_sources",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "present",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "data_sources"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "PW3",
+      "cls": "SILENT_STOP",
+      "designed": "WAIT",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "unknown",
+            "stop_loss": "absent",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "leverage",
+            "position_size",
+            "stop_loss",
+            "invalidation_condition",
+            "confidence",
+            "thesis_statement"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 15,
+          "codes": [
+            "DJZS-X01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "present",
+            "stop_loss": "absent",
+            "invalidation_condition": "absent",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "FAIL",
+          "risk": 15,
+          "codes": [
+            "DJZS-X01"
+          ],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "present",
+            "stop_loss": "absent",
+            "invalidation_condition": "absent",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "present",
+            "stop_loss": "absent",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "stop_loss",
+            "invalidation_condition"
+          ],
+          "failsafe": false
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "present",
+            "position_size": "present",
+            "thesis_statement": "present",
+            "stop_loss": "absent",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [
+            "stop_loss",
+            "invalidation_condition",
+            "data_sources"
+          ],
+          "failsafe": false
+        }
+      ]
+    },
+    {
+      "id": "PM1",
+      "cls": "PM_BET",
+      "designed": "OUT_OF_SCOPE",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    },
+    {
+      "id": "PM2",
+      "cls": "PM_BET",
+      "designed": "OUT_OF_SCOPE",
+      "runs": [
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        },
+        {
+          "verdict": "WAIT",
+          "risk": 0,
+          "codes": [],
+          "in_scope": true,
+          "states": {
+            "audit_context": "(unset)",
+            "leverage": "unknown",
+            "position_size": "unknown",
+            "thesis_statement": "unknown",
+            "stop_loss": "unknown",
+            "invalidation_condition": "unknown",
+            "data_sources": "unknown",
+            "oracle_source": "unknown"
+          },
+          "disagreements": [],
+          "failsafe": true
+        }
+      ]
+    }
+  ]
+}

@@ -23,6 +23,8 @@ jobs:
         run: npx tsx tests/attested-detector.test.ts
       - name: "Attested wire-in (fill34): detector switch fails closed; verdict_hash byte-identical across detectors; binding hash recomputes; scopeCheck refuses an unverified receipt uncharged"
         run: npx tsx tests/attested-wire-in.test.ts
+      - name: "Attested config (fill35): unset sends fill33's exact request bytes; reasoning off/effort encoded and receipt-verified; finish_reason/usage captured; a bad var refuses"
+        run: npx tsx tests/attested-config.test.ts
       - name: "Verdict rule (DJZS-VR-v1.0): derives the engine's verdict on every input; fixture current"
         run: npx tsx tests/verdict-rule-fixtures.ts --check
   verdict-rule-contracts:

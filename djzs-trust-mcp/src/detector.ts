@@ -9,7 +9,8 @@
  *   DJZS_DETECTOR = "phala"            -> the attested detector: every call goes through
  *                                         Phala's ACI gateway and returns a verified receipt
  *                                         (attested-detector.ts). PHALA_API_KEY is the SECRET;
- *                                         PHALA_MODEL / PHALA_ACI_BASE are plain vars.
+ *                                         PHALA_MODEL / PHALA_ACI_BASE / PHALA_REASONING /
+ *                                         PHALA_MAX_TOKENS are plain vars (fill35).
  *
  * FAIL CLOSED, NEVER FALL BACK: "phala" without PHALA_API_KEY is a refusal
  * (detector_not_configured), never a silent Anthropic verdict sold as attested. A sample
@@ -47,6 +48,9 @@ import {
   PHALA_DEFAULT_MODEL,
   buildPhalaDetector,
   jcsBytes,
+  parseMaxTokens,
+  parseReasoningMode,
+  type ReasoningMode,
   UnverifiedDetectionError,
   WorkloadNotEstablishedError,
   type AttestedDetection,
@@ -69,6 +73,10 @@ export interface DetectorEnv {
   PHALA_MODEL?: string
   /** Plain var: gateway base (default PHALA_ACI_BASE). Rehearsals only. */
   PHALA_ACI_BASE?: string
+  /** Plain var (fill35): off | low | medium | high; unset sends no reasoning control. An invalid value refuses. */
+  PHALA_REASONING?: string
+  /** Plain var (fill35): output budget, integer 1..393216; unset = 1024 (the Anthropic path's budget). An invalid value refuses. */
+  PHALA_MAX_TOKENS?: string
 }
 
 export interface DetectorHandle {
@@ -107,11 +115,22 @@ export function createDetector(env: DetectorEnv, opts: DetectorOptions = {}): De
     if (!env.PHALA_API_KEY) {
       throw new DetectorUnavailableError("detector_not_configured", "EXTRACTION_UNAVAILABLE: DJZS_DETECTOR=phala but PHALA_API_KEY not configured")
     }
+    // fill35: a misconfigured request shape refuses (same fixed code) - never a silent default.
+    const reasoning = parseReasoningMode(env.PHALA_REASONING)
+    if (reasoning === null) {
+      throw new DetectorUnavailableError("detector_not_configured", "EXTRACTION_UNAVAILABLE: PHALA_REASONING must be off, low, medium or high")
+    }
+    const maxTokens = parseMaxTokens(env.PHALA_MAX_TOKENS)
+    if (maxTokens === null) {
+      throw new DetectorUnavailableError("detector_not_configured", "EXTRACTION_UNAVAILABLE: PHALA_MAX_TOKENS must be an integer in 1..393216")
+    }
     const sink: AttestedDetection[] = []
     const model = env.PHALA_MODEL && env.PHALA_MODEL.trim() !== "" ? env.PHALA_MODEL.trim() : PHALA_DEFAULT_MODEL
     const modelFn = buildPhalaDetector({
       apiKey: env.PHALA_API_KEY,
       model,
+      maxTokens,
+      ...(reasoning ? { reasoning } : {}),
       base: env.PHALA_ACI_BASE && env.PHALA_ACI_BASE.trim() !== "" ? env.PHALA_ACI_BASE.trim() : PHALA_ACI_BASE,
       fetchImpl: opts.fetchImpl,
       now: opts.now,
@@ -144,6 +163,8 @@ export interface AttestedSample {
   detector_output_sha256: string
   session_id: string | null
   model_served: string | null
+  /** fill35: why generation stopped; "length" means the output budget ran out. */
+  finish_reason: string | null
   verified: boolean
   /** The signed receipt, archived: re-verifies offline under `keyset` without the gateway. */
   receipt: ReceiptDocument
@@ -155,6 +176,9 @@ export interface AttestedDetectionBlock {
   provider: "phala-aci"
   gateway: string
   model: string
+  /** fill35: the request shape every sample was sent with. */
+  max_tokens: number
+  reasoning: ReasoningMode | null
   workload_keyset_digest: string
   receipt_key_id: string
   repo_url: string | null
@@ -198,6 +222,7 @@ export async function finishDetection<R extends Record<string, unknown>>(result:
     detector_output_sha256: d.detector_output_sha256,
     session_id: d.upstream?.session_id ?? null,
     model_served: d.model_served,
+    finish_reason: d.finish_reason,
     verified: d.verified,
     receipt: d.receipt,
   }))
@@ -213,6 +238,8 @@ export async function finishDetection<R extends Record<string, unknown>>(result:
     provider: "phala-aci",
     gateway: first.gateway,
     model: first.model,
+    max_tokens: first.max_tokens,
+    reasoning: first.reasoning,
     workload_keyset_digest: first.workload_keyset_digest,
     receipt_key_id: first.receipt_key_id,
     repo_url: first.repo_url,

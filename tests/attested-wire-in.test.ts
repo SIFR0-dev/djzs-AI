@@ -214,7 +214,7 @@ console.log("F. engine adapter (HTTP x402 routes)");
   check("adapter: phala selected without its key rejects from scopeCheck with detector_not_configured (EXTRACTION_UNAVAILABLE prefix kept)", detectorFault(keyErr) === "detector_not_configured" && (keyErr as Error).message.startsWith("EXTRACTION_UNAVAILABLE"));
   const legacy = createEngineAdapter({}, async () => JSON.stringify(PM_EXTRACTION));
   await legacy.scopeCheck(PM_INTENT);
-  const lv = await legacy.audit(PM_INTENT) as Record<string, unknown>;
+  const lv = await legacy.audit(PM_INTENT) as unknown as Record<string, unknown>;
   check("adapter: the injected-model (Anthropic-shaped) path is unchanged - no attested_detection, same verdict_hash", !("attested_detection" in lv) && lv.verdict_hash === pmPlain.verdict_hash);
 }
 
