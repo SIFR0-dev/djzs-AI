@@ -1,3 +1,12 @@
 wrangler.toml
 .wrangler
 build_og.py
+# Local junk and secrets never ship, whatever the .gitignore says. The deploy guard refuses any OTHER gitignored file in here.
+.env
+.env.*
+.dev.vars
+.DS_Store
+node_modules
+*.log
+*.bak
+*.bak.*

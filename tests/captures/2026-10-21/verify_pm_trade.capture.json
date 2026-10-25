@@ -1,0 +1,176 @@
+{
+  "accepts": [
+    {
+      "amount": "2000000",
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "extra": {
+        "name": "USD Coin",
+        "termsOfService": "https://djzs.ai/terms",
+        "version": "2"
+      },
+      "maxTimeoutSeconds": 120,
+      "network": "eip155:8453",
+      "payTo": "0xc1923748669dFC3a79497d0403A90a275161eCCA",
+      "scheme": "exact"
+    }
+  ],
+  "extensions": {
+    "bazaar": {
+      "info": {
+        "input": {
+          "body": {
+            "intent": {
+              "bounds": {
+                "exit_condition": "daily close below 66000",
+                "max_loss_usd": 250
+              },
+              "market": "KXBTC-26AUG29-T70000",
+              "probability_basis": "implied 0.41 vs model 0.55; basis: Kalshi mid, 2026-08-19T14:00Z",
+              "side": "YES",
+              "size_usd": 250,
+              "thesis": "BTC closes above 70k by Aug 29 on ETF inflow continuation"
+            }
+          },
+          "bodyType": "json",
+          "method": "POST",
+          "type": "http"
+        },
+        "output": {
+          "example": {
+            "charged": true,
+            "eas_schema": "0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030",
+            "eas_uid": "\u2026EAS attestation uid\u2026",
+            "flags": [
+              "DJZS-M02",
+              "DJZS-M01",
+              "DJZS-M04",
+              "unknown:probability_basis"
+            ],
+            "intent_hash": "\u2026EIP-712 binding key (v2)\u2026",
+            "intent_sha256": "\u2026binding key\u2026",
+            "risk_score": 75,
+            "terms": "https://djzs.ai/terms",
+            "verdict": "FAIL",
+            "verdict_hash": "0xb1a2\u20269bb3"
+          },
+          "mimeType": "application/json",
+          "type": "json"
+        }
+      },
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "input": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "properties": {
+                  "intent": {
+                    "description": "A prediction-market trade intent to be adversarially audited. The engine is deterministic: the LLM layer detects, TypeScript decides. Out-of-scope submissions are refused WITHOUT CHARGE \u2014 settlement only occurs for in-scope audits.",
+                    "properties": {
+                      "bounds": {
+                        "description": "Loss bound and exit condition. Unbounded intents cannot PASS.",
+                        "type": "object"
+                      },
+                      "market": {
+                        "description": "Venue ticker for the target market (e.g. a Kalshi series ticker).",
+                        "type": "string"
+                      },
+                      "probability_basis": {
+                        "description": "Where the probability came from: named venue, instrument, and timestamp. Unknown basis is a flagged defect (M02 family).",
+                        "type": "string"
+                      },
+                      "side": {
+                        "description": "Position side under audit (e.g. YES / NO / LONG / SHORT).",
+                        "type": "string"
+                      },
+                      "size_usd": {
+                        "description": "Intended position size in USD.",
+                        "type": "number"
+                      },
+                      "thesis": {
+                        "description": "The claim being audited, stated plainly. Vague or unbounded theses draw flags.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "market",
+                      "side",
+                      "thesis"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "intent"
+                ],
+                "type": "object"
+              },
+              "bodyType": {
+                "enum": [
+                  "json",
+                  "form-data",
+                  "text"
+                ],
+                "type": "string"
+              },
+              "method": {
+                "enum": [
+                  "POST",
+                  "PUT",
+                  "PATCH"
+                ],
+                "type": "string"
+              },
+              "type": {
+                "const": "http",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "method",
+              "bodyType",
+              "body"
+            ],
+            "type": "object"
+          },
+          "output": {
+            "properties": {
+              "example": {
+                "type": "object"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "resource": {
+    "description": "DJZS adversarial logic audit of a prediction-market trade intent. Deterministic verdict (PASS/WAIT/FAIL) with risk score, defect flags, verdict_hash, and on-chain Proof-of-Logic receipt. Out-of-scope requests are refused WITHOUT CHARGE. Audit, not advice.",
+    "mimeType": "application/json",
+    "serviceName": "DJZS Audit Gate",
+    "tags": [
+      "audit",
+      "prediction-markets",
+      "trading",
+      "verification"
+    ],
+    "url": "https://mcp.djzs.ai/x402/verify_pm_trade"
+  },
+  "x402Version": 2
+}

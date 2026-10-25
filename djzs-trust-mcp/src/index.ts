@@ -40,7 +40,7 @@ import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRU
 import { logFault, reasonCode, addressOnly, hash32Only, type Fault } from "./safe-error"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
-import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
+import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PM_RESOURCE, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
 import { handleTryExample, handleTryQuota, handleTryVerdict } from "./try-route"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
@@ -1591,7 +1591,8 @@ app.all("/x402/verify_pm_trade", async (c) => {
     EAS_RESOLVER_ADDRESS: env.EAS_RESOLVER_ADDRESS,
   }
   try {
-    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env))
+    // The resource is named, not defaulted: it selects the receipt's action class and ruleset (see ResourceSpec.route).
+    return await handleX402VerifyPmTrade(c.req.raw, x402Env, createEngineAdapter(env), PM_RESOURCE)
   } catch (e) {
     // handleX402VerifyPmTrade answers its own failures and owns what settled and what did not.
     // This is the last resort, so it claims nothing about the money.

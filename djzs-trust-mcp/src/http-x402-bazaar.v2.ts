@@ -620,11 +620,12 @@ async function run(
 
   // 3a — BIND the intent BEFORE any money moves (invariant 6). intentHash(toDJZSIntent(intent))
   // is a pure function of the body and the only caller-input step between the engine's verdict
-  // and the receipt that can throw (viem rejects a body the mapping cannot encode: a missing
-  // key, a negative size). An intent that cannot be bound is refused here, uncharged, rather
-  // than settled and then lost. On a tree whose toDJZSIntent maps prediction-market intents
-  // only, that includes every perp-shaped intent: fail closed. Ruled 2026-10-20: production's
-  // perp_trade action and perp branch in toDJZSIntent are the mapping.
+  // and the receipt that can throw (IntentUnbindableError for a missing or empty market, side or
+  // thesis; viem for a body the mapping cannot encode, e.g. a negative size). An intent that cannot
+  // be bound is refused here, uncharged, rather than settled and then lost. On a tree whose
+  // toDJZSIntent maps prediction-market intents only, that includes every perp-shaped intent:
+  // fail closed. Ruled 2026-10-20: production's perp_trade action and perp branch in
+  // toDJZSIntent are the mapping.
   let intent_hash: ReturnType<typeof intentHash>;
   try {
     // The ROUTE (spec.route) picks the mapping, never the body's fields: this route always attests
