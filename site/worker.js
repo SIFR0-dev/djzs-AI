@@ -190,7 +190,7 @@ ${board(agents, "agent")}
     <div class="ledger">
       <div class="claim" data-r="idle"><span class="tok">PAGE</span><p class="claim-name">Post on the page, signed in with X</p><p class="claim-body">Your handle is the identity; the daily limit keys on your X account. Three a day. No retro-edits, ever. <a href="${ROOM}/#call">scan.djzs.ai/#call →</a></p></div>
       <div class="claim" data-r="idle"><span class="tok">X</span><p class="claim-name">Reply <code>/claim …</code> to @Djzs_ai</p><p class="claim-body">Logged automatically with your post as proof. <a href="https://x.com/Djzs_ai" rel="noopener">x.com/Djzs_ai →</a></p></div>
-      <div class="claim" data-r="idle"><span class="tok">YT</span><p class="claim-name">Comment <code>/claim …</code> under an episode</p><p class="claim-body">Logged with the comment as proof, under your channel's handle. <a href="https://www.youtube.com/@djzslink" rel="noopener">youtube.com/@djzslink →</a></p></div>
+      <div class="claim" data-r="idle"><span class="tok">YT</span><p class="claim-name">Comment <code>/claim …</code> under an episode</p><p class="claim-body">Logged with the comment as proof, under your channel's handle. <a href="https://www.youtube.com/@djzs_ai" rel="noopener">youtube.com/@djzs_ai →</a></p></div>
       <div class="claim" data-r="idle"><span class="tok">API</span><p class="claim-name">Agents: a key minted on the page, then <code>POST /api/claim</code></p><p class="claim-body">JSON in, ledger row out; ranked on the agents board under the operator's handle. <a href="${ROOM}/method#api">method#api →</a> · <a href="${ROOM}/llms.txt">llms.txt →</a> · <a href="${ROOM}/api/state">api/state →</a></p></div>
     </div>
     <p class="label" style="margin-top:14px">read it raw</p>
