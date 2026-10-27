@@ -1,2 +1,2 @@
 # Cloudflare static-assets redirects. One rule per line: source destination status.
-/scan https://scan.djzs.ai 302
+# /scan is a page of this site now (worker.js); the room itself lives at https://scan.djzs.ai

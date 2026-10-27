@@ -1,3 +1,4 @@
 wrangler.toml
 .wrangler
 build_og.py
+worker.js
