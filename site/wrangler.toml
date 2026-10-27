@@ -12,6 +12,10 @@ main = "worker.js"
 [assets]
 directory = "."
 binding = "ASSETS"
+# Browser navigations (Sec-Fetch-Mode: navigate) to a path with no asset are answered by the assets layer
+# with the 404 page BEFORE the Worker is consulted; that is how not_found_handling works. The Worker must
+# therefore run first for the one path it owns, or a browser sees 404.html while curl sees the page.
+run_worker_first = ["/scan", "/scan/"]
 # Unknown paths serve 404.html with a REAL 404 status. The old SPA fallback soft-200'd the
 # homepage for every route (/robots.txt, /docs, /demo...), which misled crawlers and an external
 # UX audit alike (2026-07-17). The 404 page links home — old deep links still find the truth
