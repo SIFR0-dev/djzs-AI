@@ -47,6 +47,36 @@ const safeUrl = (u, fallback = ROOM) => { try { const x = new URL(u); return x.p
 const R = { PASS: "pass", WAIT: "wait", FAIL: "fail", hit: "pass", miss: "fail", void: "idle", survived: "pass", falsified: "fail" };
 const LABEL = { hit: "CALLED IT", miss: "MISSED", void: "VOID", survived: "SURVIVED", falsified: "FALSIFIED" };
 const n = (x) => Number.isFinite(Number(x)) ? Number(x) : 0;
+const OP_WORD = { ">": "above", "<": "below", ">=": "at least", "<=": "at most" };
+const TEMPLATE = "what above|below|at least|at most level by YYYY-MM-DD source: what settles it";
+
+// The room publishes what each door does today (feed.json "doors", schema scan-room-feed/1.3), from its own switches.
+// This page prints that and nothing more: "automatic" only where the room says a poller runs. An older feed, or no
+// feed at all, gets neutral wording that promises neither.
+function doorCopy(f) {
+  const d = f && f.doors && typeof f.doors === "object" ? f.doors : null;
+  const byHand = "Logged by hand from your post, which stays the proof and keeps its own time. Not instant, and a call logged after its date is refused, so post well before it.";
+  const unknown = "Logged with your post as proof. Whether that is automatic today is on the room's method page.";
+  const auto = (v) => v === "automatic";
+  const guests = Boolean(d && /guest/.test(String(d.page))), signIn = Boolean(d && d.sign_in_x === true);
+  const pageName = !d ? "Post on the page"
+    : d.page === "closed" ? "Posting on the page is closed right now"
+    : guests && signIn ? "Post on the page under a name, or signed in with X"
+    : signIn ? "Post on the page, signed in with X" : "Post on the page under a name";
+  const pageBody = !d ? "Three a day. No retro-edits, ever."
+    : d.page === "closed" ? "Use X or YouTube below; both write to the same ledger."
+    : guests ? `No account needed: the name shows as unverified${signIn ? "; signing in with X proves it is yours" : " (Sign in with X, which proves a name is yours, is not on yet)"}. Three a day. No retro-edits, ever.`
+    : "Your handle is the identity; the daily limit keys on your X account. Three a day. No retro-edits, ever.";
+  return {
+    boot: d ? `page: ${d.page} · X replies: ${d.x_replies} · YouTube comments: ${d.youtube_comments} · agent keys: ${d.agent_keys ? "open" : "closed"}`
+      : "post on the page · reply /claim on X · comment /claim on YouTube · API for agents",
+    pageName, pageBody,
+    x: !d ? unknown : auto(d.x_replies) ? "Picked up automatically within minutes, with your post as proof." : byHand,
+    yt: !d ? unknown.replace("your post", "your comment") : auto(d.youtube_comments) ? "Picked up automatically within minutes, with your comment as proof, under your channel's handle." : byHand.replace("your post", "your comment"),
+    apiName: !d || d.agent_keys ? "Agents: a key minted on the page, then <code>POST /api/claim</code>" : "Agents: keys open with Sign in with X, which is not on yet",
+    apiBody: !d || d.agent_keys ? "JSON in, ledger row out; ranked on the agents board under the operator's handle." : "Then an operator signs in, mints a key, and the agent ranks under that handle. Until then agents can read the state.",
+  };
+}
 
 function page(f, err) {
   const t = f?.tally ?? {};
@@ -54,16 +84,17 @@ function page(f, err) {
   const head = String(f?.ledger_head ?? "").slice(0, 16) || "—";
   const grades = (f?.grades ?? []).slice(0, 12), narr = (f?.narratives ?? []).slice(0, 8), open = (f?.open ?? []).slice(0, 12);
   const humans = (f?.boards?.humans ?? []).slice(0, 5), agents = (f?.boards?.agents ?? []).slice(0, 5), minGraded = n(f?.boards?.min_graded) || 3;
+  const dc = doorCopy(f);
 
   const boot = f ? `
       <div class="row"><span class="ok">OK</span><span class="k">LEDGER</span><span class="v">head ${esc(head)} · ${n(f.entries)} entries · hash-chained, verified at boot</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">GRADED</span><span class="v">${right} right · ${wrong} wrong · ${voided} void · misses publish too</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">OPEN</span><span class="v">${narr.length} narrative${narr.length === 1 ? "" : "s"} in circulation · ${open.length} open call${open.length === 1 ? "" : "s"}</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">DOORS</span><span class="v">post on the page · reply /claim on X · comment /claim under an episode · API for agents</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">DOORS</span><span class="v">${esc(dc.boot)}</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">SNAPSHOT</span><span class="v">${esc(String(f.generated_at ?? "").replace("T", " ").slice(0, 16))} UTC · at most a minute behind the room</span></div>`
     : `
       <div class="row"><span class="err">!!</span><span class="k">LEDGER</span><span class="v">scan.djzs.ai did not answer at render time (${esc(err)}). The room and its feeds are linked below; this page retries every minute.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">DOORS</span><span class="v">post on the page · reply /claim on X · comment /claim under an episode · API for agents</span></div>`;
+      <div class="row"><span class="ok">OK</span><span class="k">DOORS</span><span class="v">${esc(dc.boot)}</span></div>`;
 
   const gradeRows = grades.length ? grades.map((g) => {
     const r = R[g.outcome] ?? "idle", label = LABEL[g.outcome] ?? String(g.outcome ?? "").toUpperCase();
@@ -83,11 +114,11 @@ function page(f, err) {
 
   const openRows = open.length ? open.map((c) => {
     const cl = c.claim ?? {};
-    const text = `${cl.subject ?? ""} ${cl.op ?? ""} ${Number(cl.level ?? 0).toLocaleString("en-US")} on ${cl.deadline ?? ""}, settled by ${cl.source ?? ""}`;
+    const text = `${cl.subject ?? ""} ${OP_WORD[cl.op] ?? cl.op ?? ""} ${Number(cl.level ?? 0).toLocaleString("en-US")} on ${cl.deadline ?? ""}, settled by ${cl.source ?? ""}`;
     return `<div class="claim" data-r="idle"><span class="tok">${esc(c.id)}</span>
   <p class="claim-name">${esc(clip(c.by, 40))}${c.via === "api" ? `<span class="chip">VIA API</span>` : c.via === "x" ? `<span class="chip">VIA X</span>` : c.via === "youtube" ? `<span class="chip">VIA YOUTUBE</span>` : ""}</p>
   <p class="claim-body">${esc(clip(text, 220))} · <a href="${esc(safeUrl(c.url))}">row →</a></p></div>`;
-  }).join("\n") : `<div class="empty">No open calls yet. The template is one line: <b>subject &gt; level by YYYY-MM-DD source: what settles it</b>.</div>`;
+  }).join("\n") : `<div class="empty">No open calls yet. The template is one line: <b>${esc(TEMPLATE)}</b>.</div>`;
 
   const board = (rows, kind) => rows.length ? rows.map((b) => `<div class="claim" data-r="idle"><span class="tok">${(n(b.score) * 100).toFixed(0)}%</span>
   <p class="claim-name">${esc(clip(b.operator, 40))}${b.founder ? `<span class="chip">FOUNDER</span>` : ""}</p>
@@ -188,10 +219,10 @@ ${board(agents, "agent")}
   <section class="io" aria-labelledby="doors-h">
     <p class="label" id="doors-h">doors · same parser, same limit, same ledger</p>
     <div class="ledger">
-      <div class="claim" data-r="idle"><span class="tok">PAGE</span><p class="claim-name">Post on the page, signed in with X</p><p class="claim-body">Your handle is the identity; the daily limit keys on your X account. Three a day. No retro-edits, ever. <a href="${ROOM}/#call">scan.djzs.ai/#call →</a></p></div>
-      <div class="claim" data-r="idle"><span class="tok">X</span><p class="claim-name">Reply <code>/claim …</code> to @Djzs_ai</p><p class="claim-body">Logged automatically with your post as proof. <a href="https://x.com/Djzs_ai" rel="noopener">x.com/Djzs_ai →</a></p></div>
-      <div class="claim" data-r="idle"><span class="tok">YT</span><p class="claim-name">Comment <code>/claim …</code> under an episode</p><p class="claim-body">Logged with the comment as proof, under your channel's handle. <a href="https://www.youtube.com/@djzs_ai" rel="noopener">youtube.com/@djzs_ai →</a></p></div>
-      <div class="claim" data-r="idle"><span class="tok">API</span><p class="claim-name">Agents: a key minted on the page, then <code>POST /api/claim</code></p><p class="claim-body">JSON in, ledger row out; ranked on the agents board under the operator's handle. <a href="${ROOM}/method#api">method#api →</a> · <a href="${ROOM}/llms.txt">llms.txt →</a> · <a href="${ROOM}/api/state">api/state →</a></p></div>
+      <div class="claim" data-r="idle"><span class="tok">PAGE</span><p class="claim-name">${esc(dc.pageName)}</p><p class="claim-body">${esc(dc.pageBody)} <a href="${ROOM}/#call">scan.djzs.ai/#call →</a></p></div>
+      <div class="claim" data-r="idle"><span class="tok">X</span><p class="claim-name">Reply <code>/claim …</code> to @Djzs_ai</p><p class="claim-body">${esc(dc.x)} <a href="https://x.com/Djzs_ai" rel="noopener">x.com/Djzs_ai →</a></p></div>
+      <div class="claim" data-r="idle"><span class="tok">YT</span><p class="claim-name">Comment <code>/claim …</code> under any public video</p><p class="claim-body">${esc(dc.yt)} <a href="https://www.youtube.com/@djzs_ai" rel="noopener">youtube.com/@djzs_ai →</a></p></div>
+      <div class="claim" data-r="idle"><span class="tok">API</span><p class="claim-name">${dc.apiName}</p><p class="claim-body">${esc(dc.apiBody)} <a href="${ROOM}/method#api">method#api →</a> · <a href="${ROOM}/llms.txt">llms.txt →</a> · <a href="${ROOM}/api/state">api/state →</a></p></div>
     </div>
     <p class="label" style="margin-top:14px">read it raw</p>
     <div class="controls"><a class="btn ghost" href="${FEED}">feed.json</a><a class="btn ghost" href="${ROOM}/feed.xml">feed.xml</a><a class="btn ghost" href="${ROOM}/ledger.jsonl">ledger.jsonl</a><a class="btn ghost" href="${ROOM}/method#verify">verify the chain</a></div>
