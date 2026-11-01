@@ -31,6 +31,8 @@
 // "LLM detects, TypeScript decides." Nothing in this file consults a model.
 
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
+import { Mppx, evm } from "mppx/server";
+import { Credential as MppCredential } from "mppx";
 import {
   decodePaymentSignatureHeader,
   encodePaymentRequiredHeader,
@@ -374,6 +376,31 @@ async function getServer(env: X402Env): Promise<x402ResourceServer> {
   return server;
 }
 
+/** MPP (Machine Payments Protocol) door onto the same gate. Same facilitator config
+ * as getServer (CDP-authed), same PAY_TO, same USDC on Base. Only Authorization: Payment
+ * credentials are routed here; PAYMENT-SIGNATURE stays on the x402 loop below.
+ * Absent MPP_SECRET_KEY the door is closed and x402 is unaffected. */
+const MPP_PRICE_DISPLAY = "2.00"; // display units; must equal EXPECTED_ATOMIC_AMOUNT / 1e6
+const MPP_REALM = "mcp.djzs.ai";
+function getMppx(env: X402Env) {
+  if (!env.MPP_SECRET_KEY) return null;
+  const facilitator = new HTTPFacilitatorClient({
+    url: env.FACILITATOR_URL,
+    ...(env.FACILITATOR_AUTH ? { createAuthHeaders: env.FACILITATOR_AUTH } : {}),
+  });
+  return Mppx.create({
+    realm: MPP_REALM,
+    secretKey: env.MPP_SECRET_KEY,
+    methods: [
+      evm.charge({
+        currency: evm.assets.base.USDC,
+        recipient: PAY_TO as `0x${string}`,
+        x402: { facilitator: facilitator as never },
+      }),
+    ],
+  });
+}
+
 export const DESCRIPTION =
   "DJZS adversarial logic audit of a prediction-market trade intent. Deterministic verdict (PASS/WAIT/FAIL) with risk score, defect flags, verdict_hash, and on-chain Proof-of-Logic receipt. Out-of-scope requests are refused WITHOUT CHARGE. Audit, not advice.";
 
@@ -525,11 +552,23 @@ async function run(
     );
   }
 
+  // 0 — MPP door. The challenge call gets a CLONE so the body stays unread for us.
+  const mppx = getMppx(env);
+  let mppHeader: string | null = null;
+  if (mppx) {
+    try {
+      const r = await mppx.evm.charge({ amount: MPP_PRICE_DISPLAY, description: spec.description })(request.clone());
+      mppHeader = r.status === 402 ? r.challenge.headers.get("WWW-Authenticate") : null;
+    } catch (e) { logFault("mpp.challenge", e); }
+  }
+  const mppCred = challengeOnly ? null : request.headers.get("Authorization");
+  const hasMpp = !!mppx && !!mppCred && mppCred.startsWith("Payment ");
+
   // 1 — no payment: 402 challenge with discovery extension attached. Body unread.
   const sigHeader = challengeOnly
     ? null
     : request.headers.get("PAYMENT-SIGNATURE") ?? request.headers.get("X-PAYMENT");
-  if (!sigHeader) {
+  if (!sigHeader && !hasMpp) {
     const paymentRequired = await server.createPaymentRequiredResponse(
       reqs,
       { url: spec.url, description: spec.description, mimeType: "application/json", serviceName: "DJZS Audit Gate", tags: spec.tags },
@@ -543,6 +582,7 @@ async function run(
       headers: {
         "content-type": "application/json",
         "PAYMENT-REQUIRED": encodePaymentRequiredHeader(paymentRequired),
+        ...(mppHeader ? { "WWW-Authenticate": mppHeader } : {}),
         ...CORS_BASE,
       },
     });
@@ -557,15 +597,25 @@ async function run(
   }
 
   // 2 — verify the payment authorization (no funds move here).
-  let payload;
+  let payload: ReturnType<typeof decodePaymentSignatureHeader> | undefined;
+  let verify: Awaited<ReturnType<x402ResourceServer["verifyPayment"]>> | undefined;
+  let mppPayer: string | undefined;
+  if (hasMpp) {
+    try {
+      const v = await mppx!.validateCredential(MppCredential.fromRequest(request), { realm: MPP_REALM, request: { amount: MPP_PRICE_DISPLAY } });
+      mppPayer = (v.credential.payload as { from?: string }).from;
+    } catch (e) {
+      logFault("mpp.validate", e);
+      return json({ error: "payment_verification_failed", detail: "mpp_credential_invalid", terms: TERMS_URL }, 402);
+    }
+  } else {
   try {
-    payload = decodePaymentSignatureHeader(sigHeader);
+    payload = decodePaymentSignatureHeader(sigHeader!);
   } catch {
     return json({ error: "malformed_payment_header", terms: TERMS_URL }, 400);
   }
-  let verify: Awaited<ReturnType<x402ResourceServer["verifyPayment"]>>;
   try {
-    verify = await server.verifyPayment(payload, reqs[0], spec.extensions);
+    verify = await server.verifyPayment(payload!, reqs[0], spec.extensions);
   } catch (e) {
     // @x402/core throws VerifyError when the facilitator answers a 4xx carrying {isValid:false, invalidReason}
     // (a bad signature, an expired authorization): the PAYER's fault, nothing moved. It is a refusal, not an outage.
@@ -581,6 +631,7 @@ async function run(
       402,
     );
   }
+  } // end x402 verify branch
 
   // ── payment VERIFIED but NOT settled. ─────────────────────────────────────
   // 2a — the body is validated HERE, on the paid path only: after the challenge is
@@ -650,22 +701,30 @@ async function run(
   // 4 — settle FIRST (no free verdicts), then run the deterministic engine.
   progress.settleStarted = true;
   let settle: SettleResult;
-  try {
-    settle = await server.settlePayment(payload, reqs[0], spec.extensions);
+  if (hasMpp) {
+    try {
+      const receipt = await mppx!.broadcastCredential(MppCredential.fromRequest(request), { realm: MPP_REALM, request: { amount: MPP_PRICE_DISPLAY } });
+      settle = { success: true, transaction: receipt.reference, payer: mppPayer, network: NETWORK } as unknown as SettleResult;
+    } catch (e) {
+      logFault("mpp.settle", e, { payer: mppPayer, intent_hash });
+      return settlementUncertain({ payer: mppPayer, intent_hash, transaction: (e as { reference?: unknown })?.reference });
+    }
+  } else try {
+    settle = await server.settlePayment(payload!, reqs[0], spec.extensions);
   } catch (e) {
     // settlePayment signals failure by THROWING (facilitator 4xx/5xx, timeout, unparseable
     // 200). The transfer may already be broadcast, so "settled:false" would be a claim
     // nobody can back (invariant 7).
-    logFault("x402.settle", e, { payer: verify.payer, intent_hash });
-    return settlementUncertain({ payer: verify.payer, intent_hash, transaction: (e as { transaction?: unknown })?.transaction });
+    logFault("x402.settle", e, { payer: verify!.payer, intent_hash });
+    return settlementUncertain({ payer: verify!.payer, intent_hash, transaction: (e as { transaction?: unknown })?.transaction });
   }
   if (!settle?.success) {
     // success:false WITH a transaction hash is the reference facilitator's settlement_pending
     // (broadcast, receipt not yet confirmed), or a reverted / mismatched transfer: the transfer
     // exists, so "nothing moved" is not a claim anyone can back (invariant 7).
     if (typeof settle?.transaction === "string" && settle.transaction !== "") {
-      logFault("x402.settle", new Error(`success:false with a transaction (${reasonCode(settle.errorReason)})`), { payer: verify.payer, intent_hash, transaction: settle.transaction });
-      return settlementUncertain({ payer: settle.payer ?? verify.payer, intent_hash, transaction: settle.transaction });
+      logFault("x402.settle", new Error(`success:false with a transaction (${reasonCode(settle.errorReason)})`), { payer: verify?.payer ?? mppPayer, intent_hash, transaction: settle.transaction });
+      return settlementUncertain({ payer: settle.payer ?? verify?.payer ?? mppPayer, intent_hash, transaction: settle.transaction });
     }
     // The facilitator answered, said no, and names no transaction: nothing moved.
     return json(
