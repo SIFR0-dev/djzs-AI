@@ -346,6 +346,8 @@ export interface X402Env {
    * Typed off the library so a future drift is a compile error, not a 401 in production.
    */
   FACILITATOR_AUTH?: FacilitatorConfig["createAuthHeaders"];
+  /** MPP server secret (wrangler secret). Absent = MPP door closed; x402 unaffected. */
+  MPP_SECRET_KEY?: string;
 }
 
 /**
