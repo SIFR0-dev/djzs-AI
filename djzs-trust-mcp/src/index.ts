@@ -117,6 +117,7 @@ interface Env {
   DJZS_Q3_ANCHOR_KEY?: string
   /** CDP facilitator API key id (A10). SECRET, request-scoped. Absent => paid tool cannot settle. */
   CDP_API_KEY_ID?: string
+  MPP_SECRET_KEY?: string
   /** CDP facilitator API key secret (A10). SECRET, request-scoped. Never module-scope. */
   CDP_API_KEY_SECRET?: string
   /** Dedicated authorized-writer key for on-chain trust scores (Phase 3). SECRET. Absent => scoring skipped. */
@@ -1586,6 +1587,7 @@ app.all("/x402/verify_pm_trade", async (c) => {
   const x402Env: X402Env = {
     FACILITATOR_URL: env.FACILITATOR_URL ?? CDP_FACILITATOR_URL,
     FACILITATOR_AUTH: createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
+    MPP_SECRET_KEY: env.MPP_SECRET_KEY,
     ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
     BASE_RPC_URL: env.BASE_RPC_URL,
     EAS_RESOLVER_ADDRESS: env.EAS_RESOLVER_ADDRESS,
@@ -1621,6 +1623,7 @@ app.all("/x402/verify_perp_trade", async (c) => {
   const x402Env: X402Env = {
     FACILITATOR_URL: env.FACILITATOR_URL ?? CDP_FACILITATOR_URL,
     FACILITATOR_AUTH: createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
+    MPP_SECRET_KEY: env.MPP_SECRET_KEY,
     ATTESTER_KEY: env.DJZS_ATTESTER_KEY,
     BASE_RPC_URL: env.BASE_RPC_URL,
     EAS_RESOLVER_ADDRESS: env.EAS_RESOLVER_ADDRESS,
