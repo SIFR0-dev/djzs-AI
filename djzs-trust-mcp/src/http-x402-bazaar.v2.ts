@@ -608,7 +608,11 @@ async function run(
       mppPayer = (v.credential.payload as { from?: string }).from;
     } catch (e) {
       logFault("mpp.validate", e);
-      return json({ error: "payment_verification_failed", detail: "mpp_credential_invalid", terms: TERMS_URL }, 402);
+      {
+        const r = json({ error: "payment_verification_failed", detail: "mpp_credential_invalid", terms: TERMS_URL }, 402);
+        if (mppHeader) r.headers.set("WWW-Authenticate", mppHeader);
+        return r;
+      }
     }
   } else {
   try {
@@ -704,21 +708,25 @@ async function run(
   progress.settleStarted = true;
   let settle: SettleResult;
   if (hasMpp) {
-    try {
-      const receipt = await mppx!.broadcastCredential(MppCredential.fromRequest(request), { realm: MPP_REALM, request: { amount: MPP_PRICE_DISPLAY } });
-      settle = { success: true, transaction: receipt.reference, payer: mppPayer, network: NETWORK } as unknown as SettleResult;
-    } catch (e) {
-      logFault("mpp.settle", e, { payer: mppPayer, intent_hash });
-      return settlementUncertain({ payer: mppPayer, intent_hash, transaction: (e as { reference?: unknown })?.reference });
-    }
-  } else try {
+    // MPP credential already validated (HMAC, route binding, facilitator verify). Settle it on the
+    // SAME path as x402 so pending/uncertain semantics are decided in exactly one place. mppx's own
+    // broadcastCredential treats the facilitator's success:false+transaction (settlement_pending)
+    // as a failure and drops the hash; ours does not.
+    const p = mppValidation!.credential.payload as { from: string; to: string; value: string; validAfter: string; validBefore: string; nonce: string; signature: string };
+    payload = {
+      x402Version: 2,
+      accepted: reqs[0],
+      payload: { authorization: { from: p.from, to: p.to, value: p.value, validAfter: p.validAfter, validBefore: p.validBefore, nonce: p.nonce }, signature: p.signature },
+    } as unknown as ReturnType<typeof decodePaymentSignatureHeader>;
+  }
+  try {
     settle = await server.settlePayment(payload!, reqs[0], spec.extensions);
   } catch (e) {
     // settlePayment signals failure by THROWING (facilitator 4xx/5xx, timeout, unparseable
     // 200). The transfer may already be broadcast, so "settled:false" would be a claim
     // nobody can back (invariant 7).
-    logFault("x402.settle", e, { payer: verify!.payer, intent_hash });
-    return settlementUncertain({ payer: verify!.payer, intent_hash, transaction: (e as { transaction?: unknown })?.transaction });
+    logFault("x402.settle", e, { payer: verify?.payer ?? mppPayer, intent_hash });
+    return settlementUncertain({ payer: verify?.payer ?? mppPayer, intent_hash, transaction: (e as { transaction?: unknown })?.transaction });
   }
   if (!settle?.success) {
     // success:false WITH a transaction hash is the reference facilitator's settlement_pending
