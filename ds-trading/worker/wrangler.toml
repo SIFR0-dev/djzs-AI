@@ -1,0 +1,27 @@
+# ds-trading-worker — deterministic-signal.trading v1 (Kalshi lane)
+# Operator ruling 2026-08-21: custom domain gate.deterministic-signal.trading,
+# subdomain topology (never path-split); api. keeps serving the June app.
+# Deploys are Operator-run. Do NOT point this at dst-studio-worker.
+
+name = "ds-trading-worker"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# Explicit: declaring `routes` silently disables workers.dev unless this is
+# set (probed live on djzs-trust-mcp, error 1042 class). The workers.dev
+# alias stays as the cache-lag / deploy-verification probe surface.
+workers_dev = true
+
+routes = [
+  { pattern = "gate.deterministic-signal.trading", custom_domain = true },
+]
+
+[[d1_databases]]
+binding = "LEDGER"
+database_name = "ds-trading-ledger"
+database_id = "fadbdf1c-47ee-4c91-8cd1-4971c907ffad"
+
+[vars]
+# Read-only market-data host. Demo by default; the elections host is the
+# proven prod data host. BYO trading keys are Worker secrets, never vars.
+KALSHI_HOST = "https://demo-api.kalshi.co/trade-api/v2"
