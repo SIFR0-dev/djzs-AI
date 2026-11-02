@@ -559,7 +559,12 @@ async function run(
   let mppHeader: string | null = null;
   if (mppx) {
     try {
-      const r = await mppx.evm.charge({ amount: MPP_PRICE_DISPLAY, description: spec.description })(request.clone());
+      // NEVER pass the live request: mppx's route handler validates AND BROADCASTS a present
+      // credential. Probe with Authorization stripped (body kept so the challenge digest binds).
+      const probeHeaders = new Headers(request.headers);
+      probeHeaders.delete("Authorization");
+      const probe = new Request(request.clone(), { headers: probeHeaders });
+      const r = await mppx.evm.charge({ amount: MPP_PRICE_DISPLAY, description: spec.description })(probe);
       mppHeader = r.status === 402 ? r.challenge.headers.get("WWW-Authenticate") : null;
     } catch (e) { logFault("mpp.challenge", e); }
   }
@@ -602,10 +607,11 @@ async function run(
   let payload: ReturnType<typeof decodePaymentSignatureHeader> | undefined;
   let verify: Awaited<ReturnType<x402ResourceServer["verifyPayment"]>> | undefined;
   let mppPayer: string | undefined;
+  let mppValidation: Awaited<ReturnType<NonNullable<typeof mppx>["validateCredential"]>> | null = null;
   if (hasMpp) {
     try {
-      const v = await mppx!.validateCredential(MppCredential.fromRequest(request), { realm: MPP_REALM, request: { amount: MPP_PRICE_DISPLAY } });
-      mppPayer = (v.credential.payload as { from?: string }).from;
+      mppValidation = await mppx!.validateCredential(MppCredential.fromRequest(request), { realm: MPP_REALM, request: { amount: MPP_PRICE_DISPLAY } });
+      mppPayer = (mppValidation.credential.payload as { from?: string }).from;
     } catch (e) {
       logFault("mpp.validate", e);
       {
