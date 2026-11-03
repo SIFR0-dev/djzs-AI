@@ -48,7 +48,7 @@
     <div class="status">
       <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">MODE</span><span class="val">CONNECT · streamable HTTP at /mcp</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">PRICE</span><span class="val">verify_pm_trade 2.00 USDC via x402 · registry tools free</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">PRICE</span><span class="val">verify_pm_trade 2.00 USDC via x402 or MPP · registry tools free</span></div>
     </div>
     <p>Endpoint: <code>https://mcp.djzs.ai/mcp</code></p>
   </section>
@@ -120,12 +120,22 @@
   </section>
 
   <section id="pay">
-    <h2>Pay for the audit <span class="k">// step 03 · x402, 2.00 USDC, non-custodial</span></h2>
+    <h2>Pay for the audit <span class="k">// step 03 · x402 or MPP, 2.00 USDC, non-custodial</span></h2>
     <p><code>verify_pm_trade</code> is paid: 2.00 USDC per audit on Base mainnet over x402. An unpaid
-    call is refused with a payment-required error: no free tier, no API key. Payment is
+    call is refused with a payment-required error: no API key, no subscription (free verdicts live at
+    <a href="/try">/try</a>). Payment is
     non-custodial: your EIP-3009 signature moves USDC from your wallet directly to the DJZS treasury;
     the facilitator submits the transfer and pays the gas, so your wallet needs USDC only, no ETH.</p>
-    <p>The MCP-native payer path, exactly as the production parity instrument runs it:</p>
+    <p><span class="k">// mpp</span> Both paid routes (<code>verify_pm_trade</code>, <code>verify_perp_trade</code>) also accept a Machine
+    Payments Protocol credential. From a terminal, no code:</p>
+    <pre><code>npx mppx account create
+npx mppx account view   # send this address USDC on Base; confirm the balance on BaseScan (the view lists Tempo balances)
+npx mppx https://mcp.djzs.ai/x402/verify_perp_trade --protocol mpp \
+  -J '{"intent":{"instrument":"BTC-PERP","side":"LONG","leverage":5,"entry":78900,"stop_loss":76200,"take_profit":83000,"size_usd":3000,"venue":"Binance","thesis":"Funding reset after the weekend flush; 80K held on the daily close. Invalidation: daily close below 76,200."}}'</code></pre>
+    <p>One 402, one signed EIP-3009 authorization, one settlement through the same facilitator to the same
+    treasury. The 200 returns the verdict, <code>intent_hash</code>, the EAS attestation, <code>settlement_tx</code>,
+    and a <code>Payment-Receipt</code> header beside <code>PAYMENT-RESPONSE</code>. Settled on Base mainnet on 2026-11-02.</p>
+    <p>The MCP-native x402 payer path, exactly as the production parity instrument runs it:</p>
     <pre><code>import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import { withX402Client } from "agents/x402"

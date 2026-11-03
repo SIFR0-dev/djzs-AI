@@ -57,7 +57,7 @@
     <div class="status">
       <div class="row"><span class="ok">OK</span><span class="label">SYS_ID</span><span class="val">djzs-mainnet-01</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">ENGINE</span><span class="val">deterministic v2. Verdict is computed, not improvised.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">GATE</span><span class="val">verify_pm_trade · verify_perp_trade · LIVE · PAID 2.00 USDC each via x402 [MCP] [streamable-HTTP]</span></div>
+      <div class="row"><span class="ok">OK</span><span class="label">GATE</span><span class="val">verify_pm_trade · verify_perp_trade · LIVE · PAID 2.00 USDC each via x402 or MPP [MCP] [streamable-HTTP]</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">TAXONOMY</span><span class="val">DJZS-PM-v1.0 4/4 calibrated · DJZS-LF-v1.2 11 frozen / 4 live</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">LEDGER</span><span class="val">Irys mainnet. Every in-scope audit anchors a permanent ProofOfLogic certificate; readable via query_pol_certificates</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">RECEIPT</span><span class="val">EIP-712 intent_hash + EAS attestation on Base · extraction contract DJZS-X-v1.1 · recompute any receipt at <a href="/verify">djzs.ai/verify</a></span></div>
@@ -262,8 +262,8 @@ on-chain</code></pre>
     A DJZS PASS certifies well-formed reasoning at a moment, never that the narrative is
     true or the trade wins.</p>
     <p class="doctrine">The gate clears the logic; the position is yours.</p>
-    <p><span class="k">// status</span> Live on Base mainnet, payable over HTTP x402 at
-    <code>mcp.djzs.ai/x402/verify</code> (Bazaar-listed as <code>/x402/verify_pm_trade</code>). Integration posture for
+    <p><span class="k">// status</span> Live on Base mainnet, payable over HTTP x402 or MPP at
+    <code>mcp.djzs.ai/x402/verify_pm_trade</code> (<code>/x402/verify</code> is the x402-only legacy alias). Integration posture for
     framework builders and treasuries (Safe Guard, AgentKit) is on <a href="/builders">/builders</a>. Base MCP, MetaMask Agent Wallet, and x402-axios
     all speak this rail. The gate audits its own operation on the public record; the
     end-to-end wallet compositions remain the <strong>reference design</strong>.</p>
@@ -275,7 +275,7 @@ on-chain</code></pre>
     <p>Stated plainly:</p>
     <ul class="tight">
       <li><strong>The tools are paid.</strong> <code>verify_pm_trade</code> and <code>verify_perp_trade</code> each charge 2.00 USDC per audit
-      over x402 (the CDP facilitator) on Base mainnet. Payment is non-custodial: funds move from the
+      over x402 or MPP (one CDP facilitator settles both) on Base mainnet. Payment is non-custodial: funds move from the
       payer's wallet to the DJZS treasury directly via an EIP-3009 signature; the facilitator submits
       the transfer and pays the gas. The two registry tools (<code>query_pol_certificates</code>,
       <code>query_agent_trust</code>) stay free.</li>
@@ -311,14 +311,20 @@ on-chain</code></pre>
     <h2>Call it <span class="k">// two transports, one gate</span></h2>
     <p><strong>Probe it free.</strong> An unpaid request returns the payment challenge and settles
     nothing. This is the whole handshake, and it costs zero:</p>
-    <pre class="cert">curl -s -X POST https://mcp.djzs.ai/x402/verify \
+    <pre class="cert">curl -s -X POST https://mcp.djzs.ai/x402/verify_pm_trade \
   -H 'content-type: application/json' \
   -d '{"intent":"probe the payment challenge"}'</pre>
     <p>You get back <code>402</code> with the price, the network, and the address to pay:
     <code>exact</code> scheme, <code>eip155:8453</code>, 2.00 USDC, paid to the treasury. Sign the
-    authorization, retry, and the verdict comes back.</p>
-    <p><span class="k">// http x402</span> <code>POST mcp.djzs.ai/x402/verify</code>: any HTTP x402
+    authorization, retry, and the verdict comes back. The same 402 carries two challenges: x402 v2 in
+    the <code>PAYMENT-REQUIRED</code> header and MPP in <code>WWW-Authenticate: Payment</code> (evm/charge).
+    Pay with either. One settlement, one receipt.</p>
+    <p><span class="k">// http x402</span> <code>POST mcp.djzs.ai/x402/verify_pm_trade</code>: any HTTP x402
     client pays this: Base MCP, MetaMask Agent Wallet, x402-axios.<br>
+    <span class="k">// mpp</span> the same routes take a Machine Payments Protocol credential from any MPP client.
+    No code: <code>npx mppx https://mcp.djzs.ai/x402/verify_perp_trade --protocol mpp -J '{"intent":{...}}'</code>
+    from a wallet holding USDC on Base. Same facilitator, same treasury; the 200 adds <code>Payment-Receipt</code>
+    beside <code>PAYMENT-RESPONSE</code>.<br>
     <span class="k">// mcp</span> <code>mcp.djzs.ai/mcp</code>: streamable HTTP. Wrap your MCP client
     with <code>withX402Client</code> from <code>agents/x402</code>; other x402 clients complete the
     handshake against this server without settling.</p>
@@ -370,6 +376,13 @@ on-chain</code></pre>
     <a href="/llms.txt">/llms.txt</a> with the MCP endpoint and repository link. The gate is one
     install command away (see the hero above); the source of truth for every number on this page is
     the repository at <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a>.</p>
+    <p><span class="k">// two payment protocols</span> <code>verify_pm_trade</code> and <code>verify_perp_trade</code>
+    accept x402 v2 (<code>PAYMENT-SIGNATURE</code>) and MPP (<code>Authorization: Payment</code>, evm/charge, USDC on
+    Base 8453). Both settle through the same facilitator to the same treasury and return the same verdict,
+    <code>intent_hash</code>, <code>settlement_tx</code> and EAS attestation. The MPP offer is listed in
+    <a href="https://mcp.djzs.ai/openapi.json">openapi.json</a> under <code>x-payment-info.offers</code> and in
+    <a href="https://mcp.djzs.ai/.well-known/agent-card.json">agent-card.json</a>. <code>/x402/verify</code>
+    (legacy alias) is x402-only.</p>
     <p><span class="k">// reference integration</span> A working client is published at
     <a href="https://github.com/SIFR0-dev/djzs-pm-gate">djzs-pm-gate</a>: it audits a
     Polymarket or Kalshi trade thesis and creates the order only on a clean in-scope PASS. It uses

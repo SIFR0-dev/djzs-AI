@@ -28,6 +28,12 @@
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
   network "base", and maxPaymentValue 2000000n; the library's default cap is 0.10 USDC and
   refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
+- MPP (Machine Payments Protocol), live 2026-11-01: verify_pm_trade and verify_perp_trade also accept an MPP
+  credential. The 402 carries WWW-Authenticate: Payment (method evm, intent charge, USDC on Base 8453,
+  2000000 atomic) beside PAYMENT-REQUIRED. No-code client: npx mppx https://mcp.djzs.ai/x402/verify_perp_trade
+  --protocol mpp -J '{"intent":{...}}' from a wallet holding USDC on Base. Same facilitator, same treasury,
+  same verdict and receipt; the 200 adds a Payment-Receipt header. /x402/verify (legacy alias) is x402-only.
+  The offer is listed in https://mcp.djzs.ai/openapi.json (x-payment-info.offers).
 - Free verdicts (2026-09-28): POST https://mcp.djzs.ai/try/verdict runs the same engine without
   payment or attestation, 5 per wallet per UTC day. The caller signs an EIP-191 text naming its
   address, the UTC day and the intent's sha256 (fetch the exact text from GET https://mcp.djzs.ai/try/quota).
@@ -59,7 +65,7 @@
 
 ## Live posture (stated honestly)
 
-- verify_pm_trade and verify_perp_trade are PAID: 2.00 USDC per audit over x402 (CDP facilitator) on Base mainnet,
+- verify_pm_trade and verify_perp_trade are PAID: 2.00 USDC per audit over x402 or MPP (one CDP facilitator) on Base mainnet,
   non-custodial (payer -> treasury via EIP-3009; the facilitator submits the transfer and pays gas).
   The registry tools (query_pol_certificates, query_agent_trust) are free.
 - Certificates anchor to Irys MAINNET and are permanent; retrievable by id and via

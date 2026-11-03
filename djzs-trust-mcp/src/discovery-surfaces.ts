@@ -90,7 +90,7 @@ const PRICE_HUMAN = `${PRICE_USD.toFixed(2)} USDC`;
 function llmsTxt(): string {
   return `# ${SERVICE_NAME}
 
-> Deterministic adversarial logic audit for prediction-market trade intents. Paid per call over x402 (${PRICE_HUMAN} on Base). Out-of-scope requests are refused WITHOUT CHARGE. Audit, not advice.
+> Deterministic adversarial logic audit for prediction-market trade intents. Paid per call over x402 or MPP (${PRICE_HUMAN} on Base). Out-of-scope requests are refused WITHOUT CHARGE. Audit, not advice.
 
 Submit a trade intent; receive a verdict — PASS, WAIT, or FAIL — with a risk score, defect flags, a hash of the submitted intent, and an on-chain Proof-of-Logic receipt. A detection layer reads the intent, a deterministic TypeScript layer decides. One scope check governs both transports, so the MCP tool and the HTTP endpoint cannot drift apart.
 
@@ -100,6 +100,7 @@ The gate audits the internal logic of what you submitted. It does not predict wh
 
 - [POST /x402/verify_pm_trade](${RESOURCE_URL}): Adversarial audit of one prediction-market trade intent. ${PRICE_HUMAN}, x402 exact scheme, network ${NETWORK}, asset USDC (${USDC_BASE}), paid to ${PAY_TO}. Body: {"intent":{"market","side","thesis","probability_basis","size_usd","bounds"}}. Unpaid requests receive a 402 challenge carrying the full input schema.
 - [POST /x402/verify_perp_trade](${PERP_RESOURCE_URL}): Adversarial audit of one perpetual or spot TRADE intent (direction, size, leverage, entry, stop, target, venue, and the reason). Same price and rail: 2.00 USDC, x402 exact scheme, network eip155:8453. Body: {"intent":{"instrument","side","thesis","leverage","entry","stop_loss","take_profit","invalidation","size_usd","venue","data_sources"}}; instrument, side, and thesis are required. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets sent here are refused without charge. Ruleset DJZS-LF-v1.2, four codes live (E01, I01, X01, S01).
+- Two payment protocols on the two routes above, one 402: x402 v2 (PAYMENT-REQUIRED header, PAYMENT-SIGNATURE credential) and MPP (WWW-Authenticate: Payment challenge, Authorization: Payment credential; method evm, intent charge, currency USDC ${USDC_BASE}, amount ${PRICE_ATOMIC} atomic, chain 8453). One settlement path, the CDP facilitator to ${PAY_TO}; the MPP 200 adds a Payment-Receipt header beside PAYMENT-RESPONSE. No-code client: npx mppx ${PERP_RESOURCE_URL} --protocol mpp -J '{"intent":{...}}'. Settled on Base mainnet 2026-11-02. The legacy alias /x402/verify is x402-only.
 
 ## Free endpoint
 
@@ -113,9 +114,9 @@ The gate audits the internal logic of what you submitted. It does not predict wh
 
 ## How the money behaves
 
-- Unpaid request -> HTTP 402 with a signed-payment challenge. No body required.
+- Unpaid request -> HTTP 402 carrying both challenges, x402 (PAYMENT-REQUIRED) and MPP (WWW-Authenticate: Payment). No body required.
 - Payment verifies but the intent is out of scope -> refusal returned, settlement never executed, no funds move. This is structural, not discretionary: the settle call is unreachable on the refusal path.
-- Payment verifies and the intent is in scope -> settlement first, then the audit, then the verdict with a PAYMENT-RESPONSE receipt header.
+- Payment verifies and the intent is in scope -> settlement first, then the audit, then the verdict with a PAYMENT-RESPONSE receipt header (plus Payment-Receipt when the credential was MPP).
 
 ## Receipts
 
@@ -319,6 +320,20 @@ function agentCard(): unknown {
       resource: RESOURCE_URL,
       resources: [RESOURCE_URL, PERP_RESOURCE_URL],
       termsOfService: TERMS_URL,
+      alsoAccepts: [
+        {
+          protocol: "mpp",
+          method: "evm",
+          intent: "charge",
+          chainId: 8453,
+          currency: USDC_BASE,
+          amount: PRICE_ATOMIC,
+          challengeHeader: "WWW-Authenticate: Payment",
+          credentialHeader: "Authorization: Payment",
+          receiptHeader: "Payment-Receipt",
+          resources: [RESOURCE_URL, PERP_RESOURCE_URL],
+        },
+      ],
     },
   };
 }
@@ -373,7 +388,7 @@ code{color:var(--accent);font-size:12.5px}
 </head>
 <body>
 <div class="boot"><b>// SYS_ID:</b> DJZS_AUDIT_GATE
-<b>// PROTOCOL:</b> x402 v2 · exact · ${NETWORK}
+<b>// PROTOCOL:</b> x402 v2 · exact · ${NETWORK} · MPP evm/charge
 <b>// PRICE:</b> ${PRICE_HUMAN} per audit
 <b>// STATUS:</b> LIVE</div>
 
@@ -388,7 +403,7 @@ code{color:var(--accent);font-size:12.5px}
 <section>
 <h2>How to call it</h2>
 <p><code>POST ${RESOURCE_URL}</code></p>
-<p>An unpaid request returns HTTP 402 with the full payment challenge and input schema — no body required. Pay with any x402 v2 exact-scheme client on Base and retry.</p>
+<p>An unpaid request returns HTTP 402 with the full payment challenge and input schema — no body required. Pay with any x402 v2 exact-scheme client, or any MPP client (mppx), on Base and retry.</p>
 </section>
 
 <section>

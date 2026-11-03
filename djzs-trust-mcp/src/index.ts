@@ -40,7 +40,7 @@ import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRU
 import { logFault, reasonCode, addressOnly, hash32Only, type Fault } from "./safe-error"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
-import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, type X402Env } from "./http-x402-bazaar.v2"
+import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, USDC_BASE, EXPECTED_ATOMIC_AMOUNT, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
 import { handleTryExample, handleTryQuota, handleTryVerdict } from "./try-route"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
@@ -1386,6 +1386,33 @@ const OPENAPI_DOC = {
       summary: "Audit a prediction-market trade thesis (canonical path; /x402/verify is the legacy alias)",
     },
   };
+}
+// 2026-11-02: MPP (Machine Payments Protocol) is accepted on the two verdict routes beside x402.
+// mpp.dev discovery convention: x-payment-info.offers[] per paid operation and x-service-info.docs.llms at the
+// root. The runtime 402 is authoritative; this is advisory. /x402/verify (legacy alias) stays x402-only.
+{
+  const doc = OPENAPI_DOC as unknown as Record<string, unknown>
+  doc["x-service-info"] = {
+    categories: ["trading", "audit", "ai"],
+    docs: { homepage: "https://djzs.ai", apiReference: "https://mcp.djzs.ai/openapi.json", llms: "/llms.txt" },
+  }
+  const paths = OPENAPI_DOC.paths as unknown as Record<string, { post: Record<string, unknown> }>
+  const mppOffer = {
+    amount: EXPECTED_ATOMIC_AMOUNT,
+    currency: USDC_BASE,
+    description: "One audit. USDC on Base (chain 8453), EIP-3009 authorization, settled through the same facilitator as x402.",
+    intent: "charge",
+    method: "evm",
+  }
+  for (const p of ["/x402/verify_pm_trade", "/x402/verify_perp_trade"]) {
+    const post = paths[p].post
+    const info = (post["x-payment-info"] as Record<string, unknown> | undefined) ?? {}
+    post["x-payment-info"] = { ...info, protocols: [{ x402: {} }, { mpp: { method: "evm", intent: "charge" } }], offers: [mppOffer] }
+    post["responses"] = {
+      ...(post["responses"] as Record<string, unknown>),
+      "402": { description: "Payment challenge, two protocols on one response: x402 v2 (PAYMENT-REQUIRED header and JSON body) and MPP (WWW-Authenticate: Payment, evm/charge). Pay with either; one settlement." },
+    }
+  }
 }
 app.get("/openapi.json", (c) => c.json(OPENAPI_DOC))
 
