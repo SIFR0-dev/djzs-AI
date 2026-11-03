@@ -32,7 +32,7 @@
 
 import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
 import { Mppx, evm } from "mppx/server";
-import { Credential as MppCredential } from "mppx";
+import { Credential as MppCredential, Receipt as MppReceipt } from "mppx";
 import {
   decodePaymentSignatureHeader,
   encodePaymentRequiredHeader,
@@ -799,12 +799,12 @@ async function run(
     }
     // 5 — verdict + settlement evidence.
     return new Response(
-      JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: schemaUIDFor(env.EAS_RESOLVER_ADDRESS), ...(eas_error ? { eas_error } : {}), charged: true, terms: TERMS_URL }),
+      JSON.stringify({ ...result, intent_hash, eas_uid, eas_tx, eas_schema: schemaUIDFor(env.EAS_RESOLVER_ADDRESS), ...(eas_error ? { eas_error } : {}), charged: true, settlement_tx: (settle as { transaction?: string }).transaction ?? null, terms: TERMS_URL }),
       {
         status: 200,
         headers: {
           "content-type": "application/json",
-          ...paymentResponseHeaders(settle),
+          ...paymentResponseHeaders(settle, hasMpp),
           ...CORS_BASE,
         },
       },
@@ -868,12 +868,17 @@ function auditError(settle: SettleResult, detail: Fault): Response {
  * loses the verdict, so an encoding failure omits the header (on AUDIT_ERROR the tx is
  * also in the body; the 200 verdict body does not carry it).
  */
-function paymentResponseHeaders(settle: SettleResult): Record<string, string> {
-  try {
-    return { "PAYMENT-RESPONSE": encodePaymentResponseHeader(settle) };
-  } catch {
-    return {};
+function paymentResponseHeaders(settle: SettleResult, viaMpp = false): Record<string, string> {
+  const h: Record<string, string> = {};
+  try { h["PAYMENT-RESPONSE"] = encodePaymentResponseHeader(settle); } catch { /* verdict outranks the header */ }
+  if (viaMpp) {
+    // MPP clients read Payment-Receipt; x402 clients read PAYMENT-RESPONSE. Same settlement, both headers.
+    try {
+      const tx = (settle as { transaction?: string }).transaction;
+      if (tx) h["Payment-Receipt"] = MppReceipt.serialize({ method: "evm", reference: tx, status: "success", timestamp: new Date().toISOString() });
+    } catch { /* same rule */ }
   }
+  return h;
 }
 
 function json(obj: unknown, status: number): Response {

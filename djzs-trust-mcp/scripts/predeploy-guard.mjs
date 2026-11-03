@@ -39,6 +39,11 @@
  */
 import { execFileSync } from "node:child_process"
 
+// Types must be green: a clean tree can still be a wrong tree (three red-tsc deploys, 2026-11-01).
+import { execSync as __tsc } from "node:child_process";
+try { __tsc("npx tsc --noEmit", { stdio: "inherit" }); } catch { console.error("[predeploy-guard] REFUSED: tsc --noEmit failed"); process.exit(1); }
+
+
 const TAG = "[predeploy-guard]"
 const say = (m) => console.error(`${TAG} ${m}`)
 
