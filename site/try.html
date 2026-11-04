@@ -79,7 +79,7 @@
         <button class="btn ghost" id="clear">Clear</button>
         <span class="log" id="run-log"></span>
       </div>
-      <p class="why" id="kind-line">Auditing a prediction-market bet. <a href="#" id="kind-toggle">Auditing a perp or spot trade instead?</a></p>
+      <p class="why" id="kind-line">Auditing a prediction-market bet. <a href="#" id="kind-toggle">Auditing a perp trade, on Hyperliquid or any venue, instead?</a></p>
     </div>
   </section>
 
@@ -197,8 +197,8 @@ $("kind-line").addEventListener("click", (e) => {
   state.kind = state.kind === "pm" ? "perp" : "pm";
   $("cmd").textContent = `audit --free --${state.kind}`;
   $("kind-line").innerHTML = state.kind === "pm"
-    ? `Auditing a prediction-market bet. <a href="#" id="kind-toggle">Auditing a perp or spot trade instead?</a>`
-    : `Auditing a perp or spot trade. Say the instrument, long or short, entry, stop, leverage, venue, and the reason the price should move. <a href="#" id="kind-toggle">Back to prediction markets</a>`;
+    ? `Auditing a prediction-market bet. <a href="#" id="kind-toggle">Auditing a perp trade, on Hyperliquid or any venue, instead?</a>`
+    : `Auditing a perp or spot trade. Say the instrument, long or short, entry, stop, leverage, venue (for example Hyperliquid), and the reason the price should move. <a href="#" id="kind-toggle">Back to prediction markets</a>`;
 });
 
 // ── the real example. Fetched from the worker, which reads the venue's live price. If that fails, a dated snapshot, never a guess.
