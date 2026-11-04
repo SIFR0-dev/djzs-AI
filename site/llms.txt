@@ -19,6 +19,8 @@
   stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01); an unresolvable stop or
   thesis WAITs. Prediction-market bets are refused here (in_scope:false, not charged); use verify_pm_trade.
   The two tools run separate extraction contracts (X-v1.1 for PM, X-LF-v1.2 for trades); see /ruleset.
+  Hyperliquid perps: name the venue in the intent. The audit covers the stated reasoning (thesis, stop,
+  leverage, data sources); it does not read the venue's live price, funding or liquidation data.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
   `query_agent_trust` (LIVE: on-chain trust score read from the DJZS subgraph: totalAudits,
@@ -61,7 +63,7 @@
 ## Taxonomies (frozen)
 
 - DJZS-M (prediction market, DJZS-PM-v1.0): M01-M04, weights sum 100, FAIL threshold 25. All live.
-- DJZS-LF (perpetuals, DJZS-LF-v1.1): 11 codes, weights sum 200, 3 wired live (X01, E01, I01).
+- DJZS-LF (perpetuals, DJZS-LF-v1.2): 11 codes, weights sum 200, 4 wired live (E01, I01, X01, S01).
 
 ## Live posture (stated honestly)
 
