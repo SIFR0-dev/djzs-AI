@@ -174,7 +174,7 @@ function page(f, err) {
 <body>
 <div class="wrap">
   <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try">try</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan" aria-current="page">scan</a><a href="/guide">connect &rarr;</a></nav>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try">try</a><a href="/present">ask</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan" aria-current="page">scan</a><a href="/guide">connect &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/scan</span> $ <span id="cmd">tail -f ledger.jsonl</span><span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Scan Room <span style="color:var(--muted);font-weight:500">public ledger</span></h1>
     <div class="boot">${boot}

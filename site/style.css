@@ -132,6 +132,7 @@ code { font-family: var(--mono); font-size: 0.88em; color: var(--text); }
   letter-spacing: 0.1em; font-size: 0.8rem; color: var(--pass); border: 1px solid var(--pass);
   border-radius: 0; padding: 0.5rem 0.95rem; }
 .btn:hover { background: var(--pass); color: var(--canvas); text-decoration: none; }
+p.cta { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
 /* tables (wrapped in .table-wrap so 6-column taxonomies scroll instead of clipping on mobile) */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }

@@ -19,7 +19,7 @@
   a{color:var(--pass);text-decoration:none}a:hover{background:var(--pass);color:var(--canvas)}::selection{background:var(--pass);color:var(--canvas)}
   header{border-bottom:1px solid var(--rule);padding-bottom:20px;margin-bottom:22px}
   nav.site{display:flex;flex-wrap:wrap;gap:0 1.1rem;margin:0 0 1.1rem;text-transform:uppercase;letter-spacing:.12em;font-size:.72rem}
-  nav.site a{color:var(--muted);border-bottom:1px solid transparent}nav.site a:hover{color:var(--text);background:transparent}nav.site a.home{color:var(--text)}
+  nav.site a{color:var(--muted);border-bottom:1px solid transparent}nav.site a:hover{color:var(--text);background:transparent}nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--pass)}nav.site a.home{color:var(--text)}
   .path{color:var(--muted);font-size:13px;margin:0 0 16px}.path .p{color:var(--pass);font-weight:700}
   .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
   h1{font-size:clamp(19px,3.4vw,26px);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}.wordmark{color:var(--base);font-weight:800}
@@ -60,7 +60,7 @@
 <body>
 <div class="wrap">
   <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try">try</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan">scan</a><a href="/guide">connect &rarr;</a></nav>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try">try</a><a href="/present" aria-current="page">ask</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan">scan</a><a href="/guide">connect &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/present</span> $ talk --to the-presenter<span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Ask the presenter<span class="tag">AI PRESENTER</span></h1>
     <div class="boot">
