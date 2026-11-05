@@ -20,3 +20,9 @@
   Cache-Control: public, max-age=3600, must-revalidate
 /fonts.css
   Cache-Control: public, max-age=86400
+/present
+  ! Permissions-Policy
+  Permissions-Policy: geolocation=(), payment=(), usb=()
+/present.html
+  ! Permissions-Policy
+  Permissions-Policy: geolocation=(), payment=(), usb=()
