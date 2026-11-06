@@ -52,6 +52,7 @@
   .cell p{margin:0;color:var(--muted);font-size:13px} .cell p b{color:var(--text);font-weight:700}
   .cell .price{display:block;margin-top:10px;color:var(--text);font-weight:800;font-size:13px}
   .cell .price span{color:var(--muted);font-weight:400}
+  .cell .price + .price{margin-top:4px}
   .cell .fail{color:var(--fail);font-weight:700} .cell .pass{color:var(--pass);font-weight:700}
 
   pre{background:#080808;border:1px solid var(--rule);border-radius:0;padding:14px 16px;overflow:auto;font-size:12px;line-height:1.6;margin-top:12px}
@@ -82,43 +83,59 @@
     <p class="path"><span class="p">~/djzs/build</span> $ cat offer.txt<span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Make your API callable and payable by AI agents.</h1>
     <div class="boot">
-      <div class="row"><span class="ok">OK</span><span class="k">FOR</span><span class="v">API owners · SaaS founders · Base ecosystem projects · any business an agent should be able to find and pay</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">FOR</span><span class="v">API owners · SaaS founders · Base ecosystem projects · operators running bot order flow · any business an agent should be able to find and pay</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">DELIVER</span><span class="v">an MCP server, an x402 payment gate on Base, discovery files agents actually read, a receipt anyone can recompute</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">TERMS</span><span class="v">fixed scope · fixed price · half up front · source lands in your repo · you hold every key</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">PROOF</span><span class="v">this exact stack is live at mcp.djzs.ai: two paid tools, settled on Base mainnet since 2026-07-13</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">TERMS</span><span class="v">fixed scope · fixed price · half up front · four acceptance checks · 30-day defect window · source lands in your repo · you hold every key</span></div>
+      <div class="row"><span class="ok">OK</span><span class="k">PROOF</span><span class="v">this exact stack is live at mcp.djzs.ai: x402 settlement on Base mainnet since 2026-07-16 · receipts since 2026-09-01 · second paid tool since 2026-09-08</span></div>
     </div>
     <p class="lede">Agents are already paying for API calls with USDC over x402. Most APIs cannot receive that payment: no MCP surface, no 402 challenge, no discovery file, no receipt. <b>I build the missing layer in two weeks, at a fixed price, from a stack I have already run in production on my own domain.</b> You get the code, the keys, and the runbook. I get out of the way.</p>
   </header>
 
   <section>
-    <h2>What gets built <span class="sub">three fixed-scope packages, one retainer</span></h2>
+    <h2>What gets built <span class="sub">start with the audit · four fixed-scope packages · one retainer</span></h2>
     <div class="grid">
-      <div class="cell"><h3>Agent-ready API</h3><p>Your existing endpoints wrapped as an MCP server on Cloudflare Workers, an x402 v2 paywall in front of the routes you choose (USDC on Base, CDP facilitator, funds settle payer → your wallet), <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, Bazaar listing submitted. Deploy runbook included.<span class="price">$3,500 <span>· 10 working days · one paid route; +$600 per additional route</span></span></p></div>
-      <div class="cell"><h3>Receipt layer</h3><p>Every paid response carries an EIP-712 hash of the request and an EAS attestation on Base under your own schema, from an attester wallet you control. Plus a static verifier page so a customer, a court, or a DAO can recompute the receipt without trusting you.<span class="price">$2,500 <span>· 5 working days · add-on to Agent-ready API, or standalone on an API that already exists</span></span></p></div>
+      <div class="cell"><h3>Agent-readiness audit</h3><p>I run the probe script I use on my own domain against yours: 402 challenge, discovery files, agent card, MCP tools list, marketplace index status. You get the gap list, the scope sheet filled in, and a fixed quote. The first thing you pay for is a decision, not a build.<span class="price">$450 <span>· 3 working days · no code · credited against any build started within 30 days</span></span></p></div>
+      <div class="cell"><h3>Agent-ready API</h3><p>Your existing endpoints wrapped as an MCP server on Cloudflare Workers, an x402 v2 paywall in front of the routes you choose (USDC on Base, CDP facilitator, funds settle payer → your wallet), <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, Bazaar listing submitted. Deploy runbook included.<span class="price">$7,500 <span>· 10 working days · one paid route; +$750 per additional route</span></span><span class="price">founding rate $3,500 <span>· first three clients · 3 of 3 remaining · terms below</span></span></p></div>
+      <div class="cell"><h3>Receipt layer</h3><p>Every paid response carries an EIP-712 hash of the request and an EAS attestation on Base under your own schema, from an attester wallet you control. Plus a static verifier page so a customer, a court, or a DAO can recompute the receipt without trusting you. The part almost nobody else ships.<span class="price">$4,500 <span>· 5 working days · standalone on an API that already exists · $3,000 as an add-on to the Agent-ready API ($10,500 together)</span></span><span class="price">founding rate $2,500 <span>· first three clients</span></span></p></div>
+      <div class="cell"><h3>Gate integration</h3><p>For operators: your bot already places orders on a prediction market or a perp venue. I wire the DJZS gate between the proposal and the order. The thesis is audited before the order fires, WAIT or FAIL halts it, and anything above a size you set waits for a human. Scoped from your own record: the last order the bot should not have placed, and what it cost.<span class="price">fixed fee <span>· quoted from your transcript on the Day 0 call · plus 2.00 USDC per audited order on the live gate</span></span></p></div>
       <div class="cell"><h3>Business manifest</h3><p>For a physical or local business: a signed <code class="inl">/.well-known/sifr0.json</code> (services, prices, hours, booking method, policies) so an agent shopping on a customer's behalf can find you, quote you, and act. Includes registry listing at sifr0.dev and one revision.<span class="price">$400 <span>· 3 working days · no code on your side</span></span></p></div>
-      <div class="cell"><h3>Keep-alive</h3><p>Monthly: dependency and Worker-runtime updates, facilitator and schema changes tracked, discovery files re-validated against the current x402 spec, a health probe with alerts, and one hour of changes. Cancel any month.<span class="price">$600 / month <span>· starts after delivery · optional</span></span></p></div>
+      <div class="cell"><h3>Keep-alive</h3><p>Every month, whether or not traffic has arrived: one settled probe call to your paid route, so the marketplace index never drops you for idleness (resources idle for 30 days are evicted); a receipt page with your 402s served, settlements with tx hashes, discovery validation and index status; dependency and Worker-runtime updates; facilitator and schema changes tracked; a health probe with alerts; one hour of changes. Cancel any month.<span class="price">$600 / month <span>· first 30 days included with every build · billing starts when the defect window closes</span></span></p></div>
     </div>
+<pre><span class="c">DEPOSIT</span>     50% on the signed scope sheet · USDC on Base (address on the sheet) or invoice
+            balance invoiced on acceptance
+<span class="c">ACCEPTANCE</span>  four checks, run with you on Day 10, your secrets set per the runbook:
+            1. an unpaid call returns a valid 402 challenge
+            2. one paid call settles to YOUR wallet, tx hash recorded
+            3. tools/list answers from the production URL
+            4. every discovery file returns 200 and validates
+            all four true: balance invoiced · any one false: not invoiced until it is true
+<span class="c">DEFECTS</span>     30 days from acceptance · anything that breaks one of the four checks is fixed free
+<span class="c">FOUNDING</span>    first three clients: $3,500 Agent-ready API · $2,500 Receipt layer · 3 of 3 remaining
+            in exchange for a named case study, your probe log published on this page, and a quote
+            the standard price is printed beside it so the discount reads as what it is</pre>
     <p class="coda">Scope is written before money moves. Anything not on the scope sheet is a second engagement, not a surprise.</p>
   </section>
 
   <section>
     <h2>Why this builder <span class="sub">every line of this has shipped on this domain</span></h2>
     <div class="ladder">
-      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Paid MCP tools over x402 on Base mainnet.</b> <code class="inl">verify_pm_trade</code> and <code class="inl">verify_perp_trade</code> at 2.00 USDC each, non-custodial EIP-3009 settlement, out-of-scope requests refused free. An unpaid request returns the 402 challenge and settles nothing. Try it: <code class="inl">GET https://mcp.djzs.ai/x402/verify_pm_trade</code>.</span></div>
+      <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Paid MCP tools over x402 on Base mainnet.</b> <code class="inl">verify_pm_trade</code> settling since 2026-07-16 and <code class="inl">verify_perp_trade</code> since 2026-09-08, 2.00 USDC each, non-custodial EIP-3009 settlement, out-of-scope requests refused free. An unpaid request returns the 402 challenge and settles nothing. Try it: <code class="inl">GET https://mcp.djzs.ai/x402/verify_pm_trade</code>.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Receipts a third party can recompute.</b> EIP-712 <code class="inl">intent_hash</code> plus an EAS attestation on Base from a dedicated attester, on every paid verdict since 2026-09-01. Recompute any of them at <a href="https://djzs.ai/verify">djzs.ai/verify</a>.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Discovery surfaces agents read.</b> <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, verified Base app registration, all on this site, all free to inspect.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Pre-registered, published test discipline.</b> Exhaustive engine sweeps in CI, extraction-stability harnesses with the raw runs committed, a ruleset page that reports the measured band instead of the best run. Read it at <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a>. You will get the same honesty about your build.</span></div>
-      <div class="rung wait"><span class="verdict">HONEST</span><span class="d"><b>What I cannot promise.</b> That agents will find you on day one. Bazaar indexing is slow and inconsistent; I have the scan logs to prove it. I build the surfaces correctly, submit the listing, and hand you the probe script. Traffic is a distribution problem you and I solve after the plumbing exists.</span></div>
+      <div class="rung wait"><span class="verdict">HONEST</span><span class="d"><b>What I cannot promise.</b> That agents will find you on day one. Bazaar indexing is slow and inconsistent, and it drops resources that sit idle for 30 days; I have the scan logs to prove both. I build the surfaces correctly, submit the listing, hand you the probe script, and keep-alive keeps you indexed. Traffic is a distribution problem you and I solve after the plumbing exists.</span></div>
     </div>
   </section>
 
   <section>
-    <h2>How an engagement runs <span class="sub">two weeks, four checkpoints</span></h2>
-<pre><span class="c">DAY 0</span>   30-minute call · I read your API · scope sheet written and signed · 50% invoiced
+    <h2>How an engagement runs <span class="sub">two weeks, four checkpoints, a 30-day defect window</span></h2>
+<pre><span class="c">DAY -3</span>  optional readiness audit · probe script run against your domain · gap list, scope sheet, fixed quote
+<span class="c">DAY 0</span>   30-minute call · I read your API · scope sheet written and signed · 50% invoiced
 <span class="c">DAY 3</span>   MCP server on a staging Worker · you call it from Claude or Cursor · nothing paid yet
 <span class="c">DAY 7</span>   x402 gate live on staging · first 402 challenge · first USDC settles to YOUR wallet, not mine
 <span class="c">DAY 10</span>  production deploy from your Cloudflare account · discovery files live · runbook + probe script
-        · remaining 50% invoiced · keys were yours the whole time</pre>
+        · four acceptance checks run with you · remaining 50% invoiced · keys were yours the whole time
+<span class="c">DAY 40</span>  defect window closes · keep-alive billing starts if you keep it · first monthly receipt page</pre>
     <p>Source is committed to a repo you own. Secrets are set in your Cloudflare account by you, from the runbook. I never hold a wallet key, an API key, or a deploy token past the call where you type it in.</p>
     <p class="coda">You hold every key. That is not a courtesy, it is the design.</p>
   </section>
@@ -134,6 +151,10 @@
 <pre>1. What the API does, in one sentence.
 2. Who should be able to call it (humans, your own agents, anyone's agents).
 3. When you need it live.</pre>
+    <p>Operators running bot order flow, three different lines:</p>
+<pre>1. What the bot trades, on which venue, roughly how often.
+2. How you stop a bad order before it fires today.
+3. The last time that failed, and what it cost.</pre>
     <p>You get a yes-or-no on fit within one working day and a scope sheet within three. Two engagements open at a time; the page says so here when both are taken.</p>
     <a class="btn" href="https://x.com/Djzs_ai">Send the three lines</a>
     <p class="coda">Plumbing first. Then the traffic.</p>

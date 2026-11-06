@@ -59,6 +59,7 @@
 - Recompute any receipt with zero trust in DJZS: https://djzs.ai/verify
 - Scoring rules, verdict formula, both binding contracts: https://djzs.ai/ruleset
 - For agent-framework builders and treasuries (Safe Guard / AgentKit posture): https://djzs.ai/builders
+- For API owners who want their own endpoints agent-payable (fixed-fee build of this same stack): https://djzs.ai/build
 
 ## Taxonomies (frozen)
 
