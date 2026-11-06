@@ -9,11 +9,16 @@ not exist.
 
 | Path | Auth | What it does |
 | --- | --- | --- |
-| `https://mcp.djzs.ai/mcp` | x402, 2.00 USDC | MCP streamable-HTTP. `verify_pm_trade` is the paid tool. |
-| `https://mcp.djzs.ai/x402/verify` | x402, 2.00 USDC | Same gate for plain HTTP x402 clients. |
+| `https://mcp.djzs.ai/mcp` | x402, 2.00 USDC | MCP streamable-HTTP. Two paid tools: `verify_pm_trade` and `verify_perp_trade`. |
+| `POST https://mcp.djzs.ai/x402/verify_pm_trade` | x402, 2.00 USDC | The canonical prediction-market route, for plain HTTP x402 clients. 120-second offer window. |
+| `POST https://mcp.djzs.ai/x402/verify_perp_trade` | x402, 2.00 USDC | Perpetual and spot trades. 120-second offer window. Prediction-market bets are refused without charge. |
+| `POST https://mcp.djzs.ai/x402/verify` | x402, 2.00 USDC | Legacy alias of `/x402/verify_pm_trade`. 300-second offer window. Takes a string `intent` (10+ characters); the canonical routes take an object. |
 | `https://mcp.djzs.ai/health/x402` | free | Payment config: network, facilitator, advertised chain. |
 | `https://mcp.djzs.ai/health/writer` | free | Trust-writer authorization state. |
 | `https://mcp.djzs.ai/openapi.json` | free | Machine-readable contract. |
+
+The offer window is `maxTimeoutSeconds` in the 402 challenge: how long a signed
+payment authorization stays valid. Read it from the live challenge.
 
 **There is no unpaid audit route.** Not a dry-run, not a preview, not a sandbox.
 If you need one, the honest answer to the user is that it does not exist.
@@ -32,16 +37,28 @@ pinned to a lower cap refuses loudly instead of paying more.
 
 ## Free refusal
 
-An out-of-scope submission runs the full engine and settles **nothing**.
-`verify_pm_trade` is prediction-markets only; a spot, perp or equities thesis is
-refused without charge, proven on chain by balance deltas
-(`djzs-trust-mcp/test/x402-roundtrip.mjs`, 25/25).
+An out-of-scope submission settles **nothing**: the scope check runs before
+settlement. The two canonical routes state their own scope in their 402
+descriptions:
 
-A refusal returns no verdict. It is not a probe and must never be used as one.
+- `verify_pm_trade`: "Out-of-scope requests are refused WITHOUT CHARGE." A spot,
+  perp or equities thesis is out of scope.
+- `verify_perp_trade`: "Prediction-market bets are refused WITHOUT CHARGE."
+
+**What is proven on chain, and for which route.** One route only:
+`djzs-trust-mcp/test/x402-roundtrip.mjs` (25/25, balance deltas on Base Sepolia)
+tests the legacy `POST /x402/verify` path and nothing else. It does not call
+`/x402/verify_pm_trade` or `/x402/verify_perp_trade`. So each canonical route's
+free refusal rests only on its own 402 description above, and the perp route's
+free refusal has no on-chain proof.
+
+A refusal returns no audit verdict. On the canonical routes it arrives as HTTP
+200 with `verdict: "REFUSED_SCOPE"` and `charged: false`; on the legacy route as
+HTTP 402 `OUT_OF_SCOPE`. It is not a probe and must never be used as one.
 
 ## What comes back
 
-`verdict` ∈ `PASS | WAIT | FAIL`, and `action` ∈ `PROCEED | HALT`. **These are
+`verdict` ∈ `PASS | WAIT | FAIL`, and `action` ∈ `PROCEED | HALT | FAIL`. **These are
 two vocabularies and they are not interchangeable** — keying a decision table on
 `PROCEED` while the engine hands you `PASS` is a real bug that has happened here,
 and it silently logged a clean PASS as blocked. Branch on one and derive the
@@ -49,6 +66,12 @@ other in exactly one place.
 
 `EXECUTE` requires `verdict === "PASS"` **and** zero CRITICAL flags. Anything
 else is `HALT`.
+
+`/x402/verify_pm_trade` and `/x402/verify_perp_trade` return `verdict` and string
+`flags`: no `action` field, and no severity. DJZS-M codes and their severities
+are at `djzs.ai/ruleset`; the DJZS-LF (perp) severity table is in the repository
+README. An entry like `unknown:<field>` is an unresolved field, not a defect
+code. `REFUSED_SCOPE` and `AUDIT_ERROR` are not `PASS`, so they are `HALT` too.
 
 A `WAIT` is the engine declining to rule, not a soft fail. It is still `HALT`
 for execution purposes: you do not have a verdict, so you do not proceed.
@@ -60,14 +83,20 @@ well-formed invented basis passes both the field gate and the engine. An audit
 has returned `PASS / PROCEED / risk 0` on entirely fabricated market data.
 Provenance is the operator's duty and no verdict discharges it.
 
-Prediction markets run the complete live taxonomy (DJZS-M, 4/4). Other verticals
-run a partially-activated one — fewer codes fire, so a PASS carries less
-discrimination. Say so; never present a thin PASS as a thorough one.
+Prediction markets (`verify_pm_trade`) run the complete live taxonomy (DJZS-M,
+4/4). Perpetual and spot trades (`verify_perp_trade`) run a partially-activated
+one — fewer codes fire, so a PASS carries less discrimination. Say so; never
+present a thin PASS as a thorough one.
 
 ## The certificate is permanent
 
-Every paid in-scope audit anchors an immutable ProofOfLogic certificate to Irys.
-It cannot be edited, withdrawn, or reissued.
+A paid in-scope audit anchors a public record, fail-soft, so confirm the receipt
+came back: an Irys ProofOfLogic certificate on `/mcp` and the legacy
+`/x402/verify` (`pol_certificate.status` is `anchored`), an EAS attestation on
+Base on `/x402/verify_pm_trade` and `/x402/verify_perp_trade` (`eas_uid` is not
+null). The EAS attestation names the paying wallet as its recipient, is
+non-revocable, and carries the verdict, risk score and flags. Treat both as
+permanent. The Irys certificate cannot be edited, withdrawn, or reissued.
 
 ### Correction Record 001 — what a careless field costs
 
@@ -89,13 +118,19 @@ target_system_signature  EIP-191 personal_sign over:
                          target_system: <value>
 ```
 
-Send all three or none. An unsigned value is **discarded, not stored**. Values
+These fields, and `agent_address`, are read only by `/mcp` and the legacy
+`/x402/verify`; the canonical routes ignore them. Send all three or none. An
+unsigned value is **discarded, not stored**. Values
 written before the rule render as `unverified:<value>` everywhere.
 
 A signature proves who authored a claim. It never proves the signer is who the
 name says — that judgement stays with the reader.
 
 ## Reading history
+
+Audits paid through the canonical routes are EAS attestations.
+`query_pol_certificates` reads Irys certificates, and `query_agent_trust` reads
+scores written by `/mcp` and the legacy route, so neither will show them.
 
 `query_agent_trust` returns evidence, not a decision. It applies no threshold and
 emits no HALT.
