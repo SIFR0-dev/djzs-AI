@@ -25,8 +25,17 @@
 // spends nothing and touches no network except the log. An out-of-scope intent is
 // refused server-side and NOT charged.
 //
+// TOOL SELECTION (2026-10-20): `--tool pm` (default) is the original path and is
+// byte-identical to every run before the flag existed: same four fields, same
+// FIXED RENDER, same `verify_pm_trade` call. `--tool perp` routes to
+// `verify_perp_trade` with its own field set and its own fixed render, so the
+// three rails (balance floor, daily cap, --expect-sha ticket) cover perp memos
+// too. The two tools never substitute for each other on the Worker: a perp memo
+// sent to the PM tool is refused free with no verdict, which is not a HALT.
+//
 // Run from the Worker package so bare imports resolve against ./node_modules:
 //   cd djzs-trust-mcp && node agent/refusal-agent.mjs --intent agent/intents/x.md --mode dry
+//   cd djzs-trust-mcp && node agent/refusal-agent.mjs --tool perp --intent agent/intents/y.md --mode dry
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -54,6 +63,14 @@ const RPCS = [
 
 const LOG_PATH = new URL("./refusal-log.json", import.meta.url);
 const REQUIRED_FIELDS = ["claim", "falsifier", "residual", "probability_basis"];
+
+// Perp memo (verify_perp_trade). A stop is REQUIRED at the field gate on purpose:
+// an unbounded position is a defect the operator can see before paying (DJZS-X01),
+// and this agent's job is to refuse to spend on what it can already see. A
+// deliberately unbounded memo belongs in a dogfood run through the MetaMask
+// skill path, not here.
+const PERP_REQUIRED_FIELDS = ["instrument", "side", "venue", "leverage", "size_usd", "entry", "stop_loss", "thesis"];
+const PERP_OPTIONAL_FIELDS = ["take_profit", "invalidation", "data_sources"];
 
 // A probability basis must name WHERE the number came from, not just state one.
 // "held from 37%" is a print with no venue — that is exactly the defect that made
@@ -97,14 +114,16 @@ const usd = (atomic) => (Number(atomic) / 1e6).toFixed(2);
 
 // ── CLI ────────────────────────────────────────────────────────────────────
 const USAGE =
-  "Usage: node agent/refusal-agent.mjs --intent <path> --mode dry|paid [--expect-sha <64-hex>]\n" +
+  "Usage: node agent/refusal-agent.mjs --intent <path> --mode dry|paid [--tool pm|perp] [--expect-sha <64-hex>]\n" +
+  "  --tool pm (default) calls verify_pm_trade; --tool perp calls verify_perp_trade with the perp field set.\n" +
   "  --expect-sha is REQUIRED in paid mode: the run refuses unless the wire sha matches.";
 
 function parseArgs(argv) {
-  const out = { intent: null, mode: null, expectSha: null };
+  const out = { intent: null, mode: null, expectSha: null, tool: "pm" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--intent") out.intent = argv[++i];
     else if (argv[i] === "--mode") out.mode = argv[++i];
+    else if (argv[i] === "--tool") out.tool = argv[++i];
     else if (argv[i] === "--expect-sha") out.expectSha = argv[++i];
     else if (argv[i] === "--help" || argv[i] === "-h") out.help = true;
     else fail(2, `Unknown argument: ${argv[i]}\n${USAGE}`);
@@ -159,15 +178,93 @@ function renderWire(f) {
   return `${f.claim} Falsifier: ${f.falsifier}. Residual exposure: ${f.residual}. Probability basis: ${f.probability_basis}.`.trim();
 }
 
-function validateIntent(raw) {
+/**
+ * THE FIXED PERP RENDER (frozen 2026-10-20). Same contract as renderWire: single
+ * spaces, fixed field order, .trim() last. This is the exact string sent to
+ * verify_perp_trade and intent_sha256 is its sha256. Optional fields render only
+ * when present, in this order, so a memo with no optional field hashes the same
+ * forever. DO NOT change this function; add a new one if the shape must move.
+ */
+function renderPerpWire(f) {
+  const side = f.side.charAt(0).toUpperCase() + f.side.slice(1);
+  const tp = f.take_profit ? `, target ${f.take_profit}` : "";
+  const inv = f.invalidation ? ` Invalidation: ${f.invalidation}.` : "";
+  const ds = f.data_sources ? ` Data sources: ${f.data_sources}.` : "";
+  return `${side} ${f.instrument} on ${f.venue}, ${f.leverage}x, ${f.size_usd} USD notional, entry ${f.entry}, stop ${f.stop_loss}${tp}. Thesis: ${f.thesis}.${inv}${ds}`.trim();
+}
+
+// ── tools ──────────────────────────────────────────────────────────────────
+// Everything tool-specific lives in this table. The PM row is the pre-flag
+// behaviour verbatim; nothing outside this table branches on the tool name.
+const TOOLS = {
+  pm:   { name: "verify_pm_trade",   required: REQUIRED_FIELDS,      render: renderWire },
+  perp: { name: "verify_perp_trade", required: PERP_REQUIRED_FIELDS, render: renderPerpWire },
+};
+
+/** A bare decimal: "10", "0.5". Used for leverage and size_usd, which the render suffixes. */
+const isBareNumber = (s) => /^\d+(\.\d+)?$/.test(s);
+/** A price as an operator writes it: optional $, thousands commas, one decimal point. */
+const parsePrice = (s) => {
+  if (!/^\$?\d{1,3}(,\d{3})*(\.\d+)?$|^\$?\d+(\.\d+)?$/.test(s)) return NaN;
+  return Number(s.replace(/[$,]/g, ""));
+};
+
+function validatePerpFields(fields, problems) {
+  fields.side = fields.side.toLowerCase();
+  if (fields.side !== "long" && fields.side !== "short") {
+    problems.push("side must be exactly 'long' or 'short'");
+  }
+  for (const k of ["leverage", "size_usd"]) {
+    if (!isBareNumber(fields[k]) || Number(fields[k]) <= 0) {
+      problems.push(`${k} must be a bare positive number (no unit, no 'x', no '$'): got '${fields[k]}'`);
+    }
+  }
+  const entry = parsePrice(fields.entry);
+  const stop = parsePrice(fields.stop_loss);
+  if (!(entry > 0)) problems.push(`entry must be a positive price: got '${fields.entry}'`);
+  if (!(stop > 0)) problems.push(`stop_loss must be a positive price: got '${fields.stop_loss}'`);
+  if (entry > 0 && stop > 0) {
+    if (fields.side === "long" && !(stop < entry)) problems.push("long: stop_loss must be below entry");
+    if (fields.side === "short" && !(stop > entry)) problems.push("short: stop_loss must be above entry");
+  }
+  if (fields.take_profit) {
+    const tp = parsePrice(fields.take_profit);
+    if (!(tp > 0)) problems.push(`take_profit must be a positive price: got '${fields.take_profit}'`);
+    else if (entry > 0) {
+      if (fields.side === "long" && !(tp > entry)) problems.push("long: take_profit must be above entry");
+      if (fields.side === "short" && !(tp < entry)) problems.push("short: take_profit must be below entry");
+    }
+  }
+  // Punctuation contract with the FIXED PERP RENDER: the template supplies the
+  // terminal "." after thesis / invalidation / data_sources, so they must not.
+  for (const k of ["thesis", ...PERP_OPTIONAL_FIELDS]) {
+    if (fields[k] && /\.$/.test(fields[k]) && k !== "take_profit") {
+      problems.push(`${k} must not end with '.' — the render appends one (would produce '..')`);
+    }
+  }
+  // A thesis is a reason the price moves, not the position restated. Length is
+  // the only cheap check; the engine's S01 does the real one, at a price.
+  if (fields.thesis.length < 20) problems.push("thesis is under 20 characters — state the reason, not the position");
+}
+
+function validateIntent(raw, tool = "pm") {
   const problems = [];
+  const T = TOOLS[tool];
+  if (!T) return { ok: false, problems: [`unknown tool '${tool}' (pm|perp)`] };
   const { fields, error } = parseFrontmatter(raw);
   if (error) return { ok: false, problems: [error] };
 
-  for (const k of REQUIRED_FIELDS) {
+  for (const k of T.required) {
     if (!fields[k] || fields[k].length === 0) problems.push(`missing or empty field: ${k}`);
   }
   if (problems.length) return { ok: false, problems, fields };
+
+  if (tool === "perp") {
+    validatePerpFields(fields, problems);
+    const wire = renderPerpWire(fields);
+    if (wire.length < 10) problems.push("rendered intent is under 10 characters");
+    return { ok: problems.length === 0, problems, fields, wire, tool };
+  }
 
   // Punctuation contract with the FIXED RENDER (which is frozen and must not move):
   // the template supplies the terminal "." after falsifier/residual/probability_basis,
@@ -197,7 +294,7 @@ function validateIntent(raw) {
   const wire = renderWire(fields);
   if (wire.length < 10) problems.push("rendered intent is under 10 characters");
 
-  return { ok: problems.length === 0, problems, fields, wire };
+  return { ok: problems.length === 0, problems, fields, wire, tool };
 }
 
 // ── RPC ────────────────────────────────────────────────────────────────────
@@ -331,13 +428,16 @@ function buildSupersededPostText({ seq, status, risk_score, verdict_hash, ts_blo
   ].join("\n");
 }
 
-function buildPostText({ seq, decision, status, risk_score, flags, halt_reason, verdict_hash, ts_block, intent_sha256, fields }) {
+function buildPostText({ seq, decision, status, risk_score, flags, halt_reason, verdict_hash, ts_block, intent_sha256, fields, tool }) {
   // Structural guard: supersession outranks the decision template.
   if (typeof status === "string" && status.startsWith("SUPERSEDED")) {
     return buildSupersededPostText({ seq, status, risk_score, verdict_hash, ts_block, intent_sha256, fields });
   }
   const n = String(seq).padStart(3, "0");
-  const thesis = dedash(shorten(fields?.claim ?? "", 120));
+  // Perp entries carry `tool: "verify_perp_trade"`; every entry before the flag
+  // existed has no `tool` and renders exactly as it always did.
+  const perp = tool === "verify_perp_trade";
+  const thesis = dedash(shorten((perp ? fields?.thesis : fields?.claim) ?? "", 120));
   const hash = shortHash(verdict_hash);
   const block = ts_block ?? "unrecorded";
 
@@ -346,7 +446,10 @@ function buildPostText({ seq, decision, status, risk_score, flags, halt_reason, 
   // place instead of two. (This function previously tested verdict === "PROCEED"
   // and carried the same defect as the table.)
   if (decision === "EXECUTED") {
-    const residual = dedash(shorten(fields?.residual ?? "", 240));
+    // Perp: the stop is the kill condition on record (plus the invalidation if stated).
+    const residual = perp
+      ? dedash(shorten(`stop ${fields?.stop_loss ?? ""}${fields?.invalidation ? `; ${fields.invalidation}` : ""}`, 240))
+      : dedash(shorten(fields?.residual ?? "", 240));
     return [
       `DJZS REFUSAL LOG // ${n}`,
       ``,
@@ -364,9 +467,10 @@ function buildPostText({ seq, decision, status, risk_score, flags, halt_reason, 
   }
 
   const codes = flagCodes(flags);
+  const cleared = perp ? "No live code fired (DJZS-LF-v1.2, 4 of 11 live)." : "All four codes cleared.";
   const middle = decision === "REFUSED"
     ? `FAIL ${risk_score}/100: ${codes.join(" + ")}.`
-    : `All four codes cleared. The engine still halted: ${dedash(shorten(String(halt_reason ?? "").split(".")[0], 140))}.`;
+    : `${cleared} The engine still halted: ${dedash(shorten(String(halt_reason ?? "").split(".")[0], 140))}.`;
 
   return [
     `DJZS REFUSAL LOG // ${n}`,
@@ -408,7 +512,7 @@ function decodePaymentHeader(raw) {
   return null;
 }
 
-async function runAudit(wire, account, agentAddress) {
+async function runAudit(wire, account, agentAddress, toolName = "verify_pm_trade") {
   // The hook: same fetch, but every response is inspected for the settle receipt.
   const captured = { tx: null, network: null, success: null };
   const hookedFetch = async (input, init) => {
@@ -454,7 +558,7 @@ async function runAudit(wire, account, agentAddress) {
         }
         return true;
       },
-      { name: "verify_pm_trade", arguments: { intent: wire, agent_address: agentAddress } },
+      { name: toolName, arguments: { intent: wire, agent_address: agentAddress } },
     );
   } catch (e) {
     await client.close().catch(() => {});
@@ -489,9 +593,10 @@ async function runAudit(wire, account, agentAddress) {
 }
 
 // ── modes ──────────────────────────────────────────────────────────────────
-function logBlocked(seq, tsBlock, intentSha, reason) {
+function logBlocked(seq, tsBlock, intentSha, reason, toolName = "verify_pm_trade") {
   return appendLog({
     seq,
+    tool: toolName,
     ts_block: tsBlock,
     intent_sha256: intentSha,
     verdict: null,
@@ -514,32 +619,37 @@ async function main() {
   }
   if (!args.intent) fail(2, "--intent <path> is required.");
   if (args.mode !== "dry" && args.mode !== "paid") fail(2, "--mode must be exactly 'dry' or 'paid'.");
+  if (!TOOLS[args.tool]) fail(2, `--tool must be exactly 'pm' or 'perp'; got '${args.tool}'.\n${USAGE}`);
+  const TOOL = TOOLS[args.tool];
 
   let raw;
   try { raw = readFileSync(args.intent, "utf8"); }
   catch { fail(2, `Cannot read intent file: ${args.intent}`); }
 
-  const v = validateIntent(raw);
+  const v = validateIntent(raw, args.tool);
 
-  // ── GATE 1: the four fields. Costs nothing, runs in both modes. ──────────
+  // ── GATE 1: the required fields. Costs nothing, runs in both modes. ───────
   if (!v.ok) {
-    console.error(`// REFUSED (field gate) :: ${args.intent}`);
+    console.error(`// REFUSED (field gate, ${TOOL.name}) :: ${args.intent}`);
     for (const p of v.problems) console.error(`//   - ${p}`);
     console.error("// Nothing spent. Fix the intent file and re-run.");
     if (args.mode === "paid") {
       const log = readLog();
-      logBlocked(nextSeq(log), await currentBlock(), null, `field gate: ${v.problems.join("; ")}`);
+      logBlocked(nextSeq(log), await currentBlock(), null, `field gate: ${v.problems.join("; ")}`, TOOL.name);
       console.error("// logged as BLOCKED.");
     }
     process.exit(3);
   }
 
   const intentSha = sha256(v.wire);
+  console.log(`// tool      :: ${TOOL.name}`);
   console.log(`// intent    :: ${args.intent}`);
   console.log(`// wire      :: ${v.wire.length} chars, sha256 ${intentSha}`);
 
   if (args.mode === "dry") {
-    console.log("// FIELD GATE PASSED — all four fields present, probability_basis is sourced.");
+    console.log(args.tool === "perp"
+      ? "// FIELD GATE PASSED — all eight perp fields present, stop on the correct side of entry."
+      : "// FIELD GATE PASSED — all four fields present, probability_basis is sourced.");
     console.log("// dry run: nothing spent, nothing logged.");
     console.log("");
     console.log(v.wire);
@@ -566,7 +676,7 @@ async function main() {
     console.error(`// REFUSED :: ${reason}`);
     console.error("// Nothing spent. Re-run --mode dry and use the sha it prints.");
     const log0 = readLog();
-    logBlocked(nextSeq(log0), await currentBlock(), intentSha, reason);
+    logBlocked(nextSeq(log0), await currentBlock(), intentSha, reason, TOOL.name);
     console.error("// logged as BLOCKED.");
     process.exit(6);
   }
@@ -583,7 +693,7 @@ async function main() {
   }
 
   const account = privateKeyToAccount(key);
-  console.log(`// DJZS agent :: verify_pm_trade @ ${ENDPOINT} (${NETWORK})`);
+  console.log(`// DJZS agent :: ${TOOL.name} @ ${ENDPOINT} (${NETWORK})`);
   console.log(`// payer      :: ${account.address}`);
   console.log(`// trading    :: ${agentAddress}`);
 
@@ -596,14 +706,14 @@ async function main() {
   if (!bal.ok) {
     const reason = `balance rail: ${bal.reason}`;
     console.error(`// REFUSED :: ${reason}`);
-    logBlocked(seq, nowBlock, intentSha, reason);
+    logBlocked(seq, nowBlock, intentSha, reason, TOOL.name);
     process.exit(4);
   }
   for (const r of bal.reads) console.log(`// balance    :: ${usd(r.value)} USDC (${r.url})`);
   if (bal.balance < MIN_BALANCE_ATOMIC) {
     const reason = `balance rail: payer holds ${usd(bal.balance)} USDC, floor is ${usd(MIN_BALANCE_ATOMIC)}`;
     console.error(`// REFUSED :: ${reason}`);
-    logBlocked(seq, nowBlock, intentSha, reason);
+    logBlocked(seq, nowBlock, intentSha, reason, TOOL.name);
     process.exit(4);
   }
 
@@ -613,20 +723,20 @@ async function main() {
   if (count >= MAX_PAID_RUNS_PER_UTC_DAY) {
     const reason = `daily cap: ${count} settled run(s) already logged this UTC day, cap is ${MAX_PAID_RUNS_PER_UTC_DAY}`;
     console.error(`// REFUSED :: ${reason}`);
-    logBlocked(seq, nowBlock, intentSha, reason);
+    logBlocked(seq, nowBlock, intentSha, reason, TOOL.name);
     process.exit(5);
   }
   console.log(`// cap       :: ${count}/${MAX_PAID_RUNS_PER_UTC_DAY} settled runs this UTC day`);
   console.log("// connecting ...");
 
   // ── the audit ───────────────────────────────────────────────────────────
-  const { out, error, captured, seconds } = await runAudit(v.wire, account, agentAddress);
+  const { out, error, captured, seconds } = await runAudit(v.wire, account, agentAddress, TOOL.name);
   if (error) {
     // No verdict came back. An out-of-scope refusal is NOT charged; a transport
     // failure after signing might be. Record whatever the header gave us.
     const reason = `audit did not settle (${seconds}s): ${error}`;
     console.error(`// ${reason}`);
-    const entry = logBlocked(seq, nowBlock, intentSha, reason);
+    const entry = logBlocked(seq, nowBlock, intentSha, reason, TOOL.name);
     if (captured.tx) {
       entry.settlement_tx = captured.tx;
       const l = readLog(); l[l.length - 1] = entry; writeFileSync(LOG_PATH, `${JSON.stringify(l, null, 2)}\n`);
@@ -642,6 +752,7 @@ async function main() {
 
   const entry = {
     seq,
+    tool: TOOL.name,
     ts_block: settleBlock,
     intent_sha256: intentSha,
     verdict,
@@ -686,8 +797,8 @@ async function main() {
 // Exported so the log seeder (and any future tooling) renders posts through the
 // SAME code path as a live run — a hand-copied post would drift from the template.
 export {
-  buildPostText, buildSupersededPostText, renderWire, validateIntent, sha256, DECISION_BY_VERDICT,
-  paidRunsToday, consumesPaidSlot, currentBlock, checkBalance,
+  buildPostText, buildSupersededPostText, renderWire, renderPerpWire, validateIntent, sha256, DECISION_BY_VERDICT,
+  paidRunsToday, consumesPaidSlot, currentBlock, checkBalance, TOOLS, PERP_REQUIRED_FIELDS, PERP_OPTIONAL_FIELDS,
 };
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
