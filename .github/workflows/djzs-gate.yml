@@ -86,6 +86,9 @@ jobs:
       - name: Predeploy guard — refuses a dirty tree or a HEAD that is not origin/main; wired as wrangler's own [build] step
         run: npx tsx test/predeploy-guard.test.mjs
         working-directory: djzs-trust-mcp
+      - name: "Verify page, hardened: run() executed under a DOM shim; SAMPLE passes, a forged receipt never reads PASS, markup in any receipt field stays text"
+        run: npx tsx test/verify-dom.test.mjs
+        working-directory: djzs-trust-mcp
 
   q3-integrity:
     runs-on: ubuntu-latest
