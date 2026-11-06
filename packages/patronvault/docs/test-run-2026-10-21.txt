@@ -1,0 +1,148 @@
+PatronVault v1.2 run of record, 2026-10-21 (branch claude/patronvault-tranche2)
+forge 1.5.1-stable, solc 0.8.28, offline suite:
+
+[PASS] testFuzz_claimableYield_isAcceptedByClaimYield_withFee(uint256,uint256,uint96,uint256,uint256,uint8) (runs: 257, μ: 589487, ~: 584037)
+[PASS] test_claimableYield_isAcceptedByClaimYield_withFee_pinned() (gas: 16978903)
+[PASS] test_fee_capAndRecipientEnforcedAtDeployment() (gas: 4012668)
+[PASS] test_fee_comesOutOfTheCreatorPayment_neverPrincipal() (gas: 469210)
+[PASS] test_fee_notTakenOnWhatWasNotPaid() (gas: 465051)
+[PASS] test_fee_principalOnlyMode_forwardedBufferCarriesNoFee() (gas: 4256119)
+[PASS] test_fee_proRataAcrossRoutes_whenYieldIsShort() (gas: 537651)
+[PASS] test_fee_zeroMeansNoPool() (gas: 4291133)
+[PASS] test_joinAndRoute_setsRoutesAtTheDoor() (gas: 344922)
+[PASS] test_joinWithPermit_badSignatureWithoutAllowance_reverts() (gas: 66504)
+[PASS] test_joinWithPermit_oneTransaction_noPriorApprove() (gas: 361934)
+[PASS] test_joinWithPermit_stillChecksTermsMinimumAndRoutes() (gas: 315390)
+[PASS] test_joinWithPermit_survivesAFrontRunPermit() (gas: 261977)
+[PASS] test_setRoutes_addChangeRemove_settlesOnce() (gas: 482129)
+[PASS] test_setRoutes_rejectsWhatSetRouteRejects() (gas: 301959)
+[PASS] test_settleMany_emptyIsANoop() (gas: 13214)
+[PASS] test_settleMany_settlesMembersAndSkipsStrangers() (gas: 653823)
+Suite result: ok. 17 passed; 0 failed; 0 skipped; finished in 238.08ms (239.20ms CPU time)
+[PASS] testFuzz_F2_previewSettleMatchesSettle_withFee(uint256,uint96,uint96,uint256,uint256) (runs: 257, μ: 619305, ~: 659012)
+[PASS] test_F10_routeToVaultOrSource_rejected() (gas: 226564)
+[PASS] test_F10_sinkAndFeeRecipient_cannotBeTheSource() (gas: 133147)
+[PASS] test_F14_aRefusedPayment_isStillHeld_withGasAvailable() (gas: 387376)
+[PASS] test_F14_leaveWithTooLittleGas_revertsInsufficientGas_neverKeepsTheBuffer() (gas: 4228072)
+[PASS] test_F14_settleWithTooLittleGas_revertsInsufficientGas_neverHolds() (gas: 454125)
+[PASS] test_F3_settleMany_skipsTheRecentlySettled() (gas: 426484)
+[PASS] test_F3_thirdPartySettle_spacedToOncePerInterval_memberAnytime() (gas: 506978)
+[PASS] test_F6_liquidityShortSettle_forgivesNothingTheYieldCovered() (gas: 587816)
+[PASS] test_F8_leave_emitsCreatorForgivenForHeldAmounts() (gas: 406997)
+[PASS] test_F9_settledEventReportsWhatWasActuallyPaid() (gas: 517428)
+[PASS] test_H1_removeAndReaddRoute_doesNotResetFunded_isPatronIsLive() (gas: 369246)
+[PASS] test_H1_routeAddedInShortfall_isNotAPatron() (gas: 307706)
+[PASS] test_H1_selfSettleSecondsAfterRouting_keepsThePatronReading() (gas: 454574)
+[PASS] test_L1_heavySource_revertsSourceOutOfGas_neverForgives() (gas: 4488666)
+[PASS] test_L2_brokenMaxWithdrawView_holdsPayments_membersStillLeave() (gas: 4244838)
+[PASS] test_L4_scarceLiquidityExit_principalFirst_bufferParked() (gas: 4232454)
+[PASS] test_M1_fixedCreators_rejectsZeroAndDuplicates() (gas: 207414)
+[PASS] test_M1_registry_routesOnlyToListedCreators() (gas: 4339262)
+[PASS] test_M2_isPatronAtLeast_appliesTheGatesFloor() (gas: 351640)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 186.83ms (209.87ms CPU time)
+[PASS] testFuzz_claimableNeverOverstates(uint256,uint96,uint256,uint256) (runs: 256, μ: 426411, ~: 462829)
+[PASS] testFuzz_settleNeverBurnsPrincipalShares(uint256,uint96,uint96,uint256,uint256,uint256) (runs: 257, μ: 567913, ~: 600151)
+[PASS] test_claimYield_cannotTakeWhatIsHeldForCreators() (gas: 517780)
+[PASS] test_claimYield_nothingInShortfall() (gas: 256345)
+[PASS] test_claimYield_paysUnroutedYield_afterSettlingRoutes() (gas: 445091)
+[PASS] test_claimYield_rejectsMoreThanYield() (gas: 271230)
+[PASS] test_constructor_rejectsBadParams() (gas: 184922)
+[PASS] test_constructor_setsImmutablesAndApproves() (gas: 19268)
+[PASS] test_deposit_requiresMembershipAndAmount() (gas: 222187)
+[PASS] test_deposit_topUpSettlesFirst() (gas: 421858)
+[PASS] test_isPatron_states() (gas: 435579)
+[PASS] test_isolation_onePayoutNeverTouchesAnotherMember() (gas: 495871)
+[PASS] test_isolation_shortfallMemberPaysNothing_healthyMemberPays() (gas: 455044)
+[PASS] test_join_atOddPrice_principalIsBackedWithinOneShare() (gas: 297307)
+[PASS] test_join_recordsPrincipalSharesAndConsent() (gas: 223028)
+[PASS] test_join_rejectsBelowMinimumAndZero() (gas: 27675)
+[PASS] test_join_rejectsSecondJoin() (gas: 213307)
+[PASS] test_join_rejectsWrongTerms() (gas: 16043)
+[PASS] test_leave_inShortfall_takesOwnLossOnly() (gas: 315429)
+[PASS] test_leave_redeemsEverything_clearsRoutes_allowsRejoin() (gas: 504959)
+[PASS] test_memberOf_and_routesOf_forStranger() (gas: 32671)
+[PASS] test_pilotLimits_capAndJoinWindow() (gas: 4226315)
+[PASS] test_previewSettle_matchesSettle() (gas: 533350)
+[PASS] test_setRoute_addChangeRemove() (gas: 348314)
+[PASS] test_setRoute_capsAtMaxRoutes() (gas: 976805)
+[PASS] test_setRoute_rejectsSelfAndZero() (gas: 224325)
+[PASS] test_setRoute_requiresMembership() (gas: 20523)
+[PASS] test_setRoute_respectsCreatorMinimum_removalAlwaysAllowed() (gas: 288340)
+[PASS] test_settle_anyoneCanCall_nonMemberReverts() (gas: 20400)
+[PASS] test_settle_atOddPrice_neverBurnsPrincipalShares() (gas: 1513567)
+[PASS] test_settle_blockedCreator_neverTrapsTheMember() (gas: 763892)
+[PASS] test_settle_frequentSettlesLoseNothingToRounding() (gas: 5750739)
+[PASS] test_settle_illiquidSource_holdsTheDifference_doesNotForgive() (gas: 463903)
+[PASS] test_settle_noYield_paysNothing_flagsUnfunded_principalUntouched() (gas: 307751)
+[PASS] test_settle_paysCreatorFromYieldOnly() (gas: 448021)
+[PASS] test_settle_prorataWhenYieldIsShort_forgivesTheRest() (gas: 593002)
+[PASS] test_sinkMode_blockedRecipientsNeverTrapTheExit() (gas: 4391401)
+[PASS] test_sinkMode_claimIsRefused() (gas: 4171721)
+[PASS] test_sinkMode_leaveForwardsUnroutedYieldToRoutesProRata() (gas: 4389114)
+[PASS] test_sinkMode_leaveWithNoRoutesPaysTheSink() (gas: 4162947)
+[PASS] test_sinkMode_partialWithdrawLeavesTheBufferInPlace() (gas: 4207147)
+[PASS] test_sinkMode_unroutedYieldBuffersALowMonth() (gas: 4376236)
+[PASS] test_withdraw_allIsLeave() (gas: 284907)
+[PASS] test_withdraw_inShortfall_isProRata() (gas: 284242)
+[PASS] test_withdraw_partialReturnsPrincipal_keepsYield() (gas: 292667)
+[PASS] test_withdraw_rejectsDustRemainderAndOverdraw() (gas: 223775)
+Suite result: ok. 46 passed; 0 failed; 0 skipped; finished in 349.26ms (392.05ms CPU time)
+[PASS] invariant_I1_sharesBelongToMembers() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I2_vaultHoldsNoAsset() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I3_totalsAreExact() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I4_principalBackedWhenSourceHasNotLost() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I5_payoutsComeFromGainsOnly() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I6_leaversHoldNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I7_membersMeetMinimum() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I8_shortfallPaysNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] test_handlerReachesInterestingStates() (gas: 33208954)
+Logs:
+  creators paid (USDC units): 5030163949
+  sink paid (USDC units): 0
+  fees collected (USDC units): 251408625
+  fee pool uncollected (USDC units): 17855978
+  members claimed (USDC units): 1798874964
+  source gains (USDC units): 17375752382
+  source losses (USDC units): 2861699434
+  illiquidity reverts tolerated: 0
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 23.60s (29.90s CPU time)
+[PASS] invariant_I1_sharesBelongToMembers() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I2_vaultHoldsNoAsset() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I3_totalsAreExact() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I4_principalBackedWhenSourceHasNotLost() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I5_payoutsComeFromGainsOnly() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I6_leaversHoldNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I7_membersMeetMinimum() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I8_shortfallPaysNothing() (runs: 128, calls: 10240, reverts: 0)
+[PASS] invariant_I9_membersNeverReceiveYield() (runs: 128, calls: 10240, reverts: 0)
+[PASS] test_handlerReachesInterestingStates() (gas: 32573572)
+Logs:
+  creators paid (USDC units): 10738989181
+  sink paid (USDC units): 1878685248
+  fees collected (USDC units): 255906129
+  fee pool uncollected (USDC units): 12972302
+  members claimed (USDC units): 0
+  source gains (USDC units): 17270951435
+  source losses (USDC units): 5214502129
+  illiquidity reverts tolerated: 0
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 25.16s (46.29s CPU time)
+Ran 5 test suites in 25.94s (49.54s CPU time): 102 tests passed, 0 failed, 0 skipped (102 total tests)
+
+Fork suite, Base mainnet via https://mainnet.base.org:
+
+[PASS] test_fork_capAndDeadlineHold() (gas: 842218)
+[PASS] test_fork_pilotMonth_joinRouteSettleWithdrawLeave() (gas: 860321)
+Logs:
+  one wrapper share in USDC units: 2
+  position value at join (USDC units): 3999999999
+  in shortfall at join (1 = yes): 1
+  yield available after a month (USDC units): 12269797
+  owed: 10000000
+  from yield: 10000000
+  payable today: 10000000
+  alice balance change over the month (USDC units): 2
+  payee received in total (USDC units): 12269794
+[PASS] test_fork_settleStarvedOfGas_revertsInsteadOfHolding() (gas: 633581)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 6.61s (8.96s CPU time)
+
+forge fmt --check: clean

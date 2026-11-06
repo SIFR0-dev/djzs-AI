@@ -1,0 +1,59 @@
+name: patronvault
+
+# The Foundry suite for packages/patronvault and the pilot Worker's checks. The invariant suites draw new fuzz seeds
+# on every run (the 2026-10-21 claimableYield defect was found by a seed three earlier green runs never drew), so
+# this runs on every change to the package, not only on demand. Offline: the fork tests skip without FORK_RPC_URL.
+
+on:
+  push:
+    branches: [main]
+    paths: ["packages/patronvault/**", ".github/workflows/patronvault.yml"]
+  pull_request:
+    paths: ["packages/patronvault/**", ".github/workflows/patronvault.yml"]
+
+jobs:
+  forge:
+    name: contract — tests, invariants, format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/patronvault
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
+      - name: forge fmt --check
+        run: forge fmt --check
+      - name: forge build
+        run: forge build --sizes
+      - name: forge test (unit, fuzz, invariants; fork suite skips without FORK_RPC_URL)
+        run: forge test
+      - name: terms hashes (the numbers the deploy and the Worker must agree on)
+        run: |
+          forge script script/TermsHash.s.sol
+          TERMS_FILE=terms/member-terms-v1.1.md forge script script/TermsHash.s.sol
+
+  worker:
+    name: worker — typecheck, keeper tests, ABI parity, bundle
+    runs-on: ubuntu-latest
+    needs: forge
+    defaults:
+      run:
+        working-directory: packages/patronvault/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
+      - name: forge build (the ABI test reads the compiled artifact)
+        run: forge build
+        working-directory: packages/patronvault
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run check
+      - run: npm test
+      - name: bundle (no deploy, no secrets)
+        run: npm run dry

@@ -35,7 +35,7 @@ contract PatronVaultProductTest is Test {
         vm.warp(1_760_000_000);
         usdc = new MockUSDC();
         src = new MockERC4626(usdc);
-        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), FEE, fees);
+        vault = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), FEE, fees, address(0));
         _fund(alice);
         _fund(bob);
         usdc.mint(signer, 100_000e6); // the signer never calls approve: permit does it
@@ -61,12 +61,18 @@ contract PatronVaultProductTest is Test {
         return src.previewWithdraw(vault.memberOf(who).principal);
     }
 
-    function _permitSig(uint256 pk, address owner, uint256 value, uint256 deadline) internal view returns (bytes memory) {
+    function _permitSig(uint256 pk, address owner, uint256 value, uint256 deadline)
+        internal
+        view
+        returns (bytes memory)
+    {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 usdc.DOMAIN_SEPARATOR(),
-                keccak256(abi.encode(usdc.PERMIT_TYPEHASH(), owner, address(vault), value, usdc.nonces(owner), deadline))
+                keccak256(
+                    abi.encode(usdc.PERMIT_TYPEHASH(), owner, address(vault), value, usdc.nonces(owner), deadline)
+                )
             )
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
@@ -88,7 +94,9 @@ contract PatronVaultProductTest is Test {
         assertEq(vault.creatorPaid(creatorA), 9.5e6);
         assertApproxEqAbs(src.previewRedeem(vault.feeShares()), 0.5e6, 2, "5% sits in the fee pool");
         assertGe(vault.memberOf(alice).shares, _principalShares(alice), "principal shares intact");
-        assertEq(vault.memberOf(alice).shares + vault.feeShares(), src.balanceOf(address(vault)), "every share accounted for");
+        assertEq(
+            vault.memberOf(alice).shares + vault.feeShares(), src.balanceOf(address(vault)), "every share accounted for"
+        );
 
         vm.expectEmit(true, false, false, false);
         emit PatronVault.FeesCollected(fees, 0);
@@ -100,7 +108,8 @@ contract PatronVaultProductTest is Test {
     }
 
     function test_fee_zeroMeansNoPool() public {
-        PatronVault free = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0));
+        PatronVault free =
+            new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 0, address(0), address(0));
         vm.prank(alice);
         usdc.approve(address(free), type(uint256).max);
         vm.prank(alice);
@@ -118,10 +127,11 @@ contract PatronVaultProductTest is Test {
 
     function test_fee_capAndRecipientEnforcedAtDeployment() public {
         vm.expectRevert(PatronVault.FeeTooHigh.selector);
-        new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 1_001, fees);
+        new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 1_001, fees, address(0));
         vm.expectRevert(PatronVault.ZeroAddress.selector);
-        new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 500, address(0));
-        PatronVault max = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 1_000, fees);
+        new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 500, address(0), address(0));
+        PatronVault max =
+            new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, address(0), 1_000, fees, address(0));
         assertEq(max.feeBps(), 1_000);
         assertEq(max.MAX_FEE_BPS(), 1_000);
     }
@@ -139,7 +149,7 @@ contract PatronVaultProductTest is Test {
         assertEq(vault.routesOf(alice)[0].carry / PERIOD, 10e6, "the whole 10 stays owed");
 
         usdc.setBlocked(creatorA, false);
-        vm.prank(keeper);
+        vm.prank(alice); // no time has passed, so only the member may settle again
         vault.settle(alice);
         assertEq(usdc.balanceOf(creatorA), 9.5e6);
         assertApproxEqAbs(src.previewRedeem(vault.feeShares()), 0.5e6, 2);
@@ -163,7 +173,7 @@ contract PatronVaultProductTest is Test {
 
     function test_fee_principalOnlyMode_forwardedBufferCarriesNoFee() public {
         address sink = makeAddr("sink");
-        PatronVault po = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, sink, FEE, fees);
+        PatronVault po = new PatronVault(IERC4626(address(src)), MIN, PERIOD, TERMS, 0, 0, sink, FEE, fees, address(0));
         vm.prank(alice);
         usdc.approve(address(po), type(uint256).max);
         vm.prank(alice);
@@ -313,5 +323,81 @@ contract PatronVaultProductTest is Test {
     function test_settleMany_emptyIsANoop() public {
         vm.prank(keeper);
         vault.settleMany(new address[](0));
+    }
+
+    // ───────────────────────────── claimableYield with a fee ─────────────────────────────
+
+    /// @dev Found by the invariant fuzzer on 2026-10-21 with the fee on: claimableYield reserved n + 1 shares, but a
+    ///      settle with a fee rounds up twice per route (the creator's withdraw and the fee's share move), so
+    ///      claimYield(claimableYield(m)) could revert ExceedsYield by one unit. The shape: a share price below one
+    ///      (a past source loss), a member who joined after it, a small amount owed. Walked over a grid of elapsed
+    ///      times so the rounding edge is hit whatever the exact figures.
+    function test_claimableYield_isAcceptedByClaimYield_withFee_pinned() public {
+        usdc.mint(stranger, 1_000_000e6);
+        vm.startPrank(stranger);
+        usdc.approve(address(src), type(uint256).max);
+        src.deposit(980_000e6, stranger);
+        vm.stopPrank();
+        src.loss(15_000e6); // price ~0.985
+        _join(alice, 19_999_999_999);
+        src.gain(7_500e6); // price ~0.9925: alice now holds yield above her principal shares
+        _route(alice, creatorB, 10e6);
+
+        uint256 claims;
+        for (uint256 elapsed = 2_000; elapsed < 2_600; elapsed += 7) {
+            uint256 snap = vm.snapshotState();
+            vm.warp(block.timestamp + elapsed);
+            uint256 c = vault.claimableYield(alice);
+            assertGt(c, 0);
+            uint256 before = usdc.balanceOf(alice);
+            vm.prank(alice);
+            vault.claimYield(c);
+            assertEq(usdc.balanceOf(alice) - before, c);
+            assertGe(vault.memberOf(alice).shares, _principalShares(alice), "principal shares touched");
+            claims++;
+            vm.revertToState(snap);
+        }
+        assertGt(claims, 50);
+    }
+
+    /// @dev The README's guarantee, under the fee, over gains, losses, several routes, time and a liquidity cap:
+    ///      claimYield(claimableYield(m)) never reverts, pays exactly that amount, and leaves principal shares alone.
+    function testFuzz_claimableYield_isAcceptedByClaimYield_withFee(
+        uint256 lossAssets,
+        uint256 gainAssets,
+        uint96 perPeriod,
+        uint256 elapsed,
+        uint256 liquidity,
+        uint8 routes
+    ) public {
+        lossAssets = bound(lossAssets, 0, 20_000e6);
+        gainAssets = bound(gainAssets, 0, 30_000e6);
+        perPeriod = uint96(bound(perPeriod, 1, 500e6));
+        elapsed = bound(elapsed, 1, 90 days);
+        routes = uint8(bound(routes, 1, 3));
+
+        usdc.mint(stranger, 1_000_000e6);
+        vm.startPrank(stranger);
+        usdc.approve(address(src), type(uint256).max);
+        src.deposit(980_000e6, stranger);
+        vm.stopPrank();
+        if (lossAssets != 0) src.loss(lossAssets);
+        _join(alice, 20_000e6);
+        if (gainAssets != 0) src.gain(gainAssets);
+        _route(alice, creatorA, perPeriod);
+        if (routes > 1) _route(alice, creatorB, perPeriod / 2 + 1);
+        if (routes > 2) _route(alice, creatorC, perPeriod / 3 + 1);
+        vm.warp(block.timestamp + elapsed);
+        // a liquidity cap anywhere from nothing to everything, so both the yield and the liquidity bound get to bind
+        liquidity = bound(liquidity, 0, src.totalAssets() * 2);
+        src.setLiquidity(liquidity);
+
+        uint256 c = vault.claimableYield(alice);
+        if (c == 0) return;
+        uint256 before = usdc.balanceOf(alice);
+        vm.prank(alice);
+        vault.claimYield(c);
+        assertEq(usdc.balanceOf(alice) - before, c, "claim short");
+        assertGe(vault.memberOf(alice).shares, _principalShares(alice), "principal shares touched");
     }
 }

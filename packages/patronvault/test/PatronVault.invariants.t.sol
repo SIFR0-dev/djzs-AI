@@ -9,7 +9,7 @@ import {MockERC4626} from "./mocks/MockERC4626.sol";
 import {PatronHandler} from "./handlers/PatronHandler.sol";
 
 /// @dev Properties that must hold after any sequence of member, creator and market actions.
-///      I1  Every source share the vault holds belongs to exactly one member.
+///      I1  Every source share the vault holds belongs to exactly one member, the fee pool, or the parked sink buffer.
 ///      I2  The vault never holds the asset itself.
 ///      I3  totalPrincipal and memberCount are exact sums.
 ///      I4  With no source loss on record, every member's shares back their principal, within one
@@ -39,13 +39,15 @@ contract PatronVaultInvariants is Test {
         vm.warp(1_760_000_000);
         usdc = new MockUSDC();
         src = new MockERC4626(usdc);
-        vault = new PatronVault(IERC4626(address(src)), 500e6, 30 days, TERMS, 0, 0, _sink(), _feeBps(), makeAddr("fees"));
+        vault = new PatronVault(
+            IERC4626(address(src)), 500e6, 30 days, TERMS, 0, 0, _sink(), _feeBps(), makeAddr("fees"), address(0)
+        );
         handler = new PatronHandler(usdc, src, vault, TERMS);
         targetContract(address(handler));
     }
 
     function invariant_I1_sharesBelongToMembers() public view {
-        uint256 sum = vault.feeShares();
+        uint256 sum = vault.feeShares() + vault.sinkShares();
         for (uint256 i = 0; i < handler.membersLength(); i++) {
             sum += vault.memberOf(handler.members(i)).shares;
         }
@@ -79,7 +81,8 @@ contract PatronVaultInvariants is Test {
     }
 
     function invariant_I5_payoutsComeFromGainsOnly() public view {
-        uint256 paid = vault.creatorPaid(vault.yieldSink()) + handler.feesCollected() + src.previewRedeem(vault.feeShares());
+        uint256 paid = vault.creatorPaid(vault.yieldSink()) + handler.feesCollected()
+            + src.previewRedeem(vault.feeShares()) + src.previewRedeem(vault.sinkShares());
         for (uint256 i = 0; i < handler.creatorsLength(); i++) {
             paid += vault.creatorPaid(handler.creators(i));
         }
@@ -140,6 +143,7 @@ contract PatronVaultInvariants is Test {
             else if (a == 11) handler.gain(x);
             else if (a == 12) handler.loss(x, y);
             else if (a == 13 && (y & 1) == 1) handler.collectFees();
+            else if (a == 13) handler.forwardSink();
             else handler.setLiquidity(x, y);
             sawLoss = sawLoss || handler.lossSinceClean();
             if (i % 8 != 0) continue; // memory, not gas, is the EVM limit on a long walk
@@ -184,7 +188,9 @@ contract PatronVaultInvariantsSink is PatronVaultInvariants {
         // yield does not, apart from the MAX_ROUTES shares of rounding dust an exit may leave with the member
         for (uint256 i = 0; i < handler.membersLength(); i++) {
             address m = handler.members(i);
-            assertLe(usdc.balanceOf(m), 1_000_000e6 + 2 * vault.MAX_ROUTES() * handler.leaves(m), "a member received yield");
+            assertLe(
+                usdc.balanceOf(m), 1_000_000e6 + 2 * vault.MAX_ROUTES() * handler.leaves(m), "a member received yield"
+            );
         }
     }
 }

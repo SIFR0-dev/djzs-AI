@@ -1,0 +1,27 @@
+{
+  "name": "patronvault-worker",
+  "private": true,
+  "type": "module",
+  "description": "PatronVault pilot surface: the member page and exact-bytes terms at scan.djzs.ai/patron, the status API, and the cron keeper that settles each member once per period.",
+  "scripts": {
+    "check": "npm run gen:terms && tsc --noEmit -p . && tsc --noEmit -p site",
+    "test": "npm run gen:terms && tsx --test test/*.test.ts",
+    "build:site": "npm run gen:terms && esbuild site/app.ts --bundle --format=esm --target=es2022 --minify --outfile=assets/patron/app.js",
+    "dev": "npm run build:site && wrangler dev --local --show-interactive-dev-session=false",
+    "dry": "npm run build:site && DJZS_BUILD_ONLY=1 wrangler deploy --dry-run --outdir /tmp/patronvault-dry",
+    "deploy": "npm run build:site && wrangler deploy --tag \"$(git rev-parse --short=12 HEAD)\" --message \"$(git rev-parse HEAD)\"",
+    "gen:terms": "node scripts/gen-terms.mjs"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "viem": "2.55.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0",
+    "wrangler": "4.107.0"
+  }
+}
