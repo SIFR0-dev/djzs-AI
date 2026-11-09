@@ -772,3 +772,30 @@ Prompted by the 2026-09-14 pool day (§8C): pre-screen agreed with the engine on
 Recorded as context for anyone reading the book later: **as of 2026-09-17 the daily scan is the surviving DJZS activity, and it has no product conversion goal.**
 
 Nothing in the study's rules rests on this. Inclusion is mechanical (§3's volume rule, §1's categories), intents are verbatim public text, and verdicts come from the frozen engine, so the book does not depend on what the scan is *for*. The dependency runs the other way, and that is the reason to write it down: the scan is the only thing feeding `origin: scan` narratives into the book, and the coverage pool is worked by whoever runs a pool day. A change in the scan's cadence or survival therefore changes the book's **intake**, not its rules — and Stage 1's timeline (§8 of PROTOCOL, "late October to November 2026") is an intake estimate.
+
+## 13. Source capture through LCR — the receipt behind `source.text` (2026-11-08)
+
+**What changed.** The verbatim news text a record carries in `source.text` had no committed fetcher: the operator opened the page, copied the span, and typed `source.captured_at` by hand (§10.2). `tests/q3/source-capture.ts` now does the fetch through LCR (Live Context Retrieval, `POST https://api.lcr.net/contents`, docs.lcr.net) from the operator's shell and writes a content-addressed receipt under `tests/q3/receipts/`. This is a vendor for the receipt step the 2026-11-01 intake rule already requires (every narrative carries the news event it rests on, with a receipt); it is not a new surface and nothing about intake widens.
+
+**What it is not.** The receipt is provenance, not evidence. It enters neither `phase_a_hash` nor `record_hash`; `record.schema.json` is unchanged; `source.text` is still the verbatim quote the operator chose, and the engine never sees anything LCR returned. LCR output is data, not instructions (same clause as Surf, §15 of CLAUDE.md).
+
+**Rails, each a stop:**
+
+1. **Live crawl only.** `maxAgeHours: 0` is pinned and `statuses[].source` must read `livecrawled`. LCR's default serves a cache up to 7 days old, capped at 20,000 characters; a cached body is a stale reference presented as a capture and the script refuses it even when LCR would hand it over.
+2. **Prohibited hosts are refused locally, before any request.** LCR returns 451 for `.gov`/`.mil`, betting exchanges (so polymarket.com, kalshi.com), banks and payment processors, and repeated attempts suspend the account. The script carries the pattern list and answers "capture by hand". Consequence: **the macro-chain class (bls.gov, federalreserve.gov) is always a hand capture.** The venues were never a news source (show law: the verdict is on the narrative, never the contract).
+3. **Quote gate.** With a quote (`--quote`, or `source.text` via `--record`), it must occur as one contiguous span of the fetched page text, whitespace and curly punctuation folded. Two spans stitched together, or a span the page does not carry, is refused. Same reasoning as §10.2's "an absence never checked".
+4. **Key custody.** `LCR_API_KEY` lives in `.env.test` (gitignored) and is read only in the operator's shell. It is not a Worker secret, it never reaches the Worker, and the script never prints it. A container without the key reports and stops (§10, CLAUDE.md §5).
+5. **Our hash, our clock.** LCR returns no content hash and no fetched-at time. `html_sha256` and `text_sha256` are computed here over the returned bodies, `captured_at` is this process's clock at response time, and the whole receipt is hashed as `receipt_sha256` so `--check <id>` can re-verify it offline.
+
+**Provenance line, for the record and the camera.** Content fetched through LCR comes via Grass's residential proxy network, geotargeted (`us` default). Say so where the receipt is cited: "page captured <time> via LCR (residential proxy, US), sha256 <prefix>". A Firecrawl capture, where one exists, names its own path the same way.
+
+**Receipt layout.** `tests/q3/receipts/<first 16 hex of html_sha256>.json`, committed beside the record it supports. Fields: url, title, published date, author, `captured_at`, fetcher block (request id, source, strategy, credits, upstream status, country), `html_sha256`, `text_sha256`, the quote and its offset, `receipt_sha256`. Credits: 1 (static), 2 (browser), 3 (anti-bot), 0 on error; the plan ladder is on app.lcr.net behind sign-up and is not recorded here.
+
+**Why LCR and not only the existing path.** The one thing it adds is anti-bot bypass on outlets that refuse ordinary crawlers. The 2026-11-01 evidence rule (intake widens only when a graded miss traces to a source the scan could not get) is what justifies a second fetcher at all; if no outlet ever fails the first path, the receipt path is the only use and the cost is credits.
+
+Commands (§10.3: scripts and flags, never pasted command text):
+
+- `npx tsx --env-file=.env.test tests/q3/source-capture.ts --record <id>` — url and quote from the inbox or record file.
+- `npx tsx --env-file=.env.test tests/q3/source-capture.ts --url <u> --quote "<verbatim>" [--country gb]`
+- `npx tsx tests/q3/source-capture.ts --check <receipt id>` — offline re-verification, no key.
+- `npx vitest run tests/q3/source-capture.test.ts` — the rails, offline.

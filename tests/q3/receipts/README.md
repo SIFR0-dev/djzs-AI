@@ -1,0 +1,1 @@
+Content-addressed source receipts written by tests/q3/source-capture.ts (SCAN_SPEC §13). One file per captured page, named by the first 16 hex of html_sha256. Provenance only; never hashed into a record.
