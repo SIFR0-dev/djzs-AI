@@ -9,6 +9,14 @@
  *    npx tsx --env-file=.env.test tests/q3/source-capture.ts --record <inbox-or-record id>     # url + quote from the file
  *    npx tsx tests/q3/source-capture.ts --check <receipt sha>                                     # offline, no key
  *
+ *  Machine mode (the refusal agent's GATE 0.5 calls this): add --json [--out <dir>]. stdout is then ONE JSON object
+ *  {status, receipt?, receipt_path?, error?} and the exit code is the status:
+ *    0 verified        receipt written; with a quote, the quote is on the page
+ *    2 usage           bad flags, or no LCR_API_KEY in the environment
+ *    3 blocked_host    LCR-prohibited category; no request was sent; capture by hand
+ *    4 not_on_page     live page fetched, the quote is not a contiguous span of it; receipt NOT written
+ *    5 unreachable     LCR error, upstream failure, cache served, or empty page; nothing written
+ *
  *  Rails (each one is a stop, not a warning):
  *   - LIVE ONLY. maxAgeHours is pinned to 0 and the response must say source "livecrawled". LCR serves a cache up
  *     to 7 days old by default and caps cached bodies at 20,000 chars; a cached read is a stale reference dressed
@@ -65,6 +73,9 @@ type LcrStatus = { id: string; status: "success" | "error"; source?: string; htt
 type LcrResult = { id: string; url: string; title?: string; author?: string; publishedDate?: string; text?: string; html?: string; markdown?: string };
 type LcrResponse = { requestId: string; results?: LcrResult[]; statuses?: LcrStatus[]; searchTime?: number };
 
+export class CaptureError extends Error { constructor(public status: "blocked_host" | "not_on_page" | "unreachable", message: string) { super(message); } }
+export const EXIT: Record<string, number> = { verified: 0, usage: 2, blocked_host: 3, not_on_page: 4, unreachable: 5 };
+
 export type Receipt = {
   schema: typeof RECEIPT_SCHEMA; url: string; final_title: string | null; published_date: string | null; author: string | null;
   captured_at: string; fetcher: { provider: "lcr"; endpoint: string; request_id: string; source: string; strategy: string | null; http_status: number | null; credits: number | null; country_code: string; max_age_hours: 0; search_time_ms: number | null };
@@ -74,28 +85,28 @@ export type Receipt = {
 };
 
 export async function capture(url: string, opts: { quote?: string; country?: string; key: string; timeoutMs?: number }): Promise<Receipt> {
-  const blocked = lcrBlocked(url); if (blocked) throw new Error(`REFUSED: ${blocked}`);
+  const blocked = lcrBlocked(url); if (blocked) throw new CaptureError("blocked_host", `REFUSED: ${blocked}`);
   const maxCharacters = 400_000;
   const body = { urls: [url], text: { verbosity: "full", maxCharacters }, maxAgeHours: 0, livecrawlTimeout: opts.timeoutMs ?? 15000, countryCode: opts.country ?? "us" };
   const r = await fetch(ENDPOINT, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${opts.key}` }, body: JSON.stringify(body) });
   const capturedAt = new Date().toISOString();
-  if (r.status === 402) throw new Error("LCR 402 INSUFFICIENT_CREDITS — top up at app.lcr.net; nothing captured");
-  if (r.status === 403) throw new Error("LCR 403 — invalid or missing LCR_API_KEY");
-  if (r.status === 429) throw new Error("LCR 429 — plan rate limit; wait, do not loop");
-  if (r.status === 451) throw new Error("LCR 451 CRAWL_WEBSITE_NOT_PERMITTED — the host is prohibited and the pre-check missed it; add its pattern to LCR_BLOCKED_HOST_PATTERNS and capture by hand");
-  if (!r.ok) throw new Error(`LCR HTTP ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  if (r.status === 402) throw new CaptureError("unreachable", "LCR 402 INSUFFICIENT_CREDITS — top up at app.lcr.net; nothing captured");
+  if (r.status === 403) throw new CaptureError("unreachable", "LCR 403 — invalid or missing LCR_API_KEY");
+  if (r.status === 429) throw new CaptureError("unreachable", "LCR 429 — plan rate limit; wait, do not loop");
+  if (r.status === 451) throw new CaptureError("unreachable", "LCR 451 CRAWL_WEBSITE_NOT_PERMITTED — the host is prohibited and the pre-check missed it; add its pattern to LCR_BLOCKED_HOST_PATTERNS and capture by hand");
+  if (!r.ok) throw new CaptureError("unreachable", `LCR HTTP ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const j = await r.json() as LcrResponse;
   const st = j.statuses?.[0]; const res = j.results?.[0];
-  if (!st) throw new Error(`LCR returned no status entry (requestId ${j.requestId})`);
-  if (st.status !== "success" || !res) throw new Error(`LCR fetch failed: ${st.error?.tag ?? "unknown"} (upstream ${st.error?.httpStatusCode ?? st.httpStatusCode}) requestId ${j.requestId}`);
-  if (st.source !== "livecrawled") throw new Error(`REFUSED: LCR served source "${st.source}" — only a live crawl is a capture (maxAgeHours was 0; this should not happen — report it)`);
+  if (!st) throw new CaptureError("unreachable", `LCR returned no status entry (requestId ${j.requestId})`);
+  if (st.status !== "success" || !res) throw new CaptureError("unreachable", `LCR fetch failed: ${st.error?.tag ?? "unknown"} (upstream ${st.error?.httpStatusCode ?? st.httpStatusCode}) requestId ${j.requestId}`);
+  if (st.source !== "livecrawled") throw new CaptureError("unreachable", `REFUSED: LCR served source "${st.source}" — only a live crawl is a capture (maxAgeHours was 0; this should not happen — report it)`);
   const html = res.html ?? ""; const text = res.text ?? res.markdown ?? "";
-  if (!text.trim()) throw new Error("REFUSED: page returned no text (CRAWL_NOT_RENDERED shape) — nothing to quote against");
+  if (!text.trim()) throw new CaptureError("unreachable", "REFUSED: page returned no text (CRAWL_NOT_RENDERED shape) — nothing to quote against");
   const truncated = html.length >= maxCharacters || text.length >= maxCharacters;
   let quote: Receipt["quote"] = null;
   if (opts.quote) {
     const span = quoteSpan(text, opts.quote);
-    if (!span.found) throw new Error("REFUSED: the quote is not a contiguous span of the fetched page text. Fix the quote or the url; do not seal a quote the page does not carry.");
+    if (!span.found) throw new CaptureError("not_on_page", "REFUSED: the quote is not a contiguous span of the fetched page text. Fix the quote or the url; do not seal a quote the page does not carry.");
     quote = { text: opts.quote, sha256: sha256hex(norm(opts.quote)), found_at: span.index };
   }
   const receipt: Receipt = {
@@ -118,21 +129,30 @@ function loadRecord(id: string): { url: string; quote?: string } {
 }
 
 async function main() {
+  const json = has("--json"); const outDir = flag("--out") ?? RECEIPTS;
+  const emit = (o: Record<string, unknown>, code: number): never => { if (json) console.log(JSON.stringify(o)); else console.error(String(o.error ?? "")); process.exit(code); };
   if (has("--check")) {
-    const id = flag("--check")!; const p = join(RECEIPTS, id.endsWith(".json") ? id : `${id}.json`);
+    const id = flag("--check")!; const p = join(outDir, id.endsWith(".json") ? id : `${id}.json`);
     const r = JSON.parse(readFileSync(p, "utf8")) as Receipt; const stored = r.receipt_sha256;
     const recomputed = sha256hex(canonical({ ...r, receipt_sha256: undefined }));
     const ok = stored === recomputed && r.fetcher.source === "livecrawled" && r.fetcher.max_age_hours === 0;
-    console.log(`${ok ? "OK" : "FAIL"} ${p}\n  receipt_sha256 ${stored}${stored === recomputed ? "" : " != " + recomputed}\n  source ${r.fetcher.source} · captured_at ${r.captured_at} · quote ${r.quote ? "present" : "none"}`);
+    if (json) console.log(JSON.stringify({ status: ok ? "verified" : "tampered", receipt_path: p, receipt: r }));
+    else console.log(`${ok ? "OK" : "FAIL"} ${p}\n  receipt_sha256 ${stored}${stored === recomputed ? "" : " != " + recomputed}\n  source ${r.fetcher.source} · captured_at ${r.captured_at} · quote ${r.quote ? "present" : "none"}`);
     process.exit(ok ? 0 : 1);
   }
-  const key = process.env.LCR_API_KEY; if (!key) { console.error("LCR_API_KEY not set — run from the operator's shell with --env-file=.env.test (SCAN_SPEC §10). Containers do not hold this key by design."); process.exit(2); }
   let url = flag("--url"), quote = flag("--quote");
   if (has("--record")) { const rec = loadRecord(flag("--record")!); url = rec.url; quote = quote ?? rec.quote; }
-  if (!url) { console.error("need --url <u> or --record <id>"); process.exit(1); }
-  const pre = lcrBlocked(url); if (pre) { console.error(`REFUSED (pre-check, no request sent): ${pre}`); process.exit(3); }
-  const r = await capture(url, { quote, country: flag("--country"), key });
-  mkdirSync(RECEIPTS, { recursive: true }); const p = receiptPath(r); writeFileSync(p, JSON.stringify(r, null, 2) + "\n");
+  if (!url) emit({ status: "usage", error: "need --url <u> or --record <id>" }, EXIT.usage);
+  // The prohibited-host pre-check needs no key and no network: it runs first so a container without the key still
+  // answers "capture by hand" for a .gov or venue URL instead of "no key".
+  const pre = lcrBlocked(url!); if (pre) emit({ status: "blocked_host", url, error: `REFUSED (pre-check, no request sent): ${pre}` }, EXIT.blocked_host);
+  const key = process.env.LCR_API_KEY;
+  if (!key) emit({ status: "usage", error: "LCR_API_KEY not set — run from the operator's shell with --env-file=.env.test (SCAN_SPEC §10). Containers do not hold this key by design." }, EXIT.usage);
+  let r: Receipt;
+  try { r = await capture(url!, { quote, country: flag("--country"), key: key! }); }
+  catch (e) { const st = e instanceof CaptureError ? e.status : "unreachable"; return emit({ status: st, url, error: String((e as Error)?.message ?? e) }, EXIT[st]); }
+  mkdirSync(outDir, { recursive: true }); const p = join(outDir, `${r.html_sha256.slice(2, 18)}.json`); writeFileSync(p, JSON.stringify(r, null, 2) + "\n");
+  if (json) { console.log(JSON.stringify({ status: "verified", receipt_path: p, receipt: r })); return; }
   console.log([
     `SOURCE CAPTURE · ${r.url}`,
     `  title        ${r.final_title ?? "(none)"}${r.published_date ? "  · published " + r.published_date : ""}`,

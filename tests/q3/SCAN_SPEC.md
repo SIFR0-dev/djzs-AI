@@ -799,3 +799,15 @@ Commands (§10.3: scripts and flags, never pasted command text):
 - `npx tsx --env-file=.env.test tests/q3/source-capture.ts --url <u> --quote "<verbatim>" [--country gb]`
 - `npx tsx tests/q3/source-capture.ts --check <receipt id>` — offline re-verification, no key.
 - `npx vitest run tests/q3/source-capture.test.ts` — the rails, offline.
+
+### 13.1 GATE 0.5 — the basis receipt in the refusal agent (2026-11-09, "lets bake it in")
+
+CLAUDE.md §14 names the engine's honesty limit: M03 checks that a probability basis is stated, not that it is true, and entry 002 passed on a fabricated basis. The refusal agent now carries one more rung, operator-side, before any spend: `djzs-trust-mcp/agent/basis-gate.mjs`.
+
+- An intent may add two frontmatter fields: `basis_url` (the page the basis rests on) and `basis_quote` (the verbatim span that must be on that page). **Neither is on the wire.** `renderWire` is frozen; `intent_sha256` and every verdict hash are unchanged (test 1 of `test/basis-gate.test.mjs` pins this).
+- Dry run: the agent calls `tests/q3/source-capture.ts --json --out djzs-trust-mcp/agent/receipts` for `basis_url` + `basis_quote`. Live crawl only, quote gate, receipt self-hashed, as §13. The log carries the receipt's hashes and time, never page text.
+- Paid run never fetches: it requires a receipt from the dry run for the same url + quote, `livecrawled`, under 24 hours old. Older, missing, or cached → `stale`, refuse, re-run dry. The ticket (`--expect-sha`) and the receipt therefore describe the same moment.
+- Decisions, fixed vocabulary: `verified` proceed · `blocked_host` proceed and record (venues and `.gov` are LCR-prohibited; the venue number comes from the venue API, never through LCR) · `not_on_page` refuse (the operator's own citation failed) · `unreachable` refuse, or `skipped_by_operator` with an explicit `--skip-basis` · `unchecked` when no `basis_url` is given (allowed today) · `stale` paid-mode refuse.
+- Exit code 7 is the basis gate. Paid-mode refusals log as BLOCKED with `basis_receipt` attached; settled entries carry `basis_receipt` beside `verdict_hash`.
+- What it is not: not truth. A fetched page can be wrong. The engine is untouched and still pure; whether `not_on_page` or `unchecked` should earn WAIT inside the engine is a later ruling that needs a battery and the §5 parity proof.
+- The blocked-host list lives in two files (TypeScript and plain Node); test 4 fails CI if they drift.

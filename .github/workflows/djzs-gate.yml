@@ -66,6 +66,9 @@ jobs:
       - name: "intent_hash: PM golden unchanged; perp intents map and hash instead of throwing after settlement"
         run: npx tsx test/djzs-intent.test.mjs
         working-directory: djzs-trust-mcp
+      - name: "GATE 0.5 basis receipt: wire and intent_sha256 unmoved; venue proceeds, not_on_page refuses; paid never fetches; blocked-host list identical in both files"
+        run: npx tsx test/basis-gate.test.mjs
+        working-directory: djzs-trust-mcp
       - name: "x402 adapter: ordering invariants offline; engine tally reaches the attestation seam"
         run: npx tsx harness/adapter-offline.ts
         working-directory: djzs-trust-mcp
