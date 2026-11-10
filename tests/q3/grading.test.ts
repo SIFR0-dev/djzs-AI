@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { canonical, sha256hex, strip, classifyVolumeTotalDrift, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { gradeKalshi, gradePolymarket, gradeRecord, applyAbsenceRecheck } from "./q3-grade";
 import { validateAbsenceRecheck } from "./absence-recheck";
-import { kalshiVolumes, kalshiVwap, kalshiRetryDelayMs, KALSHI_429_TRIES, encodeFills, decodeFills, fillsDigest, sumFillsBefore, diffFills, type KalshiFill } from "./kalshi-client";
+import { kalshiVolumes, kalshiVwap, kalshiRetryDelayMs, KALSHI_429_TRIES, encodeFills, decodeFills, fillsDigest, sumFillsBefore, sumFillsBetween, diffFills, SEAL_WINDOWS_PATH, KALSHI_ENDPOINT_LABEL, type KalshiFill, type SealWindow } from "./kalshi-client";
 
 let fails = 0, ran = 0, unexercised = 0;
 function eq(got: unknown, want: unknown, what: string) {
@@ -194,6 +194,35 @@ console.log("GRADING · Kalshi trades span a live and a historical tier — read
   eq(c3.length, 1, "a 503 costs exactly one request");
   const c4: string[] = [];
   await rejects(kalshiVwap("KX-T", "yes", end, 60, flaky(tierFetch({ live: [[w1, w2]], historical: [[w2, w3]] }), "historical", 3, 429, c4)), /HTTP 429 \(historical tier\) after 3 tries/, "the price path (kalshiVwap) gets the same bounded retry");
+}
+
+console.log("GRADING · PROTOCOL v1.14 — the closed seal-window list (five 2026-09-14 Kalshi records sealed from the live tier alone)");
+{
+  const reg = JSON.parse(readFileSync(SEAL_WINDOWS_PATH, "utf8")) as { records: Record<string, SealWindow> };
+  const ids = Object.keys(reg.records).sort();
+  eq(ids, ["q3-2026-09-14-001", "q3-2026-09-14-002", "q3-2026-09-14-003", "q3-2026-09-14-004", "q3-2026-09-14-005"], "the list is exactly the five records v1.14 names; a sixth takes an amendment and this line");
+  // The window is not a free parameter. Kalshi's live tier was observed to hold the 67 days before the current UTC day,
+  // so a live-only seal summed from 00:00Z of the seal's UTC day minus 67 days. An entry must sit on that instant.
+  const DAY = 86400e3, LIVE_TIER_DAYS = 67;
+  for (const id of ids) {
+    const r = rec(id), w = reg.records[id];
+    eq([r.market?.venue, r.price_source?.provider, r.record_hash != null, r.price_source?.fills_sha256 ?? null], ["kalshi", "kalshi-api", true, null], `${id}: a sealed Kalshi record with no sealed fill list`);
+    const sealDay = Math.floor(Date.parse(r.price_captured_at) / DAY) * DAY;
+    eq(w.volume_total_window_start, new Date(sealDay - LIVE_TIER_DAYS * DAY).toISOString().replace(".000Z", "Z"), `${id}: window start is the seal's UTC day minus 67 days`);
+    ok(Date.parse(w.volume_total_window_start) < Date.parse(r.posted_at) && w.cumulative_to_posted_at >= r.volume_total, `${id}: the window opens before posted_at and the cumulative figure is not smaller than the sealed one`);
+  }
+  // The published table, pinned: against their cumulative figures 001-004 are the under-1% WARN and 005 is the FAIL.
+  eq(ids.map(id => classifyVolumeTotalDrift(rec(id).volume_total, reg.records[id].cumulative_to_posted_at, true).level), ["warn", "warn", "warn", "warn", "fail"], "sealed vs cumulative: 001-004 warn, 005 fail — the comparison the list replaces");
+
+  // What q3-verify does with an entry: one fill list, two quantities, the §8I rule applied to the right one.
+  const f = (id: string, t: string, n: number): KalshiFill => ({ trade_id: id, ticker: "KX-T", created_time: t, count_fp: String(n), yes_price_dollars: "0.5000", no_price_dollars: "0.5000", taker_side: "yes" });
+  const endTs = Date.parse("2026-09-14T19:40:00Z") / 1000, startTs = Date.parse("2026-07-09T00:00:00Z") / 1000;
+  const fills = [f("d", "2026-09-14T19:40:00Z", 9), f("c", "2026-08-01T00:00:00Z", 3), f("b", "2026-07-09T00:00:00Z", 7), f("a", "2026-06-01T00:00:00Z", 100)];
+  eq(sumFillsBetween(fills, startTs, endTs), 10, "window sum: a fill AT the window start counts, a fill AT posted_at does not, earlier history does not");
+  eq(sumFillsBetween(fills, startTs, endTs) + sumFillsBetween(fills, 0, startTs), sumFillsBefore(fills, endTs), "window + everything before it = the cumulative total");
+  eq(classifyVolumeTotalDrift(10, sumFillsBetween(fills, startTs, endTs), true).level, "match", "a sealed window figure against the recomputed window → match");
+  eq(classifyVolumeTotalDrift(10, sumFillsBefore(fills, endTs), true).level, "fail", "the same sealed figure against the cumulative total → fail");
+  ok(KALSHI_ENDPOINT_LABEL.includes("/markets/trades") && KALSHI_ENDPOINT_LABEL.includes("/historical/trades"), "the endpoint label Phase B seals names both tiers");
 }
 
 async function live() {

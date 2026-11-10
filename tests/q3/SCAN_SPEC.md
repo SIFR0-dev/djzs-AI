@@ -594,6 +594,35 @@ Phase B now stores the fill list behind every Kalshi `volume_total` at `tests/q3
 
 Records sealed before this change carry no list; their drift WARN says so rather than guessing.
 
+### Cause established (2026-11-10): the live tier is a 67-day window
+
+"Cause undetermined" and "these four records will stay unattributable" above are superseded. Nothing above is edited; this is what was learned after it was written. The rules that follow from it are PROTOCOL v1.14.
+
+**The mechanism.** Kalshi serves trades from a live tier (`/markets/trades`) and a historical tier (`/historical/trades`). `tests/q3/kalshi-client.ts` read the live tier only. The live tier begins at 00:00Z of the day of the venue's latest daily advance minus 67 days, and that floor moves forward one day per day. Every walk by the live-only client was therefore a walk of the last 67 days, at seal and at every re-check.
+
+**Both sets of numbers above reproduce to the cent** from the union of the two tiers (one fill per `trade_id`), re-derived 2026-11-10:
+
+| record | sealed 2026-09-14T19:51Z | Σ fills from 2026-07-09T00:00Z | re-fetched 2026-09-17T03:55Z | Σ fills from 2026-07-11T00:00Z | cumulative to `posted_at` |
+|---|---|---|---|---|---|
+| `q3-2026-09-14-001` | 33,554,697.47 | 33,554,697.47 | 33,552,721.15 | 33,552,721.15 | 33,578,593.41 |
+| `q3-2026-09-14-002` | 14,992,914.33 | 14,992,914.33 | 14,992,914.33 | 14,992,914.33 | 15,001,075.65 |
+| `q3-2026-09-14-003` | 13,750,350.55 | 13,750,350.55 | 13,748,931.07 | 13,748,931.07 | 13,803,804.05 |
+| `q3-2026-09-14-004` | 9,183,936.13 | 9,183,936.13 | 9,181,389.68 | 9,181,389.68 | 9,225,589.98 |
+| `q3-2026-09-14-005` | 2,701,354.68 | 2,701,354.68 | 2,696,703.54 | 2,696,703.54 | 5,783,046.27 |
+
+So each observation above has its explanation:
+- **All four deltas negative, none settled-dependent:** the floor had moved two days (2026-07-09 → 2026-07-11), and the delta is exactly the notional traded in those two days. `-H26` reproduced because it has no fill between 2026-07-09 and 2026-07-13.
+- **Not a flaky walk:** correct. Each walk was complete for what the live tier served.
+- **"The venue now serves less pre-`posted_at` volume than was sealed":** true of the live tier, false of the venue. No fill was lost; the fills moved tiers.
+
+**What it cost.** The sealed `volume_total` on these five records is a 67-day figure, not a cumulative one: within 0.45% of cumulative on the four FOMC strikes, and 46.71% of it on `KXBALANCEPOWERCOMBO-27FEB-RR`, which traded heavily from December 2025 to June 2026. Price, fill count and `volume_24h` were never affected: their windows lay inside the live tier at seal.
+
+**What the verifier does now.** It reads both tiers (bounded retry on HTTP 429). For the five records on the closed list `tests/q3/kalshi-seal-windows.json` it recomputes the window figure and applies the ruling above to that; for every other record it recomputes the cumulative total, as before. Run live on 2026-11-10 with no key: all five match, no WARN. With the list removed the same run returns the old comparison: 001-004 WARN at 0.05-0.45%, 005 FAIL at +114.08%.
+
+**How it surfaced, and what would have followed.** The scheduled run of 2026-11-09 failed `q3-2026-09-14-004` at −62.06%, with the live tier's floor at 2026-09-03. A re-run of the same job passed because all five Kalshi volume re-fetches returned HTTP 429 and all five Dune executions returned HTTP 402: that green verified no volume and no Polymarket price. The 24-hour and VWAP windows of these records (2026-09-13T19:40Z to 2026-09-14T19:40Z) leave the live tier on about 2026-11-20; from then the live-only reader would have failed every Kalshi price re-check on every CI run, not only on Mondays.
+
+**Not established.** The 67 days is four observations (2026-09-14, 2026-09-17, and twice on 2026-11-10), not a documented venue policy; the hour of the daily advance is not fixed (not yet run by 04:22Z on 2026-09-17, run by 02:18Z on 2026-11-10). If the venue changes the window, the two-tier read is unaffected and the closed list is unaffected: both depend on the archive, not on the window.
+
 ## 9. Known gap, 2026-09-11 — the sample floors count records while clustering counts events
 
 **Not an amendment and not a rule change. This section records a discrepancy and names the point at which it has to be addressed; it invents no threshold and changes nothing.**

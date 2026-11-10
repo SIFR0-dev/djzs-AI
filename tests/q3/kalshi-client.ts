@@ -149,6 +149,22 @@ export function decodeFills(buf: Buffer): { fills: KalshiFill[]; sha256: string 
 export function sumFillsBefore(fills: KalshiFill[], endTs: number): number {
   let v = 0; for (const f of fills) { const ts = Math.floor(new Date(f.created_time).getTime() / 1000); if (!(ts < endTs)) continue; const q = qty(f); if (q > 0) v += q; } return v;
 }
+/** Σ count over fills in [startTs, endTs) with a readable size: sumFillsBefore with a floor. Whole seconds, as the
+ *  endpoint's own bounds are. */
+export function sumFillsBetween(fills: KalshiFill[], startTs: number, endTs: number): number {
+  let v = 0; for (const f of fills) { const ts = Math.floor(new Date(f.created_time).getTime() / 1000); if (!(ts >= startTs && ts < endTs)) continue; const q = qty(f); if (q > 0) v += q; } return v;
+}
+/** PROTOCOL v1.14 rule 1 — what Phase B seals into price_source.endpoint: both tiers are named because both are read. */
+export const KALSHI_ENDPOINT_LABEL = "GET /trade-api/v2/markets/trades + GET /trade-api/v2/historical/trades (union by trade_id)";
+/** PROTOCOL v1.14 rule 2 — the CLOSED list of Kalshi records sealed while the client read the live tier only. Their
+ *  sealed volume_total is the notional traded from `volume_total_window_start` to posted_at (what the live tier served
+ *  at seal), not the cumulative total v1.7(a) defines; q3-verify re-checks each against that window. Sealed records are
+ *  never edited, so the window lives here, beside them. `cumulative_to_posted_at` is the full two-tier figure the
+ *  amendment publishes; it is re-checked too, as a WARN, because it is not a sealed value.
+ *  A record sealed with the two-tier client reads the whole history and can never need an entry;
+ *  tests/q3/grading.test.ts fails if this file names anything but the five records v1.14 lists. */
+export const SEAL_WINDOWS_PATH = "tests/q3/kalshi-seal-windows.json";
+export interface SealWindow { volume_total_window_start: string; cumulative_to_posted_at: number }
 /** Fill-level difference between a stored list and a re-fetch, both restricted to fills before `endTs`. */
 export function diffFills(stored: KalshiFill[], refetched: KalshiFill[], endTs: number) {
   const before = (fs: KalshiFill[]) => new Map(fs.filter(f => Math.floor(new Date(f.created_time).getTime() / 1000) < endTs).map(f => [f.trade_id, f] as const));
