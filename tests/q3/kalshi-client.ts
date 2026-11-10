@@ -1,22 +1,61 @@
 /**
  * Kalshi public trades → VWAP for the audited side (protocol v1.3.1). No auth. Re-queryable by anyone with the same params.
- *   GET https://api.elections.kalshi.com/trade-api/v2/markets/trades?ticker=&min_ts=&max_ts=&limit=1000[&cursor=]
+ *   GET https://api.elections.kalshi.com/trade-api/v2/markets/trades?ticker=&min_ts=&max_ts=&limit=1000[&cursor=]      (live tier)
+ *   GET https://api.elections.kalshi.com/trade-api/v2/historical/trades?ticker=&min_ts=&max_ts=&limit=1000[&cursor=]   (historical tier)
  * Fill fields used: yes_price_dollars / no_price_dollars (fixed-point strings), count_fp or count, created_time.
+ *
+ * TWO TIERS, ONE HISTORY (observed 2026-11-09). Kalshi partitions trades into a live and a historical tier: fills created
+ * before the venue's `trades_created_ts` cutoff (GET /historical/cutoff) are served ONLY by /historical/trades, and the
+ * cutoff advances over time. A walk of /markets/trades alone therefore returns a history that shrinks as the market ages.
+ * Instrument: q3-2026-09-14-004 (KXFEDDECISION-26SEP-C25), sealed volume_total 9,183,936.13. With the cutoff at
+ * 2026-09-10T00:00Z the live tier alone returned 985 fills / 3,484,793.29 contracts, earliest fill 2026-09-03 on a market
+ * opened 2025-09-29 (scheduled run #233 FAILed the record on it); the historical tier returned 5,962 fills / 7,301,662.49;
+ * the union, de-duplicated by trade_id, 6,427 fills / 9,225,589.98 (+0.45% vs sealed). 519 fills sat in BOTH tiers, every
+ * one byte-identical — the hand-off is buffered, so the tiers overlap and a plain sum double-counts.
+ * Rules:
+ *  - Both tiers are always walked; the union is de-duplicated by trade_id. Choosing a tier from the cutoff would race it.
+ *  - Live is walked FIRST. Overlap shows the venue copies a fill to historical before it leaves live, so a fill that moves
+ *    mid-walk is caught by the later historical walk. The reverse order could miss it in both.
+ *  - A trade_id present in both tiers with different content is a conflict: throw, never pick one.
+ *  - Any non-2xx from either tier throws (the historical tier answers 404 for an unknown ticker): one tier alone is not
+ *    the history, so a partial answer is never returned as a whole one.
+ *  - The union is ordered newest-first by created_time, ties by trade_id — the feed's own order, made independent of which
+ *    tier served each fill, so the same set of fills always serialises identically.
  */
 import { gunzipSync, gzipSync } from "node:zlib";
 import { canonical, sha256hex } from "./lib";
 export interface KalshiFill { trade_id: string; ticker: string; created_time: string; yes_price_dollars?: string; no_price_dollars?: string; yes_price?: number; no_price?: number; count_fp?: string | number; count?: number; taker_side?: string; taker_outcome_side?: string }
 export interface KalshiVwap { vwap: number | null; trade_count: number; contracts: number; volume_usdc: number; window_start: string; window_end: string; query: { ticker: string; min_ts: number; max_ts: number; side: string } }
 const BASE = "https://api.elections.kalshi.com/trade-api/v2";
-export async function fetchKalshiFillsPaged(ticker: string, minTs: number, maxTs: number, fetchImpl: typeof fetch = fetch, maxPages = 50): Promise<{ fills: KalshiFill[]; truncated: boolean; pages: number }> {
+export const KALSHI_TIERS = [["live", "/markets/trades"], ["historical", "/historical/trades"]] as const;
+export interface KalshiTierStats { live: { fills: number; pages: number; truncated: boolean }; historical: { fills: number; pages: number; truncated: boolean }; overlap: number }
+/** One tier, cursor-paginated. truncated = the tier still had a cursor when the page budget ran out. */
+async function walkTier(name: string, path: string, ticker: string, minTs: number, maxTs: number, fetchImpl: typeof fetch, maxPages: number) {
   const out: KalshiFill[] = []; let cursor: string | undefined; let pages = 0;
   while (pages < maxPages) {
-    const u = `${BASE}/markets/trades?ticker=${encodeURIComponent(ticker)}&min_ts=${minTs}&max_ts=${maxTs}&limit=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
-    const r = await fetchImpl(u); if (!r.ok) throw new Error(`kalshi trades HTTP ${r.status}`);
+    const u = `${BASE}${path}?ticker=${encodeURIComponent(ticker)}&min_ts=${minTs}&max_ts=${maxTs}&limit=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const r = await fetchImpl(u); if (!r.ok) throw new Error(`kalshi trades HTTP ${r.status} (${name} tier)`);
     const j = await r.json() as { trades?: KalshiFill[]; cursor?: string }; out.push(...(j.trades ?? [])); pages++; cursor = j.cursor || undefined; if (!cursor) break;
   }
-  // truncated = the feed still had a cursor when the page budget ran out, so these fills are NOT the whole set.
-  return { fills: out, truncated: Boolean(cursor), pages };
+  return { fills: out, pages, truncated: Boolean(cursor) };
+}
+const newestFirst = (a: KalshiFill, b: KalshiFill) => (Date.parse(b.created_time) - Date.parse(a.created_time)) || (a.trade_id < b.trade_id ? -1 : a.trade_id > b.trade_id ? 1 : 0);
+/** maxPages is the budget PER TIER. truncated if either tier was cut short: the union is then NOT the whole set. */
+export async function fetchKalshiFillsPaged(ticker: string, minTs: number, maxTs: number, fetchImpl: typeof fetch = fetch, maxPages = 50): Promise<{ fills: KalshiFill[]; truncated: boolean; pages: number; tiers: KalshiTierStats }> {
+  const live = await walkTier(KALSHI_TIERS[0][0], KALSHI_TIERS[0][1], ticker, minTs, maxTs, fetchImpl, maxPages);
+  const hist = await walkTier(KALSHI_TIERS[1][0], KALSHI_TIERS[1][1], ticker, minTs, maxTs, fetchImpl, maxPages);
+  // A repeated trade_id is one fill only if every copy is byte-identical (canonical JSON); otherwise it is a conflict.
+  const byId = new Map<string, { f: KalshiFill; tier: string }>(); let overlap = 0; const conflicts: string[] = [];
+  for (const [tier, fs] of [["live", live.fills], ["historical", hist.fills]] as const) for (const f of fs) {
+    const seen = byId.get(f.trade_id);
+    if (!seen) { byId.set(f.trade_id, { f, tier }); continue; }
+    if (seen.tier !== tier) overlap++;
+    if (canonical(seen.f) !== canonical(f)) conflicts.push(f.trade_id);
+  }
+  if (conflicts.length) throw new Error(`kalshi trades: ${conflicts.length} trade_id(s) served with different content (first ${conflicts[0]}) — refusing to choose one`);
+  const fills = [...byId.values()].map(x => x.f).sort(newestFirst);
+  const tiers: KalshiTierStats = { live: { fills: live.fills.length, pages: live.pages, truncated: live.truncated }, historical: { fills: hist.fills.length, pages: hist.pages, truncated: hist.truncated }, overlap };
+  return { fills, truncated: live.truncated || hist.truncated, pages: live.pages + hist.pages, tiers };
 }
 export async function fetchKalshiFills(ticker: string, minTs: number, maxTs: number, fetchImpl: typeof fetch = fetch): Promise<KalshiFill[]> {
   return (await fetchKalshiFillsPaged(ticker, minTs, maxTs, fetchImpl, 50)).fills;
@@ -34,15 +73,15 @@ export async function fetchKalshiFills(ticker: string, minTs: number, maxTs: num
  *  Unknown is never reported as zero. Truncation, an empty fill history, a fill whose taker side or price cannot be
  *  read, or a total that sums to zero all return null with a note. The VWAP gate has already proven fills exist inside
  *  a window strictly contained in [0, end), so a zero total is not a possible true answer here — only a missing one. */
-export interface KalshiVolumes { volume_24h: number | null; volume_total: number | null; total_computed: boolean; fills: number; pages: number; truncated: boolean; window_24h_start: string; as_of: string; note?: string; fill_list?: KalshiFill[] }
+export interface KalshiVolumes { volume_24h: number | null; volume_total: number | null; total_computed: boolean; fills: number; pages: number; truncated: boolean; window_24h_start: string; as_of: string; note?: string; fill_list?: KalshiFill[]; tiers?: KalshiTierStats }
 /** includeTotal=false pages ONLY the 24h window, so the full-history walk is not performed at all. volume_total then
  *  comes back null with total_computed false — "not asked for", which the caller must not read as "unknown".
- *  returnFills=true also returns the walk's fills verbatim, in feed order, as `fill_list` — Phase B stores them so a
- *  later volume_total drift can be diagnosed fill by fill (SCAN_SPEC §8I). */
+ *  returnFills=true also returns the walk's fills verbatim, in feed order (newest-first across both tiers, see the header),
+ *  as `fill_list` — Phase B stores them so a later volume_total drift can be diagnosed fill by fill (SCAN_SPEC §8I). */
 export async function kalshiVolumes(ticker: string, endIso: string, fetchImpl: typeof fetch = fetch, maxPages = 400, includeTotal = true, returnFills = false): Promise<KalshiVolumes> {
   const end = Math.floor(new Date(endIso).getTime() / 1000); const start24 = end - 24 * 3600;
-  const { fills, truncated, pages } = await fetchKalshiFillsPaged(ticker, includeTotal ? 0 : start24, end, fetchImpl, maxPages);
-  const base = { fills: fills.length, pages, truncated, total_computed: includeTotal, window_24h_start: new Date(start24 * 1000).toISOString(), as_of: new Date(end * 1000).toISOString(), ...(returnFills ? { fill_list: fills } : {}) };
+  const { fills, truncated, pages, tiers } = await fetchKalshiFillsPaged(ticker, includeTotal ? 0 : start24, end, fetchImpl, maxPages);
+  const base = { fills: fills.length, pages, truncated, tiers, total_computed: includeTotal, window_24h_start: new Date(start24 * 1000).toISOString(), as_of: new Date(end * 1000).toISOString(), ...(returnFills ? { fill_list: fills } : {}) };
   if (truncated) return { ...base, volume_24h: null, volume_total: null, note: `fill history truncated at ${pages} pages — refusing to report a partial sum as a total` };
   if (fills.length === 0) return { ...base, volume_24h: null, volume_total: null, note: "the feed returned no fills at all — an empty history is not a measured zero" };
   let v24 = 0, vtot = 0, unusable = 0;
