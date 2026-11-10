@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { canonical, sha256hex, strip, classifyVolumeTotalDrift, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { gradeKalshi, gradePolymarket, gradeRecord, applyAbsenceRecheck } from "./q3-grade";
 import { validateAbsenceRecheck } from "./absence-recheck";
-import { kalshiVolumes, encodeFills, decodeFills, fillsDigest, sumFillsBefore, diffFills, type KalshiFill } from "./kalshi-client";
+import { kalshiVolumes, kalshiVwap, kalshiRetryDelayMs, KALSHI_429_TRIES, encodeFills, decodeFills, fillsDigest, sumFillsBefore, sumFillsBetween, diffFills, SEAL_WINDOWS_PATH, KALSHI_ENDPOINT_LABEL, type KalshiFill, type SealWindow } from "./kalshi-client";
 
 let fails = 0, ran = 0, unexercised = 0;
 function eq(got: unknown, want: unknown, what: string) {
@@ -121,10 +121,108 @@ console.log("GRADING · sealed Kalshi fill list (§8I)");
   eq(sha256, fillsDigest(fills), "digest is over the decompressed canonical bytes");
   eq(sumFillsBefore(fills, endTs), 5, "a fill AT posted_at is excluded, as kalshiVolumes excludes it");
   const pages = [{ trades: fills.slice(0, 2), cursor: "p2" }, { trades: fills.slice(2) }]; let i = 0;
-  const kv = await kalshiVolumes("KX-T", end, (async () => json(pages[i++])) as typeof fetch, 400, true, true);
+  // Two-tier client (2026-11-09): this fixture's whole history sits in the live tier; the historical tier is empty.
+  const kv = await kalshiVolumes("KX-T", end, (async (u: string) => new URL(u).pathname.includes("/historical/") ? json({ cursor: "", trades: [] }) : json(pages[i++])) as typeof fetch, 400, true, true);
   eq([kv.volume_total, kv.fill_list?.length], [sumFillsBefore(fills, endTs), 3], "kalshiVolumes returns the walked list and it sums to volume_total");
   const refetch = [f("b", "2026-09-14T10:00:00Z", 4), f("d", "2026-09-13T10:00:00Z", 1)];
   eq(diffFills(fills, refetch, endTs), { missing: 1, missingQty: 2, added: 1, addedQty: 1, resized: 1, resizedQty: 1 }, "diff names missing, added and resized fills");
+}
+
+console.log("GRADING · Kalshi trades span a live and a historical tier — read both, one fill per trade_id (2026-11-09)");
+{
+  // Instrument: run #233 FAILed q3-2026-09-14-004 at -62% because the client read only the live tier, which no longer
+  // served fills before the venue's archive cutoff. The union of both tiers reproduced the sealed total to +0.45%.
+  const f = (id: string, t: string, n: number, yes = "0.5000"): KalshiFill => ({ trade_id: id, ticker: "KX-T", created_time: t, count_fp: String(n), yes_price_dollars: yes, no_price_dollars: (1 - Number(yes)).toFixed(4), taker_side: "yes" });
+  const end = "2026-09-14T19:40:00Z";
+  const newer = f("n1", "2026-09-14T19:00:00Z", 5), mid = f("m1", "2026-09-09T12:00:00Z", 3), old1 = f("o1", "2026-08-01T00:00:00Z", 11), old2 = f("o2", "2026-02-01T00:00:00Z", 7);
+  type Served = Partial<Record<"live" | "historical", KalshiFill[][]>>;
+  // Pages by tier; the cursor is the next page index. A tier absent from `srv` answers 404, as /historical/trades does
+  // for a ticker it does not know.
+  const tierFetch = (srv: Served, log: string[] = []) => (async (u: string) => {
+    const url = new URL(u); const tier = url.pathname.includes("/historical/") ? "historical" : "live"; log.push(tier);
+    const pgs = srv[tier]; if (!pgs) return json({ error: { code: "not_found", message: "not found" } }, 404);
+    const p = Number(url.searchParams.get("cursor") ?? 0); return json({ trades: pgs[p] ?? [], cursor: p + 1 < pgs.length ? String(p + 1) : "" });
+  }) as typeof fetch;
+  // The buffered hand-off: `mid` is served by BOTH tiers, byte-identical; the old fills only by the historical tier.
+  const served: Served = { live: [[newer, mid]], historical: [[mid, old1], [old2]] };
+  const log: string[] = [];
+  const kv = await kalshiVolumes("KX-T", end, tierFetch(served, log), 400, true, true);
+  eq(kv.volume_total, 5 + 3 + 11 + 7, "volume_total is the union of both tiers, the overlapping fill counted once");
+  eq([kv.fills, kv.tiers?.live.fills, kv.tiers?.historical.fills, kv.tiers?.overlap], [4, 2, 3, 1], "tier stats: 2 live + 3 historical, 1 in both, 4 unique");
+  const liveOnly = await kalshiVolumes("KX-T", end, tierFetch({ live: served.live, historical: [[]] }), 400, true);
+  eq(liveOnly.volume_total, 8, "the live tier alone undercounts (the pre-fix read, run #233's shape)");
+  ok(log[0] === "live" && log.lastIndexOf("live") < log.indexOf("historical"), "live is walked to the end before historical starts", log);
+  eq(kv.fill_list?.map(x => x.trade_id), ["n1", "m1", "o1", "o2"], "fill_list is newest-first across tiers");
+  const resplit = await kalshiVolumes("KX-T", end, tierFetch({ live: [[newer]], historical: [[mid, old1, old2]] }), 400, true, true);
+  eq(fillsDigest(resplit.fill_list!), fillsDigest(kv.fill_list!), "the same fills split differently across tiers serialise identically (same digest)");
+  const dupe = await kalshiVolumes("KX-T", end, tierFetch({ live: [[newer, newer]], historical: [[]] }), 400, true);
+  eq([dupe.fills, dupe.volume_total], [1, 5], "an identical repeated trade_id is one fill");
+
+  const rejects = async (p: Promise<unknown>, re: RegExp, what: string) => { try { await p; ok(false, what, "resolved"); } catch (e) { ok(re.test((e as Error).message), what, (e as Error).message); } };
+  await rejects(kalshiVolumes("KX-T", end, tierFetch({ live: served.live, historical: [[{ ...mid, count_fp: "4" }, old1]] }), 400, true), /different content/, "a trade_id served with different sizes by the two tiers throws, never picks one");
+  await rejects(kalshiVolumes("KX-T", end, tierFetch({ live: served.live }), 400, true), /HTTP 404 \(historical tier\)/, "a failing historical tier throws: a live-only sum is never returned as the total");
+  await rejects(kalshiVolumes("KX-T", end, tierFetch({ historical: served.historical }), 400, true), /HTTP 404 \(live tier\)/, "a failing live tier throws");
+  const cut = await kalshiVolumes("KX-T", end, tierFetch(served), 1, true);
+  eq([cut.truncated, cut.volume_total], [true, null], "the page budget is per tier, and a truncated historical walk refuses the total");
+
+  // VWAP: a 60-min window whose fills are split across the tiers, one of them in both.
+  const w1 = f("w1", "2026-09-14T19:10:00Z", 5, "0.2000"), w2 = f("w2", "2026-09-14T19:00:00Z", 5, "0.3000"), w3 = f("w3", "2026-09-14T18:50:00Z", 10, "0.5000");
+  const k = await kalshiVwap("KX-T", "yes", end, 60, tierFetch({ live: [[w1, w2]], historical: [[w2, w3]] }));
+  eq([k.trade_count, k.contracts, k.vwap?.toFixed(6)], [3, 20, "0.375000"], "VWAP and trade_count read both tiers, the shared fill once");
+
+  // HTTP 429: bounded retry, 429 only. `Retry-After: 0` keeps the offline suite from sleeping.
+  eq(KALSHI_429_TRIES, 3, "at most 3 requests per page");
+  const now = Date.parse("2026-11-09T12:00:00Z");
+  eq([kalshiRetryDelayMs(1, null), kalshiRetryDelayMs(2, null), kalshiRetryDelayMs(5, null)], [1000, 2000, 10000], "no Retry-After: 1s, 2s, then capped at 10s");
+  eq([kalshiRetryDelayMs(1, "3"), kalshiRetryDelayMs(1, "0"), kalshiRetryDelayMs(1, "120")], [3000, 0, 10000], "Retry-After seconds win, capped at 10s");
+  eq([kalshiRetryDelayMs(1, new Date(now + 5000).toUTCString(), now), kalshiRetryDelayMs(1, new Date(now - 5000).toUTCString(), now)], [5000, 0], "Retry-After HTTP-date: time until it, never negative");
+  eq(kalshiRetryDelayMs(2, "soon"), 2000, "an unparseable Retry-After falls back to the exponential wait");
+  // Wraps tierFetch: the first `n` requests to `tier` answer `status` (Retry-After: 0); `calls` counts every request.
+  const flaky = (inner: typeof fetch, tier: "live" | "historical", n: number, status = 429, calls: string[] = []) => (async (u: string) => {
+    const t = new URL(u).pathname.includes("/historical/") ? "historical" : "live"; calls.push(t);
+    if (t === tier && n > 0) { n--; return new Response(JSON.stringify({ error: { code: "too_many_requests" } }), { status, headers: { "retry-after": "0" } }); }
+    return inner(u);
+  }) as typeof fetch;
+  const c1: string[] = [];
+  const healed = await kalshiVolumes("KX-T", end, flaky(tierFetch(served), "historical", 2, 429, c1), 400, true);
+  eq([healed.volume_total, healed.tiers?.historical.pages, c1.filter(x => x === "historical").length], [26, 2, 4], "two 429s then 200: same total, retries not counted as pages (2 pages, 4 requests)");
+  const c2: string[] = [];
+  await rejects(kalshiVolumes("KX-T", end, flaky(tierFetch(served), "live", 99, 429, c2), 400, true), /HTTP 429 \(live tier\) after 3 tries/, "still 429 on the 3rd try: throws, never a partial total");
+  eq(c2.length, 3, "exactly 3 requests before giving up, and the historical tier is never reached");
+  const c3: string[] = [];
+  await rejects(kalshiVolumes("KX-T", end, flaky(tierFetch(served), "live", 1, 503, c3), 400, true), /HTTP 503 \(live tier\)$/, "any other non-2xx is not retried");
+  eq(c3.length, 1, "a 503 costs exactly one request");
+  const c4: string[] = [];
+  await rejects(kalshiVwap("KX-T", "yes", end, 60, flaky(tierFetch({ live: [[w1, w2]], historical: [[w2, w3]] }), "historical", 3, 429, c4)), /HTTP 429 \(historical tier\) after 3 tries/, "the price path (kalshiVwap) gets the same bounded retry");
+}
+
+console.log("GRADING · PROTOCOL v1.14 — the closed seal-window list (five 2026-09-14 Kalshi records sealed from the live tier alone)");
+{
+  const reg = JSON.parse(readFileSync(SEAL_WINDOWS_PATH, "utf8")) as { records: Record<string, SealWindow> };
+  const ids = Object.keys(reg.records).sort();
+  eq(ids, ["q3-2026-09-14-001", "q3-2026-09-14-002", "q3-2026-09-14-003", "q3-2026-09-14-004", "q3-2026-09-14-005"], "the list is exactly the five records v1.14 names; a sixth takes an amendment and this line");
+  // The window is not a free parameter. Kalshi's live tier was observed to hold the 67 days before the current UTC day,
+  // so a live-only seal summed from 00:00Z of the seal's UTC day minus 67 days. An entry must sit on that instant.
+  const DAY = 86400e3, LIVE_TIER_DAYS = 67;
+  for (const id of ids) {
+    const r = rec(id), w = reg.records[id];
+    eq([r.market?.venue, r.price_source?.provider, r.record_hash != null, r.price_source?.fills_sha256 ?? null], ["kalshi", "kalshi-api", true, null], `${id}: a sealed Kalshi record with no sealed fill list`);
+    const sealDay = Math.floor(Date.parse(r.price_captured_at) / DAY) * DAY;
+    eq(w.volume_total_window_start, new Date(sealDay - LIVE_TIER_DAYS * DAY).toISOString().replace(".000Z", "Z"), `${id}: window start is the seal's UTC day minus 67 days`);
+    ok(Date.parse(w.volume_total_window_start) < Date.parse(r.posted_at) && w.cumulative_to_posted_at >= r.volume_total, `${id}: the window opens before posted_at and the cumulative figure is not smaller than the sealed one`);
+  }
+  // The published table, pinned: against their cumulative figures 001-004 are the under-1% WARN and 005 is the FAIL.
+  eq(ids.map(id => classifyVolumeTotalDrift(rec(id).volume_total, reg.records[id].cumulative_to_posted_at, true).level), ["warn", "warn", "warn", "warn", "fail"], "sealed vs cumulative: 001-004 warn, 005 fail — the comparison the list replaces");
+
+  // What q3-verify does with an entry: one fill list, two quantities, the §8I rule applied to the right one.
+  const f = (id: string, t: string, n: number): KalshiFill => ({ trade_id: id, ticker: "KX-T", created_time: t, count_fp: String(n), yes_price_dollars: "0.5000", no_price_dollars: "0.5000", taker_side: "yes" });
+  const endTs = Date.parse("2026-09-14T19:40:00Z") / 1000, startTs = Date.parse("2026-07-09T00:00:00Z") / 1000;
+  const fills = [f("d", "2026-09-14T19:40:00Z", 9), f("c", "2026-08-01T00:00:00Z", 3), f("b", "2026-07-09T00:00:00Z", 7), f("a", "2026-06-01T00:00:00Z", 100)];
+  eq(sumFillsBetween(fills, startTs, endTs), 10, "window sum: a fill AT the window start counts, a fill AT posted_at does not, earlier history does not");
+  eq(sumFillsBetween(fills, startTs, endTs) + sumFillsBetween(fills, 0, startTs), sumFillsBefore(fills, endTs), "window + everything before it = the cumulative total");
+  eq(classifyVolumeTotalDrift(10, sumFillsBetween(fills, startTs, endTs), true).level, "match", "a sealed window figure against the recomputed window → match");
+  eq(classifyVolumeTotalDrift(10, sumFillsBefore(fills, endTs), true).level, "fail", "the same sealed figure against the cumulative total → fail");
+  ok(KALSHI_ENDPOINT_LABEL.includes("/markets/trades") && KALSHI_ENDPOINT_LABEL.includes("/historical/trades"), "the endpoint label Phase B seals names both tiers");
 }
 
 async function live() {

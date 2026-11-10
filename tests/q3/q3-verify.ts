@@ -8,7 +8,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { canonical, sha256hex, merkleRoot, strip, volClose, classifyVolumeTotalDrift, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { runDuneQuery, asPriceRow, duneKey } from "./dune-client";
-import { kalshiVwap, kalshiVolumes, fillsPath, decodeFills, sumFillsBefore, diffFills, type KalshiFill } from "./kalshi-client";
+import { kalshiVwap, kalshiVolumes, fillsPath, decodeFills, sumFillsBefore, sumFillsBetween, diffFills, SEAL_WINDOWS_PATH, type KalshiFill, type SealWindow } from "./kalshi-client";
 import { needsAbsenceRecheck, validateAbsenceRecheck } from "./absence-recheck";
 import { surf, surfAvailable, rows } from "./tape/surf";
 const REC_DIR = "tests/q3/records", ANCHORS = "tests/q3/anchors.json";
@@ -212,14 +212,28 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
   const VOL_TOTAL_WINDOW_DAYS = 8;
   const volTotalDue = (postedAt: string) => recordsChangedThisCommit || (reverifyMode === "always" && (Date.now() - new Date(postedAt).getTime()) <= VOL_TOTAL_WINDOW_DAYS * 86400e3);
   // v1.4 use 6 placeholder — Kalshi volume re-check follows.
+  // PROTOCOL v1.14 rule 2 — the closed list of Kalshi records whose sealed volume_total is a live-tier window figure
+  // (see kalshi-client.ts SEAL_WINDOWS_PATH). An entry is only ever legal on a sealed Kalshi record that carries a
+  // volume_total and NO sealed fill list: a record with a list was sealed after §8I and explains itself. Checked on
+  // every run, offline, so a stray entry cannot quietly change what a record is compared against.
+  const sealWindows: Record<string, SealWindow> = existsSync(SEAL_WINDOWS_PATH) ? (JSON.parse(readFileSync(SEAL_WINDOWS_PATH, "utf8")).records ?? {}) : {};
+  for (const [wid, w] of Object.entries(sealWindows)) {
+    const kc = kalshiChecks.find(k => k.id === wid); const ws = Date.parse(String(w?.volume_total_window_start));
+    if (!kc) { fails.push(`${wid}: ${SEAL_WINDOWS_PATH} names a record that is not a sealed Kalshi record`); continue; }
+    if (kc.vtot == null) fails.push(`${wid}: ${SEAL_WINDOWS_PATH} entry on a record with no sealed volume_total`);
+    if (kc.ps.fills_sha256 != null) fails.push(`${wid}: ${SEAL_WINDOWS_PATH} entry on a record sealed WITH its fill list — the list is that record's evidence, a window is not`);
+    if (!(ws < new Date(kc.posted_at).getTime())) fails.push(`${wid}: ${SEAL_WINDOWS_PATH} volume_total_window_start ${JSON.stringify(w?.volume_total_window_start)} is not an instant before posted_at`);
+    if (!(Number(w?.cumulative_to_posted_at) >= kc.vtot!)) fails.push(`${wid}: ${SEAL_WINDOWS_PATH} cumulative_to_posted_at ${w?.cumulative_to_posted_at} is smaller than the sealed window figure ${kc.vtot} — a window cannot exceed the whole`);
+  }
   // v1.7(a) — Kalshi volume re-check, on the same schedule as the Kalshi price: recomputed from the same per-fill history.
   for (const kc of kalshiChecks) {
     if (kc.v24 == null && kc.vtot == null) continue; // sealed before v1.7
     const kt = String(kc.ps.query_params?.ticker ?? ""); if (!kt) { warns.push(`${kc.id}: volume not re-verified — price_source.query_params carries no ticker`); continue; }
     const wantTotal = volTotalDue(kc.posted_at);
+    const win = sealWindows[kc.id];
     // An unreadable sealed list already FAILs in the record loop; here it only means there is nothing to diff against.
     let stored: KalshiFill[] | null = null; if (kc.ps.fills_sha256 != null && existsSync(fillsPath(kc.id))) { try { stored = decodeFills(readFileSync(fillsPath(kc.id))).fills; } catch { stored = null; } }
-    try { const kv = await kalshiVolumes(kt, new Date(Number(kc.ps.query_params?.max_ts) * 1000).toISOString(), fetch, 400, wantTotal, stored != null);
+    try { const kv = await kalshiVolumes(kt, new Date(Number(kc.ps.query_params?.max_ts) * 1000).toISOString(), fetch, 400, wantTotal, stored != null || (wantTotal && win != null));
       if (kv.volume_24h == null) { warns.push(`${kc.id}: volume not re-verified — ${kv.note ?? "no volume returned"}`); continue; }
       const v24Ok = kc.v24 != null && volClose(kc.v24, kv.volume_24h);
       if (kc.v24 != null && !v24Ok) fails.push(`${kc.id}: Kalshi volume_24h re-fetch ${kv.volume_24h.toFixed(2)} ≠ recorded ${kc.v24}`);
@@ -228,15 +242,23 @@ async function polymarketConditionId(mk: any): Promise<{ id: string; via: string
       else if (kc.vtot != null) {
         // Operator ruling 2026-09-17 (SCAN_SPEC §8I): WARN with the delta recorded iff every other re-derived field
         // reproduced and the drift is strictly under 1%; otherwise FAIL exactly as before. The sealed value is untouched.
-        const d = classifyVolumeTotalDrift(kc.vtot, kv.volume_total, kalshiPriceReproduced.has(kc.id) && v24Ok);
+        // PROTOCOL v1.14 rule 2: a record on the closed seal-window list is compared against the notional traded from
+        // its window start to posted_at, recomputed from the same two-tier walk. Every other record is compared against
+        // the cumulative total, as before. The §8I rule itself is applied unchanged to whichever quantity is compared.
+        const endTs = Number(kc.ps.query_params?.max_ts);
+        const refetched = win ? sumFillsBetween(kv.fill_list as KalshiFill[], Math.floor(Date.parse(win.volume_total_window_start) / 1000), endTs) : kv.volume_total;
+        const d = classifyVolumeTotalDrift(kc.vtot, refetched, kalshiPriceReproduced.has(kc.id) && v24Ok);
         if (d.level !== "match") {
-          const endTs = Number(kc.ps.query_params?.max_ts);
           const fd = stored && kv.fill_list ? diffFills(stored, kv.fill_list as KalshiFill[], endTs) : null;
-          const why = fd ? ` · vs the sealed fill list: ${fd.missing} fill(s) no longer served (${fd.missingQty} contracts), ${fd.added} new (${fd.addedQty}), ${fd.resized} resized (${fd.resizedQty >= 0 ? "+" : ""}${fd.resizedQty})` : " · no fill list sealed for this record, so the drift cannot be attributed to fills";
-          const msg = `${kc.id}: Kalshi volume_total drift ${d.delta >= 0 ? "+" : ""}${d.delta.toFixed(2)} contracts (${(d.rel * 100).toFixed(4)}%) — re-fetch ${kv.volume_total.toFixed(2)} vs sealed ${kc.vtot}${why}`;
+          const why = fd ? ` · vs the sealed fill list: ${fd.missing} fill(s) no longer served (${fd.missingQty} contracts), ${fd.added} new (${fd.addedQty}), ${fd.resized} resized (${fd.resizedQty >= 0 ? "+" : ""}${fd.resizedQty})`
+            : win ? ` · compared as the v1.14 window from ${win.volume_total_window_start} (cumulative re-fetch ${kv.volume_total.toFixed(2)})`
+            : " · no fill list sealed for this record, so the drift cannot be attributed to fills";
+          const msg = `${kc.id}: Kalshi volume_total drift ${d.delta >= 0 ? "+" : ""}${d.delta.toFixed(2)} contracts (${(d.rel * 100).toFixed(4)}%) — re-fetch ${refetched.toFixed(2)} vs sealed ${kc.vtot}${why}`;
           if (d.level === "warn") warns.push(`${msg} · VWAP, fill count and volume_24h reproduce and the drift is under 1%, so this WARNs (SCAN_SPEC §8I); sealed value unchanged`);
           else fails.push(`${msg} · FAIL: ${d.rel >= 0.01 ? "drift is 1% or more" : "another re-derived field did not reproduce this run"}`);
         }
+        // The cumulative figure v1.14 publishes beside the sealed one is not sealed, so a disagreement is a WARN.
+        if (win && !volClose(win.cumulative_to_posted_at, kv.volume_total)) warns.push(`${kc.id}: cumulative volume to posted_at re-fetched ${kv.volume_total.toFixed(2)} ≠ ${win.cumulative_to_posted_at} published in PROTOCOL v1.14 — the full-history figure no longer reproduces (the sealed value is checked separately)`);
       }
     } catch (e) { warns.push(`${kc.id}: Kalshi volume re-fetch unavailable — ${(e as Error).message.slice(0, 90)}`); }
   }

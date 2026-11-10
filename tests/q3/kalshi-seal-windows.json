@@ -1,0 +1,11 @@
+{
+  "protocol": "v1.14",
+  "note": "CLOSED LIST. The five Kalshi records sealed on 2026-09-14 while the client read Kalshi's live trade tier only. Their sealed volume_total is the notional traded from volume_total_window_start to posted_at, not the cumulative total. Sealed records are never edited; q3-verify reads this file to know which quantity to recompute. cumulative_to_posted_at is the two-tier figure re-derived on 2026-11-10. tests/q3/grading.test.ts fails if this file names any other record.",
+  "records": {
+    "q3-2026-09-14-001": { "volume_total_window_start": "2026-07-09T00:00:00Z", "cumulative_to_posted_at": 33578593.41 },
+    "q3-2026-09-14-002": { "volume_total_window_start": "2026-07-09T00:00:00Z", "cumulative_to_posted_at": 15001075.65 },
+    "q3-2026-09-14-003": { "volume_total_window_start": "2026-07-09T00:00:00Z", "cumulative_to_posted_at": 13803804.05 },
+    "q3-2026-09-14-004": { "volume_total_window_start": "2026-07-09T00:00:00Z", "cumulative_to_posted_at": 9225589.98 },
+    "q3-2026-09-14-005": { "volume_total_window_start": "2026-07-09T00:00:00Z", "cumulative_to_posted_at": 5783046.27 }
+  }
+}

@@ -14,7 +14,7 @@ import { PM_SCHEMA_VERSION } from "../../shared/pm-taxonomy";
 import { SCHEMA_VERSION } from "../../shared/audit-schema";
 import { canonical, sha256hex, renderIntentText, devVar, strip, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { runDuneQuery, asPriceRow } from "./dune-client";
-import { kalshiVwap, kalshiVolumes, fillsPath, fillsDigest, encodeFills, FILLS_DIR, type KalshiFill } from "./kalshi-client";
+import { kalshiVwap, kalshiVolumes, fillsPath, fillsDigest, encodeFills, FILLS_DIR, KALSHI_ENDPOINT_LABEL, type KalshiFill } from "./kalshi-client";
 
 const args = process.argv.slice(2); const flag = (f: string) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const REC_DIR = "tests/q3/records";
@@ -131,7 +131,8 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
         console.log(`  price (on-chain via Dune): vwap ${pr.vwap} over ${pr.trade_count} trades · query ${run.query_id} · execution ${run.execution_id}`);
         console.log(`  volume (v1.7a, same execution): 24h ${pr.volume_24h} USDC · total ${pr.volume_total} USDC`);
       } else if (mk.venue === "kalshi") {
-        // venue-API tier: Kalshi's public trades endpoint, per-fill, immutable history; re-queryable by anyone with the same params
+        // venue-API tier: Kalshi's public trades endpoints (live + historical, union by trade_id — PROTOCOL v1.14), per-fill,
+        // immutable history; re-queryable by anyone with the same params
         const k = await kalshiVwap(String(mk.ticker), String(mk.side), String(rec.posted_at), win);
         if (!(k.trade_count > 0) || k.vwap == null) { console.error(`Phase B refused: no Kalshi fills on ${mk.ticker} in the ${win}-min window before posted_at ${rec.posted_at}. Leave unpriced (excluded from base-rate metric); operator-typed prices are not permitted (v1.3.1)`); process.exit(1); }
         const kv = await kalshiVolumes(String(mk.ticker), String(rec.posted_at), fetch, 400, true, true);
@@ -144,7 +145,7 @@ function findRecord(id: string): { date: string; recs: Record<string, unknown>[]
         // record is not sealed. price_source is already in PHASE_A_EXCLUDE, so the new keys cannot touch phase_a_hash.
         const fills = kv.fill_list as KalshiFill[]; const fp = fillsPath(String(rec.id));
         mkdirSync(FILLS_DIR, { recursive: true }); writeFileSync(fp, encodeFills(fills));
-        rec.price_source = { provider: "kalshi-api", tier: "venue-api", venue: "kalshi", endpoint: "GET /trade-api/v2/markets/trades", query_params: k.query, vwap: k.vwap, trade_count: k.trade_count, contracts: k.contracts, volume_usdc: k.volume_usdc, window_start: k.window_start, window_end: k.window_end, fills_path: fp, fills_sha256: fillsDigest(fills), fills_count: fills.length };
+        rec.price_source = { provider: "kalshi-api", tier: "venue-api", venue: "kalshi", endpoint: KALSHI_ENDPOINT_LABEL, query_params: k.query, vwap: k.vwap, trade_count: k.trade_count, contracts: k.contracts, volume_usdc: k.volume_usdc, window_start: k.window_start, window_end: k.window_end, fills_path: fp, fills_sha256: fillsDigest(fills), fills_count: fills.length };
         console.log(`  price (Kalshi trades API): vwap ${k.vwap} over ${k.trade_count} fills, ${k.contracts} contracts · window ${k.window_start} → ${k.window_end}`);
         console.log(`  volume (v1.7a, ${kv.fills} fills over ${kv.pages} pages): 24h ${kv.volume_24h.toFixed(2)} USD · total ${kv.volume_total.toFixed(2)} USD`);
         console.log(`  fill list (SCAN_SPEC §8I): ${fp} · sha256 ${(rec.price_source as any).fills_sha256} — COMMIT it with the record`);
