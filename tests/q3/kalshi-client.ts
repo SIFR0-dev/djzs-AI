@@ -18,7 +18,8 @@
  *    mid-walk is caught by the later historical walk. The reverse order could miss it in both.
  *  - A trade_id present in both tiers with different content is a conflict: throw, never pick one.
  *  - Any non-2xx from either tier throws (the historical tier answers 404 for an unknown ticker): one tier alone is not
- *    the history, so a partial answer is never returned as a whole one.
+ *    the history, so a partial answer is never returned as a whole one. HTTP 429 alone is retried first, bounded
+ *    (KALSHI_429_TRIES, see getPage below).
  *  - The union is ordered newest-first by created_time, ties by trade_id — the feed's own order, made independent of which
  *    tier served each fill, so the same set of fills always serialises identically.
  */
@@ -29,12 +30,39 @@ export interface KalshiVwap { vwap: number | null; trade_count: number; contract
 const BASE = "https://api.elections.kalshi.com/trade-api/v2";
 export const KALSHI_TIERS = [["live", "/markets/trades"], ["historical", "/historical/trades"]] as const;
 export interface KalshiTierStats { live: { fills: number; pages: number; truncated: boolean }; historical: { fills: number; pages: number; truncated: boolean }; overlap: number }
+/** HTTP 429 handling. Reading both tiers takes the weekly run from ~45 Kalshi requests to ~117 (run #233 already drew
+ *  429s on four records), so a rate limit gets a bounded retry: at most KALSHI_429_TRIES requests per page, 429 ONLY.
+ *  Every other non-2xx throws on the first answer, as before. A page that is still 429 on its last try throws: the
+ *  retry buys coverage, never a partial answer. Retries do not count against the page budget. */
+export const KALSHI_429_TRIES = 3;
+const RETRY_BASE_MS = 1000, RETRY_CAP_MS = 10_000;
+/** Wait before retry number `retry` (1-based). Retry-After wins when it parses, as delta-seconds or an HTTP-date,
+ *  capped at RETRY_CAP_MS and floored at 0; otherwise exponential: 1s, 2s, 4s… under the same cap. */
+export function kalshiRetryDelayMs(retry: number, retryAfter: string | null, nowMs = Date.now()): number {
+  const cap = (ms: number) => Math.min(RETRY_CAP_MS, Math.max(0, ms));
+  if (retryAfter != null && retryAfter.trim() !== "") {
+    const s = retryAfter.trim();
+    if (/^\d+$/.test(s)) return cap(Number(s) * 1000);
+    const at = Date.parse(s); if (!Number.isNaN(at)) return cap(at - nowMs);
+  }
+  return cap(RETRY_BASE_MS * 2 ** (retry - 1));
+}
+async function getPage(u: string, tier: string, fetchImpl: typeof fetch): Promise<Response> {
+  for (let attempt = 1; ; attempt++) {
+    const r = await fetchImpl(u);
+    if (r.ok) return r;
+    if (r.status !== 429) throw new Error(`kalshi trades HTTP ${r.status} (${tier} tier)`);
+    if (attempt >= KALSHI_429_TRIES) throw new Error(`kalshi trades HTTP 429 (${tier} tier) after ${KALSHI_429_TRIES} tries`);
+    const wait = kalshiRetryDelayMs(attempt, r.headers.get("retry-after"));
+    if (wait > 0) await new Promise(res => setTimeout(res, wait));
+  }
+}
 /** One tier, cursor-paginated. truncated = the tier still had a cursor when the page budget ran out. */
 async function walkTier(name: string, path: string, ticker: string, minTs: number, maxTs: number, fetchImpl: typeof fetch, maxPages: number) {
   const out: KalshiFill[] = []; let cursor: string | undefined; let pages = 0;
   while (pages < maxPages) {
     const u = `${BASE}${path}?ticker=${encodeURIComponent(ticker)}&min_ts=${minTs}&max_ts=${maxTs}&limit=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
-    const r = await fetchImpl(u); if (!r.ok) throw new Error(`kalshi trades HTTP ${r.status} (${name} tier)`);
+    const r = await getPage(u, name, fetchImpl);
     const j = await r.json() as { trades?: KalshiFill[]; cursor?: string }; out.push(...(j.trades ?? [])); pages++; cursor = j.cursor || undefined; if (!cursor) break;
   }
   return { fills: out, pages, truncated: Boolean(cursor) };

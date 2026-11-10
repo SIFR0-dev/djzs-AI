@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { canonical, sha256hex, strip, classifyVolumeTotalDrift, PHASE_A_EXCLUDE, PHASE_B_EXCLUDE } from "./lib";
 import { gradeKalshi, gradePolymarket, gradeRecord, applyAbsenceRecheck } from "./q3-grade";
 import { validateAbsenceRecheck } from "./absence-recheck";
-import { kalshiVolumes, kalshiVwap, encodeFills, decodeFills, fillsDigest, sumFillsBefore, diffFills, type KalshiFill } from "./kalshi-client";
+import { kalshiVolumes, kalshiVwap, kalshiRetryDelayMs, KALSHI_429_TRIES, encodeFills, decodeFills, fillsDigest, sumFillsBefore, diffFills, type KalshiFill } from "./kalshi-client";
 
 let fails = 0, ran = 0, unexercised = 0;
 function eq(got: unknown, want: unknown, what: string) {
@@ -169,6 +169,31 @@ console.log("GRADING · Kalshi trades span a live and a historical tier — read
   const w1 = f("w1", "2026-09-14T19:10:00Z", 5, "0.2000"), w2 = f("w2", "2026-09-14T19:00:00Z", 5, "0.3000"), w3 = f("w3", "2026-09-14T18:50:00Z", 10, "0.5000");
   const k = await kalshiVwap("KX-T", "yes", end, 60, tierFetch({ live: [[w1, w2]], historical: [[w2, w3]] }));
   eq([k.trade_count, k.contracts, k.vwap?.toFixed(6)], [3, 20, "0.375000"], "VWAP and trade_count read both tiers, the shared fill once");
+
+  // HTTP 429: bounded retry, 429 only. `Retry-After: 0` keeps the offline suite from sleeping.
+  eq(KALSHI_429_TRIES, 3, "at most 3 requests per page");
+  const now = Date.parse("2026-11-09T12:00:00Z");
+  eq([kalshiRetryDelayMs(1, null), kalshiRetryDelayMs(2, null), kalshiRetryDelayMs(5, null)], [1000, 2000, 10000], "no Retry-After: 1s, 2s, then capped at 10s");
+  eq([kalshiRetryDelayMs(1, "3"), kalshiRetryDelayMs(1, "0"), kalshiRetryDelayMs(1, "120")], [3000, 0, 10000], "Retry-After seconds win, capped at 10s");
+  eq([kalshiRetryDelayMs(1, new Date(now + 5000).toUTCString(), now), kalshiRetryDelayMs(1, new Date(now - 5000).toUTCString(), now)], [5000, 0], "Retry-After HTTP-date: time until it, never negative");
+  eq(kalshiRetryDelayMs(2, "soon"), 2000, "an unparseable Retry-After falls back to the exponential wait");
+  // Wraps tierFetch: the first `n` requests to `tier` answer `status` (Retry-After: 0); `calls` counts every request.
+  const flaky = (inner: typeof fetch, tier: "live" | "historical", n: number, status = 429, calls: string[] = []) => (async (u: string) => {
+    const t = new URL(u).pathname.includes("/historical/") ? "historical" : "live"; calls.push(t);
+    if (t === tier && n > 0) { n--; return new Response(JSON.stringify({ error: { code: "too_many_requests" } }), { status, headers: { "retry-after": "0" } }); }
+    return inner(u);
+  }) as typeof fetch;
+  const c1: string[] = [];
+  const healed = await kalshiVolumes("KX-T", end, flaky(tierFetch(served), "historical", 2, 429, c1), 400, true);
+  eq([healed.volume_total, healed.tiers?.historical.pages, c1.filter(x => x === "historical").length], [26, 2, 4], "two 429s then 200: same total, retries not counted as pages (2 pages, 4 requests)");
+  const c2: string[] = [];
+  await rejects(kalshiVolumes("KX-T", end, flaky(tierFetch(served), "live", 99, 429, c2), 400, true), /HTTP 429 \(live tier\) after 3 tries/, "still 429 on the 3rd try: throws, never a partial total");
+  eq(c2.length, 3, "exactly 3 requests before giving up, and the historical tier is never reached");
+  const c3: string[] = [];
+  await rejects(kalshiVolumes("KX-T", end, flaky(tierFetch(served), "live", 1, 503, c3), 400, true), /HTTP 503 \(live tier\)$/, "any other non-2xx is not retried");
+  eq(c3.length, 1, "a 503 costs exactly one request");
+  const c4: string[] = [];
+  await rejects(kalshiVwap("KX-T", "yes", end, 60, flaky(tierFetch({ live: [[w1, w2]], historical: [[w2, w3]] }), "historical", 3, 429, c4)), /HTTP 429 \(historical tier\) after 3 tries/, "the price path (kalshiVwap) gets the same bounded retry");
 }
 
 async function live() {
