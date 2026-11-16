@@ -36,17 +36,19 @@
  *   is the operator's reading, and every quote is saved so it can be made.
  *
  * The output keeps each sample's raw model output. Any alternative merge rule can therefore be scored offline
- * against these same samples, with no further model calls and no second draw to choose from.
+ * against these same samples, with no further model calls and no second draw to choose from. It also records
+ * which code it measured: the commit, any uncommitted change on the verdict path, and a hash of the prompt.
  *
  * Cost: T texts x K replays x 3 samples. Six texts at K=5 is 90 calls, each about 3,000 tokens in and at most 1,024 out.
  *   npx tsx tests/q2-real-text-replay.ts               live. Operator shell only. Reads the key as q3-log does.
  *   npx tsx tests/q2-real-text-replay.ts --self-test   offline, no key, no cost. Proves the counting on synthetic samples.
  *   K=10 ONLY=q3-2026-09-14-001 npx tsx tests/q2-real-text-replay.ts     more replays on one text (no reading given)
  */
+import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { extractAuditInput, extractAuditInputConsensus, EXTRACTION_CONTRACT_VERSION, type ModelFn } from "../server/engine-v2/extraction-layer";
+import { extractAuditInput, extractAuditInputConsensus, EXTRACTION_CONTRACT_VERSION, STRICT_EXTRACTION_PROMPT, type ModelFn } from "../server/engine-v2/extraction-layer";
 import { runDeterministicAudit } from "../server/engine-v2/deterministic-engine";
 import { PM_AUDIT_FIELDS, type AuditInput } from "../server/engine-v2/audit-input-schema";
 import { renderIntentText, sha256hex, devVar } from "./q3/lib";
@@ -256,6 +258,14 @@ export function q2Baseline(dir = Q2_OUT_DIR): { files: number; runs: number; dis
     }
   } catch { return null; }
   return runs ? { files, runs, disagreement, state_split, evidence_split } : null;
+}
+
+/** Which code a run measured: the commit, any uncommitted change on the path that decides a verdict, and the contract text itself. */
+const VERDICT_PATH = "server/engine-v2 shared tests/q3/lib.ts tests/q2-real-text-replay.ts";
+export function codeIdentity(): { repo_head: string | null; verdict_path_changes: string[] | null; prompt_sha256: string } {
+  const git = (cmd: string) => { try { return execSync(`git ${cmd}`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trimEnd(); } catch { return null; } };
+  const changes = git(`status --porcelain -- ${VERDICT_PATH}`);
+  return { repo_head: git("rev-parse HEAD"), verdict_path_changes: changes === null ? null : changes.split("\n").filter(Boolean), prompt_sha256: sha256hex(STRICT_EXTRACTION_PROMPT) };
 }
 
 // ── the run loop, shared by live and self-test. Checkpoints after every text: a dead run keeps what it finished ─
@@ -499,6 +509,9 @@ async function selfTest(): Promise<boolean> {
   const base = q2Baseline(); ok(base === null || (base.runs > 0 && base.disagreement <= base.runs && base.state_split + base.evidence_split >= base.disagreement), "the tracked Q2 runs read cleanly, or are reported as missing", base);
   ok(q2Baseline(join(tmpdir(), "q2real-no-such-directory")) === null, "a missing baseline directory is reported as missing, not as an error");
 
+  const id = codeIdentity();
+  ok(/^0x[0-9a-f]{64}$/.test(id.prompt_sha256) && id.prompt_sha256 === sha256hex(STRICT_EXTRACTION_PROMPT) && (id.repo_head === null || /^[0-9a-f]{40}$/.test(id.repo_head)) && (id.verdict_path_changes === null || id.verdict_path_changes.every(line => typeof line === "string" && line.length > 3)), "the run can say which code it measured: commit, verdict-path changes, prompt hash", id);
+
   console.log(fail === 0 ? `SELF-TEST PASS · ${pass}/${pass} assertions` : `SELF-TEST FAIL · ${fail} of ${pass + fail} assertions failed`);
   return fail === 0;
 }
@@ -521,12 +534,14 @@ if (/q2-real-text-replay(\.[cm]?ts)?$/.test(process.argv[1] ?? "")) (async () =>
   const key = devVar("ANTHROPIC_API_KEY");
   if (!key) { console.error("\nANTHROPIC_API_KEY not found (environment, or djzs-trust-mcp/.dev.vars). The live run is the operator's: a session without the key reports and stops."); process.exit(2); }
 
+  const code = codeIdentity();
   console.log(`\nQ2-REAL real-text replay · LIVE · ${CLAUDE_MODEL} · ${EXTRACTION_CONTRACT_VERSION} · K=${K} · ${texts.length} text(s) · ${texts.length * K * 3} model calls`);
+  console.log(`  code ${code.repo_head?.slice(0, 7) ?? "unknown (git unavailable)"} · ${code.verdict_path_changes === null ? "working tree not checked" : code.verdict_path_changes.length ? `${code.verdict_path_changes.length} UNCOMMITTED CHANGE(S) ON THE VERDICT PATH, so this run measures the working tree, not the commit` : "verdict path clean"} · prompt ${code.prompt_sha256.slice(0, 14)}`);
   for (const s of skipped) console.log(`  SKIPPED ${s}`);
   mkdirSync(Q2_OUT_DIR, { recursive: true });
   const out = `${Q2_OUT_DIR}/q2real-live-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
   let s: ReturnType<typeof summarize>;
-  try { s = (await runCorpus(texts, K, anthropicModel(key), out, { mode: "live", model: CLAUDE_MODEL, extraction_contract: EXTRACTION_CONTRACT_VERSION, started_at: new Date().toISOString(), only, skipped }, only.length === 0)).summary; }
+  try { s = (await runCorpus(texts, K, anthropicModel(key), out, { mode: "live", model: CLAUDE_MODEL, extraction_contract: EXTRACTION_CONTRACT_VERSION, ...code, started_at: new Date().toISOString(), only, skipped }, only.length === 0)).summary; }
   catch (e) { console.error(`\nRun stopped: ${e instanceof Error ? e.message : String(e)}\nEvery text finished before the stop is in ${out} (complete: false). Nothing else was written.`); process.exit(1); }
 
   report(s, K, out);
