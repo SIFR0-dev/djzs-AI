@@ -18,7 +18,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 const NOW = "2026-09-17T18:30:00.000Z";
 const book = JSON.parse(readFileSync("tests/q3/records/2026-09-14.json", "utf8")) as Record<string, any>[];
-const rec = (id: string) => clone(book.find(r => r.id === id)!);
+const rec = (id: string) => { const { outcome: _o, ...sealed } = clone(book.find(r => r.id === id)!); return sealed as Record<string, any>; };
 
 console.log("GRADING · Polymarket — Gamma partitions /markets on `closed` (§8G)");
 {

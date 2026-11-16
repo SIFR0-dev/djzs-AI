@@ -86,7 +86,14 @@
     "implied_prob_at_audit": 0.664,
     "price_captured_at": "2026-09-03T02:41:42.071Z",
     "record_hash": "0x5d5334817ac7d26733430fe139e9cbf51a97e60a7752810d39a75a758bdd3112",
-    "outcome": null
+    "outcome": {
+      "result": "CORRECT",
+      "settled_value": null,
+      "evidence_url": "https://kalshi.com/markets/kxfeddecision-26sep-h25",
+      "graded_at": "2026-11-16T05:07:56.100Z",
+      "grader": "dj",
+      "note": "pilot; sealed ticker names the event, graded on KXFEDDECISION-26SEP-H25, finalized yes"
+    }
   },
   {
     "id": "q3-2026-09-02-N2",
@@ -168,6 +175,13 @@
     "implied_prob_at_audit": null,
     "price_captured_at": "2026-09-03T02:41:42.331Z",
     "record_hash": "0x3191ced09e45f2d74bcd3c20eab7502710f5d499d0f978cea9e814f4fa62140d",
-    "outcome": null
+    "outcome": {
+      "result": "INCORRECT",
+      "settled_value": null,
+      "evidence_url": "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start=2026-08-31T00:00:00Z&end=2026-09-30T00:00:00Z",
+      "graded_at": "2026-11-16T05:07:55.824Z",
+      "grader": "dj",
+      "note": "pilot; Coinbase BTC-USD daily close 2026-09-30 83556.14 vs 2026-08-31 78562.74"
+    }
   }
 ]

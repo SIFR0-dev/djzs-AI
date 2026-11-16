@@ -82,6 +82,13 @@
     "implied_prob_at_audit": null,
     "price_captured_at": "2026-09-04T16:33:24.164Z",
     "record_hash": "0xb393fdfe3d61b835d9bad781c30891356a7b828562de6158e4afe7481608e75b",
-    "outcome": null
+    "outcome": {
+      "result": "CORRECT",
+      "settled_value": null,
+      "evidence_url": "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start=2026-08-31T00:00:00Z&end=2026-09-30T00:00:00Z",
+      "graded_at": "2026-11-16T05:07:55.540Z",
+      "grader": "dj",
+      "note": "Coinbase BTC-USD daily close 2026-09-30 83556.14 vs 2026-08-31 78562.74"
+    }
   }
 ]
