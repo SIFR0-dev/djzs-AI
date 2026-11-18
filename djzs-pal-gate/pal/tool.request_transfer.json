@@ -1,0 +1,37 @@
+{
+  "name": "request_transfer",
+  "description": "Ask the payout gate to release USDC. Call this every time the person asks for a payout, a transfer, or for money to be sent, even when details are missing: the gate answers with exactly what it still needs. You cannot approve or refuse a payout yourself, and you cannot send anything. Only this tool's answer counts. Pass only what the person actually said. Never invent, guess, complete or correct a wallet address, an amount, a claim code or a reason. Leave a field out if the person did not give it.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "recipient": {
+        "type": "string",
+        "description": "The wallet address to send to, exactly as the person gave it: 0x followed by 40 hexadecimal characters. Leave out if they did not give one."
+      },
+      "amount_usdc": {
+        "type": "string",
+        "description": "The amount in USDC as a plain decimal string, for example \"1.00\". No currency symbol, no words. Leave out if they did not name an amount."
+      },
+      "reference": {
+        "type": "string",
+        "description": "The claim code this payout is based on, exactly as the person gave it. Leave out if they did not give one."
+      },
+      "reason": {
+        "type": "string",
+        "description": "The person's stated reason for the payout, in their own words. Leave out if they gave none."
+      }
+    }
+  },
+  "trigger_type": "in_call",
+  "origin": "llm",
+  "on_call": "static_filler",
+  "static_filler": "One moment. I am checking that against the records.",
+  "on_resolve": "response_in_result",
+  "delivery": {
+    "api": {
+      "method": "POST",
+      "timeout": 15,
+      "auth": { "type": "hmac" }
+    }
+  }
+}

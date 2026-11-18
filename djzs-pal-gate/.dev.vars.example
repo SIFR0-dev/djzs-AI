@@ -1,0 +1,13 @@
+# Local development only. Copy to .dev.vars (gitignored) and fill in. NEVER commit real values:
+# this repository is public.
+#
+# In production both are Worker secrets, set from the operator's shell:
+#   npx wrangler secret put TAVUS_TOOL_SECRET
+#   npx wrangler secret put OPERATOR_KEY
+#
+# TAVUS_TOOL_SECRET  The shared secret Tavus signs each tool call with (delivery.api.auth.secret on
+#                    the tool, auth.type "hmac"). The Worker refuses every tool call without it.
+# OPERATOR_KEY       Bearer key for the /operator routes (issue a claim, resolve a hold, settle).
+#                    The Worker refuses every operator call without it.
+TAVUS_TOOL_SECRET=
+OPERATOR_KEY=

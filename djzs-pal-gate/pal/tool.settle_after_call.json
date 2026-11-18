@@ -1,0 +1,23 @@
+{
+  "name": "settle_after_call",
+  "description": "Runs once after the conversation ends. It tells the payout gate that this conversation is over, so that a payout the gate itself approved during the conversation can be released. It carries no amount, no address and no instruction. The gate acts only on approvals it already recorded.",
+  "trigger_type": "post_call",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "purpose": {
+        "type": "string",
+        "const": "settle",
+        "description": "Fixed value. Never written from the transcript."
+      }
+    },
+    "required": ["purpose"]
+  },
+  "delivery": {
+    "api": {
+      "method": "POST",
+      "timeout": 30,
+      "auth": { "type": "hmac" }
+    }
+  }
+}
