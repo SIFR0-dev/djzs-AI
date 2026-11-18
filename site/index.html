@@ -77,7 +77,7 @@
       <div class="rung"><span class="verdict">2</span><br /><span class="muted">DJZS checks it for the four ways trade ideas go wrong and answers <strong>PASS</strong>, <strong>WAIT</strong>, or <strong>FAIL</strong>. WAIT means stop and clarify. Nothing is guessed.</span></div>
       <div class="rung"><span class="verdict">3</span><br /><span class="muted">PASS clears the logic. The trade is still yours. FAIL or WAIT and the order never leaves.</span></div>
     </div>
-    <p>Same idea in, same answer out, every time, on any machine. That is what makes the receipt worth paying for: it proves what the reasoning was before the money moved.</p>
+    <p>The verdict is computed by fixed rules, so the same facts give the same answer on any machine, every time. Reading those facts out of your text is the one step a model performs, and it is measured: on short test theses it repeated its verdict in 95 to 100 percent of replays. That is what makes the receipt worth paying for: it proves what the reasoning was before the money moved.</p>
   </section>
 
   <!-- 1.5: THE LOOP, LIVE -->
@@ -194,7 +194,7 @@
 
   <!-- 5: PROOF -->
   <section id="proof">
-    <h2>Proof <span class="k">// same thesis, same hash, every run</span></h2>
+    <h2>Proof <span class="k">// same facts, same hash, every run</span></h2>
     <p>A client audited a benchmark thesis (<code>pm-block-008</code>) through the deployed
     tool and received:</p>
     <div class="proof">
@@ -218,10 +218,13 @@
     <p><strong>Since then, two stronger proofs.</strong> The deterministic engine has been enumerated over its
     <strong>entire</strong> prediction-market input space: 108 inputs, 9 properties (totality, determinism,
     monotonicity, threshold, PASS/WAIT invariants, and that the advisory flag never changes a verdict). That test runs in CI on every push. The extraction
-    layer has been <strong>measured</strong>: 15 theses spanning the verdict space, 5 replays each, N=3 consensus:
-    verdict reproduced <strong>100%</strong> under extraction contract <code>DJZS-X-v1.1</code>. That measurement
-    found a defect (an unsourced claim in plain prose was demoted to WAIT instead of firing M03); it was
-    reproduced from raw samples, removed with a control test, and shipped as a versioned contract change.
+    layer has been <strong>measured</strong>: 15 to 16 short theses written for the test, spanning the verdict space,
+    5 replays each, N=3 consensus. Under extraction contract <code>DJZS-X-v1.1</code> the verdict repeated in
+    <strong>95 to 100 percent</strong> of replays across three runs of the same prompt (100, 97.5 and 95.0). The first
+    measurement, under the earlier contract v1.0, found a defect (an unsourced claim in plain prose was demoted to WAIT
+    instead of firing M03); it was reproduced from raw samples, removed with a control test, and shipped as v1.1.
+    Those theses are short and first-person. Published third-party prose is a harder input, and what the layer has done
+    on it so far is stated on <a href="/ruleset">/ruleset</a>.
     Every response now states its contract as <code>taxonomy.extraction</code>. Harness, raw runs, and
     regression tests live in <code>tests/</code>; the full account is on <a href="/ruleset">/ruleset</a>.</p>
     <p><strong>And the receipt itself is now recomputable by anyone.</strong> Every paid verdict returns an
