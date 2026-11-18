@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DJZS: stops your bot's bad trade before it fires</title>
-  <meta name="description" content="DJZS reads the reason behind a trade and refuses it when the reason does not hold up. For Kalshi and Polymarket bots, perps agents on Hyperliquid, and treasuries with an agent on the keys. Five free verdicts a day; 2.00 USDC for a receipt on Base anyone can check." />
+  <title>DJZS: stops your bot's badly reasoned trade before it fires</title>
+  <meta name="description" content="DJZS reads the reason behind a trade and refuses it when the reason does not hold up. For Kalshi and Polymarket bots, perps agents on Hyperliquid, and treasuries with an agent on the keys. Three free verdicts a day with no wallet, five with one; 2.00 USDC for a receipt on Base anyone can check." />
   <link rel="canonical" href="https://djzs.ai/" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="DJZS: stops your bot's bad trade before it fires" />
+  <meta property="og:title" content="DJZS: stops your bot's badly reasoned trade before it fires" />
   <meta property="og:description" content="Reads the reason behind a trade. Refuses it when the reason does not hold up. Live on Base; try it free in the browser." />
   <meta property="og:url" content="https://djzs.ai/" />
   <meta property="og:image" content="https://djzs.ai/og.png" />
@@ -54,14 +54,14 @@
 
   <!-- 1: HERO -->
   <section id="hero">
-    <h1>Your bot's next bad trade gets stopped before it fires.</h1>
+    <h1>Your bot's next badly reasoned trade gets stopped before it fires.</h1>
     <div class="status">
       <div class="row"><span class="ok">OK</span><span class="label">WHAT</span><span class="val">Reads the reason behind a trade. Refuses it when the reason does not hold up.</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">WHO</span><span class="val">Kalshi and Polymarket bots, perps agents on Hyperliquid, treasuries with an agent on the keys.</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">COST</span><span class="val">Three verdicts a day free, no wallet. 2.00 USDC for a receipt on Base anyone can check.</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">LIVE ON BASE MAINNET<span class="cursor"></span></span></div>
     </div>
-    <p class="lede">No source for the probability, no condition that would prove it wrong, "everyone knows" as the edge: the order never leaves.
+    <p class="lede">No source for the probability, no condition that would prove it wrong, "everyone knows" as the only evidence: the order never leaves.
     Spend caps limit how much you lose. <strong>This limits whether you should have been in at all.</strong></p>
     <p class="cta"><a class="btn" href="/try">Run a verdict free -&gt;</a> <a class="btn" href="/present">Ask the AI presenter -&gt;</a> <a class="btn" href="/guide">Wire it into your bot -&gt;</a></p>
     <p class="muted">Three free verdicts a day, nothing to install, no wallet. When you want the proof on record, 2.00 USDC buys a receipt on Base that anyone can check later, whichever way the verdict went.</p>
@@ -77,7 +77,7 @@
       <div class="rung"><span class="verdict">2</span><br /><span class="muted">DJZS checks it for the four ways trade ideas go wrong and answers <strong>PASS</strong>, <strong>WAIT</strong>, or <strong>FAIL</strong>. WAIT means stop and clarify. Nothing is guessed.</span></div>
       <div class="rung"><span class="verdict">3</span><br /><span class="muted">PASS clears the logic. The trade is still yours. FAIL or WAIT and the order never leaves.</span></div>
     </div>
-    <p>Same idea in, same answer out, every time, on any machine. That is what makes the receipt worth paying for: it proves what the reasoning was before the money moved.</p>
+    <p>The verdict is computed by fixed rules, so the same facts give the same answer on any machine, every time. Reading those facts out of your text is the one step a model performs, and it is measured: on short test theses it repeated its verdict in 95 to 100 percent of replays. That is what makes the receipt worth paying for: it proves what the reasoning was before the money moved.</p>
   </section>
 
   <!-- 1.5: THE LOOP, LIVE -->
@@ -164,7 +164,7 @@
     <h2>Taxonomies <span class="k">// prediction market, live</span></h2>
 
     <h3>DJZS-M · Prediction Market (DJZS-PM-v1.0)</h3>
-    <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes implemented and calibrated. Full rules, verdict formula, both binding contracts, and the extraction-contract changelog: <a href="/ruleset">djzs.ai/ruleset</a>.</p>
+    <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes are implemented and tuned against a founder-labeled bench of 41 cases, 20 of them prediction-market. That checks the gate against its author's labels. Whether a verdict predicts how a trade resolves is a separate, pre-registered test that has not reached its first read. Full rules, verdict formula, both binding contracts, and the extraction-contract changelog: <a href="/ruleset">djzs.ai/ruleset</a>.</p>
     <div class="table-wrap">
     <table aria-label="DJZS-PM-v1.0 codes, severities, and weights">
       <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Severity</th><th scope="col">Weight</th></tr></thead>
@@ -176,8 +176,9 @@
       </tbody>
     </table>
     </div>
-    <p class="muted">M04 is advisory-grade: a lone M04 rides a PASS with the flag on the certificate
-    (weight 15 is below the threshold); it blocks only by stacking (e.g. M03 + M04 = 40 → FAIL).</p>
+    <p class="muted">M04 is advisory: it never changes a verdict. A lone M04 rides a PASS with the flag on the certificate
+    (weight 15 is below the threshold), and every combination that fails already fails without it (M03 alone is 25, the
+    threshold). It adds 15 to the risk score and nothing else, which CI proves over the whole input space.</p>
 
     <p class="muted">The weight table is a hash-locked exported constant; a weight change is a
     deliberate re-derive that bumps the version, not a hot patch. That immutability is what makes
@@ -193,7 +194,7 @@
 
   <!-- 5: PROOF -->
   <section id="proof">
-    <h2>Proof <span class="k">// same thesis, same hash, every run</span></h2>
+    <h2>Proof <span class="k">// same facts, same hash, every run</span></h2>
     <p>A client audited a benchmark thesis (<code>pm-block-008</code>) through the deployed
     tool and received:</p>
     <div class="proof">
@@ -215,12 +216,15 @@
     byte-identical from live extraction into the frozen engine (exit 0, 2026-07-12) and it has held
     across every re-run since, including runs with extraction divergence on non-preimage fields.</p>
     <p><strong>Since then, two stronger proofs.</strong> The deterministic engine has been enumerated over its
-    <strong>entire</strong> prediction-market input space: 108 inputs, 8 properties (totality, determinism,
-    monotonicity, threshold, PASS/WAIT invariants). That test runs in CI on every push. The extraction
-    layer has been <strong>measured</strong>: 15 theses spanning the verdict space, 5 replays each, N=3 consensus:
-    verdict reproduced <strong>100%</strong> under extraction contract <code>DJZS-X-v1.1</code>. That measurement
-    found a defect (an unsourced claim in plain prose was demoted to WAIT instead of firing M03); it was
-    reproduced from raw samples, removed with a control test, and shipped as a versioned contract change.
+    <strong>entire</strong> prediction-market input space: 108 inputs, 9 properties (totality, determinism,
+    monotonicity, threshold, PASS/WAIT invariants, and that the advisory flag never changes a verdict). That test runs in CI on every push. The extraction
+    layer has been <strong>measured</strong>: 15 to 16 short theses written for the test, spanning the verdict space,
+    5 replays each, N=3 consensus. Under extraction contract <code>DJZS-X-v1.1</code> the verdict repeated in
+    <strong>95 to 100 percent</strong> of replays across three runs of the same prompt (100, 97.5 and 95.0). The first
+    measurement, under the earlier contract v1.0, found a defect (an unsourced claim in plain prose was demoted to WAIT
+    instead of firing M03); it was reproduced from raw samples, removed with a control test, and shipped as v1.1.
+    Those theses are short and first-person. Published third-party prose is a harder input, and what the layer has done
+    on it so far is stated on <a href="/ruleset">/ruleset</a>.
     Every response now states its contract as <code>taxonomy.extraction</code>. Harness, raw runs, and
     regression tests live in <code>tests/</code>; the full account is on <a href="/ruleset">/ruleset</a>.</p>
     <p><strong>And the receipt itself is now recomputable by anyone.</strong> Every paid verdict returns an

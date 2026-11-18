@@ -111,6 +111,45 @@ export function poolAdmit(tags: unknown, closeTime?: unknown, now: Date | string
 export function poolTagsAdmit(tags: unknown): boolean {
   return poolAdmit(tags, undefined);
 }
+/** PROTOCOL v1.15 — the pool unit is the VENUE EVENT, not the market. One definition, for both venues.
+ *  A venue event identifier is compared as the venue publishes it, trimmed and lower-cased (Kalshi event tickers are
+ *  upper case, Gamma event slugs lower; neither venue distinguishes two events by case). Nothing usable published is
+ *  null, and null never equals anything: a candidate with no event identifier is its own event and can be neither
+ *  collapsed into another nor excluded by the book's event arm. Inferring an event from a question or a ticker
+ *  pattern would make pool membership a reading of the market's text, which is what §3 removes. */
+export function normEventKey(k: unknown): string | null {
+  const s = typeof k === "string" ? k.trim().toLowerCase() : "";
+  return s || null;
+}
+export type PoolSkip<T> = { candidate: T; reason: "same_event" | "event_in_book"; event: string; kept_id: string | null };
+/** v1.15 rules 1 and 2, as a walk over candidates that have ALREADY passed v1.5, v1.8, v1.9 and v1.6's market-level
+ *  book exclusion. The candidates are ranked here, not by the caller (24h volume descending, ties by market id
+ *  ascending, so the walk cannot depend on the order a venue happened to return them in). Walking from the top:
+ *    rule 2  a candidate whose venue event is already in the book (`bookedEvents`: the sealed `venue_event_key` of
+ *            every primary-eligible record on the same venue) is skipped, whatever its rank;
+ *    rule 1  a candidate is taken unless a higher-ranked candidate already taken shares its venue event.
+ *  So each venue event is represented by its highest-volume admitted market, and no one decides which strike of a
+ *  ladder "matters". Returns EVERY event's representative in rank order plus every skip with its reason: the caller
+ *  slices the first N for the pool and writes the skips to the day's JSON, so a reader sees the rule operating.
+ *  A candidate whose volume is not a finite number throws: it cannot be ranked, and ranking it as zero would hide that. */
+export function poolOnePerEvent<T>(
+  candidates: readonly T[],
+  get: { id: (c: T) => string; event: (c: T) => unknown; volume: (c: T) => number },
+  bookedEvents: Iterable<unknown> = [],
+): { taken: T[]; skipped: PoolSkip<T>[] } {
+  const booked = new Set<string>(); for (const b of bookedEvents) { const k = normEventKey(b); if (k) booked.add(k); }
+  for (const c of candidates) if (!Number.isFinite(get.volume(c))) throw new Error(`pool candidate ${get.id(c)} has no finite 24h volume and cannot be ranked`);
+  const ranked = [...candidates].sort((a, b) => get.volume(b) - get.volume(a) || (get.id(a) < get.id(b) ? -1 : get.id(a) > get.id(b) ? 1 : 0));
+  const taken: T[] = []; const skipped: PoolSkip<T>[] = []; const keptBy = new Map<string, string>();
+  for (const c of ranked) {
+    const ev = normEventKey(get.event(c));
+    if (ev !== null && booked.has(ev)) { skipped.push({ candidate: c, reason: "event_in_book", event: ev, kept_id: null }); continue; }
+    if (ev !== null && keptBy.has(ev)) { skipped.push({ candidate: c, reason: "same_event", event: ev, kept_id: keptBy.get(ev)! }); continue; }
+    if (ev !== null) keptBy.set(ev, get.id(c));
+    taken.push(c);
+  }
+  return { taken, skipped };
+}
 export function devVar(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
   try { for (const l of readFileSync("djzs-trust-mcp/.dev.vars", "utf8").split("\n")) { const m = l.match(new RegExp(`^\\s*${name}\\s*=\\s*"?([^"\\n]+)"?\\s*$`)); if (m) return m[1].trim(); } } catch {}
