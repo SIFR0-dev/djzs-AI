@@ -5,8 +5,9 @@
 import {
   POOL_TAGS_INCLUDE, POOL_TAGS_EXCLUDE, POOL_TAGS_EXCLUDE_CATEGORY, POOL_TAGS_EXCLUDE_RECURRENCE,
   POOL_MIN_HOURS_TO_CLOSE, normalizeTags, poolTagsAdmit, poolCategoryAdmit, poolDurationAdmit, poolAdmit, hoursToClose,
-  RECURRENCE_SLUG_ORACLE, slugNamesRecurrence,
+  RECURRENCE_SLUG_ORACLE, slugNamesRecurrence, normEventKey, poolOnePerEvent,
 } from "./lib";
+import { readFileSync } from "node:fs";
 
 let fails = 0, ran = 0, unexercised = 0;
 function eq(got: unknown, want: unknown, what: string) {
@@ -95,6 +96,64 @@ eq(poolAdmit(["Crypto", "1H"], at(720), NOW), true, "v1.9: a month-out close ove
 eq(poolAdmit(["Crypto", "1H"], null, NOW), false, "…but with no close published the tag still decides");
 eq(poolAdmit(["Crypto", "Up or Down"], null, NOW), false, "…same for the 'Up or Down' ladder tag");
 eq(poolAdmit([], at(720), NOW), false, "no category tag, however long-dated");
+
+// ── v1.15: the pool unit is the venue event ─────────────────────────────────────────────────────────────────────
+// Hand-built rows first (every branch of the walk), then the one pool day that has been sealed, read from the
+// committed discovery file: the numbers PROTOCOL v1.15's disclosure table states are reproduced here, not typed.
+console.log("POOL MATCHER · v1.15 — one market per venue event");
+type Row = { id: string; ev: unknown; vol: number };
+const G = { id: (r: Row) => r.id, event: (r: Row) => r.ev, volume: (r: Row) => r.vol };
+const ids = (rs: Row[]) => rs.map(r => r.id);
+const ladder: Row[] = [
+  { id: "FED-H0", ev: "FED-26SEP", vol: 900 }, { id: "FED-H25", ev: "FED-26SEP", vol: 700 }, { id: "SEN-ME-D", ev: "SENATEME-26", vol: 600 },
+  { id: "FED-C25", ev: "FED-26SEP", vol: 500 }, { id: "SEN-ME-R", ev: "SENATEME-26", vol: 400 }, { id: "CLARITY", ev: "CLARITY-26", vol: 300 },
+];
+const w1 = poolOnePerEvent(ladder, G);
+eq(ids(w1.taken), ["FED-H0", "SEN-ME-D", "CLARITY"], "a strike ladder collapses to its highest-volume market; events keep their rank order");
+eq(w1.skipped.map(s => [s.candidate.id, s.reason, s.kept_id]), [["FED-H25", "same_event", "FED-H0"], ["FED-C25", "same_event", "FED-H0"], ["SEN-ME-R", "same_event", "SEN-ME-D"]], "every collapsed market is reported with the market that represents its event");
+eq(ids(poolOnePerEvent([...ladder].reverse(), G).taken), ids(w1.taken), "the walk ranks for itself: input order does not matter");
+eq(ids(poolOnePerEvent([{ id: "B", ev: "E2", vol: 5 }, { id: "A", ev: "E1", vol: 5 }], G).taken), ["A", "B"], "equal volumes are ordered by market id, ascending");
+eq(ids(poolOnePerEvent([{ id: "A2", ev: "E", vol: 5 }, { id: "A1", ev: "E", vol: 5 }], G).taken), ["A1"], "…including inside one event");
+eq(ids(poolOnePerEvent([{ id: "X", ev: null, vol: 9 }, { id: "Y", ev: null, vol: 8 }, { id: "Z", ev: "", vol: 7 }, { id: "W", ev: undefined, vol: 6 }], G).taken), ["X", "Y", "Z", "W"], "no published event id = its own event: never collapsed into another");
+eq(ids(poolOnePerEvent([{ id: "a", ev: "KXFED-26SEP", vol: 9 }, { id: "b", ev: " kxfed-26sep ", vol: 8 }], G).taken), ["a"], "event ids compare trimmed and case-insensitively");
+eq(ids(poolOnePerEvent([{ id: "a", ev: 762, vol: 9 }, { id: "b", ev: 762, vol: 8 }], G).taken), ["a", "b"], "a non-string event id is not an identifier: both stand alone, nothing is guessed");
+const w2 = poolOnePerEvent(ladder, G, ["fed-26sep"]);
+eq(ids(w2.taken), ["SEN-ME-D", "CLARITY"], "rule 2: an event already in the book is out, every strike of it");
+eq(w2.skipped.filter(s => s.reason === "event_in_book").map(s => s.candidate.id), ["FED-H0", "FED-H25", "FED-C25"], "…and each skipped strike says why");
+eq(ids(poolOnePerEvent([{ id: "X", ev: null, vol: 9 }], G, [null, "", undefined]).taken), ["X"], "a null in the book excludes nothing: a record sealed with venue_event_key null blocks only its own market (v1.6)");
+eq(ids(poolOnePerEvent(ladder, G).taken.slice(0, 2)), ["FED-H0", "SEN-ME-D"], "the caller takes the first N of the walk");
+eq(poolOnePerEvent([], G), { taken: [], skipped: [] }, "an empty candidate list is an empty pool, not an error");
+{ let threw = ""; try { poolOnePerEvent([{ id: "bad", ev: "E", vol: NaN }], G); } catch (e) { threw = (e as Error).message; }
+  eq(threw.includes("bad") && threw.includes("cannot be ranked"), true, "a candidate with no finite volume throws, naming itself: it is never ranked as zero"); }
+eq([normEventKey("  KXFEDDECISION-26SEP "), normEventKey(""), normEventKey("   "), normEventKey(null), normEventKey(undefined), normEventKey(0)], ["kxfeddecision-26sep", null, null, null, null, null], "normEventKey: trimmed, lower-cased, and null for anything that is not a non-empty string");
+
+{ // The sealed pool day. top + next are the ten highest-volume admitted markets per venue, already past the book as it then stood.
+  type Disc = { id: string; venue_event_key: string | null; volume_1d: number };
+  const day = JSON.parse(readFileSync("tests/q3/discovery/2026-09-14.json", "utf8")) as { pool: Record<string, { top: Disc[]; next: Disc[] }> };
+  const D = { id: (r: Disc) => r.id, event: (r: Disc) => r.venue_event_key, volume: (r: Disc) => r.volume_1d };
+  const distinct = (rs: Disc[]) => new Set(rs.map(r => normEventKey(r.venue_event_key))).size;
+  const expect: Record<string, { events: string[]; collapsed: number }> = {
+    kalshi: { events: ["KXFEDDECISION-26SEP", "KXBALANCEPOWERCOMBO-27FEB", "CONTROLS-2026", "KXCRYPTOSTRUCTURE-26JAN", "SENATETX-26"], collapsed: 5 },
+    polymarket: { events: ["fed-decision-in-september-762", "clarity-act-signed-into-law-in-2026", "will-the-us-invade-iran-before-2027", "which-party-will-gain-most-seats-in-russian-parliamentary-election", "what-price-will-wti-hit-in-september-2026"], collapsed: 4 },
+  };
+  for (const venue of ["kalshi", "polymarket"]) {
+    const ten = [...day.pool[venue].top, ...day.pool[venue].next];
+    eq([day.pool[venue].top.length, day.pool[venue].next.length, ten.every(r => typeof r.venue_event_key === "string" && r.venue_event_key !== "")], [5, 5, true], `2026-09-14 ${venue}: the file holds a top five and a next five, each with the venue's event id`);
+    eq(ids(ten as unknown as Row[]), ids([...ten].sort((a, b) => b.volume_1d - a.volume_1d) as unknown as Row[]), `2026-09-14 ${venue}: the saved order is the volume ranking`);
+    eq(distinct(day.pool[venue].top), 2, `2026-09-14 ${venue}: as selected (top five markets) the pool covered 2 venue events`);
+    const w = poolOnePerEvent(ten, D);
+    eq(w.taken.slice(0, 5).map(r => ten.indexOf(r) + 1), [1, 5, 7, 8, 9], `2026-09-14 ${venue}: under v1.15 the pool is ranks 1, 5, 7, 8, 9`);
+    eq(w.taken.slice(0, 5).map(r => r.venue_event_key), expect[venue].events, `2026-09-14 ${venue}: …five venue events, these five`);
+    eq([w.skipped.length, w.skipped.every(s => s.reason === "same_event")], [expect[venue].collapsed, true], `2026-09-14 ${venue}: ${expect[venue].collapsed} of the ten are lower-ranked strikes of an event already taken`);
+  }
+  // Rule 2 against the book as it stands: both of each venue's sealed events leave the list, every strike of them.
+  const book = (JSON.parse(readFileSync("tests/q3/records/2026-09-14.json", "utf8")) as { deviated?: unknown; market: { venue: string }; venue_event_key: string | null }[]).filter(r => r.deviated !== true);
+  const booked = (venue: string) => [...new Set(book.filter(r => r.market.venue === venue).map(r => r.venue_event_key))];
+  eq([booked("kalshi"), booked("polymarket")], [["KXFEDDECISION-26SEP", "KXBALANCEPOWERCOMBO-27FEB"], ["fed-decision-in-september-762", "clarity-act-signed-into-law-in-2026"]], "the ten sealed pool records carry two venue events per venue");
+  const k = poolOnePerEvent([...day.pool.kalshi.top, ...day.pool.kalshi.next], D, booked("kalshi"));
+  eq(k.taken.map(r => r.id), ["CONTROLS-2026-D", "KXCRYPTOSTRUCTURE-26JAN-27", "SENATETX-26-D"], "rule 2 on that list today: only events with no record remain, one market each");
+  eq(k.skipped.filter(s => s.reason === "event_in_book").length, 6, "…and the six markets of the two booked Kalshi events are each skipped as event_in_book");
+}
 
 // ── LIVE DATA ────────────────────────────────────────────────────────────────────────────────────────────────────
 // Everything above is a fixed clock and hand-built inputs, which proves the rule is self-consistent and nothing more.
