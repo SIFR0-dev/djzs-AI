@@ -53,6 +53,7 @@
   .cell .price{display:block;margin-top:10px;color:var(--text);font-weight:800;font-size:13px}
   .cell .price span{color:var(--muted);font-weight:400}
   .cell .fail{color:var(--fail);font-weight:700} .cell .pass{color:var(--pass);font-weight:700}
+  .cell.span{grid-column:1/-1}
 
   pre{background:#080808;border:1px solid var(--rule);border-radius:0;padding:14px 16px;overflow:auto;font-size:12px;line-height:1.6;margin-top:12px}
   pre .m{color:var(--muted)} pre .c{color:var(--pass)}
@@ -91,12 +92,13 @@
   </header>
 
   <section>
-    <h2>What gets built <span class="sub">three fixed-scope packages, one retainer</span></h2>
+    <h2>What gets built <span class="sub">four fixed-scope packages, one retainer</span></h2>
     <div class="grid">
       <div class="cell"><h3>Agent-ready API</h3><p>Your existing endpoints wrapped as an MCP server on Cloudflare Workers, an x402 v2 paywall in front of the routes you choose (USDC on Base, CDP facilitator, funds settle payer → your wallet), <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, Bazaar listing submitted. Deploy runbook included.<span class="price">$3,500 <span>· 10 working days · one paid route; +$600 per additional route</span></span></p></div>
       <div class="cell"><h3>Receipt layer</h3><p>Every paid response carries an EIP-712 hash of the request and an EAS attestation on Base under your own schema, from an attester wallet you control. Plus a static verifier page so a customer, a court, or a DAO can recompute the receipt without trusting you.<span class="price">$2,500 <span>· 5 working days · add-on to Agent-ready API, or standalone on an API that already exists</span></span></p></div>
       <div class="cell"><h3>Business manifest</h3><p>For a physical or local business: a signed <code class="inl">/.well-known/sifr0.json</code> (services, prices, hours, booking method, policies) so an agent shopping on a customer's behalf can find you, quote you, and act. Includes registry listing at sifr0.dev and one revision.<span class="price">$400 <span>· 3 working days · no code on your side</span></span></p></div>
-      <div class="cell"><h3>Keep-alive</h3><p>Monthly: dependency and Worker-runtime updates, facilitator and schema changes tracked, discovery files re-validated against the current x402 spec, a health probe with alerts, and one hour of changes. Cancel any month.<span class="price">$600 / month <span>· starts after delivery · optional</span></span></p></div>
+      <div class="cell"><h3>Video agent</h3><p>A face-to-face AI agent that holds the one conversation your team repeats all day: intake, screening, onboarding, or roleplay practice for hard conversations. Built on Tavus real-time video inside your own Tavus account: persona and guardrails, your documents as its knowledge base, up to three tools that call your systems with signed requests, and one post-call action that writes a summary into your CRM. Ships as a site widget, an embed, or a private link.<span class="price">$3,000 <span>· 7 working days · one agent, up to three tools, one CRM write; Tavus usage bills to your own Tavus account</span></span></p></div>
+      <div class="cell span"><h3>Keep-alive</h3><p>Monthly: dependency and Worker-runtime updates, facilitator and schema changes tracked, discovery files re-validated against the current x402 spec, a health probe with alerts, and one hour of changes. Cancel any month.<span class="price">$600 / month <span>· starts after delivery · optional</span></span></p></div>
     </div>
     <p class="coda">Scope is written before money moves. Anything not on the scope sheet is a second engagement, not a surprise.</p>
   </section>
@@ -109,6 +111,7 @@
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Discovery surfaces agents read.</b> <code class="inl">/.well-known/x402.json</code>, <code class="inl">llms.txt</code>, OpenAPI, agent card, verified Base app registration, all on this site, all free to inspect.</span></div>
       <div class="rung pass"><span class="verdict">LIVE</span><span class="d"><b>Pre-registered, published test discipline.</b> Exhaustive engine sweeps in CI, extraction-stability harnesses with the raw runs committed, a ruleset page that reports the measured band instead of the best run. Read it at <a href="https://djzs.ai/ruleset">djzs.ai/ruleset</a>. You will get the same honesty about your build.</span></div>
       <div class="rung wait"><span class="verdict">HONEST</span><span class="d"><b>What I cannot promise.</b> That agents will find you on day one. Bazaar indexing is slow and inconsistent; I have the scan logs to prove it. I build the surfaces correctly, submit the listing, and hand you the probe script. Traffic is a distribution problem you and I solve after the plumbing exists.</span></div>
+      <div class="rung wait"><span class="verdict">HONEST</span><span class="d"><b>Video agents are the newest package.</b> No video agent of mine runs in production yet; nothing in the LIVE list above proves it. What carries over is everything that touches your systems: requests checked by signature before they act, writes into your own tools, keys that stay yours. You judge the agent on a real test conversation by Day 3, not on a demo reel.</span></div>
     </div>
   </section>
 
@@ -119,6 +122,7 @@
 <span class="c">DAY 7</span>   x402 gate live on staging · first 402 challenge · first USDC settles to YOUR wallet, not mine
 <span class="c">DAY 10</span>  production deploy from your Cloudflare account · discovery files live · runbook + probe script
         · remaining 50% invoiced · keys were yours the whole time</pre>
+    <p>A video agent runs the same four checkpoints in seven working days: scope and 50% on Day 0, a test conversation on a private link by Day 3, tools and the CRM write firing against your systems by Day 5, live on your site by Day 7 with the remaining 50% invoiced.</p>
     <p>Source is committed to a repo you own. Secrets are set in your Cloudflare account by you, from the runbook. I never hold a wallet key, an API key, or a deploy token past the call where you type it in.</p>
     <p class="coda">You hold every key. That is not a courtesy, it is the design.</p>
   </section>
@@ -134,6 +138,7 @@
 <pre>1. What the API does, in one sentence.
 2. Who should be able to call it (humans, your own agents, anyone's agents).
 3. When you need it live.</pre>
+    <p>Buying a video agent? Line 1 is the conversation it should hold, line 2 is who it talks to.</p>
     <p>You get a yes-or-no on fit within one working day and a scope sheet within three. Two engagements open at a time; the page says so here when both are taken.</p>
     <a class="btn" href="https://x.com/Djzs_ai">Send the three lines</a>
     <p class="coda">Plumbing first. Then the traffic.</p>
