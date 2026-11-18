@@ -1,0 +1,1420 @@
+{
+ "version": "q2-rewordings-v1",
+ "note": "Rewordings of the 16 Q2 corpus theses. Each keeps every fact of its base and changes only how it is said. See the header of tests/q2-reword-stability.ts for the rules, the five kinds, and how to add rewordings written by someone else.",
+ "kinds": {
+  "reorder": "same sentences and clauses, different order; wording otherwise unchanged",
+  "plain": "everyday first-person wording with contractions; same keys as the base",
+  "terse": "telegraphic note style with fragments and abbreviations; same keys as the base",
+  "formal": "formal analyst register; same keys as the base",
+  "flat": "one free-text paragraph in `thesis` and no helper keys: the basis, the size, the maximum loss and the exit are all in the sentence, the way a stranger types a trade idea into one box"
+ },
+ "bases": [
+  {
+   "id": "F1",
+   "designed": "PASS",
+   "cls": "FULL",
+   "must_keep": [
+    "Coinbase",
+    "KXBTCD-26SEP0217-T76999.99",
+    "Sep 2",
+    "2026-09-01T20:08Z",
+    "Kalshi"
+   ],
+   "base": {
+    "market": "KXBTCD-26SEP0217-T76999.99",
+    "side": "YES",
+    "thesis": "BTC spot ~$77,263 (Coinbase 2026-09-01T20:08Z) sits ~0.34% above the $77,000 line; absent a close under $77,000 at the Sep 2 settlement, KXBTCD-26SEP0217-T76999.99 resolves YES.",
+    "probability_basis": "spot $77,263 vs $77,000 strike = +0.34% ITM; Kalshi book unquoted so implied N/A; model P(YES) approx 0.70; basis Coinbase spot 2026-09-01T20:08Z",
+    "size_usd": 250,
+    "bounds": {
+     "max_loss_usd": 250,
+     "exit_condition": "BTC hourly close below $77,000 on Coinbase before the Sep 2 settlement"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "Absent a close under $77,000 at the Sep 2 settlement, KXBTCD-26SEP0217-T76999.99 resolves YES; BTC spot ~$77,263 (Coinbase 2026-09-01T20:08Z) sits ~0.34% above the $77,000 line.",
+      "probability_basis": "basis Coinbase spot 2026-09-01T20:08Z; model P(YES) approx 0.70; Kalshi book unquoted so implied N/A; spot $77,263 vs $77,000 strike = +0.34% ITM",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "before the Sep 2 settlement, a BTC hourly close on Coinbase below $77,000"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "BTC is trading at about $77,263 on Coinbase (2026-09-01T20:08Z), roughly 0.34% over the $77,000 line. Unless it closes under $77,000 at the Sep 2 settlement, KXBTCD-26SEP0217-T76999.99 pays out YES.",
+      "probability_basis": "Spot is $77,263 against a $77,000 strike, so it's +0.34% in the money. Nobody is quoting the Kalshi book, so there's no implied number. My model puts P(YES) at about 0.70. The price is Coinbase spot at 2026-09-01T20:08Z.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "I'm out if BTC prints an hourly close below $77,000 on Coinbase before the Sep 2 settlement"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "BTC ~$77,263 (Coinbase 2026-09-01T20:08Z), ~0.34% > $77,000 line. No close < $77,000 at Sep 2 settlement => KXBTCD-26SEP0217-T76999.99 YES.",
+      "probability_basis": "$77,263 spot / $77,000 strike = +0.34% ITM. Kalshi book unquoted, implied N/A. Model P(YES) ~0.70. Src: Coinbase spot 2026-09-01T20:08Z",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "hourly close < $77,000 (Coinbase) pre Sep 2 settlement"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "As of 2026-09-01T20:08Z, Coinbase quotes BTC spot at approximately $77,263, some 0.34% above the $77,000 threshold. Provided that no close below $77,000 is recorded at the Sep 2 settlement, contract KXBTCD-26SEP0217-T76999.99 will resolve YES.",
+      "probability_basis": "Spot of $77,263 relative to the $77,000 strike places the contract +0.34% in the money. The Kalshi order book is unquoted, so no implied probability is available. The model estimate of P(YES) is approximately 0.70, based on the Coinbase spot price at 2026-09-01T20:08Z.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "The position is closed if an hourly BTC close below $77,000 is observed on Coinbase prior to the Sep 2 settlement."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "Buying YES on KXBTCD-26SEP0217-T76999.99 for $250, and $250 is the most I can lose. BTC is about $77,263 on Coinbase as of 2026-09-01T20:08Z, roughly 0.34% above the $77,000 line, so the contract resolves YES unless BTC closes under $77,000 at the Sep 2 settlement. With spot $77,263 against a $77,000 strike it is +0.34% in the money; the Kalshi book is unquoted so there is no implied price, and my model puts P(YES) at about 0.70. I exit if BTC has an hourly close below $77,000 on Coinbase before the Sep 2 settlement."
+     }
+    }
+   ]
+  },
+  {
+   "id": "F2",
+   "designed": "PASS",
+   "cls": "FULL",
+   "must_keep": [
+    "FOMC",
+    "Sep 17",
+    "FedWatch",
+    "Kalshi",
+    "cmegroup.com",
+    "Sep 10",
+    "2026-09-01"
+   ],
+   "base": {
+    "market": "KXFEDDECISION-26SEP",
+    "side": "YES",
+    "thesis": "The market resolves YES if the FOMC statement on Sep 17 announces a cut to the target range. CME FedWatch implies 87% for a cut as of 2026-09-01; Kalshi YES trades at 84c, a 3-point gap to the futures-implied probability.",
+    "probability_basis": "CME FedWatch 87% (2026-09-01) vs Kalshi YES 84c; edge = +3 pts; source: cmegroup.com FedWatch",
+    "size_usd": 400,
+    "bounds": {
+     "max_loss_usd": 400,
+     "exit_condition": "exit if two or more FOMC voters publicly oppose a cut before Sep 10, or if FedWatch drops below 70%"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "CME FedWatch implies 87% for a cut as of 2026-09-01; Kalshi YES trades at 84c, a 3-point gap to the futures-implied probability. The market resolves YES if the FOMC statement on Sep 17 announces a cut to the target range.",
+      "probability_basis": "source: cmegroup.com FedWatch; edge = +3 pts; CME FedWatch 87% (2026-09-01) vs Kalshi YES 84c",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "exit if FedWatch drops below 70%, or if two or more FOMC voters publicly oppose a cut before Sep 10"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "This pays YES if the FOMC statement on Sep 17 announces a cut to the target range. CME FedWatch has a cut at 87% as of 2026-09-01, and Kalshi YES is trading at 84c, so there's a 3-point gap to what futures imply.",
+      "probability_basis": "CME FedWatch says 87% (2026-09-01) and Kalshi YES is at 84c, so the edge is +3 pts. The number comes from cmegroup.com FedWatch.",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "I get out if two or more FOMC voters come out publicly against a cut before Sep 10, or if FedWatch falls below 70%"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "YES if Sep 17 FOMC statement announces target-range cut. CME FedWatch 87% cut (2026-09-01); Kalshi YES 84c; 3-point gap vs futures-implied.",
+      "probability_basis": "FedWatch 87% (2026-09-01) vs Kalshi YES 84c. Edge +3 pts. Src: cmegroup.com FedWatch",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "out if two or more FOMC voters publicly oppose cut pre Sep 10, or FedWatch < 70%"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "The contract resolves YES in the event that the FOMC statement of Sep 17 announces a reduction of the target range. As of 2026-09-01, CME FedWatch implies an 87% probability of a cut, while Kalshi YES is priced at 84c, a 3-point discount to the futures-implied probability.",
+      "probability_basis": "CME FedWatch indicates 87% (2026-09-01) against a Kalshi YES price of 84c, an edge of +3 pts. Source: cmegroup.com FedWatch.",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "The position is exited if two or more FOMC voters publicly oppose a cut before Sep 10, or if the FedWatch probability falls below 70%."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Buying YES on KXFEDDECISION-26SEP for $400, max loss $400. It resolves YES if the FOMC statement on Sep 17 announces a cut to the target range. CME FedWatch (cmegroup.com) implies 87% for a cut as of 2026-09-01 and Kalshi YES trades at 84c, so I see a +3 pts edge, a 3-point gap to the futures-implied probability. I exit if two or more FOMC voters publicly oppose a cut before Sep 10, or if FedWatch drops below 70%."
+     }
+    }
+   ]
+  },
+  {
+   "id": "F3",
+   "designed": "PASS",
+   "cls": "FULL",
+   "must_keep": [
+    "Coinbase",
+    "Sep 30",
+    "lognormal",
+    "Sep 20",
+    "2026-09-01"
+   ],
+   "base": {
+    "market": "polymarket:eth-above-4000-sep-30",
+    "side": "NO",
+    "thesis": "Resolves per Coinbase ETH-USD close on Sep 30 vs $4,000. Spot $3,610 on 2026-09-01; reaching $4,000 needs +10.8% in 29 days. Realized 30d vol 48% annualized implies ~14% one-month sigma, so a +10.8% move is roughly a 0.77-sigma event, P ~ 0.22 for YES; market YES at 31c overprices it.",
+    "probability_basis": "lognormal with 48% ann. vol (Coinbase 30d realized) gives P(YES) ~ 0.22 vs market 0.31; edge ~9 pts to NO",
+    "size_usd": 300,
+    "bounds": {
+     "max_loss_usd": 300,
+     "exit_condition": "exit NO if ETH daily close exceeds $3,850 before Sep 20"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Spot $3,610 on 2026-09-01; reaching $4,000 needs +10.8% in 29 days. Realized 30d vol 48% annualized implies ~14% one-month sigma, so a +10.8% move is roughly a 0.77-sigma event, P ~ 0.22 for YES; market YES at 31c overprices it. Resolves per Coinbase ETH-USD close on Sep 30 vs $4,000.",
+      "probability_basis": "edge ~9 pts to NO; P(YES) ~ 0.22 vs market 0.31, from lognormal with 48% ann. vol (Coinbase 30d realized)",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "before Sep 20, exit NO if ETH daily close exceeds $3,850"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "This settles on the Coinbase ETH-USD close on Sep 30 against $4,000. ETH was at $3,610 on 2026-09-01, so it has to climb +10.8% in 29 days. Realized 30d vol is 48% annualized, which works out to about 14% for one month, so a +10.8% move is roughly a 0.77-sigma event. That's a P of about 0.22 for YES, and the market has YES at 31c, which is too high.",
+      "probability_basis": "A lognormal model with 48% annual vol (Coinbase 30d realized) gives P(YES) of about 0.22 against the market's 0.31, so NO has an edge of about 9 pts.",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "I close the NO if ETH's daily close goes above $3,850 before Sep 20"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Res: Coinbase ETH-USD close Sep 30 vs $4,000. Spot $3,610 (2026-09-01); needs +10.8% in 29 days. 30d realized vol 48% ann. => ~14% one-month sigma; +10.8% ~ 0.77-sigma; P(YES) ~ 0.22; mkt YES 31c = overpriced.",
+      "probability_basis": "lognormal, 48% ann. vol (Coinbase 30d realized): P(YES) ~ 0.22 vs mkt 0.31; ~9 pts edge to NO",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "exit NO if ETH daily close > $3,850 pre Sep 20"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Resolution is determined by the Coinbase ETH-USD close on Sep 30 relative to $4,000. With spot at $3,610 on 2026-09-01, a gain of +10.8% within 29 days is required. Realized 30d volatility of 48% annualized implies a one-month sigma of approximately 14%, making a +10.8% move roughly a 0.77-sigma event and placing P for YES near 0.22; the market price of 31c for YES therefore overstates it.",
+      "probability_basis": "A lognormal model using 48% annualized volatility (Coinbase 30d realized) yields P(YES) of approximately 0.22, against a market-implied 0.31, an edge of approximately 9 pts in favor of NO.",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "The NO position is exited if the ETH daily close exceeds $3,850 before Sep 20."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Buying NO on polymarket:eth-above-4000-sep-30 for $300, max loss $300. It resolves on the Coinbase ETH-USD close on Sep 30 versus $4,000. Spot was $3,610 on 2026-09-01, so ETH needs +10.8% in 29 days. Coinbase 30d realized vol is 48% annualized, about 14% one-month sigma, so +10.8% is roughly a 0.77-sigma move; a lognormal model gives P(YES) around 0.22 while the market has YES at 31c (0.31), an edge of about 9 pts to NO. I exit NO if the ETH daily close exceeds $3,850 before Sep 20."
+     }
+    }
+   ]
+  },
+  {
+   "id": "I1",
+   "designed": "FAIL",
+   "cls": "NO_INVALIDATION",
+   "must_keep": [
+    "Coinbase",
+    "Sep 2",
+    "2026-09-01"
+   ],
+   "base": {
+    "market": "KXBTCD-26SEP0217-T76999.99",
+    "side": "YES",
+    "thesis": "BTC spot $77,263 sits above the $77,000 line for the Sep 2 settlement; the market resolves YES on a close above $77,000.",
+    "probability_basis": "spot $77,263 vs $77,000 = +0.34% ITM; P(YES) ~0.70 from Coinbase spot 2026-09-01",
+    "size_usd": 250,
+    "bounds": {
+     "max_loss_usd": 250
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "The market resolves YES on a close above $77,000; BTC spot $77,263 sits above the $77,000 line for the Sep 2 settlement.",
+      "probability_basis": "P(YES) ~0.70 from Coinbase spot 2026-09-01; spot $77,263 vs $77,000 = +0.34% ITM",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "BTC is at $77,263, which is above the $77,000 line for the Sep 2 settlement. The market pays YES if it closes above $77,000.",
+      "probability_basis": "Spot is $77,263 against $77,000, so +0.34% in the money. I get P(YES) of about 0.70 from Coinbase spot on 2026-09-01.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "BTC spot $77,263 > $77,000 line, Sep 2 settlement. YES on close > $77,000.",
+      "probability_basis": "$77,263 vs $77,000 = +0.34% ITM. P(YES) ~0.70, Coinbase spot 2026-09-01",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "BTC spot, at $77,263, stands above the $77,000 threshold applicable to the Sep 2 settlement; the contract resolves YES upon a close above $77,000.",
+      "probability_basis": "Spot of $77,263 against $77,000 is +0.34% in the money; P(YES) is estimated at approximately 0.70 on the basis of Coinbase spot on 2026-09-01.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "Buying YES on KXBTCD-26SEP0217-T76999.99 for $250, max loss $250. BTC spot is $77,263, above the $77,000 line for the Sep 2 settlement, and the market resolves YES on a close above $77,000. Spot $77,263 versus $77,000 is +0.34% in the money, and I put P(YES) at about 0.70 from Coinbase spot on 2026-09-01."
+     }
+    }
+   ]
+  },
+  {
+   "id": "I2",
+   "designed": "FAIL",
+   "cls": "NO_INVALIDATION",
+   "must_keep": [
+    "FOMC",
+    "Sep 17",
+    "FedWatch",
+    "Kalshi",
+    "2026-09-01"
+   ],
+   "base": {
+    "market": "KXFEDDECISION-26SEP",
+    "side": "YES",
+    "thesis": "Resolves YES on a Sep 17 FOMC cut. FedWatch 87%, Kalshi 84c. Holding to resolution regardless of interim news.",
+    "probability_basis": "CME FedWatch 87% vs Kalshi 84c, 2026-09-01",
+    "size_usd": 400,
+    "bounds": {
+     "max_loss_usd": 400
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Holding to resolution regardless of interim news. FedWatch 87%, Kalshi 84c. Resolves YES on a Sep 17 FOMC cut.",
+      "probability_basis": "2026-09-01: Kalshi 84c vs CME FedWatch 87%",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "This pays YES if the FOMC cuts on Sep 17. FedWatch is at 87% and Kalshi is at 84c. I'm holding it all the way to resolution, whatever news comes out in between.",
+      "probability_basis": "CME FedWatch at 87% against Kalshi at 84c, as of 2026-09-01",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "YES on Sep 17 FOMC cut. FedWatch 87%, Kalshi 84c. Hold to res., ignore interim news.",
+      "probability_basis": "FedWatch (CME) 87% vs Kalshi 84c @ 2026-09-01",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "The contract resolves YES upon an FOMC cut on Sep 17. FedWatch stands at 87% and Kalshi at 84c. The position will be held to resolution irrespective of interim news.",
+      "probability_basis": "CME FedWatch at 87% compared with Kalshi at 84c, as of 2026-09-01.",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Buying YES on KXFEDDECISION-26SEP for $400, max loss $400. It resolves YES on a Sep 17 FOMC cut. CME FedWatch is at 87% versus Kalshi at 84c as of 2026-09-01. I am holding to resolution regardless of interim news."
+     }
+    }
+   ]
+  },
+  {
+   "id": "I3",
+   "designed": "FAIL",
+   "cls": "NO_INVALIDATION",
+   "must_keep": [
+    "Coinbase",
+    "Sep 30",
+    "lognormal"
+   ],
+   "base": {
+    "market": "polymarket:eth-above-4000-sep-30",
+    "side": "NO",
+    "thesis": "Resolves on Coinbase ETH close Sep 30 vs $4,000. Spot $3,610; +10.8% in 29 days is ~0.77 sigma at 48% vol; P(YES) ~0.22 vs 31c market. No conditions under which I would exit early.",
+    "probability_basis": "lognormal, 48% realized vol, P(YES) ~0.22 vs 0.31",
+    "size_usd": 300,
+    "bounds": {
+     "max_loss_usd": 300
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "No conditions under which I would exit early. Spot $3,610; +10.8% in 29 days is ~0.77 sigma at 48% vol; P(YES) ~0.22 vs 31c market. Resolves on Coinbase ETH close Sep 30 vs $4,000.",
+      "probability_basis": "P(YES) ~0.22 vs 0.31; lognormal, 48% realized vol",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "This settles on the Coinbase ETH close on Sep 30 against $4,000. ETH is at $3,610, and a +10.8% move in 29 days is about 0.77 sigma at 48% vol, so P(YES) is around 0.22 while the market is at 31c. There's nothing that would make me exit early.",
+      "probability_basis": "A lognormal model with 48% realized vol gives P(YES) of about 0.22 against 0.31",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Res: Coinbase ETH close Sep 30 vs $4,000. Spot $3,610; +10.8% / 29 days ~0.77 sigma @ 48% vol; P(YES) ~0.22 vs mkt 31c. No early-exit conditions.",
+      "probability_basis": "lognormal; 48% realized vol; P(YES) ~0.22 vs 0.31",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Resolution is determined by the Coinbase ETH close on Sep 30 relative to $4,000. With spot at $3,610, a move of +10.8% in 29 days corresponds to approximately 0.77 sigma at 48% volatility, giving P(YES) of approximately 0.22 against a market price of 31c. There are no conditions under which the position would be exited early.",
+      "probability_basis": "Lognormal model with 48% realized volatility: P(YES) approximately 0.22, against 0.31.",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Buying NO on polymarket:eth-above-4000-sep-30 for $300, max loss $300. It resolves on the Coinbase ETH close on Sep 30 versus $4,000. Spot is $3,610, and +10.8% in 29 days is about 0.77 sigma at 48% realized vol, so a lognormal model gives P(YES) around 0.22 against the market's 31c (0.31). There are no conditions under which I would exit early."
+     }
+    }
+   ]
+  },
+  {
+   "id": "R1",
+   "designed": "FAIL",
+   "cls": "NO_RESOLUTION",
+   "must_keep": [
+    "ETF",
+    "Farside",
+    "Aug 25",
+    "halving"
+   ],
+   "base": {
+    "market": "KXBTCD-26SEP0217-T76999.99",
+    "side": "YES",
+    "thesis": "ETF inflows were $1.2B last week and the halving supply shock is compounding. Institutions are accumulating. BTC is going much higher this quarter.",
+    "probability_basis": "ETF inflow data (Farside, week of Aug 25) and post-halving supply schedule; P(higher by year end) ~0.80",
+    "size_usd": 250,
+    "bounds": {
+     "max_loss_usd": 250,
+     "exit_condition": "exit if weekly ETF flows turn net negative"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "BTC is going much higher this quarter. Institutions are accumulating. ETF inflows were $1.2B last week and the halving supply shock is compounding.",
+      "probability_basis": "P(higher by year end) ~0.80; post-halving supply schedule and ETF inflow data (Farside, week of Aug 25)",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "if weekly ETF flows turn net negative, exit"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "ETFs took in $1.2B last week, and the supply squeeze from the halving keeps building. The big institutions are buying. BTC is headed a lot higher this quarter.",
+      "probability_basis": "I'm going off ETF inflow data (Farside, week of Aug 25) and the post-halving supply schedule. I put P(higher by year end) at about 0.80.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "I'm out if weekly ETF flows flip to net negative"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "ETF inflows $1.2B last wk; halving supply shock compounding. Institutions accumulating. BTC much higher this qtr.",
+      "probability_basis": "ETF inflows (Farside, wk of Aug 25) + post-halving supply schedule. P(higher by year end) ~0.80",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "exit if weekly ETF flows net negative"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "ETF inflows totalled $1.2B last week, and the supply shock arising from the halving continues to compound. Institutional accumulation is under way. BTC will trade substantially higher this quarter.",
+      "probability_basis": "ETF inflow data (Farside, week of Aug 25) together with the post-halving supply schedule; P(higher by year end) is estimated at approximately 0.80.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "The position is exited if weekly ETF flows turn net negative."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "Buying YES on KXBTCD-26SEP0217-T76999.99 for $250, max loss $250. ETF inflows were $1.2B last week (Farside, week of Aug 25) and the halving supply shock is compounding on the post-halving supply schedule. Institutions are accumulating, and BTC is going much higher this quarter; I put P(higher by year end) at about 0.80. I exit if weekly ETF flows turn net negative."
+     }
+    }
+   ]
+  },
+  {
+   "id": "R2",
+   "designed": "FAIL",
+   "cls": "NO_RESOLUTION",
+   "must_keep": [
+    "CPI",
+    "BLS",
+    "2027",
+    "unemployment"
+   ],
+   "base": {
+    "market": "KXFEDDECISION-26SEP",
+    "side": "YES",
+    "thesis": "Inflation is structurally falling and the labor market is softening; the Fed's easing cycle will continue through 2027. Rates are coming down.",
+    "probability_basis": "CPI trend (BLS, Aug print 2.6% y/y) and unemployment 4.4%; P(easing cycle continues) ~0.85",
+    "size_usd": 400,
+    "bounds": {
+     "max_loss_usd": 400,
+     "exit_condition": "exit if core CPI re-accelerates above 3.0% y/y"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Rates are coming down. The Fed's easing cycle will continue through 2027; inflation is structurally falling and the labor market is softening.",
+      "probability_basis": "P(easing cycle continues) ~0.85; unemployment 4.4% and CPI trend (BLS, Aug print 2.6% y/y)",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "if core CPI re-accelerates above 3.0% y/y, exit"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Inflation keeps falling for structural reasons and the job market is getting weaker, so the Fed is going to keep easing through 2027. Rates are on their way down.",
+      "probability_basis": "I'm going off the CPI trend (BLS, Aug print 2.6% y/y) and unemployment at 4.4%. I put P(easing cycle continues) at about 0.85.",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "I'm out if core CPI picks back up above 3.0% y/y"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Inflation structurally falling; labor mkt softening. Fed easing cycle continues thru 2027. Rates coming down.",
+      "probability_basis": "CPI trend (BLS, Aug 2.6% y/y); unemployment 4.4%. P(easing cycle continues) ~0.85",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "exit if core CPI re-accelerates > 3.0% y/y"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Inflation is in structural decline and labor-market conditions are softening; accordingly, the Federal Reserve's easing cycle will continue through 2027. Rates are moving lower.",
+      "probability_basis": "The CPI trend (BLS, Aug print of 2.6% y/y) and an unemployment rate of 4.4%; P(easing cycle continues) is estimated at approximately 0.85.",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "The position is exited if core CPI re-accelerates above 3.0% y/y."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Buying YES on KXFEDDECISION-26SEP for $400, max loss $400. Inflation is structurally falling (BLS CPI, Aug print 2.6% y/y) and the labor market is softening with unemployment at 4.4%, so the Fed's easing cycle will continue through 2027 and rates are coming down; I put P(easing cycle continues) at about 0.85. I exit if core CPI re-accelerates above 3.0% y/y."
+     }
+    }
+   ]
+  },
+  {
+   "id": "R3",
+   "designed": "FAIL",
+   "cls": "NO_RESOLUTION",
+   "must_keep": [
+    "L2Beat",
+    "DefiLlama",
+    "RWA TVL",
+    "tokenized treasuries"
+   ],
+   "base": {
+    "market": "polymarket:eth-above-4000-sep-30",
+    "side": "YES",
+    "thesis": "ETH is the settlement layer for tokenized treasuries and L2 throughput doubled this year. Long-term ETH wins. Fundamentals have never been stronger.",
+    "probability_basis": "L2 throughput data (L2Beat) and RWA TVL growth (DefiLlama); P(ETH outperforms over 2 years) ~0.70",
+    "size_usd": 300,
+    "bounds": {
+     "max_loss_usd": 300,
+     "exit_condition": "exit if RWA TVL on Ethereum declines 30% from peak"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "YES",
+      "thesis": "Fundamentals have never been stronger. Long-term ETH wins. ETH is the settlement layer for tokenized treasuries and L2 throughput doubled this year.",
+      "probability_basis": "P(ETH outperforms over 2 years) ~0.70; RWA TVL growth (DefiLlama) and L2 throughput data (L2Beat)",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "if RWA TVL on Ethereum declines 30% from peak, exit"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "YES",
+      "thesis": "Tokenized treasuries settle on ETH, and L2 throughput doubled this year. Over the long run ETH comes out on top. The fundamentals have never looked better.",
+      "probability_basis": "I'm going off L2 throughput data (L2Beat) and RWA TVL growth (DefiLlama). I put P(ETH outperforms over 2 years) at about 0.70.",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "I'm out if RWA TVL on Ethereum drops 30% from its peak"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "YES",
+      "thesis": "ETH = settlement layer for tokenized treasuries; L2 throughput doubled this yr. Long-term ETH wins. Fundamentals strongest ever.",
+      "probability_basis": "L2 throughput (L2Beat) + RWA TVL growth (DefiLlama). P(ETH outperforms over 2 years) ~0.70",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "exit if RWA TVL on Ethereum -30% from peak"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "YES",
+      "thesis": "ETH serves as the settlement layer for tokenized treasuries, and L2 throughput has doubled this year. Over the long term, ETH prevails. Fundamentals have never been stronger.",
+      "probability_basis": "L2 throughput data (L2Beat) and growth in RWA TVL (DefiLlama); P(ETH outperforms over 2 years) is estimated at approximately 0.70.",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "The position is exited if RWA TVL on Ethereum declines 30% from its peak."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "YES",
+      "thesis": "Buying YES on polymarket:eth-above-4000-sep-30 for $300, max loss $300. ETH is the settlement layer for tokenized treasuries and L2 throughput doubled this year (L2Beat), with RWA TVL growing (DefiLlama). Long-term ETH wins and fundamentals have never been stronger; I put P(ETH outperforms over 2 years) at about 0.70. I exit if RWA TVL on Ethereum declines 30% from peak."
+     }
+    }
+   ]
+  },
+  {
+   "id": "P1",
+   "designed": "FAIL",
+   "cls": "NO_PROBABILITY",
+   "must_keep": [
+    "Sep 2",
+    "hourly close"
+   ],
+   "base": {
+    "market": "KXBTCD-26SEP0217-T76999.99",
+    "side": "YES",
+    "thesis": "Resolves YES on a Sep 2 close above $77,000. BTC is at $77,263 and it feels like it holds.",
+    "probability_basis": "gut feel; it just looks strong",
+    "size_usd": 250,
+    "bounds": {
+     "max_loss_usd": 250,
+     "exit_condition": "exit on an hourly close below $77,000"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "BTC is at $77,263 and it feels like it holds. Resolves YES on a Sep 2 close above $77,000.",
+      "probability_basis": "it just looks strong; gut feel",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "on an hourly close below $77,000, exit"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "This pays YES if BTC closes above $77,000 on Sep 2. It's at $77,263 right now and I just have a feeling it stays up there.",
+      "probability_basis": "It's a gut call. It just looks strong to me.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "I'm out on an hourly close below $77,000"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "YES on Sep 2 close > $77,000. BTC $77,263; feels like it holds.",
+      "probability_basis": "gut feel, looks strong",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "exit: hourly close < $77,000"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "The contract resolves YES upon a Sep 2 close above $77,000. BTC currently stands at $77,263, and the expectation, held intuitively, is that this level will be maintained.",
+      "probability_basis": "Intuition; the price action simply appears strong.",
+      "size_usd": 250,
+      "bounds": {
+       "max_loss_usd": 250,
+       "exit_condition": "The position is exited upon an hourly close below $77,000."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD-26SEP0217-T76999.99",
+      "side": "YES",
+      "thesis": "Buying YES on KXBTCD-26SEP0217-T76999.99 for $250, max loss $250. It resolves YES on a Sep 2 close above $77,000. BTC is at $77,263 and it feels like it holds; that is gut feel, it just looks strong. I exit on an hourly close below $77,000."
+     }
+    }
+   ]
+  },
+  {
+   "id": "P2",
+   "designed": "FAIL",
+   "cls": "NO_PROBABILITY",
+   "must_keep": [
+    "FOMC",
+    "Sep 17",
+    "voting member"
+   ],
+   "base": {
+    "market": "KXFEDDECISION-26SEP",
+    "side": "YES",
+    "thesis": "Resolves YES if the FOMC cuts on Sep 17. Everyone knows a cut is coming.",
+    "probability_basis": "consensus; everyone expects it",
+    "size_usd": 400,
+    "bounds": {
+     "max_loss_usd": 400,
+     "exit_condition": "exit if a voting member publicly opposes a cut"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Everyone knows a cut is coming. Resolves YES if the FOMC cuts on Sep 17.",
+      "probability_basis": "everyone expects it; consensus",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "if a voting member publicly opposes a cut, exit"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "This pays YES if the FOMC cuts on Sep 17. Everybody knows the cut is coming.",
+      "probability_basis": "It's the consensus. Everybody expects it.",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "I'm out if a voting member comes out publicly against a cut"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "YES if FOMC cuts Sep 17. Everyone knows cut is coming.",
+      "probability_basis": "consensus, everyone expects it",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "exit if a voting member publicly opposes cut"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "The contract resolves YES if the FOMC reduces rates on Sep 17. It is universally understood that a cut is forthcoming.",
+      "probability_basis": "Consensus; the cut is universally expected.",
+      "size_usd": 400,
+      "bounds": {
+       "max_loss_usd": 400,
+       "exit_condition": "The position is exited if a voting member publicly opposes a cut."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXFEDDECISION-26SEP",
+      "side": "YES",
+      "thesis": "Buying YES on KXFEDDECISION-26SEP for $400, max loss $400. It resolves YES if the FOMC cuts on Sep 17. Everyone knows a cut is coming; it is the consensus and everyone expects it. I exit if a voting member publicly opposes a cut."
+     }
+    }
+   ]
+  },
+  {
+   "id": "P3",
+   "designed": "FAIL",
+   "cls": "NO_PROBABILITY",
+   "must_keep": [
+    "Coinbase",
+    "Sep 30",
+    "chart"
+   ],
+   "base": {
+    "market": "polymarket:eth-above-4000-sep-30",
+    "side": "NO",
+    "thesis": "Resolves on the Sep 30 Coinbase close vs $4,000. ETH at $3,610 won't make it; the chart looks heavy.",
+    "probability_basis": "chart looks heavy",
+    "size_usd": 300,
+    "bounds": {
+     "max_loss_usd": 300,
+     "exit_condition": "exit if ETH closes above $3,850"
+    }
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "ETH at $3,610 won't make it; the chart looks heavy. Resolves on the Sep 30 Coinbase close vs $4,000.",
+      "probability_basis": "heavy-looking chart",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "if ETH closes above $3,850, exit"
+      }
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "This settles on the Coinbase close on Sep 30 against $4,000. ETH is at $3,610 and it isn't getting there. The chart looks heavy.",
+      "probability_basis": "The chart looks heavy to me",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "I'm out if ETH closes above $3,850"
+      }
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Res: Sep 30 Coinbase close vs $4,000. ETH $3,610, won't make it. Chart heavy.",
+      "probability_basis": "chart heavy",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "exit if ETH close > $3,850"
+      }
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Resolution is determined by the Coinbase close on Sep 30 relative to $4,000. ETH, at $3,610, will not reach that level; the chart appears heavy.",
+      "probability_basis": "The chart appears heavy.",
+      "size_usd": 300,
+      "bounds": {
+       "max_loss_usd": 300,
+       "exit_condition": "The position is exited if ETH closes above $3,850."
+      }
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "polymarket:eth-above-4000-sep-30",
+      "side": "NO",
+      "thesis": "Buying NO on polymarket:eth-above-4000-sep-30 for $300, max loss $300. It resolves on the Sep 30 Coinbase close versus $4,000. ETH at $3,610 won't make it because the chart looks heavy. I exit if ETH closes above $3,850."
+     }
+    }
+   ]
+  },
+  {
+   "id": "A1",
+   "designed": "WAIT",
+   "cls": "AMBIGUOUS",
+   "must_keep": [
+    "btc"
+   ],
+   "base": {
+    "market": "KXBTCD",
+    "side": "YES",
+    "thesis": "btc yes",
+    "size_usd": 100
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD",
+      "side": "YES",
+      "thesis": "yes btc",
+      "size_usd": 100
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD",
+      "side": "YES",
+      "thesis": "going yes on btc",
+      "size_usd": 100
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD",
+      "side": "YES",
+      "thesis": "btc y",
+      "size_usd": 100
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD",
+      "side": "YES",
+      "thesis": "The position taken on BTC is YES.",
+      "size_usd": 100
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "KXBTCD",
+      "side": "YES",
+      "thesis": "btc yes, $100"
+     }
+    }
+   ]
+  },
+  {
+   "id": "A2",
+   "designed": "WAIT",
+   "cls": "AMBIGUOUS",
+   "must_keep": [
+    "cut"
+   ],
+   "base": {
+    "market": "fed cut market",
+    "side": "YES",
+    "thesis": "cut incoming, sizing later",
+    "size_usd": 50
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "fed cut market",
+      "side": "YES",
+      "thesis": "sizing later, cut incoming",
+      "size_usd": 50
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "fed cut market",
+      "side": "YES",
+      "thesis": "a cut is coming, I'll work out the size later",
+      "size_usd": 50
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "fed cut market",
+      "side": "YES",
+      "thesis": "cut incoming; size tbd",
+      "size_usd": 50
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "fed cut market",
+      "side": "YES",
+      "thesis": "A cut is forthcoming; position sizing will be determined subsequently.",
+      "size_usd": 50
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "market": "fed cut market",
+      "side": "YES",
+      "thesis": "Cut incoming, sizing later. $50."
+     }
+    }
+   ]
+  },
+  {
+   "id": "N2",
+   "designed": "OUT_OF_SCOPE",
+   "cls": "NON_PM_NO_THESIS",
+   "must_keep": [
+    "BTC"
+   ],
+   "base": {
+    "instrument": "BTC-PERP",
+    "side": "SHORT",
+    "leverage": 10,
+    "entry": 77481.55,
+    "stop_loss": 79800,
+    "take_profit": 73000,
+    "size_usd": 3000,
+    "venue": "Binance (assumed)",
+    "thesis": "Short BTC, entry $77,481.55, $3,000 notional, 10x leverage, stop $79,800, TP $73,000."
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "BTC-PERP",
+      "side": "SHORT",
+      "leverage": 10,
+      "entry": 77481.55,
+      "stop_loss": 79800,
+      "take_profit": 73000,
+      "size_usd": 3000,
+      "venue": "Binance (assumed)",
+      "thesis": "Short BTC, 10x leverage, $3,000 notional, entry $77,481.55, TP $73,000, stop $79,800."
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "BTC-PERP",
+      "side": "SHORT",
+      "leverage": 10,
+      "entry": 77481.55,
+      "stop_loss": 79800,
+      "take_profit": 73000,
+      "size_usd": 3000,
+      "venue": "Binance (assumed)",
+      "thesis": "I'm shorting BTC at $77,481.55 with $3,000 notional and 10x leverage. My stop is $79,800 and I take profit at $73,000."
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "BTC-PERP",
+      "side": "SHORT",
+      "leverage": 10,
+      "entry": 77481.55,
+      "stop_loss": 79800,
+      "take_profit": 73000,
+      "size_usd": 3000,
+      "venue": "Binance (assumed)",
+      "thesis": "BTC short. Entry $77,481.55. $3,000 notional, 10x. SL $79,800. TP $73,000."
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "BTC-PERP",
+      "side": "SHORT",
+      "leverage": 10,
+      "entry": 77481.55,
+      "stop_loss": 79800,
+      "take_profit": 73000,
+      "size_usd": 3000,
+      "venue": "Binance (assumed)",
+      "thesis": "A short position in BTC is opened at an entry of $77,481.55, with $3,000 notional at 10x leverage, a stop at $79,800 and a take-profit at $73,000."
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "BTC-PERP",
+      "side": "SHORT",
+      "thesis": "Short BTC-PERP on Binance (assumed): entry $77,481.55, $3,000 notional, 10x leverage, stop $79,800, take profit $73,000."
+     }
+    }
+   ]
+  },
+  {
+   "id": "N1",
+   "designed": "OUT_OF_SCOPE",
+   "cls": "NON_PM",
+   "must_keep": [
+    "ETH-PERP",
+    "OI"
+   ],
+   "base": {
+    "instrument": "ETH-PERP",
+    "side": "LONG",
+    "leverage": 5,
+    "entry": 4120,
+    "stop_loss": 3950,
+    "take_profit": 4600,
+    "size_usd": 2000,
+    "thesis": "ETH-PERP long 5x: breakout above 4,100 resistance with rising OI; stop 3,950, target 4,600."
+   },
+   "variants": [
+    {
+     "kind": "reorder",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "ETH-PERP",
+      "side": "LONG",
+      "leverage": 5,
+      "entry": 4120,
+      "stop_loss": 3950,
+      "take_profit": 4600,
+      "size_usd": 2000,
+      "thesis": "ETH-PERP long 5x: stop 3,950, target 4,600; breakout above 4,100 resistance with rising OI."
+     }
+    },
+    {
+     "kind": "plain",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "ETH-PERP",
+      "side": "LONG",
+      "leverage": 5,
+      "entry": 4120,
+      "stop_loss": 3950,
+      "take_profit": 4600,
+      "size_usd": 2000,
+      "thesis": "I'm going long ETH-PERP at 5x because it broke out above the 4,100 resistance and OI is rising. My stop is 3,950 and my target is 4,600."
+     }
+    },
+    {
+     "kind": "terse",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "ETH-PERP",
+      "side": "LONG",
+      "leverage": 5,
+      "entry": 4120,
+      "stop_loss": 3950,
+      "take_profit": 4600,
+      "size_usd": 2000,
+      "thesis": "ETH-PERP long 5x. Breakout > 4,100 res., OI rising. SL 3,950, tgt 4,600."
+     }
+    },
+    {
+     "kind": "formal",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "ETH-PERP",
+      "side": "LONG",
+      "leverage": 5,
+      "entry": 4120,
+      "stop_loss": 3950,
+      "take_profit": 4600,
+      "size_usd": 2000,
+      "thesis": "A 5x long position in ETH-PERP is taken on a breakout above the 4,100 resistance level accompanied by rising OI, with a stop at 3,950 and a target of 4,600."
+     }
+    },
+    {
+     "kind": "flat",
+     "author": "model:session-2026-11-17",
+     "intent": {
+      "instrument": "ETH-PERP",
+      "side": "LONG",
+      "thesis": "Long ETH-PERP at 5x, entry 4,120, $2,000 size: breakout above 4,100 resistance with rising OI; stop 3,950, target 4,600."
+     }
+    }
+   ]
+  }
+ ]
+}
