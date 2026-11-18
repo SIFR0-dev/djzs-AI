@@ -81,7 +81,7 @@ function doorCopy(f) {
 function page(f, err) {
   const t = f?.tally ?? {};
   const right = n(t.hit) + n(t.survived), wrong = n(t.miss) + n(t.falsified), voided = n(t.voided);
-  const head = String(f?.ledger_head ?? "").slice(0, 16) || "—";
+  const head = String(f?.ledger_head ?? "").slice(0, 16) || "none";
   const grades = (f?.grades ?? []).slice(0, 12), narr = (f?.narratives ?? []).slice(0, 8), open = (f?.open ?? []).slice(0, 12);
   const humans = (f?.boards?.humans ?? []).slice(0, 5), agents = (f?.boards?.agents ?? []).slice(0, 5), minGraded = n(f?.boards?.min_graded) || 3;
   const dc = doorCopy(f);
@@ -101,7 +101,7 @@ function page(f, err) {
     return `<div class="claim" data-r="${r}"><span class="tok">${esc(day(g.settled_at))}</span>
   <p class="claim-name">${esc(clip(g.subject, 140))}<span class="chip">${esc(label)}</span></p>
   <p class="claim-body">${esc(clip(g.detail, 220))} · <a href="${esc(safeUrl(g.url))}">${esc(g.kind === "narrative" ? "narrative" : "call")} ${esc(g.id)} →</a></p></div>`;
-  }).join("\n") : `<div class="empty">Nothing graded yet. Grades land here first, the day each deadline passes — hits and misses alike.</div>`;
+  }).join("\n") : `<div class="empty">Nothing graded yet. Grades land here first, the day each deadline passes, hits and misses alike.</div>`;
 
   const narrRows = narr.length ? narr.map((x) => {
     const r = R[String(x.verdict).toUpperCase()] ?? "idle";
