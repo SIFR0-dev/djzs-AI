@@ -1,0 +1,61 @@
+{
+ "version": "label-items-v1",
+ "note": "Items for the blind-label kit (tests/labels/README.md). No text is stored here: a q3-record item's text is its sealed record's rendered intent, and a collected item's text stays in the untracked texts.local.json. An item whose text or labels are read while an extraction contract is being edited is moved to `retired` and never scored again.",
+ "items": [
+  {
+   "id": "L001",
+   "origin": "q3-record:q3-2026-09-02-N5",
+   "source_url": "scan:2026-09-02_v2_governed_005#N5",
+   "captured_at": "2026-09-02T14:37:00Z",
+   "text_sha256": "0xfd4605daa447f97812e48540c5cf20d8d8cf02c05c5568fea824b8cbf5771734",
+   "chars": 191
+  },
+  {
+   "id": "L002",
+   "origin": "q3-record:q3-2026-09-02-N2",
+   "source_url": "scan:2026-09-02_v2_governed_005#N2",
+   "captured_at": "2026-09-02T14:37:00Z",
+   "text_sha256": "0xc234a135a3c7f1db1c1899a39f7149e2fab6ccd98440f39017496b451fe3e05e",
+   "chars": 480
+  },
+  {
+   "id": "L003",
+   "origin": "q3-record:q3-2026-09-04-N1",
+   "source_url": "https://finance.yahoo.com/markets/crypto/articles/bitcoin-news-today-price-tests-110811133.html",
+   "captured_at": "2026-09-04T15:45:00Z",
+   "text_sha256": "0x240f90776722a8c9e44436577837fbcd7ab1e0829aaa1bfccce75ced2399c500",
+   "chars": 300
+  },
+  {
+   "id": "L004",
+   "origin": "q3-record:q3-2026-09-14-001",
+   "also": [
+    "q3-2026-09-14-006"
+   ],
+   "source_url": "https://www.nationalmortgagenews.com/news/modest-cpi-reading-gives-fed-no-clear-direction-on-rates",
+   "captured_at": "2026-09-14T19:30:00Z",
+   "text_sha256": "0xb58a01a7d4b4c6f703ac49557073f53be86a6d3bd577792120f7c76508e78dff",
+   "chars": 1225
+  },
+  {
+   "id": "L005",
+   "origin": "q3-record:q3-2026-09-14-003",
+   "also": [
+    "q3-2026-09-14-008"
+   ],
+   "source_url": "https://www.cbsnews.com/news/fed-rate-hike-september-likelihood-cpi/",
+   "captured_at": "2026-09-14T19:30:00Z",
+   "text_sha256": "0x4ab478692853894f70415f2e9f63caeef941021656ba937c1e3ee80a7304a679",
+   "chars": 1569
+  },
+  {
+   "id": "L006",
+   "origin": "q3-record:q3-2026-09-14-010",
+   "source_url": "https://fortune.com/2026/09/14/clarity-act-odds-trump-new-ethics-provisions-crypto-bill/",
+   "captured_at": "2026-09-14T19:30:00Z",
+   "text_sha256": "0xc7e893936eb85536f4fa52a48f3416c85534eee60abd53cf1cf4f10c82b14b00",
+   "chars": 717
+  }
+ ],
+ "retired": []
+}
