@@ -25,8 +25,14 @@ struct → same verdict + `verdict_hash`, always).
 - **PM taxonomy**: COMPLETE 4/4, `PM_WEIGHTS_HASH` frozen (sum 100, FAIL threshold 25):
   M01 NARRATIVE_RESOLUTION_GAP 30/CRIT · M02 FALSIFICATION_ABSENT 30/CRIT ·
   M03 PROBABILITY_UNSOURCED 25/HIGH · M04 CONSENSUS_NO_EDGE 15/MED.
-- **M04 is ADVISORY**: solo M04 = residual PASS with the flag on the certificate;
-  it blocks only by stacking (e.g. M03+M04 = 40, or alongside any CRITICAL).
+- **M04 is ADVISORY and never changes a verdict** (corrected 2026-11-17 — the repo outranked the
+  brief). Solo M04 = residual PASS with the flag on the certificate. This entry formerly said it
+  "blocks only by stacking (e.g. M03+M04 = 40, or alongside any CRITICAL)". Both examples already
+  FAIL without it: M03 alone is 25, the threshold, and a CRITICAL forces FAIL on its own. Over all
+  27 combinations of the three scored facts the verdict is identical with and without M04. It adds
+  15 to `risk_score`, so it moves `verdict_hash` and the H2-ord band (PROTOCOL §1), and nothing
+  else. Pinned by `tests/pm-engine-integrity.ts` property 9; the same wording was corrected on
+  `/`, `/ruleset` and in `README.md` in the same change.
 
 ## 3. Standing rulings (do not relitigate)
 - `isBounded(PM)` = invalidation **AND** engagement **AND** basis (all present).

@@ -113,9 +113,10 @@ Weights sum to **100**; FAIL threshold **25**. All four codes are implemented an
 | DJZS-M03 | PROBABILITY_UNSOURCED | HIGH | 25 | Market or model probability asserted without verifiable basis. |
 | DJZS-M04 | CONSENSUS_NO_EDGE | MEDIUM | 15 | Thesis restates consensus at an extreme price with no differentiated edge. |
 
-**M04 is advisory-grade.** On its own it does not block a lone M04 rides a PASS with the flag on
-the certificate (weight 15 is below the FAIL threshold). It contributes to a block only by stacking
-with another finding (e.g. M03 + M04 = 40 → FAIL, as in the first audit above).
+**M04 is advisory-grade.** It never changes a verdict. A lone M04 rides a PASS with the flag on
+the certificate (weight 15 is below the FAIL threshold). Beside another finding it raises the score
+and nothing else: the first audit above is M03 + M04 = 40 → FAIL, and M03 alone is already FAIL at
+25. Proven over the full PM input space by `tests/pm-engine-integrity.ts` (property 9).
 
 `verify_pm_trade` is **PM-only**: if the intent does not extract as a prediction-market thesis
 (including the undetermined case), it returns `in_scope: false` rather than silently running a

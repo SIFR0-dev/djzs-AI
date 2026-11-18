@@ -119,7 +119,7 @@
         <tr><td class="code">DJZS-M04</td><td>CONSENSUS_NO_EDGE</td><td class="sev-MEDIUM">MEDIUM</td><td class="w">15</td></tr>
       </tbody>
     </table>
-    <p class="note">M04 is advisory-grade: alone it rides a PASS with the flag on the certificate (weight 15 is below threshold). It blocks only by stacking, e.g. <code class="inl">M03 + M04 = 40 → FAIL</code>.</p>
+    <p class="note">M04 is advisory: it never changes a verdict. Alone it rides a PASS with the flag on the certificate (weight 15 is below threshold). Beside another code it raises the score and nothing else: <code class="inl">M03 + M04 = 40 → FAIL</code>, and <code class="inl">M03 = 25 → FAIL</code> without it. Proven over the full input space by <code class="inl">tests/pm-engine-integrity.ts</code>, property 9.</p>
   </section>
 
   <section>

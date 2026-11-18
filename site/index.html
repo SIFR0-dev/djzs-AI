@@ -176,8 +176,9 @@
       </tbody>
     </table>
     </div>
-    <p class="muted">M04 is advisory-grade: a lone M04 rides a PASS with the flag on the certificate
-    (weight 15 is below the threshold); it blocks only by stacking (e.g. M03 + M04 = 40 → FAIL).</p>
+    <p class="muted">M04 is advisory: it never changes a verdict. A lone M04 rides a PASS with the flag on the certificate
+    (weight 15 is below the threshold), and every combination that fails already fails without it (M03 alone is 25, the
+    threshold). It adds 15 to the risk score and nothing else, which CI proves over the whole input space.</p>
 
     <p class="muted">The weight table is a hash-locked exported constant; a weight change is a
     deliberate re-derive that bumps the version, not a hot patch. That immutability is what makes
