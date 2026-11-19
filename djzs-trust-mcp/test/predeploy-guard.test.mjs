@@ -187,7 +187,11 @@ try {
   {
     check("site/wrangler.toml declares the guard as its [build] command", SITE_COMMAND === "node ../djzs-trust-mcp/scripts/predeploy-guard.mjs", SITE_COMMAND || "no [build] command found")
     check("that command resolves to the real script from site/ (the path is not dead)", existsSync(path.resolve(SITE, "..", "djzs-trust-mcp", "scripts", "predeploy-guard.mjs")))
-    check("site/ stays assets-only, and .assetsignore keeps wrangler.toml (the hook config) out of the public bundle", !/^main\s*=/m.test(SITE_TOML) && /^\[assets\]/m.test(SITE_TOML) && readFileSync(path.join(SITE, ".assetsignore"), "utf8").split("\n").includes("wrangler.toml"))
+    // Since 2026-10-27 (f6c2707) the site runs a Worker (main = worker.js) for /scan over its static
+    // assets, so "assets-only" is no longer the invariant. What must hold: [assets] is still declared,
+    // and .assetsignore keeps both the hook config and the Worker source out of the public bundle.
+    const ASSETSIGNORE = readFileSync(path.join(SITE, ".assetsignore"), "utf8").split("\n")
+    check("site/ declares [assets], and .assetsignore keeps wrangler.toml (the hook config) and worker.js out of the public bundle", /^\[assets\]/m.test(SITE_TOML) && ASSETSIGNORE.includes("wrangler.toml") && ASSETSIGNORE.includes("worker.js"), ASSETSIGNORE.join(","))
 
     const clean = siteWorld()
     const ok = siteHook(clean)

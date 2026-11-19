@@ -38,11 +38,9 @@
  * Reads no secret and prints none: SHAs and path names only.
  */
 import { execFileSync } from "node:child_process"
-
-// Types must be green: a clean tree can still be a wrong tree (three red-tsc deploys, 2026-11-01).
-import { execSync as __tsc } from "node:child_process";
-try { __tsc("npx tsc --noEmit", { stdio: "inherit" }); } catch { console.error("[predeploy-guard] REFUSED: tsc --noEmit failed"); process.exit(1); }
-
+import { existsSync } from "node:fs"
+import { createRequire } from "node:module"
+import path from "node:path"
 
 const TAG = "[predeploy-guard]"
 const say = (m) => console.error(`${TAG} ${m}`)
@@ -52,6 +50,24 @@ if (command === "dev" || command === "types") process.exit(0)
 if (process.env.DJZS_BUILD_ONLY === "1") {
   say("DJZS_BUILD_ONLY=1: this invocation only builds a bundle (--dry-run); the guard stands down. Never set this on a real deploy.")
   process.exit(0)
+}
+
+// Types must be green: a clean tree can still be a wrong tree (three red-tsc deploys, 2026-11-01).
+// Scoped to the directory being deployed: only a package that carries a tsconfig.json has types to
+// check (djzs-trust-mcp does; site/ is static and would otherwise typecheck whatever tsconfig tsc
+// finds walking up). The compiler is the one installed in that package, resolved from its own
+// node_modules, never `npx tsc`: with no local install, npx fetches the npm placeholder package
+// named "tsc", which prints a banner and exits 1, so every verdict became REFUSED for the wrong
+// reason (dd0009e, 2026-11-02; caught by test/predeploy-guard.test.mjs once the step ahead of it
+// went green). A package WITH a tsconfig and WITHOUT typescript installed is refused: deps missing
+// is not a tree that can ship. Runs after the stand-downs, so `dev`, `types` and dry runs skip it.
+const cwd = process.cwd()
+if (existsSync(path.join(cwd, "tsconfig.json"))) {
+  let tscBin = null
+  try { tscBin = createRequire(path.join(cwd, "package.json")).resolve("typescript/bin/tsc") } catch { /* refused below */ }
+  if (!tscBin) { say("REFUSED: tsconfig.json present but typescript is not installed here (run npm install)"); process.exit(1) }
+  try { execFileSync(process.execPath, [tscBin, "--noEmit"], { cwd, stdio: "inherit" }) }
+  catch { say("REFUSED: tsc --noEmit failed"); process.exit(1) }
 }
 
 /** Run git, return trimmed stdout, or throw with git's own message. */
