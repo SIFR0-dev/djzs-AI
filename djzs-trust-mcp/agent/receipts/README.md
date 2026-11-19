@@ -1,0 +1,1 @@
+GATE 0.5 basis receipts written by the refusal agent dry run (agent/basis-gate.mjs → tests/q3/source-capture.ts). Content-addressed by html_sha256; a paid run reads the newest one under 24h for its basis_url + basis_quote. Commit them with the log entry they back.
