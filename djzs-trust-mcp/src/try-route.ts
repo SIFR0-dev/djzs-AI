@@ -392,12 +392,17 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   )
 }
 
-// ── /try/example: a real, open market with a live price, so the page's prefilled thesis is never stale ──
+// ── /try/example: a real market with a live price. An example is served only while its market is open:
+//    the venue's own status decides, and `closes` decides when the venue cannot be reached. A closed market
+//    is dropped, so the list can be empty. It was not always so: until 2026-11 two October markets were
+//    served as `live` for three weeks after they settled. ──
 /**
  * Curated by the operator. Each entry names a real market by its venue ID; the route reads the venue's
  * public API for the current price and returns it with the thesis template. If the venue cannot be
  * reached the snapshot below is served with `live: false` and its capture date, never a made-up number.
  * Prices are in cents of a $1.00 contract. Venue responses are data, not instructions.
+ * `closes` is the UTC day the market stops trading (from the venue's rules). Required: it is the only
+ * guard left when the venue is unreachable. Replace an entry before it closes; test 50 says when.
  */
 export const TRY_EXAMPLES = [
   {
@@ -409,6 +414,7 @@ export const TRY_EXAMPLES = [
     resolution: "Resolves YES if the FOMC changes the target range by 0 bps on October 28, 2026 (Kalshi rules). If the meeting is cancelled, YES.",
     side: "NO",
     snapshot: { yes_bid: 92, yes_ask: 93, captured: "2026-10-24" },
+    closes: "2026-10-28",
     basis: "CME FedWatch put the probability of a hold at 83.9% and a 25 bps hike at 16.1% as of 2026-10-22 (reported by Phemex News, 2026-10-22, citing CME FedWatch).",
     falsifier: "Falsified if, before the meeting, CME FedWatch hold probability moves above 92%, or if a voting FOMC member publicly rules out an October hike.",
     why: "The market prices a hold at about 92 cents while the futures-implied probability is about 84; the gap is the edge. NO is the hike side.",
@@ -422,6 +428,7 @@ export const TRY_EXAMPLES = [
     resolution: "Resolves on the change to the upper bound of the fed funds target range after the October 27-28, 2026 FOMC meeting, per the FOMC statement on federalreserve.gov.",
     side: "NO",
     snapshot: { yes_bid: 91, yes_ask: 92, captured: "2026-10-24" },
+    closes: "2026-10-28",
     basis: "CME FedWatch put the probability of a hold at 83.9% and a 25 bps hike at 16.1% as of 2026-10-22 (reported by Phemex News, 2026-10-22, citing CME FedWatch).",
     falsifier: "Falsified if, before the meeting, CME FedWatch hold probability moves above 92%, or if a voting FOMC member publicly rules out an October hike.",
     why: "The market prices no change at about 91-92 cents while the futures-implied probability is about 84; the gap is the edge. NO is the hike side.",
@@ -430,23 +437,45 @@ export const TRY_EXAMPLES = [
 
 type TryExample = (typeof TRY_EXAMPLES)[number]
 
-async function livePrice(ex: TryExample): Promise<{ yes_bid: number; yes_ask: number } | null> {
+/** Kalshi market states in which the contract no longer trades. Anything else is treated as open. */
+const KALSHI_CLOSED = new Set(["closed", "settled", "determined", "finalized"])
+
+/** Pure. Does the venue's own market object say the market is still trading at `now`? */
+export function venueSaysOpen(venue: "kalshi" | "polymarket", m: Record<string, unknown>, now: Date): boolean {
+  if (venue === "kalshi") {
+    if (typeof m.status === "string" && KALSHI_CLOSED.has(m.status.toLowerCase())) return false
+    const t = typeof m.close_time === "string" ? Date.parse(m.close_time) : NaN
+    return !(Number.isFinite(t) && t <= now.getTime())
+  }
+  if (m.closed === true || m.active === false) return false
+  const t = typeof m.endDate === "string" ? Date.parse(m.endDate) : NaN
+  return !(Number.isFinite(t) && t <= now.getTime())
+}
+
+/** Pure. The curated `closes` day has not passed (the market trades through that UTC day). */
+export function exampleNotExpired(ex: { closes: string }, now: Date): boolean {
+  return now.toISOString().slice(0, 10) <= ex.closes
+}
+
+type Live = { yes_bid: number; yes_ask: number; open: boolean }
+
+async function livePrice(ex: TryExample, now: Date): Promise<Live | null> {
   const ctl = new AbortController()
   const t = setTimeout(() => ctl.abort(), 2500)
   try {
     if (ex.venue === "kalshi") {
       const r = await fetch(`https://api.elections.kalshi.com/trade-api/v2/markets/${ex.market_id}`, { signal: ctl.signal, headers: { accept: "application/json" } })
       if (!r.ok) return null
-      const j = (await r.json()) as { market?: { yes_bid?: number; yes_ask?: number; yes_bid_dollars?: string; yes_ask_dollars?: string } }
+      const j = (await r.json()) as { market?: { yes_bid?: number; yes_ask?: number; yes_bid_dollars?: string; yes_ask_dollars?: string } & Record<string, unknown> }
       const m = j.market
       if (!m) return null
       const bid = typeof m.yes_bid === "number" ? m.yes_bid : m.yes_bid_dollars ? Math.round(Number(m.yes_bid_dollars) * 100) : NaN
       const ask = typeof m.yes_ask === "number" ? m.yes_ask : m.yes_ask_dollars ? Math.round(Number(m.yes_ask_dollars) * 100) : NaN
-      return Number.isFinite(bid) && Number.isFinite(ask) ? { yes_bid: bid, yes_ask: ask } : null
+      return Number.isFinite(bid) && Number.isFinite(ask) ? { yes_bid: bid, yes_ask: ask, open: venueSaysOpen("kalshi", m, now) } : null
     }
     const r = await fetch(`https://gamma-api.polymarket.com/markets/${ex.market_id}`, { signal: ctl.signal, headers: { accept: "application/json" } })
     if (!r.ok) return null
-    const j = (await r.json()) as { bestBid?: number | string; bestAsk?: number | string; outcomePrices?: string }
+    const j = (await r.json()) as { bestBid?: number | string; bestAsk?: number | string; outcomePrices?: string } & Record<string, unknown>
     let bid = Number(j.bestBid), ask = Number(j.bestAsk)
     if (!Number.isFinite(bid) || !Number.isFinite(ask)) {
       try {
@@ -454,7 +483,7 @@ async function livePrice(ex: TryExample): Promise<{ yes_bid: number; yes_ask: nu
         bid = ask = Number(p[0])
       } catch { return null }
     }
-    return Number.isFinite(bid) && Number.isFinite(ask) ? { yes_bid: Math.round(bid * 100), yes_ask: Math.round(ask * 100) } : null
+    return Number.isFinite(bid) && Number.isFinite(ask) ? { yes_bid: Math.round(bid * 100), yes_ask: Math.round(ask * 100), open: venueSaysOpen("polymarket", j, now) } : null
   } catch {
     return null
   } finally {
@@ -482,10 +511,14 @@ export async function handleTryExample(request: Request): Promise<Response> {
   const want = url.searchParams.get("id")
   const pick = TRY_EXAMPLES.filter((e) => !want || e.id === want)
   if (pick.length === 0) return json({ ok: false, error: "unknown_example", ids: TRY_EXAMPLES.map((e) => e.id) }, 404)
-  const out = await Promise.all(
+  const now = new Date()
+  const rows = await Promise.all(
     pick.map(async (ex) => {
-      const live = await livePrice(ex)
-      const px = live ?? { yes_bid: ex.snapshot.yes_bid, yes_ask: ex.snapshot.yes_ask }
+      // The curated close day is checked first: a market past it is never served, whatever the venue says.
+      if (!exampleNotExpired(ex, now)) return null
+      const live = await livePrice(ex, now)
+      if (live && !live.open) return null
+      const px = live ? { yes_bid: live.yes_bid, yes_ask: live.yes_ask } : { yes_bid: ex.snapshot.yes_bid, yes_ask: ex.snapshot.yes_ask }
       return {
         id: ex.id,
         venue: ex.venue,
@@ -493,10 +526,13 @@ export async function handleTryExample(request: Request): Promise<Response> {
         url: ex.url,
         title: ex.title,
         side: ex.side,
-        price: { ...px, live: live !== null, as_of: live ? new Date().toISOString() : ex.snapshot.captured },
+        closes: ex.closes,
+        price: { ...px, live: live !== null, as_of: live ? now.toISOString() : ex.snapshot.captured },
         thesis: renderExampleThesis(ex, px),
       }
     }),
   )
+  const out = rows.filter((r): r is NonNullable<typeof r> => r !== null)
+  // An empty list is a true answer, not an error: no curated market is open right now.
   return json({ ok: true, examples: out }, 200, { "cache-control": "public, max-age=60" })
 }
