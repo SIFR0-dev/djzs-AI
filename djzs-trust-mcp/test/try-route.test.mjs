@@ -15,7 +15,7 @@
  * Run: npx tsx test/try-route.test.mjs
  */
 import { privateKeyToAccount } from "viem/accounts"
-import { handleTryQuota, handleTryVerdict, handleTryExample, tryMessage, TRY_MESSAGE_FORMAT, TRY_DAILY_LIMIT, TRY_ANON_DAILY_LIMIT, TRY_EXAMPLES, renderExampleThesis, utcDay } from "../src/try-route.ts"
+import { handleTryQuota, handleTryVerdict, handleTryExample, tryMessage, TRY_MESSAGE_FORMAT, TRY_DAILY_LIMIT, TRY_ANON_DAILY_LIMIT, TRY_EXAMPLES, renderExampleThesis, venueSaysOpen, exampleNotExpired, utcDay } from "../src/try-route.ts"
 import { intentSha256 } from "../src/engine-adapter.ts"
 import { intentHash, toDJZSIntent } from "../src/djzs-intent.ts"
 import { RESOURCE_URL, PERP_RESOURCE_URL } from "../src/http-x402-bazaar.v2.ts"
@@ -260,6 +260,28 @@ check(2, "the text names the cap and that nothing moves", TRY_MESSAGE_FORMAT.inc
   check(48, "thesis text states market id, side, executable price, sourced probability, falsifier and edge", t.includes(TRY_EXAMPLES[0].market_id) && t.includes("The ask on NO is 8c") && t.includes("Sourced probability") && t.includes("Falsification") && t.includes("Why the edge exists"))
   const unknown = await j(await handleTryExample(new Request("https://mcp.djzs.ai/try/example?id=nope")))
   check(49, "unknown example id: 404 listing the ids", unknown.status === 404 && Array.isArray(unknown.body.ids))
+
+  // ── a closed market is never an example (2026-11: two settled October markets were served as live) ──
+  const NOW = new Date("2026-11-19T12:00:00Z")
+  check(50, "every curated example carries a closes day", TRY_EXAMPLES.every((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.closes)))
+  check(51, "closes day: open through that UTC day, expired the day after", exampleNotExpired({ closes: "2026-11-19" }, NOW) && !exampleNotExpired({ closes: "2026-11-18" }, NOW))
+  check(52, "kalshi: finalized, settled, determined and closed are not open; active is", ["finalized", "settled", "determined", "closed"].every((st) => !venueSaysOpen("kalshi", { status: st }, NOW)) && venueSaysOpen("kalshi", { status: "active", close_time: "2026-12-10T19:00:00Z" }, NOW))
+  check(53, "kalshi: a past close_time is not open even when status says active", !venueSaysOpen("kalshi", { status: "active", close_time: "2026-10-28T18:00:00Z" }, NOW))
+  check(54, "polymarket: closed true, active false or a past endDate is not open; an open market is", !venueSaysOpen("polymarket", { closed: true }, NOW) && !venueSaysOpen("polymarket", { active: false }, NOW) && !venueSaysOpen("polymarket", { closed: false, endDate: "2026-10-28T00:00:00Z" }, NOW) && venueSaysOpen("polymarket", { closed: false, active: true, endDate: "2026-12-10T00:00:00Z" }, NOW))
+  // The route, with the venue stubbed: a settled market is dropped and the answer is ok with what remains.
+  const realFetch = globalThis.fetch
+  let venueCalls = 0
+  globalThis.fetch = async () => { venueCalls++; return new Response(JSON.stringify({ market: { status: "finalized", yes_bid: 0, yes_ask: 100 }, closed: true, bestBid: 1, bestAsk: 1 }), { status: 200 }) }
+  try {
+    const all = await j(await handleTryExample(new Request("https://mcp.djzs.ai/try/example")))
+    const open = TRY_EXAMPLES.filter((e) => exampleNotExpired(e, new Date()))
+    check(55, "a market the venue reports closed is not served; the list may be empty and is still ok:true", all.status === 200 && all.body.ok === true && Array.isArray(all.body.examples) && all.body.examples.length === 0)
+    check(56, "an example past its closes day is dropped without asking the venue", venueCalls === open.length)
+  } finally { globalThis.fetch = realFetch }
+  // A warning, not a failure: an empty list is honest, and a red build on the day a market closes would
+  // block unrelated work. It prints on every run until an open market is curated into TRY_EXAMPLES.
+  const stillOpen = TRY_EXAMPLES.filter((e) => exampleNotExpired(e, new Date()))
+  if (stillOpen.length === 0) console.log("  WARN no curated example is open today: /try shows its empty state until one is added to TRY_EXAMPLES")
 }
 
 console.log(`\n${pass} passed, ${failures.length} failed`)
