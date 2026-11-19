@@ -113,7 +113,9 @@ interface StubFacilitator {
   verifyReason: string
   verifyHttp400: boolean
   declineReason: string
-  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup" | "pending" | "pendingJunk" | "decline402"
+  settleMode: "ok" | "fail" | "http500" | "garbage" | "hangup" | "pending" | "pendingJunk" | "decline402" | "pendingThenOk" | "pendingThenNo" | "pendingThen402"
+  /** settle requests answered in the current mode; the pendingThen* modes answer pending first, then their outcome. */
+  seq: number
   close: () => Promise<void>
 }
 
@@ -121,7 +123,7 @@ interface StubFacilitator {
 async function startFacilitator(): Promise<StubFacilitator> {
   const state: StubFacilitator = {
     url: "", hits: { supported: 0, verify: 0, settle: 0 }, verifyValid: true, verifyReason: "stub_invalid", verifyHttp400: false,
-    declineReason: "stub_settle_declined", settleMode: "ok", close: async () => {},
+    declineReason: "stub_settle_declined", settleMode: "ok", seq: 0, close: async () => {},
   }
   const server: Server = createServer((req, res) => {
     const path = (req.url ?? "").split("?")[0].replace(/^.*\//, "")
@@ -142,6 +144,12 @@ async function startFacilitator(): Promise<StubFacilitator> {
         if (state.settleMode === "garbage") { res.writeHead(200, { "content-type": "application/json" }); return res.end(`<html>${SENTINEL_URL}`) }
         if (state.settleMode === "hangup") return req.socket.destroy()
         // The reference facilitator's settlement_pending: success:false, but the transfer WAS broadcast (a tx hash is named).
+        if (state.settleMode === "pendingThenOk" || state.settleMode === "pendingThenNo" || state.settleMode === "pendingThen402") {
+          if (state.seq++ === 0) return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
+          if (state.settleMode === "pendingThenNo") return reply(200, { success: false, errorReason: "invalid_exact_evm_payload_authorization_nonce_used", payer: PAYER, transaction: "", network: NETWORK })
+          if (state.settleMode === "pendingThen402") return reply(402, { success: false, errorReason: "insufficient_funds", payer: PAYER, transaction: "", network: NETWORK })
+          return reply(200, { success: true, payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
+        }
         if (state.settleMode === "pending") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: SETTLE_TX, network: NETWORK })
         // A non-empty "transaction" that is not a transaction hash: still uncertain, and never relayed.
         if (state.settleMode === "pendingJunk") return reply(200, { success: false, errorReason: "settlement_pending", payer: PAYER, transaction: `see ${SENTINEL_URL}`, network: NETWORK })
@@ -518,9 +526,30 @@ async function main(): Promise<void> {
       const o = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: att.fn, header: hdrPm })
       fac.settleMode = "ok"
       check(`[${mode}] 502 SETTLEMENT_UNCERTAIN, never the 402 settlement_failed / charged:false`, o.status === 502 && o.body.error === "SETTLEMENT_UNCERTAIN" && o.body.settled === null && o.body.charged === null && !/"charged"\s*:\s*false/.test(o.text), `${o.status} ${o.text.slice(0, 200)}`)
-      check(`[${mode}] settled once, the engine and attester never ran`, fac.hits.settle - sb === 1 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb}`)
+      // @x402/core >= 2.27 re-sends a pending settle exactly once (same payload, same EIP-3009 nonce) so the
+      // facilitator can reconcile. Two requests, never three; still pending after that is still uncertain.
+      check(`[${mode}] the library's single pending retry: exactly two settle requests, the engine and attester never ran`, fac.hits.settle - sb === 2 && o.auditCalls === 0 && att.calls.length === 0, `settle +${fac.hits.settle - sb}`)
       check(`[${mode}] the payer and intent_hash ride along`, o.body.payer === PAYER && o.body.intent_hash === PM_INTENT_HASH_PINNED, o.text.slice(0, 260))
       check(`[${mode}] settlement_tx is the facilitator's hash when it is a hash, else null (shape-validated, never raw text)`, o.body.settlement_tx === (mode === "pending" ? SETTLE_TX : null) && noLeak(o), o.text.slice(0, 260))
+    }
+
+    // ── 9b2. what the retry answers decides the outcome, and the first answer's transaction is never forgotten ──
+    console.log("9b2. pending, then the retry answers: reconciled -> verdict; a later 'no' is still uncertain and keeps the first transaction")
+    {
+      fac.settleMode = "pendingThenOk"; fac.seq = 0
+      let sb = fac.hits.settle
+      const ok = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: stubAttester("ok").fn, header: hdrPm })
+      check("[pendingThenOk] the retry reconciles: 200 with the verdict, two settle requests, the engine ran once", ok.status === 200 && fac.hits.settle - sb === 2 && ok.auditCalls === 1, `${ok.status} settle +${fac.hits.settle - sb} audits=${ok.auditCalls}`)
+
+      fac.settleMode = "pendingThenNo"; fac.seq = 0; sb = fac.hits.settle
+      const no = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: stubAttester("ok").fn, header: hdrPm })
+      check("[pendingThenNo] a 'no' with no transaction AFTER a pending broadcast is 502 SETTLEMENT_UNCERTAIN, never 402 charged:false", no.status === 502 && no.body.error === "SETTLEMENT_UNCERTAIN" && no.body.charged === null && !/"charged"\s*:\s*false/.test(no.text), `${no.status} ${no.text.slice(0, 200)}`)
+      check("[pendingThenNo] the first answer's transaction hash rides along; two settle requests; no engine", no.body.settlement_tx === SETTLE_TX && fac.hits.settle - sb === 2 && no.auditCalls === 0 && noLeak(no), no.text.slice(0, 260))
+
+      fac.settleMode = "pendingThen402"; fac.seq = 0; sb = fac.hits.settle
+      const th = await paid({ env: envKey, spec: PM_RESOURCE, intent: PM_INTENT, engine: stubEngine(), attest: stubAttester("ok").fn, header: hdrPm })
+      check("[pendingThen402] the retry is declined with a 4xx (SettleError): 502 uncertain, and the first transaction hash is kept", th.status === 502 && th.body.error === "SETTLEMENT_UNCERTAIN" && th.body.settlement_tx === SETTLE_TX && fac.hits.settle - sb === 2 && th.auditCalls === 0, `${th.status} ${th.text.slice(0, 220)}`)
+      fac.settleMode = "ok"
     }
 
     // ── 9c. the realistic decline: the facilitator answers HTTP 402 {success:false, errorReason} ──
