@@ -363,6 +363,25 @@ export interface X402Env {
  * buildPaymentRequirements throws without it ("Make sure to call initialize()"),
  * and it is also the call that proves the CDP auth path signs.
  */
+/**
+ * THE LIBRARY RETRIES A PENDING SETTLE ONCE (@x402/core >= 2.27, `settleWithPendingRetry`; we
+ * moved 2.23 -> 2.29 on 2026-11-01). When the facilitator answers `settlement_pending` with a
+ * transaction hash, the library sends the identical payload a second time so the facilitator can
+ * reconcile against the transfer it already broadcast. It is the same EIP-3009 authorization
+ * (same nonce), so it cannot move funds twice. But settlePayment() returns only the SECOND
+ * answer, and the first one's transaction hash is gone. A second answer of "no, and no
+ * transaction" would then read as "nothing moved" while a transfer is in flight.
+ *
+ * So every settle answer for this request is watched here, and the first pending transaction
+ * hash is kept. The handler never answers charged:false once one was seen (invariant 7).
+ * getServer() is called per request, so this record is per request.
+ */
+const PENDING_SEEN = new WeakMap<x402ResourceServer, { tx: string | null }>();
+function notePending(seen: { tx: string | null }, r: unknown): void {
+  const o = r as { errorReason?: unknown; transaction?: unknown } | null;
+  if (seen.tx === null && o && o.errorReason === "settlement_pending" && typeof o.transaction === "string" && o.transaction !== "") seen.tx = o.transaction;
+}
+
 async function getServer(env: X402Env): Promise<x402ResourceServer> {
   const facilitator = new HTTPFacilitatorClient({
     url: env.FACILITATOR_URL,
@@ -370,8 +389,21 @@ async function getServer(env: X402Env): Promise<x402ResourceServer> {
     // integration against @x402/core@2.23.0 (path-keyed; see X402Env above).
     ...(env.FACILITATOR_AUTH ? { createAuthHeaders: env.FACILITATOR_AUTH } : {}),
   });
+  const seen: { tx: string | null } = { tx: null };
+  const settleOnce = facilitator.settle.bind(facilitator);
+  facilitator.settle = (async (...args: Parameters<typeof settleOnce>) => {
+    try {
+      const r = await settleOnce(...args);
+      notePending(seen, r);
+      return r;
+    } catch (e) {
+      notePending(seen, e);
+      throw e;
+    }
+  }) as typeof facilitator.settle;
 
   const server = new x402ResourceServer(facilitator);
+  PENDING_SEEN.set(server, seen);
   registerExactEvmScheme(server, {}); // exact scheme, server role
   server.registerExtension(bazaarResourceServerExtension);
   await server.initialize();
@@ -725,6 +757,7 @@ async function run(
       payload: { authorization: { from: p.from, to: p.to, value: p.value, validAfter: p.validAfter, validBefore: p.validBefore, nonce: p.nonce }, signature: p.signature },
     } as unknown as ReturnType<typeof decodePaymentSignatureHeader>;
   }
+  const pendingTx = (): string | null => PENDING_SEEN.get(server)?.tx ?? null;
   try {
     settle = await server.settlePayment(payload!, reqs[0], spec.extensions);
   } catch (e) {
@@ -732,7 +765,8 @@ async function run(
     // 200). The transfer may already be broadcast, so "settled:false" would be a claim
     // nobody can back (invariant 7).
     logFault("x402.settle", e, { payer: verify?.payer ?? mppPayer, intent_hash });
-    return settlementUncertain({ payer: verify?.payer ?? mppPayer, intent_hash, transaction: (e as { transaction?: unknown })?.transaction });
+    const thrownTx = (e as { transaction?: unknown })?.transaction;
+    return settlementUncertain({ payer: verify?.payer ?? mppPayer, intent_hash, transaction: typeof thrownTx === "string" && thrownTx !== "" ? thrownTx : pendingTx() });
   }
   if (!settle?.success) {
     // success:false WITH a transaction hash is the reference facilitator's settlement_pending
@@ -742,7 +776,14 @@ async function run(
       logFault("x402.settle", new Error(`success:false with a transaction (${reasonCode(settle.errorReason)})`), { payer: verify?.payer ?? mppPayer, intent_hash, transaction: settle.transaction });
       return settlementUncertain({ payer: settle.payer ?? verify?.payer ?? mppPayer, intent_hash, transaction: settle.transaction });
     }
-    // The facilitator answered, said no, and names no transaction: nothing moved.
+    // An earlier answer for this same payment named a broadcast transaction (the library's one
+    // pending retry, see PENDING_SEEN). This later "no" does not unsend it.
+    const earlierTx = pendingTx();
+    if (earlierTx !== null) {
+      logFault("x402.settle", new Error(`success:false after a pending broadcast (${reasonCode(settle?.errorReason)})`), { payer: verify?.payer ?? mppPayer, intent_hash, transaction: earlierTx });
+      return settlementUncertain({ payer: settle?.payer ?? verify?.payer ?? mppPayer, intent_hash, transaction: earlierTx });
+    }
+    // The facilitator answered, said no, and no answer for this payment named a transaction: nothing moved.
     return json(
       { error: "settlement_failed", detail: reasonCode(settle?.errorReason), charged: false, terms: TERMS_URL },
       402,
