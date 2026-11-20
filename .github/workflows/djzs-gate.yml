@@ -78,6 +78,9 @@ jobs:
       - name: Error hygiene — the shape rules (reasonCode, scrub, logFault) and the app's own error handler
         run: npx tsx test/safe-error.test.mjs
         working-directory: djzs-trust-mcp
+      - name: "Source check (DJZS-SRC-v0.1): verbatim-passage gate, figure checks, fixed codes; verdict and verdict_hash unchanged by it (offline)"
+        run: npx tsx test/source-check.test.ts
+        working-directory: djzs-trust-mcp
       - name: Error hygiene — no response carries raw error text (the built bundle in workerd, every dependency failing with a provider-URL sentinel)
         run: npx tsx test/error-leak.bundle.test.mjs
         working-directory: djzs-trust-mcp

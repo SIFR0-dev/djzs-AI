@@ -42,6 +42,7 @@ import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
 import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, USDC_BASE, EXPECTED_ATOMIC_AMOUNT, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
+import { startSourceCheck, type SourcesBlock } from "./source-check"
 import { handleTryExample, handleTryQuota, handleTryVerdict } from "./try-route"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
@@ -109,6 +110,8 @@ const VERIFY_PERP_TRADE_PRICE_USD = 2.00 // same price, same rail — no second 
  */
 interface Env {
   ANTHROPIC_API_KEY?: string
+  /** DJZS-SRC-v0.1 source check (Firecrawl). SECRET. Absent => cited sources report not_checked; audits unchanged. */
+  FIRECRAWL_API_KEY?: string
   /** EVM private key hex signing PoL DataItems. Absent => anchoring reports "disabled"; audits still run. */
   IRYS_UPLOAD_KEY?: string
   /** Irys upload node. Defaults to devnet (D3 ruling); mainnet cutover flips this var. */
@@ -321,6 +324,7 @@ const TRADE_AUDIT_OUTPUT = z.looseObject({
   mechanics: z.looseObject({}).optional().describe("verify_perp_trade only: non-scoring execution mechanics"),
   pol_certificate: z.looseObject({}).optional().describe("Anchoring status and Irys id of the Proof-of-Logic certificate"),
   trust_score: z.looseObject({}).optional().describe("On-chain trust-score write status, when agent_address was given"),
+  sources: z.looseObject({}).optional().describe("DJZS-SRC-v0.1, non-scoring: for each URL the thesis cites, whether the fetched page carries the claim (supported, figure_not_in_source, no_supporting_span, unreachable, not_checked), with the sha256 of the page read"),
 })
 
 /**
@@ -631,6 +635,8 @@ function buildServer(env: Env): McpServer {
       }
     }
     const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
+    // DJZS-SRC-v0.1: started beside extraction; attached to the response only. Not scored.
+    const sourcesP: Promise<SourcesBlock> = startSourceCheck(env, intent)
     const result = await runVerifyPmTrade(intent, modelFn)
 
     // OUT-OF-SCOPE = NOT CHARGED. The agents/x402 middleware settles payment
@@ -708,6 +714,7 @@ function buildServer(env: Env): McpServer {
     let response: Record<string, unknown> = result
     if (pol_certificate) response = { ...response, pol_certificate }
     if (trust_score) response = { ...response, trust_score }
+    response = { ...response, sources: await sourcesP }
     return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }], structuredContent: response }
     })
   )
@@ -767,6 +774,8 @@ function buildServer(env: Env): McpServer {
     }
     const modelFn = buildAnthropicModelFn(env.ANTHROPIC_API_KEY)
     // bracket feeds only the non-scoring mechanics block (break-even hit rate); never the verdict or its hash.
+    // DJZS-SRC-v0.1: started beside extraction; attached to the response only. Not scored.
+    const sourcesP: Promise<SourcesBlock> = startSourceCheck(env, intent)
     const result = await runVerifyPerpTrade(intent, modelFn, bracket)
 
     // OUT-OF-SCOPE = NOT CHARGED. The agents/x402 middleware settles payment
@@ -844,6 +853,7 @@ function buildServer(env: Env): McpServer {
     let response: Record<string, unknown> = result
     if (pol_certificate) response = { ...response, pol_certificate }
     if (trust_score) response = { ...response, trust_score }
+    response = { ...response, sources: await sourcesP }
     return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }], structuredContent: response }
     })
   )
