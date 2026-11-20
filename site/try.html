@@ -49,9 +49,27 @@
   .agents p{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:76ch}
   code.inl{background:#080808;border:1px solid var(--rule);padding:0 5px;font-size:12px}
   footer{margin-top:28px;padding-top:18px;border-top:1px solid var(--rule);color:var(--muted);font-size:12px;line-height:1.9}footer .k::before{content:"// ";color:var(--rule)}footer .k b{color:var(--text);font-weight:700}footer .sig{margin-top:14px}footer .sig .p{color:var(--pass);font-weight:700}
+  /* 2026-11 readability pass: the text a person acts on is large; the machinery stays small. */
+  h1{font-size:clamp(24px,4.8vw,36px)}
+  .lede{font-size:clamp(15px,2vw,17px);color:var(--text)}.lede .dim{color:var(--muted)}
+  .kind{flex-wrap:wrap}.kind .btn{font-size:14px;min-height:48px;padding:10px 20px;flex:1 1 180px}
+  .hint{color:var(--muted);font-size:14px;margin:0 0 12px;max-width:74ch}
+  .f label{font-size:13px;text-transform:none;letter-spacing:.01em;color:var(--text)}
+  textarea{font-size:16px;line-height:1.5;padding:12px 14px}
+  #run{font-size:15px;min-height:52px;padding:12px 28px;background:var(--pass);color:var(--canvas)}#run:disabled,#run:disabled:hover{background:transparent;color:var(--pass)}
+  .btn{min-height:44px}
+  .status{font-size:13.5px}.log{font-size:14px}
+  .stamp{font-size:22px;padding:.25rem .8rem}.verdict-title{font-size:clamp(18px,3vw,22px)}.verdict-meta{font-size:13px}
+  .verdict-note{font-size:15.5px;color:var(--text)}
+  .claim{grid-template-columns:40px 1fr}.claim .tok{font-size:15px}
+  .claim-name{font-size:16.5px}.claim-name .chip{font-size:11px}
+  .claim-body{font-size:14.5px}
+  .fix{display:block;color:var(--text);font-size:15.5px;margin-top:10px;max-width:70ch}.fix b{color:var(--pass);font-size:12px;letter-spacing:.12em;margin-right:6px}
+  .offer .why{font-size:14px;max-width:60ch}
+  .agents .big{color:var(--text);font-size:16px;font-weight:700;margin:18px 0 0}
   [hidden]{display:none !important}
   @media (prefers-reduced-motion:reduce){.cursor{animation:none}}
-  @media (max-width:560px){.boot .row{grid-template-columns:44px 1fr;gap:4px 10px}.boot .v{grid-column:1/3}form{grid-template-columns:1fr}form .full{grid-column:1}.keys{grid-template-columns:1fr}}
+  @media (max-width:560px){.verdict-meta{margin-left:0;flex-basis:100%}#run{width:100%}.boot .row{grid-template-columns:44px 1fr;gap:4px 10px}.boot .v{grid-column:1/3}form{grid-template-columns:1fr}form .full{grid-column:1}.keys{grid-template-columns:1fr}}
 </style>
 <link rel="canonical" href="https://djzs.ai/try">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
@@ -62,24 +80,28 @@
   <header>
     <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try" aria-current="page">try</a><a href="/present">ask</a><a href="/verify">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan">scan</a><a href="/guide">connect &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/try</span> $ <span id="cmd">audit --free</span><span class="cursor"></span></p>
-    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Get a verdict on a trade idea.</h1>
-    <p class="lede">Paste the idea. You get <b>PASS</b>, <b>WAIT</b> or <b>FAIL</b> and the reasons in plain words. Free, three a day, nothing to install, no wallet. A real market is already loaded below so you can press the button first and read later.</p>
+    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Check a trade idea before the order goes out.</h1>
+    <p class="lede">Paste a prediction-market bet or a perp trade. In seconds you get <b>PASS</b>, <b>WAIT</b> or <b>FAIL</b>, the reasons in plain words, and the line to fix. <span class="dim">Free, three a day, no wallet, nothing to install. AI agents: one call, <a href="#agents">below</a>.</span></p>
   </header>
 
   <section class="step" aria-labelledby="s1">
     <p class="label" id="s1">your trade idea</p>
     <div class="panel">
       <p class="status" id="example-status"><span class="dd">..</span><span class="v">Loading a live example from a real market…</span></p>
+      <div class="kind" role="group" aria-label="What are you checking?">
+        <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
+        <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
+      </div>
+      <p class="hint" id="kind-hint">Kalshi, Polymarket or Limitless. Name the venue and the question, or the check will skip it.</p>
       <form id="form" autocomplete="off">
-        <div class="f full"><label for="thesis">Market, your side, why, and what would prove you wrong</label><textarea id="thesis" rows="9" placeholder="Example: Will the Fed hold rates on Oct 28? I am buying NO at 8c. CME FedWatch has a hold at 84%, the market has it at 92%. Wrong if FedWatch moves above 92% before the meeting."></textarea></div>
+        <div class="f full"><label for="thesis" id="thesis-label">The market (venue and question), your side, why, and what would prove you wrong</label><textarea id="thesis" rows="8" placeholder="Kalshi, [the market question]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea></div>
       </form>
       <div class="controls">
-        <button class="btn" id="run" disabled>Get verdict</button>
+        <button class="btn" id="run" disabled>Check it</button>
         <button class="btn ghost" id="example">Other real example</button>
         <button class="btn ghost" id="clear">Clear</button>
         <span class="log" id="run-log"></span>
       </div>
-      <p class="why" id="kind-line">Auditing a prediction-market bet. <a href="#" id="kind-toggle">Auditing a perp trade, on Hyperliquid or any venue, instead?</a></p>
     </div>
   </section>
 
@@ -91,7 +113,7 @@
       <div class="ledger" id="ledger"></div>
       <details class="keys-wrap"><summary class="why">Technical details (hashes, codes, ruleset)</summary><div class="keys" id="keys"></div></details>
       <div class="offer" id="offer">
-        <p class="why"><b>Want this on record?</b> A receipt is the same audit run again and written to Base under EAS with your wallet as the recipient. Anyone can check it later without trusting DJZS. 2.00 USDC, whichever way the verdict goes.</p>
+        <p class="why"><b>Want this on record?</b> A receipt runs the check again and writes it to Base under EAS with your wallet as the recipient. On a rare idea the paid run can differ from this one; the receipt records the paid run. Anyone can check it later without trusting DJZS. 2.00 USDC, whichever way the verdict goes.</p>
         <button class="btn" id="pay">Get the receipt · 2.00 USDC</button>
         <select id="provider-pick" hidden aria-label="Wallet"></select>
         <span class="log" id="pay-log"></span>
@@ -109,8 +131,9 @@
     </div>
   </section>
 
-  <section class="step agents" aria-labelledby="s4">
-    <p class="label" id="s4">below this line · for builders and agents</p>
+  <section class="step agents" id="agents" aria-labelledby="s4">
+    <p class="label" id="s4">for AI agents and builders</p>
+    <p class="big">One POST checks a trade. Free with an id, or paid with a receipt.</p>
     <div class="boot">
       <div class="row"><span class="ok">OK</span><span class="k">FREE</span><span class="v">3 per browser per UTC day without a wallet, or 5 per wallet with a signature · same engine as the paid gate</span></div>
       <div class="row"><span class="ok">OK</span><span class="k">RULESETS</span><span class="v">DJZS-PM-v1.0 prediction markets · DJZS-LF-v1.2 perps and spot</span></div>
@@ -132,7 +155,7 @@ GET  https://mcp.djzs.ai/try/example                 # the real-market examples 
   <footer>
     <div class="k"><b>free verdict</b>: same engine, same ruleset, not attested, not anchored. Extraction contract stated in every response.</div>
     <div class="k"><b>receipt</b>: EAS on Base, attester 0xfB0e…7824, your wallet as recipient. Under schema v3 the verdict is re-derived on chain from the attested tally.</div>
-    <div class="k"><b>audit, not advice</b>: a reasoning verdict says whether the thesis holds together, never whether the trade wins. The example is a real market and a real thesis; it is not a recommendation. <a href="/terms">Terms</a>.</div>
+    <div class="k"><b>audit, not advice</b>: a reasoning verdict says whether the idea is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. The example is a real market and a real thesis; it is not a recommendation. <a href="/terms">Terms</a>.</div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/try · audit before act</p>
   </footer>
 </div>
@@ -191,22 +214,33 @@ function intentValid(intent){ return intent.thesis.length >= 40; }
 function refresh(){ $("run").disabled = !intentValid(currentIntent()); }
 $("thesis").addEventListener("input", refresh);
 $("clear").addEventListener("click", () => { $("thesis").value = ""; refresh(); $("thesis").focus(); });
-$("kind-line").addEventListener("click", (e) => {
-  if (!e.target.closest("#kind-toggle")) return;
-  e.preventDefault();
-  state.kind = state.kind === "pm" ? "perp" : "pm";
-  $("cmd").textContent = `audit --free --${state.kind}`;
-  $("kind-line").innerHTML = state.kind === "pm"
-    ? `Auditing a prediction-market bet. <a href="#" id="kind-toggle">Auditing a perp trade, on Hyperliquid or any venue, instead?</a>`
-    : `Auditing a perp or spot trade. Say the instrument, long or short, entry, stop, leverage, venue (for example Hyperliquid), and the reason the price should move. <a href="#" id="kind-toggle">Back to prediction markets</a>`;
-});
+const KIND = {
+  pm: { hint: "Kalshi, Polymarket or Limitless. Name the venue and the question, or the check will skip it.", label: "The market (venue and question), your side, why, and what would prove you wrong", ph: "Kalshi, [the market question]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
+  perp: { hint: "Hyperliquid or any venue. Say the instrument, long or short, entry, stop, size, leverage, and why the price should move.", label: "The instrument, long or short, entry, stop, size, leverage, and why the price should move", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
+};
+function setKind(k){
+  state.kind = k;
+  $("cmd").textContent = `audit --free --${k}`;
+  for (const id of ["pm", "perp"]) { const on = id === k; $("kind-" + id).classList.toggle("on", on); $("kind-" + id).setAttribute("aria-pressed", String(on)); }
+  $("kind-hint").textContent = KIND[k].hint; $("thesis-label").textContent = KIND[k].label; $("thesis").placeholder = KIND[k].ph;
+  // The curated examples are prediction markets. Switching to perp clears a loaded example, never the user's own text.
+  if (k === "perp" && state.examples.some((e) => e.thesis === $("thesis").value.trim())) $("thesis").value = "";
+  $("example").hidden = k !== "pm";
+  refresh();
+}
+$("kind-pm").addEventListener("click", () => setKind("pm"));
+$("kind-perp").addEventListener("click", () => setKind("perp"));
 
 // ── the real example. Fetched from the worker, which reads the venue's live price. If that fails, a dated snapshot, never a guess.
 async function loadExamples(){
   try {
     const r = await fetch(`${WORKER}/try/example`, { cache: "no-store" });
     const j = await r.json();
-    if (!r.ok || !j.ok || !Array.isArray(j.examples) || j.examples.length === 0) throw new Error(j.error ?? `example HTTP ${r.status}`);
+    if (!r.ok || !j.ok || !Array.isArray(j.examples)) throw new Error(j.error ?? `example HTTP ${r.status}`);
+    if (j.examples.length === 0) {
+      $("example-status").innerHTML = `<span class="dd">--</span><span class="v">No live example market is open right now. Paste your own idea below.</span>`;
+      $("example").disabled = true; refresh(); return;
+    }
     state.examples = j.examples;
     showExample(0);
   } catch (e) {
@@ -231,7 +265,7 @@ $("run").addEventListener("click", async () => {
   if (!intentValid(intent)) return;
   const btn = $("run"); btn.disabled = true;
   try {
-    log("run-log", "reading the idea, then scoring it. About fifteen seconds…");
+    log("run-log", "Reading the idea, then scoring it…");
     const r = await fetch(`${WORKER}/try/verdict`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: state.kind, intent, anon: anonId() }) });
     const body = await r.json();
     if (!r.ok || !body.ok) {
@@ -249,10 +283,40 @@ $("run").addEventListener("click", async () => {
   }
 });
 
+// Plain names, what fired, and the line to fix. Fixed text keyed by the engine's code name: nothing here is written by a model.
+// The engine's `evidence` field is its own rule sentence, not a quote of the user's text, so it is never shown as one.
+const FLAG = {
+  FALSIFICATION_ABSENT:     { name: "No way to be wrong", what: "The idea treats the outcome as settled and names nothing that would prove it wrong.", fix: "Write the specific event that would prove you wrong before the market settles." },
+  NARRATIVE_RESOLUTION_GAP: { name: "Off the market's terms", what: "The reasoning argues something next to this market's question, not its own date, threshold, definition or settlement source.", fix: "Argue the market's own terms: the date it resolves, its threshold or definition, and the source that settles it." },
+  PROBABILITY_UNSOURCED:    { name: "Odds with no source", what: "There is a probability, or an implied one, with no checkable source behind it.", fix: "Back the claim with something checkable: a dataset, an official source or your own math, and the date you read it." },
+  CONSENSUS_NO_EDGE:        { name: "Agreement is not an edge", what: "The reason given is that everyone agrees, or that the price already says so.", fix: "Say why the market is wrong. This one is advice: it never changes the verdict.", advice: true },
+  EXECUTION_UNBOUND:        { name: "No stop or size limit", what: "Nothing in the idea limits the loss or says when the trade ends.", fix: "Write the stop level and the largest size you will allow, before the order goes out." },
+  CIRCULAR_LOGIC:           { name: "No reason for the trade", what: "The idea states a position but no reason the price should move.", fix: "Say in one sentence why the price should move." },
+  ORACLE_UNVERIFIED:        { name: "Data source not vouched for", what: "The trade leans on a data source the idea does not vouch for.", fix: "Name each source you rely on, who publishes it, and when you read it." },
+  FOMO_LOOP:                { name: "Chasing the crowd", what: "The reason given is what other people are doing or saying.", fix: "Replace the social signal with a number you can check, or say why the crowd is wrong." },
+};
+const UNSETTLED = {
+  invalidation_condition: { name: "What would prove you wrong", fix: "Write the specific event or price that would prove you wrong." },
+  resolution_engagement:  { name: "The market's own terms", fix: "Argue the market's own terms: the date it resolves, its threshold or definition, and the source that settles it." },
+  probability_basis:      { name: "Where your odds come from", fix: "Make any odds you claim checkable: name the source, the figure and the date you read it." },
+  thesis_statement:       { name: "Why the price should move", fix: "Say in one sentence why the price should move." },
+  stop_loss:              { name: "Your stop", fix: "State the stop price." },
+  position_size:          { name: "Your size", fix: "State the position size." },
+  leverage:               { name: "Your leverage", fix: "State the leverage, or say there is none." },
+  take_profit:            { name: "Your target", fix: "State the price where you take profit." },
+  data_sources:           { name: "The data you relied on", fix: "Name the data behind the idea and when you read it." },
+  oracle_source:          { name: "Your price source", fix: "Name the price feed the trade depends on." },
+  confidence:             { name: "How sure you are", fix: "Say how confident you are and what that rests on." },
+};
 function flagRow(f){
-  const r = f.severity === "CRITICAL" || f.severity === "HIGH" ? "fail" : "wait";
-  const what = { NARRATIVE_RESOLUTION_GAP: "The idea does not say what settles the market, on which terms, by when.", FALSIFICATION_ABSENT: "Nothing in the idea says what would prove it wrong.", PROBABILITY_UNSOURCED: "There is a probability, or an implied one, with no checkable source behind it.", CONSENSUS_NO_EDGE: "The reason given is that everyone agrees. Agreement is not an edge." }[f.name] ?? f.description ?? "";
-  return `<div class="claim" data-r="${r}"><span class="tok">${r === "fail" ? "!!" : "!"}</span><p class="claim-name">${esc(plain(f.code, f.name))}<span class="chip">${esc((f.severity ?? "flag").toLowerCase())}</span></p><p class="claim-body">${esc(what)}${f.evidence ? `<span class="ev">In your text: "${esc(f.evidence)}"</span>` : ""}</p></div>`;
+  const d = FLAG[f.name] ?? {};
+  const r = d.advice ? "wait" : (f.severity === "CRITICAL" || f.severity === "HIGH" ? "fail" : "wait");
+  const chip = d.advice ? "advice" : (f.severity ?? "flag").toLowerCase();
+  return `<div class="claim" data-r="${r}"><span class="tok">${r === "fail" ? "!!" : "!"}</span><p class="claim-name">${esc(d.name ?? plain(f.code, f.name))}<span class="chip">${esc(chip)}</span></p><p class="claim-body">${esc(d.what ?? f.description ?? "")}${d.fix ? `<span class="fix"><b>FIX //</b>${esc(d.fix)}</span>` : ""}</p></div>`;
+}
+function unsettledRow(u){
+  const d = UNSETTLED[u] ?? { name: u.replace(/_/g, " ") };
+  return `<div class="claim" data-r="idle"><span class="tok">?</span><p class="claim-name">${esc(d.name)}<span class="chip">unsettled</span></p><p class="claim-body">The check could not settle this from your text. It may be missing, or worded so that three readings of it disagree.${d.fix ? `<span class="fix"><b>FIX //</b>${esc(d.fix)}</span>` : ""}</p></div>`;
 }
 function renderVerdict(b){
   $("out").hidden = false; $("receipt").hidden = true;
@@ -261,17 +325,20 @@ function renderVerdict(b){
   v.dataset.state = st;
   $("vstamp").textContent = b.verdict === "REFUSED_SCOPE" ? "SKIP" : b.verdict;
   const unknown = Array.isArray(b.unknown_fields) ? b.unknown_fields : [];
-  const titles = { pass: "The reasoning holds", wait: "Not enough to judge", fail: "Do not place this", refused: "Not a trade idea the engine audits" };
+  const flags = Array.isArray(b.flags_detail) ? b.flags_detail : [];
+  const critical = flags.filter((f) => f.severity === "CRITICAL").length;
+  const titles = { pass: "Nothing failed", wait: "Not enough to judge", fail: "Do not place this", refused: "Skipped: not the kind of idea selected above" };
   $("vtitle").textContent = titles[st];
   $("vmeta").textContent = st === "refused" ? "" : `score ${b.risk_score} of 100`;
   let note = "";
-  if (st === "pass") note = `Nothing failed. The idea names what settles it, what would prove it wrong, and where the number came from. <b>This says the reasoning is sound, not that the trade wins.</b> The price and the source are still yours to check.`;
-  if (st === "wait") note = `The engine could not find <b>${unknown.length === 1 ? "one thing" : unknown.length + " things"}</b> it needs: <b>${esc(unknown.map((u) => u.replace(/_/g, " ")).join(", ")) || "see below"}</b>. It does not guess. Add ${unknown.length === 1 ? "it" : "them"} and run again. Until then, treat this as a no.`;
-  if (st === "fail") note = `The score reached the failing line. Each reason below quotes the part of your text that set it off. Fix the reasons or drop the trade.`;
-  if (st === "refused") note = `${esc(b.reason ?? "out of scope")} Nothing was charged. If this is a perp or spot trade, switch the kind above and run again.`;
+  if (st === "pass") note = `Nothing failed and nothing was left unsettled. <b>The check does not verify that your facts are true, and it does not say the trade wins.</b> The price and the source are still yours to check.`;
+  if (st === "wait") note = `The check could not settle <b>${unknown.length === 1 ? "one thing" : unknown.length + " things"}</b> from your text. It does not guess. <b>Treat this as a no</b> until you fix ${unknown.length === 1 ? "it" : "them"} and check again.`;
+  if (st === "fail") note = critical ? `<b>${critical === 1 ? "A critical reason fired. That alone" : critical + " critical reasons fired. Any one of them alone"} is a FAIL.</b> Fix each reason below and check again, or drop the trade.` : `<b>The reasons below add up past the failing line.</b> Fix each one and check again, or drop the trade.`;
+  if (st === "refused") note = state.kind === "pm"
+    ? `<b>This did not read as a prediction-market bet.</b> Name the venue (Kalshi, Polymarket, Limitless) and the question it settles, then check again. If it is a perp or spot trade, pick that above.`
+    : `<b>This did not read as a perp or spot trade.</b> Say the instrument, long or short, and your entry, then check again. If it is a prediction-market bet, pick that above.`;
   $("vnote").innerHTML = note;
-  const flags = Array.isArray(b.flags_detail) ? b.flags_detail : [];
-  const rows = flags.map(flagRow).join("") + unknown.map((u) => `<div class="claim" data-r="idle"><span class="tok">?</span><p class="claim-name">${esc(u.replace(/_/g, " "))}<span class="chip">missing</span></p><p class="claim-body">Not stated in your text. The engine does not fill it in for you.</p></div>`).join("");
+  const rows = flags.map(flagRow).join("") + unknown.map(unsettledRow).join("");
   $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="idle"><span class="tok">OK</span><p class="claim-name">No defects<span class="chip">0 flags</span></p><p class="claim-body">Every scored field was present and no failure pattern matched.</p></div>` : "");
   $("keys").innerHTML = st === "refused" ? "" : `<span>codes</span><b>${esc((b.flags ?? []).join(", ") || "none")}</b><span>ruleset</span><b>${esc(b.ruleset ?? "")}</b><span>intent_sha256</span><b title="${esc(b.intent_sha256 ?? "")}">${esc(b.intent_sha256 ?? "")}</b><span>intent_hash</span><b>${esc(b.intent_hash ?? "n/a (free-text intent)")}</b><span>verdict_hash</span><b>${esc(b.verdict_hash ?? "")}</b><span>attested</span><b>no. Free verdicts are not written anywhere.</b>`;
   $("offer").hidden = st === "refused";
