@@ -5,6 +5,22 @@
 > reproducible verdict_hash. It answers "should this position be taken?", complementary to
 > transaction-security tools that answer "is this transaction safe to sign?".
 
+## Get a verdict now: one POST, free, no wallet
+
+- POST https://mcp.djzs.ai/try/verdict with content-type: application/json and the body
+  { "kind": "pm", "anon": "<32 lowercase hex characters your agent keeps>", "intent": { "thesis": "<the idea in plain words>" } }
+- kind "pm": a prediction-market bet. Name the venue (Kalshi, Polymarket, Limitless), the market question,
+  your side and price, where your odds come from and when you read it, and what would prove you wrong.
+  kind "perp": a perp or spot trade. Instrument, long or short, entry, stop, size, leverage, and the reason
+  the price should move.
+- Returns verdict (PASS, WAIT or FAIL; REFUSED_SCOPE when the idea is not the kind named), risk_score,
+  flags_detail (each fired rule with a plain name and severity), unknown_fields (what the check could not
+  settle), verdict_hash, intent_sha256, ruleset and quota. WAIT means treat it as a no until the unknown
+  fields are fixed. Free verdicts are not attested and not anchored.
+- 3 per anon id per UTC day, or 5 per wallet when the caller signs (see "Free verdicts" below); a global
+  daily cap also applies. Checks left: GET https://mcp.djzs.ai/try/quota?anon=<id>. Intent up to 4096 bytes.
+- The same check in a browser: https://djzs.ai/ (paste the idea into the box).
+
 ## Use it (live MCP gate)
 
 - Endpoint (streamable HTTP): https://mcp.djzs.ai/mcp
@@ -23,9 +39,10 @@
   leverage, data sources); it does not read the venue's live price, funding or liquidation data.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
-  `query_agent_trust` (LIVE: on-chain trust score read from the DJZS subgraph: totalAudits,
-  pass/fail counts, failRate, latest verdict/risk, DJZS-S01/X01 flag counts, and an action of
-  PROCEED, HALT, or NO_HISTORY; HALT if failRate > 0.3 or S01/X01 fired more than once).
+  `query_agent_trust` (on-chain audit record read from the DJZS subgraph: total_audits, scored_audits
+  (PASS plus FAIL; WAIT is excluded and reported as wait_count), pass/fail counts, fail_rate and its
+  Wilson 95% lower bound, latest verdict/risk, DJZS-S01/X01 flag counts. Below 10 scored audits it
+  returns INSUFFICIENT_HISTORY and no rate. It returns evidence, not a decision: no threshold, no HALT).
 - Paying: verify_pm_trade and verify_perp_trade each cost 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
   network "base", and maxPaymentValue 2000000n; the library's default cap is 0.10 USDC and
@@ -40,7 +57,7 @@
   payment or attestation, 5 per wallet per UTC day. The caller signs an EIP-191 text naming its
   address, the UTC day and the intent's sha256 (fetch the exact text from GET https://mcp.djzs.ai/try/quota).
   Body: { kind: "pm" | "perp", intent, address, day, signature }. The response carries the paid
-  route's offer; the 2.00 USDC buys the attested receipt on any outcome. Browser flow: https://djzs.ai/try
+  route's offer; the 2.00 USDC buys the attested receipt on any outcome. Browser: https://djzs.ai/
 
 ## How it works
 
@@ -89,6 +106,15 @@
   automatic or by hand, is in feed.json under "doors". Machine read: https://scan.djzs.ai/feed.json · https://scan.djzs.ai/ledger.jsonl ·
   https://scan.djzs.ai/llms.txt · method and chain verification: https://scan.djzs.ai/method
 - Verdicts there are evidence states, not instructions: the verdict is on the narrative, never the contract.
+
+## Discovery
+
+- Docs (every technical detail, with sources in the code): https://djzs.ai/docs
+- AI Catalog, with the MCP server card inline: https://djzs.ai/.well-known/ai-catalog.json
+- MCP Registry: ai.djzs/trust-mcp (remote, streamable HTTP, https://mcp.djzs.ai/mcp)
+- A2A agent card: https://mcp.djzs.ai/.well-known/agent.json
+- OpenAPI for the paid HTTP routes: https://mcp.djzs.ai/openapi.json
+- x402 resources: https://djzs.ai/.well-known/x402.json
 
 ## Source of truth
 

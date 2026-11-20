@@ -1,445 +1,645 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DJZS: stops your bot's badly reasoned trade before it fires</title>
-  <meta name="description" content="DJZS reads the reason behind a trade and refuses it when the reason does not hold up. For Kalshi and Polymarket bots, perps agents on Hyperliquid, and treasuries with an agent on the keys. Three free verdicts a day with no wallet, five with one; 2.00 USDC for a receipt on Base anyone can check." />
-  <link rel="canonical" href="https://djzs.ai/" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="DJZS: stops your bot's badly reasoned trade before it fires" />
-  <meta property="og:description" content="Reads the reason behind a trade. Refuses it when the reason does not hold up. Live on Base; try it free in the browser." />
-  <meta property="og:url" content="https://djzs.ai/" />
-  <meta property="og:image" content="https://djzs.ai/og.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://djzs.ai/og.png" />
-  <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/fonts.css">
-  <link rel="stylesheet" href="/style.css" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
-  <link rel="apple-touch-icon" href="/favicon-180.png" />
-  <meta name="base:app_id" content="6a4ff1335b92d87d8ee9e8f0" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DJZS: check a trade idea before the order goes out</title>
+<meta name="description" content="Paste a prediction-market bet or a perp trade. Get PASS, WAIT or FAIL with the reasons in plain words. Free, no wallet. Agents: mcp.djzs.ai/mcp">
+<link rel="canonical" href="https://djzs.ai/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DJZS">
+<meta property="og:title" content="DJZS: check a trade idea before the order goes out">
+<meta property="og:description" content="Paste the idea. Get PASS, WAIT or FAIL with the reasons in plain words and the line to fix. Free, three a day, no wallet. Agents connect at mcp.djzs.ai/mcp.">
+<meta property="og:url" content="https://djzs.ai/">
+<meta property="og:image" content="https://djzs.ai/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://djzs.ai/og.png">
+<meta name="theme-color" content="#0A0A0A">
+<meta name="base:app_id" content="6a4ff1335b92d87d8ee9e8f0">
+<link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/fonts.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="ai-catalog" href="/.well-known/ai-catalog.json" type="application/ai-catalog+json">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
 <link rel="alternate" type="application/json" href="https://mcp.djzs.ai/.well-known/agent.json" title="A2A agent card">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DJZS","alternateName":"DJZS Protocol","url":"https://djzs.ai/","applicationCategory":"DeveloperApplication","operatingSystem":"Any","description":"Deterministic pre-execution audit for autonomous agents. Audits the reasoning behind a trade and returns PASS, WAIT, or FAIL with a reproducible verdict_hash and an on-chain receipt.","offers":{"@type":"Offer","price":"2.00","priceCurrency":"USDC","description":"Per audit, paid over x402 on Base mainnet","url":"https://mcp.djzs.ai/x402/verify_pm_trade"},"provider":{"@type":"Organization","name":"DJZS AI, LLC","url":"https://djzs.ai/","sameAs":["https://x.com/Djzs_ai","https://github.com/SIFR0-dev/djzs-AI"]},"softwareHelp":"https://djzs.ai/guide"}</script>
+<link rel="alternate" type="application/json" href="https://mcp.djzs.ai/openapi.json" title="OpenAPI">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DJZS","alternateName":"DJZS Protocol","url":"https://djzs.ai/","applicationCategory":"DeveloperApplication","operatingSystem":"Any","description":"Checks the reasoning behind a prediction-market bet or a perp trade before the order goes out. Returns PASS, WAIT or FAIL with the reasons in plain words and a reproducible verdict_hash. AI agents connect over MCP at https://mcp.djzs.ai/mcp or send one HTTP POST.","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free check: three a day per browser or agent id, no wallet, not attested","url":"https://djzs.ai/"},{"@type":"Offer","price":"2.00","priceCurrency":"USDC","description":"Per check with an EAS receipt on Base, paid over x402 on Base mainnet","url":"https://mcp.djzs.ai/x402/verify_pm_trade"}],"provider":{"@type":"Organization","name":"DJZS AI, LLC","url":"https://djzs.ai/","sameAs":["https://x.com/Djzs_ai","https://github.com/SIFR0-dev/djzs-AI"]},"softwareHelp":"https://djzs.ai/guide"}</script>
+<style>
+  :root{--canvas:#0A0A0A;--panel:#0D0D0D;--well:#080808;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;--pass:#3DFF88;--wait:#FFB000;--fail:#FF4D4D;--mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+  *{box-sizing:border-box}html,body{margin:0}html{-webkit-text-size-adjust:100%}
+  body{background:var(--canvas);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:.01em}
+  .wrap{max-width:920px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left))}
+  @media (min-width:700px){.wrap{padding:0 40px}}
+  a{color:var(--pass);text-decoration:none}a:hover{background:var(--pass);color:var(--canvas)}::selection{background:var(--pass);color:var(--canvas)}
+  :focus-visible{outline:2px solid var(--pass);outline-offset:3px}
+  .skip{position:absolute;left:-9999px;top:0;z-index:20;background:var(--panel);color:var(--text);border:1px solid var(--rule);padding:8px 14px}.skip:focus{left:8px;top:8px}
+  [hidden]{display:none !important}
+
+  /* header: brand left, three doors right */
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:16px 0;border-bottom:1px solid var(--rule)}
+  .brand{display:inline-flex;align-items:center;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px}.brand img{display:block;width:24px;height:24px}.brand:hover{background:transparent;color:var(--text)}.brand .dot{color:var(--pass)}
+  nav.site{display:flex;flex-wrap:wrap;gap:6px 26px;font-size:12.5px;text-transform:uppercase;letter-spacing:.12em}nav.site a{color:var(--muted);border-bottom:1px solid transparent;padding:6px 0}nav.site a:hover{color:var(--text);background:transparent;border-bottom-color:var(--pass)}
+
+  /* hero */
+  .hero{padding:26px 0 0}
+  .path{color:var(--muted);font-size:13px;margin:0 0 14px}.path .p{color:var(--pass);font-weight:700}
+  .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
+  h1{font-size:clamp(27px,5vw,40px);font-weight:800;letter-spacing:-.015em;margin:0;line-height:1.12;text-wrap:balance}
+  .lede{font-size:clamp(15.5px,2vw,17.5px);margin:16px 0 0;max-width:64ch;line-height:1.55}.lede .dim{color:var(--muted)}
+  .c-pass{color:var(--pass)}.c-wait{color:var(--wait)}.c-fail{color:var(--fail)}
+
+  /* the agent door: the MCP address is text you can copy, not a link (a browser GET on it returns 406) */
+  .agentline{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:18px 0 0;font-size:13.5px}
+  .agentline .tag{color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-size:12px}
+  .mcp{display:inline-flex;align-items:stretch;border:1px solid var(--rule);background:var(--well);max-width:100%}
+  .mcp code{padding:6px 10px;color:var(--text);font-size:13.5px;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
+  .copy{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;background:transparent;color:var(--pass);border:0;border-left:1px solid var(--rule);border-radius:0;padding:0 12px;min-height:36px}.copy:hover{background:var(--pass);color:var(--canvas)}.copy.done{color:var(--canvas);background:var(--pass)}
+  .mcp.big code{font-size:clamp(14px,2.4vw,18px);padding:10px 14px;font-weight:700}.mcp.big .copy{min-height:46px;padding:0 16px}
+
+  /* the check */
+  .label{color:var(--muted);font-size:12px;margin:0 0 8px;letter-spacing:.04em}.label::before{content:"// ";color:#3a3a3a}
+  section.step{margin:28px 0 0}
+  .panel{border:1px solid var(--rule);background:var(--panel);padding:16px 18px}
+  .status{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:baseline;font-size:13.5px;margin:0 0 14px}.status .ok{color:var(--pass);font-weight:700}.status .xx{color:var(--fail);font-weight:700}.status .dd{color:var(--muted);font-weight:700}.status .v{color:var(--text);overflow-wrap:anywhere}.status b{font-weight:700}
+  .btn{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;background:transparent;color:var(--pass);border:1px solid var(--pass);border-radius:0;padding:10px 18px;min-height:44px}.btn:hover{background:var(--pass);color:var(--canvas)}
+  .btn.ghost{color:var(--muted);border-color:var(--rule)}.btn.ghost:hover{background:transparent;color:var(--text);border-color:var(--muted)}
+  .btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;background:transparent;color:var(--pass)}.btn.ghost:disabled:hover{color:var(--muted);border-color:var(--rule)}
+  .kind{display:flex;flex-wrap:wrap;margin:0 0 12px}.kind .btn{flex:1 1 180px;font-size:14px;min-height:48px;padding:10px 20px;border-color:var(--rule);color:var(--muted)}.kind .btn.on{border-color:var(--pass);color:var(--canvas);background:var(--pass)}.kind .btn:not(.on):hover{color:var(--text);background:transparent;border-color:var(--muted)}
+  .hint{color:var(--muted);font-size:14px;margin:0 0 12px;max-width:74ch}
+  .flabel{display:block;font-size:13.5px;color:var(--text);margin:0 0 6px}
+  details.needs{margin:-4px 0 12px;font-size:14px}details.needs summary{cursor:pointer;color:var(--pass);font-size:13px;width:max-content;max-width:100%}details.needs summary:hover{color:var(--text)}
+  details.needs ul{margin:8px 0 0;padding:0 0 0 18px;color:var(--text);max-width:74ch}details.needs li{margin:4px 0}details.needs li::marker{color:var(--pass)}
+  textarea{display:block;width:100%;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:12px 14px;font-family:var(--mono);font-size:16px;line-height:1.5;min-height:180px;resize:vertical}textarea:focus{outline:none;border-color:var(--pass)}textarea::placeholder{color:#6b6b6b}
+  .controls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  #run{font-size:15px;min-height:52px;padding:12px 30px;background:var(--pass);color:var(--canvas)}#run:hover{background:#7dffb0;border-color:#7dffb0}#run:disabled,#run:disabled:hover{background:transparent;color:var(--pass);border-color:var(--pass)}
+  .log{margin:12px 0 0;font-size:14px;color:var(--muted);min-height:1.6em}.log .xx{color:var(--fail)}.log .ok{color:var(--pass)}
+  .quota{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+
+  /* the three answers, shown until the first verdict */
+  .legend{margin:22px 0 0;border:1px solid var(--rule);background:var(--panel);padding:4px 18px}
+  .ans{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:baseline;padding:12px 0;border-top:1px solid var(--rule)}.ans:first-of-type{border-top:0}
+  .ans p{margin:0;font-size:14.5px}
+  .chipv{display:inline-block;text-align:center;padding:2px 0;font-weight:800;letter-spacing:.16em;font-size:13px;color:var(--canvas)}.chipv.pass{background:var(--pass)}.chipv.wait{background:var(--wait)}.chipv.fail{background:var(--fail)}
+  .legend .foot{margin:0;padding:12px 0;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
+
+  /* the verdict */
+  .verdict{border:1px solid var(--rule);background:var(--panel)}.verdict:focus{outline:none}.verdict[data-state="pass"]{border-color:var(--pass)}.verdict[data-state="wait"]{border-color:var(--wait)}.verdict[data-state="fail"]{border-color:var(--fail);border-width:2px}.verdict[data-state="refused"]{border-color:var(--muted)}
+  .verdict-head{padding:20px 20px 4px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .stamp{display:inline-block;font-weight:800;letter-spacing:.14em;border:1px solid currentColor;padding:.25rem .8rem;font-size:22px}[data-state="pass"] .stamp{color:var(--pass)}[data-state="wait"] .stamp{color:var(--wait)}[data-state="fail"] .stamp{color:var(--fail);border-width:2px}[data-state="refused"] .stamp{color:var(--muted)}
+  .verdict-title{font-weight:700;font-size:clamp(18px,3vw,22px)}.verdict-meta{color:var(--muted);font-size:13px;margin-left:auto}
+  .verdict-note{font-size:15.5px;margin:0;padding:10px 20px 18px;max-width:76ch}.verdict-note b{font-weight:700}
+  .change{margin:0 20px 18px;border-left:2px solid var(--pass);padding:2px 0 2px 14px}.change p{margin:0}.change .line{font-size:13px;color:var(--muted);letter-spacing:.04em}.change .line b{color:var(--text)}.change .say{font-size:15px;margin-top:4px}
+  .ledger{border-top:1px solid var(--rule)}
+  .claim{border-top:1px solid var(--rule);padding:14px 20px;display:grid;grid-template-columns:40px 1fr;gap:0 14px}.claim:first-child{border-top:0}
+  .claim .tok{font-weight:700;font-size:15px;letter-spacing:.06em;grid-row:1/3;padding-top:1px}.claim[data-r="fail"] .tok{color:var(--fail)}.claim[data-r="wait"] .tok{color:var(--wait)}.claim[data-r="idle"] .tok{color:var(--muted)}.claim[data-r="pass"] .tok{color:var(--pass)}
+  .claim-name{font-weight:700;font-size:16.5px;margin:0}.claim-name .chip{font-weight:800;font-size:11px;letter-spacing:.06em;border:1px solid currentColor;padding:1px 6px;margin-left:10px;vertical-align:2px;text-transform:uppercase}[data-r="fail"] .chip{color:var(--fail)}[data-r="wait"] .chip{color:var(--wait)}[data-r="idle"] .chip{color:var(--muted)}[data-r="pass"] .chip{color:var(--pass)}
+  .claim-body{margin:6px 0 0;color:var(--muted);font-size:14.5px;max-width:76ch}
+  .fix{display:block;color:var(--text);font-size:15.5px;margin-top:10px;max-width:70ch}.fix b{color:var(--pass);font-size:12px;letter-spacing:.12em;margin-right:6px}
+  .cleared{border-top:1px solid var(--rule);padding:14px 20px}.cleared .label{margin-bottom:6px}.okrow{margin:4px 0 0;font-size:14.5px}.okrow .ok{color:var(--pass);font-weight:700;display:inline-block;width:40px}
+  .again{margin:0;padding:14px 20px;border-top:1px solid var(--rule);font-size:14px;color:var(--muted)}.again b{color:var(--text)}
+  details.tech{border-top:1px solid var(--rule)}details.tech summary{cursor:pointer;padding:12px 20px;color:var(--muted);font-size:12.5px}details.tech summary:hover{color:var(--text)}
+  .keys{padding:4px 20px 14px;font-size:12px;color:var(--muted);display:grid;grid-template-columns:120px 1fr;gap:4px 12px}.keys b{color:var(--text);font-weight:400;overflow-wrap:anywhere}
+  .offer{margin:0;padding:16px 20px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}.offer .why{color:var(--muted);font-size:14px;max-width:60ch;margin:0}.offer .why b{color:var(--text)}
+  .offer select{font-family:var(--mono);background:var(--well);color:var(--text);border:1px solid var(--rule);padding:8px}
+  .receipt{margin:16px 0 0;border:1px solid var(--pass);background:var(--panel)}.receipt .keys{padding-top:14px}
+
+  /* what is measured */
+  .measured{margin:40px 0 0}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .card{border:1px solid var(--rule);background:var(--panel);padding:16px}
+  .card .st{margin:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.card .st b{font-weight:800;margin-right:8px;letter-spacing:.04em}.card .st .ok{color:var(--pass)}.card .st .no{color:var(--wait)}
+  .card .ct{margin:8px 0 6px;font-weight:700;font-size:15.5px}
+  .card .cb{margin:0;font-size:13.5px;color:var(--muted)}
+  .measured .after{margin:12px 0 0;font-size:13.5px;color:var(--muted)}
+
+  /* for agents */
+  .agents{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
+  .agents h2{font-size:clamp(19px,3vw,24px);font-weight:800;line-height:1.25;margin:0;max-width:40ch;text-wrap:balance}
+  .tagk{font-size:11px;font-weight:800;letter-spacing:.1em;padding:1px 7px;border:1px solid currentColor}.tagk.free{color:var(--pass)}.tagk.paid{color:var(--wait)}.tagk.mcpk{color:var(--text)}
+  .agents .mcp.big{margin:16px 0 0}
+  .ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:18px 0 0}
+  .way{border:1px solid var(--rule);background:var(--panel);padding:14px 16px}.way p{margin:10px 0 0;font-size:14.5px}
+  .docsline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:18px 0 0;font-size:13.5px;color:var(--muted)}
+  .rfields{display:flex;flex-wrap:wrap;gap:10px 14px;width:100%}.rfields label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+  .rfields input,.rfields select{font-family:var(--mono);font-size:16px;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:42px}.rfields input{width:min(320px,80vw)}.rfields input:focus,.rfields select:focus{outline:none;border-color:var(--pass)}
+
+  footer{margin:44px 0 0;padding:18px 0 28px;border-top:1px solid var(--rule);color:var(--muted);font-size:12.5px;line-height:1.9}
+  footer nav{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 0 12px}
+  footer .k::before{content:"// ";color:#3a3a3a}footer .k b{color:var(--text);font-weight:700}
+  footer .sig{margin:14px 0 0}footer .sig .p{color:var(--pass);font-weight:700}
+
+  @media (prefers-reduced-motion:reduce){.cursor{animation:none}}
+  .only-narrow{display:none !important}
+  @media (max-width:560px){
+    .only-wide{display:none !important}.only-narrow{display:flex !important}
+    header.top{padding:12px 0}nav.site{gap:4px 18px;font-size:12px}
+    .hero{padding-top:18px}.hero .path{display:none}.lede{margin-top:12px}
+    section.step{margin-top:20px}#idea > .label{display:none}
+    .panel{padding:14px}
+    .kind .btn{flex:1 1 0;min-width:0;font-size:12px;letter-spacing:.04em;padding:8px 6px}
+    .agentline.only-narrow{margin:16px 0 0}
+    .verdict-meta{margin-left:0;flex-basis:100%}
+    #run{width:100%}.controls .btn.ghost{flex:1 1 0}
+    .ans{grid-template-columns:64px 1fr;gap:12px}
+    .keys{grid-template-columns:1fr}
+    .claim{padding:14px 16px;grid-template-columns:30px 1fr;gap:0 10px}
+  }
+</style>
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
-<header class="site">
-  <div class="wrap">
-    <a class="brand" href="/"><img class="brandmark" src="/favicon.svg" alt="" width="26" height="26" />DJZS<span class="dot">.</span></a>
-    <nav aria-label="Main">
-      <a href="#how">How it works</a>
-      <a href="#who">Who it is for</a>
-      <a href="#proof">Proof</a>
-      <a href="/try">Try</a>
-      <a href="/present">Ask</a>
-      <a href="/verify">Verify</a>
-      <a href="/ruleset">Ruleset</a>
-      <a href="/builders">Builders</a>
-      <a href="/build">Build</a>
-      <a href="/scan">Scan</a>
-      <a href="/guide" aria-current="false">Connect -&gt;</a>
-    </nav>
-  </div>
-</header>
+<a class="skip" href="#idea">Skip to the check</a>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/" aria-label="DJZS home"><img src="/favicon.svg" alt="" width="24" height="24"><span>DJZS<span class="dot">.</span></span></a>
+    <nav class="site" aria-label="Site"><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
+  </header>
 
-<main class="wrap" id="main">
+  <main id="main">
+    <section class="hero" aria-labelledby="h1">
+      <p class="path"><span class="p">~/djzs</span> $ <span id="cmd">check --pm</span><span class="cursor" aria-hidden="true"></span></p>
+      <h1 id="h1">Check a trade idea before the order goes out.</h1>
+      <p class="lede">Paste a prediction-market bet or a perp trade. Get <b class="c-pass">PASS</b>, <b class="c-wait">WAIT</b> or <b class="c-fail">FAIL</b> in seconds, with the reasons in plain words and the line to fix. <span class="dim">Free, three a day, no wallet.</span></p>
+      <div class="agentline only-wide">
+        <span class="tag">AI agent?</span>
+        <span class="mcp"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
+        <a href="#agents">MCP setup, or one free POST &darr;</a>
+      </div>
+    </section>
 
-  <p class="path"><span class="p">~/djzs</span> $<span class="cursor"></span></p>
+    <section class="step" id="idea" aria-labelledby="s1">
+      <p class="label" id="s1">your trade idea</p>
+      <div class="panel">
+        <p class="status" id="example-status" hidden></p>
+        <p class="status" id="last-status" hidden></p>
+        <div class="kind" role="group" aria-label="What are you checking?">
+          <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
+          <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
+        </div>
+        <p class="hint" id="kind-hint">Kalshi, Polymarket or Limitless. Name the venue and the question, or the check will skip it.</p>
+        <details class="needs" id="needs"><summary>What a complete idea includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
+        <label class="flabel" for="thesis" id="thesis-label">The market (venue and question), your side, why, and what would prove you wrong</label>
+        <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
+        <div class="controls">
+          <button type="button" class="btn" id="run" disabled>Check it</button>
+          <button type="button" class="btn ghost" id="example" hidden>Other real example</button>
+          <button type="button" class="btn ghost" id="clear">Clear</button>
+        </div>
+        <p class="log" id="run-log" role="status" aria-live="polite"></p>
+        <p class="quota" id="quota">Three free checks a day &middot; resets 00:00 UTC</p>
+      </div>
+      <div class="agentline only-narrow">
+        <span class="tag">AI agent?</span>
+        <span class="mcp"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
+        <a href="#agents">MCP setup, or one free POST &darr;</a>
+      </div>
+    </section>
 
-  <!-- 1: HERO -->
-  <section id="hero">
-    <h1>Your bot's next badly reasoned trade gets stopped before it fires.</h1>
-    <div class="status">
-      <div class="row"><span class="ok">OK</span><span class="label">WHAT</span><span class="val">Reads the reason behind a trade. Refuses it when the reason does not hold up.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">WHO</span><span class="val">Kalshi and Polymarket bots, perps agents on Hyperliquid, treasuries with an agent on the keys.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">COST</span><span class="val">Three verdicts a day free, no wallet. 2.00 USDC for a receipt on Base anyone can check.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="label">STATUS</span><span class="val">LIVE ON BASE MAINNET<span class="cursor"></span></span></div>
-    </div>
-    <p class="lede">No source for the probability, no condition that would prove it wrong, "everyone knows" as the only evidence: the order never leaves.
-    Spend caps limit how much you lose. <strong>This limits whether you should have been in at all.</strong></p>
-    <p class="cta"><a class="btn" href="/try">Run a verdict free -&gt;</a> <a class="btn" href="/present">Ask the AI presenter -&gt;</a> <a class="btn" href="/guide">Wire it into your bot -&gt;</a></p>
-    <p class="muted">Three free verdicts a day, nothing to install, no wallet. When you want the proof on record, 2.00 USDC buys a receipt on Base that anyone can check later, whichever way the verdict went.</p>
-    <p class="muted">New here? <a href="/present">Ask the AI presenter</a>: she walks you through how djzs.ai works in about three minutes, then takes your questions. She reads the site and the ledger; every verdict is the gate&rsquo;s.</p>
-    <p class="doctrine">Audit before act.</p>
-  </section>
+    <section class="legend" id="legend" aria-label="The three possible answers">
+      <div class="ans"><span class="chipv pass">PASS</span><p>Nothing failed. The check does not verify your facts, and it does not say the trade wins.</p></div>
+      <div class="ans"><span class="chipv wait">WAIT</span><p>The check could not settle part of your idea, and it names which part. Treat it as a no until you fix it.</p></div>
+      <div class="ans"><span class="chipv fail">FAIL</span><p>A rule fired on what your idea says. Each reason says what fired and ends with the line to fix.</p></div>
+      <p class="foot">The rules are fixed code. A model reads your text; it never returns the verdict.</p>
+    </section>
 
-  <!-- 1.2: HOW IT WORKS -->
-  <section id="how">
-    <h2>How it works <span class="k">// three steps, no guessing</span></h2>
-    <div class="ladder">
-      <div class="rung"><span class="verdict">1</span><br /><span class="muted">Paste the trade idea in plain text, or let your bot send it. No account, no wallet.</span></div>
-      <div class="rung"><span class="verdict">2</span><br /><span class="muted">DJZS checks it for the four ways trade ideas go wrong and answers <strong>PASS</strong>, <strong>WAIT</strong>, or <strong>FAIL</strong>. WAIT means stop and clarify. Nothing is guessed.</span></div>
-      <div class="rung"><span class="verdict">3</span><br /><span class="muted">PASS clears the logic. The trade is still yours. FAIL or WAIT and the order never leaves.</span></div>
-    </div>
-    <p>The verdict is computed by fixed rules, so the same facts give the same answer on any machine, every time. Reading those facts out of your text is the one step a model performs, and it is measured: on short test theses it repeated its verdict in 95 to 100 percent of replays. That is what makes the receipt worth paying for: it proves what the reasoning was before the money moved.</p>
-  </section>
+    <section class="step" id="out" hidden aria-labelledby="s3">
+      <p class="label" id="s3">verdict</p>
+      <div class="verdict" id="verdict" data-state="idle" tabindex="-1">
+        <div class="verdict-head"><span class="stamp" id="vstamp">&middot;</span><span class="verdict-title" id="vtitle"></span><span class="verdict-meta" id="vmeta"></span></div>
+        <p class="verdict-note" id="vnote"></p>
+        <div class="change" id="change" hidden><p class="line"><b>change //</b> <span id="change-from"></span> &rarr; <span id="change-to"></span></p><p class="say" id="change-say"></p></div>
+        <div class="ledger" id="ledger"></div>
+        <div class="cleared" id="cleared" hidden><p class="label">cleared since the last check</p><div id="cleared-list"></div></div>
+        <p class="again" id="again" hidden><a href="#thesis" id="edit-link">Edit the idea</a>, then press <b>Check again</b>. Fixing a reason clears its flag. It does not make the trade good.</p>
+        <details class="tech"><summary>Technical details (hashes, codes, ruleset)</summary><div class="keys" id="keys"></div></details>
+        <div class="offer" id="offer">
+          <p class="why"><b>Want this on record?</b> A receipt checks the idea again with the market and your side named, and writes the result to Base with your wallet as the recipient. Anyone can check it later without trusting DJZS. The receipt records the paid run, which can differ from this one. 2.00 USDC, whichever way the verdict goes.</p>
+          <div class="rfields">
+            <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="KXFEDDECISION-26DEC-H0"></label>
+            <label><span>Your side</span><select id="r-side"><option value="YES">YES</option><option value="NO">NO</option></select></label>
+          </div>
+          <button type="button" class="btn" id="pay">Get the receipt &middot; 2.00 USDC</button>
+          <select id="provider-pick" hidden aria-label="Wallet"></select>
+          <span class="log" id="pay-log"></span>
+        </div>
+      </div>
+      <div class="receipt" id="receipt" hidden>
+        <div class="verdict-head"><span class="stamp" id="rstamp">&middot;</span><span class="verdict-title">Receipt</span><span class="verdict-meta" id="rmeta"></span></div>
+        <div class="keys" id="rkeys"></div>
+        <div class="offer">
+          <a class="btn" id="verify-link" href="/verify" target="_blank" rel="noopener">Check it at /verify</a>
+          <button type="button" class="btn ghost" id="copy-receipt">Copy receipt JSON</button>
+          <p class="why">The checker reads the payment from Base, recomputes the binding key from your text, and reads the attestation from EAS. Nothing there trusts DJZS.</p>
+        </div>
+      </div>
+    </section>
 
-  <!-- 1.5: THE LOOP, LIVE -->
-  <section id="loop">
-    <h2>Watch it say no <span class="k">// this one costs two dollars to refuse</span></h2>
-    <video poster="/assets/poster-fail.svg" controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
-      <source src="/assets/djzs-demo-fail.mp4" type="video/mp4" />
-    </video>
-    <details class="transcript"><summary>Transcript (30 s, no audio)</summary>
-      <p>Same rail, different thesis: "everyone on CT knows." The 402 challenge is identical, the agent pays 2.00 USDC, and the engine settles in 9.0 s.</p>
-      <p>Card. Verdict FAIL, action FAIL, risk_score 75. Fired: M01 NARRATIVE_RESOLUTION_GAP 30, M02 FALSIFICATION_ABSENT 30, M04 CONSENSUS_NO_EDGE 15; 30 + 30 + 15 = 75, threshold 25. Unknown: probability_basis. Proof_of_logic anchored. Fix line: name a falsifier and resolution terms; consensus is not an edge. Captions: "FAIL · risk 75 · no invalidation, no source, pure consensus" and "it charged two dollars to say no."</p>
-    </details>
-    <p class="muted">Fed it a consensus thesis: no invalidation, no source, "everyone knows." <strong>FAIL,
-    risk 75</strong>, and it charged two dollars to say no. An auditor that only ever says yes is not an
-    auditor. The refusal is the product.</p>
+    <section class="measured" aria-labelledby="m-h">
+      <p class="label" id="m-h">what is measured &middot; as of 2026-11-20</p>
+      <div class="cards">
+        <div class="card"><p class="st"><b class="ok">OK</b>measured</p><p class="ct">Same idea, same verdict</p><p class="cb">95 to 100% of replays, on short ideas written for the test. On 8 study records built from published theses, 6 came back WAIT because the three readings of the text disagreed on a fact.</p></div>
+        <div class="card"><p class="st"><b class="no">--</b>not yet</p><p class="ct">Reads like a careful person</p><p class="cb">Tuned on 41 cases the founder labeled. Blind labels from anyone else: 0.</p></div>
+        <div class="card"><p class="st"><b class="no">--</b>not yet</p><p class="ct">Verdicts predict outcomes</p><p class="cb">9 graded of the 100 needed for a first read. 8 of the 9 are one Fed meeting, and all 9 were WAIT. No outcome claim until then. <a href="https://github.com/SIFR0-dev/djzs-AI/tree/main/tests/q3/records">The grades are in the repo.</a></p></div>
+      </div>
+      <p class="after">The sealed records and their anchors are on <a href="/verify">Verify</a>. Every rule and weight, and how each number was measured, is in the <a href="/docs/measured">docs</a>.</p>
+    </section>
 
-    <h3>And when the reasoning holds <span class="k">// a wallet paid, an engine decided</span></h3>
-    <video poster="/assets/poster-pass.svg" controls playsinline preload="metadata" style="width:100%;border:1px solid #1c1c1c;border-radius:6px;background:#0a0a0a">
-      <source src="/assets/djzs-demo-pass.mp4" type="video/mp4" />
-    </video>
-    <details class="transcript"><summary>Transcript (39 s, no audio)</summary>
-      <p>Terminal. <code>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</code> adds the gate to Claude Code. <code>node demo-call.mjs</code> sends a 445-character prediction-market thesis to <code>verify_pm_trade</code>. The server answers <code>402 Payment Required</code>: scheme exact, network eip155:8453, amount 2000000 (2.00 USDC), asset USDC on Base, payTo 0xc192…eCCA. The client signs the payment and retries with <code>X-PAYMENT</code>. Settled in 12.4 s; the verdict is written to <code>last-verdict.json</code>.</p>
-      <p>Card. DJZS-M taxonomy, frozen: M01 30, M02 30, M03 25, M04 15, fail threshold 25. Verdict PASS, action PROCEED, risk_score 0, flags none, unknown none, price 2.00 USDC, network base 8453, proof_of_logic anchored. Captions: "the agent pays 2 USDC over x402" and "same input, same score, same hash. forever."</p>
-    </details>
-    <p class="muted">One command to add. The agent pays 2.00 USDC over x402 on Base and the verdict
-    returns with a hash that reproduces on any machine. The payment and the certificate are public;
-    <a href="https://djzs.link" rel="noopener">the launch record</a> archives every receipt.</p>
-  </section>
+    <section class="agents" id="agents" aria-labelledby="ag-h">
+      <p class="label">for AI agents</p>
+      <h2 id="ag-h">Your agent can run the same check.</h2>
+      <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
+      <div class="ways">
+        <div class="way"><span class="tagk free">FREE</span><p>One POST with an id your agent keeps. Three checks a day, no wallet. <a href="/docs/agents/free-check">How &rarr;</a></p></div>
+        <div class="way"><span class="tagk paid">2.00 USDC</span><p>Through the MCP server above, or plain HTTP with x402 or MPP. Each check leaves a record on Base or Irys that anyone can check. <a href="/docs/agents/mcp">Setup &rarr;</a></p></div>
+      </div>
+      <p class="docsline"><a class="btn" href="/docs">Read the docs &rarr;</a><span>For language models: <a href="/llms.txt">djzs.ai/llms.txt</a></span></p>
+    </section>
+  </main>
 
-  <!-- 1.7: WHO IT IS FOR -->
-  <section id="who">
-    <h2>Who it is for <span class="k">// three ways in</span></h2>
-    <div class="ladder">
-      <div class="rung pass"><span class="verdict">SOLO BOT OPERATORS</span><br /><span class="muted">Add one line to Claude Code or any x402 client. Your bot pays per call from its own wallet. No account, no API key, no subscription.</span><br /><a href="/guide">Connect the gate -&gt;</a></div>
-      <div class="rung wait"><span class="verdict">TREASURIES AND DAOS</span><br /><span class="muted">Require the receipt before an agent's order can execute. Safe Guard and Zodiac integrations documented for builders.</span><br /><a href="/builders">For builders -&gt;</a></div>
-      <div class="rung fail"><span class="verdict">METAMASK AGENT WALLET</span><br /><span class="muted">MetaMask checks whether the transaction is safe. DJZS checks whether the trade was worth making. Both gates, in order.</span><br /><a href="#upstream">How the two gates stack -&gt;</a></div>
-    </div>
-    <h3>How payment works</h3>
-    <p>Every receipt is paid for by the wallet that asks for it. The server answers with a price:
-    <strong>2.00 USDC</strong>. Your agent pays it on Base over x402 and the verdict comes back in the
-    same breath. The caller's wallet is the identity and the bill. Out-of-scope requests are refused <em>free</em>: an auditor that stretches past its taxonomy
-    to take your money is not an auditor.</p>
-    <p class="muted">Humans without an x402 setup: the browser route at <a href="/try">/try</a> runs the same engine, no wallet plumbing required to see a verdict.</p>
-  </section>
+  <footer>
+    <nav aria-label="More"><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/builders">Builders</a><a href="/build">Build</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai">X @Djzs_ai</a></nav>
+    <div class="k"><b>audit, not advice</b>: a verdict says whether the idea is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. An example market, when one is loaded, is real; it is not a recommendation. <a href="/terms">Terms</a>.</div>
+    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai &middot; audit before act</p>
+  </footer>
+</div>
 
-  <!-- DIVIDER: everything below is for builders and agents -->
-  <section id="builders-line">
-    <h2>Below this line <span class="k">// for builders and agents</span></h2>
-    <p class="muted">Everything above is the product in plain language. Everything below is the proof: how the engine is built, the rules it scores against, the measurements, what is live and what is not, and how to call it from code. If you are deciding whether to care, you are done. If you are deciding whether to trust it, keep reading.</p>
-    <p class="doctrine">Evidence before record.</p>
-  </section>
+<script type="module">
+// ── what this page believes it is buying. Restated, not fetched: a drift in the quote fails loudly before anything is signed.
+const WORKER = "https://mcp.djzs.ai";
+const ROUTE = { pm: WORKER + "/x402/verify_pm_trade", perp: WORKER + "/x402/verify_perp_trade" };
+const EXPECT = { amount: "2000000", asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", network: "eip155:8453", payTo: "0xc1923748669dFC3a79497d0403A90a275161eCCA", chainId: 8453 };
+const EAS_VIEW = "https://base.easscan.org/attestation/view/";
+const TX_VIEW = "https://basescan.org/tx/";
+// The failing line per ruleset: prediction markets fail at 25, perp and spot at 50. A critical reason fails on its own.
+const LINE = { pm: 25, perp: 50 };
+// viem is needed only for the paid receipt, so it loads only then: the free check never depends on a CDN.
+const VIEM = "https://esm.sh/viem@2.56.1";
+let viemMod = null;
+async function viem(){ if (!viemMod) viemMod = await import(VIEM); return viemMod; }
 
-  <!-- 2: ARCHITECTURE C -->
-  <section id="architecture">
-    <h2>Architecture C <span class="k">// extraction reports, the engine decides</span></h2>
-    <p>DJZS splits the model-bound step from the trusted step. An LLM <strong>extracts observable
-    facts</strong> from messy intent; it never returns a verdict. It runs as an <strong>N=3
-    consensus</strong>: per-field state must agree across all three samples or the field collapses
-    to <code>unknown</code>; a claimed <em>absent</em> must quote the intent verbatim (quote gates);
-    and a critical-driving absent needs the same quote across every sample (evidence-unanimity).</p>
-    <p>The resulting struct is scored by a <strong>frozen deterministic engine</strong>: pure code,
-    no model, no network, no clock. <strong>The verdict rules are model-independent:</strong> swap the
-    model and the extraction quality changes, but the rules, weights, and hash do not. The same struct
-    always yields the same verdict and the same hash:</p>
-    <pre><code>verdict_hash = sha256(canonicalize({ verdict, risk_score, flags: flags.map(f =&gt; f.code).sort(), unknown_fields }))</code></pre>
-    <p class="doctrine">Verdict is computed, not improvised.</p>
-  </section>
+const $ = (id) => document.getElementById(id);
+const state = { provider: null, address: null, kind: "pm", last: null, examples: [], exampleIx: 0 };
+const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  <!-- 3: THE LADDER -->
-  <section id="ladder">
-    <h2>The ladder <span class="k">// three outcomes, never two</span></h2>
-    <div class="ladder">
-      <div class="rung pass"><span class="verdict">PASS → PROCEED</span><br /><span class="muted">Every scored fact is known and no blocking rule fired.</span></div>
-      <div class="rung wait"><span class="verdict">WAIT → HALT</span><br /><span class="muted">A decision-critical fact is <code>unknown</code>. The caller halts and the response returns <code>unknown_fields</code> so it knows what to clarify.</span></div>
-      <div class="rung fail"><span class="verdict">FAIL</span><br /><span class="muted">A rule fired on facts the engine knows. Stop.</span></div>
-    </div>
-    <p>Under-specified reasoning drains to <strong>WAIT → HALT</strong>, never to a silently guessed
-    PASS or FAIL. Abstention is a first-class outcome.</p>
-    <p class="doctrine">Abstain over guess.</p>
-  </section>
+// ── the browser's free-verdict id. Random, local, never tied to a wallet. Created on the first check, not on page load.
+const ANON_KEY = "djzs_try_anon";
+let sessionAnon = null;
+function storedAnon(){ try { const id = localStorage.getItem(ANON_KEY); return id && /^[0-9a-f]{32}$/.test(id) ? id : null; } catch { return null; } }
+function anonId(){
+  const have = storedAnon(); if (have) return have;
+  if (!sessionAnon) { const a = new Uint8Array(16); crypto.getRandomValues(a); sessionAnon = Array.from(a, (b) => b.toString(16).padStart(2, "0")).join(""); }
+  try { localStorage.setItem(ANON_KEY, sessionAnon); } catch { /* private mode: the id lives for this page only */ }
+  return sessionAnon;
+}
 
-  <!-- 4: TAXONOMIES -->
-  <section id="taxonomies">
-    <h2>Taxonomies <span class="k">// prediction market, live</span></h2>
+// ── wallet discovery (EIP-6963, falling back to window.ethereum). Only used for the receipt.
+const announced = [];
+window.addEventListener("eip6963:announceProvider", (e) => { if (!announced.some((p) => p.info.uuid === e.detail.info.uuid)) announced.push(e.detail); refreshProviderPick(); });
+window.dispatchEvent(new Event("eip6963:requestProvider"));
+function refreshProviderPick(){
+  const sel = $("provider-pick");
+  if (announced.length < 2) { sel.hidden = true; return; }
+  sel.innerHTML = announced.map((p, i) => `<option value="${i}">${esc(p.info.name)}</option>`).join("");
+  sel.hidden = false;
+}
+function pickProvider(){
+  if (announced.length >= 2) return announced[Number($("provider-pick").value) || 0].provider;
+  if (announced.length === 1) return announced[0].provider;
+  return window.ethereum ?? null;
+}
 
-    <h3>DJZS-M · Prediction Market (DJZS-PM-v1.0)</h3>
-    <p class="muted">Weights sum to <strong>100</strong>; FAIL threshold <strong>25</strong>. All four codes are implemented and tuned against a founder-labeled bench of 41 cases, 20 of them prediction-market. That checks the gate against its author's labels. Whether a verdict predicts how a trade resolves is a separate, pre-registered test that has not reached its first read. Full rules, verdict formula, both binding contracts, and the extraction-contract changelog: <a href="/ruleset">djzs.ai/ruleset</a>.</p>
-    <div class="table-wrap">
-    <table aria-label="DJZS-PM-v1.0 codes, severities, and weights">
-      <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Severity</th><th scope="col">Weight</th></tr></thead>
-      <tbody>
-        <tr><td><code>DJZS-M01</code></td><td>NARRATIVE_RESOLUTION_GAP</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
-        <tr><td><code>DJZS-M02</code></td><td>FALSIFICATION_ABSENT</td><td class="sev-CRITICAL">CRITICAL</td><td>30</td></tr>
-        <tr><td><code>DJZS-M03</code></td><td>PROBABILITY_UNSOURCED</td><td class="sev-HIGH">HIGH</td><td>25</td></tr>
-        <tr><td><code>DJZS-M04</code></td><td>CONSENSUS_NO_EDGE</td><td class="sev-MEDIUM">MEDIUM</td><td>15</td></tr>
-      </tbody>
-    </table>
-    </div>
-    <p class="muted">M04 is advisory: it never changes a verdict. A lone M04 rides a PASS with the flag on the certificate
-    (weight 15 is below the threshold), and every combination that fails already fails without it (M03 alone is 25, the
-    threshold). It adds 15 to the risk score and nothing else, which CI proves over the whole input space.</p>
+// ── helpers
+function esc(s){ return String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function short(h){ return typeof h === "string" && h.length > 18 ? h.slice(0, 10) + "…" + h.slice(-6) : (h ?? ""); }
+function b64encodeUtf8(s){ return btoa(Array.from(new TextEncoder().encode(s), (b) => String.fromCharCode(b)).join("")); }
+function b64decodeUtf8(s){ const bin = atob(s); return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))); }
+function randomHex32(){ const a = new Uint8Array(32); crypto.getRandomValues(a); return "0x" + Array.from(a, (b) => b.toString(16).padStart(2, "0")).join(""); }
+function log(id, msg, cls){ const el = $(id); el.innerHTML = msg ? `<span class="${cls ?? ""}">${esc(msg)}</span>` : ""; }
+function walletErr(e){ if (e && (e.code === 4001 || /rejected|denied/i.test(e.message ?? ""))) return "declined in the wallet; nothing was sent"; return (e && e.message) ? e.message.slice(0, 160) : String(e); }
+function plain(code, name){ return (name ?? code ?? "").replace(/^DJZS-/, "").replace(/_/g, " ").toLowerCase(); }
+function scrollToEl(el){ el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }); }
 
-    <p class="muted">The weight table is a hash-locked exported constant; a weight change is a
-    deliberate re-derive that bumps the version, not a hot patch. That immutability is what makes
-    every <code>verdict_hash</code> reproducible.</p>
+// ── copy the MCP address
+for (const b of document.querySelectorAll("button.copy[data-copy]")) {
+  b.addEventListener("click", async () => {
+    const text = b.dataset.copy; let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch { /* clipboard blocked: select the text instead */ }
+    if (!ok) { const code = b.parentElement.querySelector("code"); const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+    b.textContent = ok ? "Copied" : "Selected"; b.classList.add("done");
+    setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1500);
+  });
+}
 
-    <h3>DJZS-LF · perpetuals / general reasoning <span class="k">// live, second paid tool</span></h3>
-    <p class="muted">Beyond prediction markets, an 11-code perpetuals and general-reasoning taxonomy
-    (DJZS-LF-v1.2, weights sum 200) is frozen: 4 codes wired live
-    (<code>E01</code>, <code>I01</code>, <code>X01</code>, <code>S01</code>), the other 7 reserved with their weights
-    but not yet firing. Served live as <code>verify_perp_trade</code> at <code>/x402/verify_perp_trade</code>. For Hyperliquid perps, name the venue in the intent. The audit covers the reasoning you state (thesis, stop, leverage, data sources); it does not read the venue's live price, funding or liquidation data. The seven reserved codes are disclosed as roadmap, not sold as done. The full
-    table lives in the <a href="https://github.com/SIFR0-dev/djzs-AI#taxonomies-frozen">repository</a>.</p>
-  </section>
+// ── the one field
+function currentIntent(){ return { thesis: $("thesis").value.trim() }; }
+function intentValid(intent){ return intent.thesis.length >= 40; }
+function refresh(){ $("run").disabled = !intentValid(currentIntent()); }
+$("thesis").addEventListener("input", refresh);
+$("thesis").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("run").disabled) { e.preventDefault(); $("run").click(); } });
+$("clear").addEventListener("click", () => { $("thesis").value = ""; refresh(); $("thesis").focus(); });
+$("edit-link").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
+const KIND = {
+  pm: { needs: ["The market's own terms: the question, the date it settles, and the source that settles it.", "Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.", "What would prove you wrong: the specific event, before the market settles.", "Why the market is wrong. \u201CEveryone agrees\u201D is not a reason. This one is advice; it never changes the verdict."],
+        hint: "Kalshi, Polymarket or Limitless. Name the venue and the question, or the check will skip it.", label: "The market (venue and question), your side, why, and what would prove you wrong", ph: "Kalshi, [the market question]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
+  perp: { needs: ["The instrument, long or short, and your entry.", "Your stop, or the event that would prove you wrong.", "Your size and leverage.", "Why the price should move, in one sentence, with the data behind it and the date you read it. What other people are doing is not a reason."],
+        hint: "Hyperliquid or any venue. Say the instrument, long or short, entry, stop, size, leverage, and why the price should move.", label: "The instrument, long or short, entry, stop, size, leverage, and why the price should move", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
+};
+function setKind(k){
+  state.kind = k;
+  $("cmd").textContent = `check --${k}`;
+  for (const id of ["pm", "perp"]) { const on = id === k; $("kind-" + id).classList.toggle("on", on); $("kind-" + id).setAttribute("aria-pressed", String(on)); }
+  $("kind-hint").textContent = KIND[k].hint; $("thesis-label").textContent = KIND[k].label; $("thesis").placeholder = KIND[k].ph;
+  $("needs-list").innerHTML = KIND[k].needs.map((x) => `<li>${esc(x)}</li>`).join("");
+  // The curated examples are prediction markets. Switching to perp clears a loaded example, never the user's own text.
+  if (k === "perp" && state.examples.some((e) => e.thesis === $("thesis").value.trim())) $("thesis").value = "";
+  $("example").hidden = k !== "pm" || state.examples.length === 0;
+  refresh();
+}
+$("kind-pm").addEventListener("click", () => setKind("pm"));
+$("kind-perp").addEventListener("click", () => setKind("perp"));
+// A link can open the perp check directly: djzs.ai/?kind=perp
+if (new URLSearchParams(location.search).get("kind") === "perp") setKind("perp");
 
-  <!-- 5: PROOF -->
-  <section id="proof">
-    <h2>Proof <span class="k">// same facts, same hash, every run</span></h2>
-    <p>A client audited a benchmark thesis (<code>pm-block-008</code>) through the deployed
-    tool and received:</p>
-    <div class="proof">
-      <span class="stamp">FAIL</span>
-      <pre class="cert">{
-  <span class="key">"tool"</span>: <span class="str">"verify_pm_trade"</span>,
-  <span class="key">"case"</span>: <span class="str">"pm-block-008"</span>,
-  <span class="key">"verdict"</span>: <span class="fail-val">"FAIL"</span>,
-  <span class="key">"action"</span>: <span class="fail-val">"FAIL"</span>,
-  <span class="key">"risk_score"</span>: 40,
-  <span class="key">"flags"</span>: [<span class="str">"DJZS-M03"</span>, <span class="str">"DJZS-M04"</span>],
-  <span class="key">"unknown_fields"</span>: [],
-  <span class="key">"disagreements"</span>: [],
-  <span class="key">"verdict_hash"</span>: <span class="hash">"0x85918814b3dffa31b00d6892c2e00b2001efd35f7e0044b4cd3789fe1df14937"</span>
-}</pre>
-    </div>
-    <p class="muted">Behavioral parity against the offline batteries (verdict + flags + extracted
-    input) is green. Hash parity is discharged: the anchor instrument reproduced this exact hash
-    byte-identical from live extraction into the frozen engine (exit 0, 2026-07-12) and it has held
-    across every re-run since, including runs with extraction divergence on non-preimage fields.</p>
-    <p><strong>Since then, two stronger proofs.</strong> The deterministic engine has been enumerated over its
-    <strong>entire</strong> prediction-market input space: 108 inputs, 9 properties (totality, determinism,
-    monotonicity, threshold, PASS/WAIT invariants, and that the advisory flag never changes a verdict). That test runs in CI on every push. The extraction
-    layer has been <strong>measured</strong>: 15 to 16 short theses written for the test, spanning the verdict space,
-    5 replays each, N=3 consensus. Under extraction contract <code>DJZS-X-v1.1</code> the verdict repeated in
-    <strong>95 to 100 percent</strong> of replays across three runs of the same prompt (100, 97.5 and 95.0). The first
-    measurement, under the earlier contract v1.0, found a defect (an unsourced claim in plain prose was demoted to WAIT
-    instead of firing M03); it was reproduced from raw samples, removed with a control test, and shipped as v1.1.
-    Those theses are short and first-person. Published third-party prose is a harder input, and what the layer has done
-    on it so far is stated on <a href="/ruleset">/ruleset</a>.
-    Every response now states its contract as <code>taxonomy.extraction</code>. Harness, raw runs, and
-    regression tests live in <code>tests/</code>; the full account is on <a href="/ruleset">/ruleset</a>.</p>
-    <p><strong>And the receipt itself is now recomputable by anyone.</strong> Every paid verdict returns an
-    EIP-712 <code>intent_hash</code> any third party derives from the intent alone, and writes an
-    <a href="https://base.easscan.org/schema/view/0x5ef67e2b8c617635431401d2872b2a6f79eeba54a8e19fd5ecd45aceda2a2030">EAS attestation on Base</a>
-    onto the paying agent's address. Paste a receipt at <a href="/verify">/verify</a> and it re-derives the
-    settlement, both binding keys, and the attestation with no trust in DJZS.</p>
-  </section>
+// ── the real example. Fetched from the worker, which reads the venue's live price and serves only open markets.
+// No open market, or the fetch fails: the box stays empty with its template, and nothing claims an example exists.
+async function loadExamples(){
+  try {
+    const r = await fetch(`${WORKER}/try/example`, { cache: "no-store" });
+    const j = await r.json();
+    if (!r.ok || !j.ok || !Array.isArray(j.examples) || j.examples.length === 0) return;
+    state.examples = j.examples;
+    if (state.kind === "pm") { $("example").hidden = false; showExample(0); }
+  } catch { /* the check itself reports if the worker is down */ }
+}
+function showExample(ix){
+  const ex = state.examples[ix]; if (!ex) return;
+  state.exampleIx = ix;
+  if (!$("thesis").value.trim() || state.examples.some((e) => e.thesis === $("thesis").value.trim())) $("thesis").value = ex.thesis;
+  const when = ex.price.live ? `live ${new Date(ex.price.as_of).toISOString().slice(11, 16)} UTC` : `snapshot ${esc(ex.price.as_of)}, venue unreachable`;
+  const st = $("example-status");
+  st.innerHTML = `<span class="ok">OK</span><span class="v">Real market loaded: <b>${esc(ex.venue)} ${esc(ex.market_id)}</b> · YES ${esc(String(ex.price.yes_bid))}/${esc(String(ex.price.yes_ask))}c, ${when} · <a href="${esc(ex.url)}" target="_blank" rel="noopener">open on ${esc(ex.venue)}</a>. Edit it or replace it with your own.</span>`;
+  st.hidden = false;
+  refresh();
+}
+$("example").addEventListener("click", () => { if (!state.examples.length) return; $("thesis").value = ""; showExample((state.exampleIx + 1) % state.examples.length); });
 
-  <!-- 7a2: THE CLAMP PROBLEM -->
-  <section id="clamp">
-    <h2>The clamp problem <span class="k">// every agent ships a cap, none read the trade</span></h2>
-    <p class="lede">A budget clamp is not a firewall. A spend cap constrains the size of the
-    mistake; it never inspects the mistake.</p>
-    <p>Every agent framework hands you the same guard: a maximum order size, a rate limit, a
-    drawdown stop. Useful, and not the same thing as a gate. An agent holding a $10 cap and an
-    unfalsifiable thesis loses money slowly and on schedule, and every order clears every check
-    on the way out.</p>
-    <p>The gap is structural. Between the moment an agent decides and the moment the order
-    leaves, nothing deterministic sits there and refuses a position for having no articulated
-    reason, no invalidation condition, no sourced probability. Wallet authority is granted; the
-    reasoning is never read.</p>
-    <p>DJZS is that layer. It sits <strong>between the proposal and the order</strong> and says
-    no for reasons, not just for size. On Base it is a priced call: 2.00 USDC over x402, an
-    EIP-712 <code>intent_hash</code>, an EAS attestation, and a verdict returned before the
-    order exists.</p>
-    <p class="doctrine">A clamp is not a gate.</p>
-  </section>
+// ── checks left today. Asked only for a browser that already has an id; a first visit creates nothing.
+function showQuota(q){ if (q && typeof q.remaining === "number" && typeof q.limit === "number") $("quota").textContent = `${q.remaining} of ${q.limit} free checks left today · resets 00:00 UTC`; }
+async function loadQuota(){
+  const id = storedAnon(); if (!id) return;
+  try { const r = await fetch(`${WORKER}/try/quota?anon=${id}`, { cache: "no-store" }); const j = await r.json(); if (r.ok && j.ok) showQuota(j); } catch { /* the line keeps its default */ }
+}
 
-  <!-- 7b: UPSTREAM GATE (MetaMask Agent Wallet) -->
-  <section id="upstream">
-    <h2>Two gates, two axes <span class="k">// upstream of MetaMask Agent Wallet</span></h2>
-    <p class="lede">Your MetaMask agent already checks whether a transaction is safe to
-    sign. DJZS checks what it can't: whether the position is worth taking at all.</p>
-    <p>MetaMask Agent Wallet runs a mandatory pipeline on every transaction:
-    <strong>simulation</strong>, <strong>Blockaid</strong> threat scanning,
-    <strong>Smart Transactions</strong>. It answers one question with production rigor:
-    is this transaction safe? It does not answer another: is the reasoning behind the
-    trade sound? A transaction can clear every check and still act on a thesis that is
-    unfalsifiable, unsourced, or pure narrative.</p>
-    <p>DJZS sits <strong>upstream</strong>. Before a capital-deploying command runs, it
-    audits the thesis against a deterministic taxonomy and returns <code>PASS</code>,
-    <code>WAIT</code>, or <code>FAIL</code>. On <code>EXECUTE</code>, the intent hands to
-    MetaMask and its pipeline runs as always. On <code>HALT</code>, nothing executes.</p>
-    <pre><code>capital action
-   │
-   ▼
-GATE 1 · DJZS        audits the THESIS   (why)
-   │                returns PASS / WAIT / FAIL
-   ├─ WAIT / FAIL ─▶ HALT · nothing executes
-   │
- EXECUTE
-   │
-   ▼
-GATE 2 · METAMASK    audits the TRANSACTION   (what)
-   │                simulation · Blockaid · Smart Transactions
-   ▼
-on-chain</code></pre>
-    <p>Two independent gates, two axes. <strong>DJZS audits WHY. MetaMask audits WHAT.</strong>
-    A DJZS PASS certifies well-formed reasoning at a moment, never that the narrative is
-    true or the trade wins.</p>
-    <p class="doctrine">The gate clears the logic; the position is yours.</p>
-    <p><span class="k">// status</span> Live on Base mainnet, payable over HTTP x402 or MPP at
-    <code>mcp.djzs.ai/x402/verify_pm_trade</code> (<code>/x402/verify</code> is the x402-only legacy alias). Integration posture for
-    framework builders and treasuries (Safe Guard, AgentKit) is on <a href="/builders">/builders</a>. Base MCP, MetaMask Agent Wallet, and x402-axios
-    all speak this rail. The gate audits its own operation on the public record; the
-    end-to-end wallet compositions remain the <strong>reference design</strong>.</p>
-  </section>
+// ── the verdict. No wallet, no signature: the browser id is the quota key.
+$("run").addEventListener("click", async () => {
+  const intent = currentIntent();
+  if (!intentValid(intent)) return;
+  const kind = state.kind;
+  const btn = $("run"); btn.disabled = true;
+  try {
+    log("run-log", "Reading the idea, then scoring it…");
+    const r = await fetch(`${WORKER}/try/verdict`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, intent, anon: anonId() }) });
+    const body = await r.json().catch(() => ({ ok: false, error: `the check answered HTTP ${r.status}` }));
+    if (!r.ok || !body.ok) {
+      if (body.error === "wallet_quota_exhausted") showQuota({ remaining: 0, limit: body.limit ?? 3 });
+      const why = body.error === "wallet_quota_exhausted" ? "This browser has used its three free checks for today. The receipt still works, or come back after 00:00 UTC." : body.error === "free_tier_exhausted_today" ? "The free checks are used up for everyone today. The receipt still works." : `${body.error ?? "error"}${body.detail ? ": " + body.detail : ""}`;
+      throw new Error(why);
+    }
+    const prev = state.last;
+    state.last = { kind, intent, body };
+    renderVerdict(body, prev);
+    showQuota(body.quota);
+    log("run-log", "");
+  } catch (e) {
+    log("run-log", e instanceof TypeError ? "Could not reach the check. Try again in a moment." : walletErr(e), "xx");
+  } finally {
+    refresh();
+  }
+});
 
-  <!-- 6: HONEST POSTURE -->
-  <section id="honest">
-    <h2>Honest posture <span class="k">// what's live, what isn't</span></h2>
-    <p>Stated plainly:</p>
-    <ul class="tight">
-      <li><strong>The tools are paid.</strong> <code>verify_pm_trade</code> and <code>verify_perp_trade</code> each charge 2.00 USDC per audit
-      over x402 or MPP (one CDP facilitator settles both) on Base mainnet. Payment is non-custodial: funds move from the
-      payer's wallet to the DJZS treasury directly via an EIP-3009 signature; the facilitator submits
-      the transfer and pays the gas. The two registry tools (<code>query_pol_certificates</code>,
-      <code>query_agent_trust</code>) stay free.</li>
-      <li><strong>Certificates are permanent.</strong> Every in-scope audit anchors a ProofOfLogic
-      certificate to Irys mainnet and returns its id; it is retrievable by id and via
-      <code>query_pol_certificates</code>. The certificate is assembled after the <code>verdict_hash</code>
-      and never alters it.</li>
-      <li><strong>Receipts bind to the intent and to the chain.</strong> Every paid verdict returns an
-      EIP-712 <code>intent_hash</code> (domain DJZS / 2 / eip155:8453) and an EAS attestation on Base under
-      the DJZS schema, attested from a dedicated attester onto the paying agent. <code>intent_sha256</code> (v1)
-      is returned alongside; its rule is published. A Safe Guard or Zodiac module can require the attestation.
-      Recompute any receipt at <a href="/verify">/verify</a>; contract at <a href="/ruleset">/ruleset</a>.</li>
-      <li><strong>The trust loop is closed and live.</strong> Pass an optional <code>agent_address</code>
-      to <code>verify_pm_trade</code> and the verdict is written on-chain (<code>DJZSLogicTrustScore</code>
-      on Base) by a dedicated authorized writer, indexed by the DJZS subgraph on The Graph, and readable
-      by anyone via <code>query_agent_trust</code>: totalAudits, failRate, latest verdict, and an action
-      of PROCEED, HALT, or NO_HISTORY. The write is fail-open: a write fault never blocks or alters the
-      audit or its certificate.</li>
-    </ul>
-    <p>On-chain: four DJZS contracts are attested on Base in the A2A manifest, with source in
-    <code>contracts/</code>. Verify them yourself on Basescan:
-    <a href="https://basescan.org/address/0xB3324D07A8713b354435FF0e2A982A504e81b137">TrustScore</a> ·
-    <a href="https://basescan.org/address/0xA362947D23D52C05a431E378F30C8A962De91e8A">Staking</a> ·
-    <a href="https://basescan.org/address/0xB041760147a60F63Ca701da9e431412bCc25Cfb7">EscrowLock</a> ·
-    <a href="https://basescan.org/address/0xe40d5669Ce8e06A91188B82Ce7292175E2013E41">AgentRegistry</a>.
-    A fifth contract, <code>DJZSProofOfLogicNFT.sol</code>, exists as source
-    only; it is not in the deployed manifest, and nothing here claims certificate NFTs are live or
-    mintable.</p>
-  </section>
+// Plain names, what fired, and the line to fix. Fixed text keyed by the engine's code name: nothing here is written by a model.
+// The engine's `evidence` field is its own rule sentence, not a quote of the user's text, so it is never shown as one.
+const FLAG = {
+  FALSIFICATION_ABSENT:     { name: "No way to be wrong", what: "The idea treats the outcome as settled and names nothing that would prove it wrong.", fix: "Write the specific event that would prove you wrong before the market settles." },
+  NARRATIVE_RESOLUTION_GAP: { name: "Off the market's terms", what: "The reasoning argues something next to this market's question, not its own date, threshold, definition or settlement source.", fix: "Argue the market's own terms: the date it resolves, its threshold or definition, and the source that settles it." },
+  PROBABILITY_UNSOURCED:    { name: "Odds with no source", what: "There is a probability, or an implied one, with no checkable source behind it.", fix: "Back the claim with something checkable: a dataset, an official source or your own math, and the date you read it." },
+  CONSENSUS_NO_EDGE:        { name: "Agreement is not an edge", what: "The reason given is that everyone agrees, or that the price already says so.", fix: "Say why the market is wrong. This one is advice: it never changes the verdict.", advice: true },
+  EXECUTION_UNBOUND:        { name: "No stop or size limit", what: "Nothing in the idea limits the loss or says when the trade ends.", fix: "Write the stop level and the largest size you will allow, before the order goes out." },
+  CIRCULAR_LOGIC:           { name: "No reason for the trade", what: "The idea states a position but no reason the price should move.", fix: "Say in one sentence why the price should move." },
+  ORACLE_UNVERIFIED:        { name: "Data source not vouched for", what: "The trade leans on a data source the idea does not vouch for.", fix: "Name each source you rely on, who publishes it, and when you read it." },
+  FOMO_LOOP:                { name: "Chasing the crowd", what: "The reason given is what other people are doing or saying.", fix: "Replace the social signal with a number you can check, or say why the crowd is wrong." },
+};
+const UNSETTLED = {
+  invalidation_condition: { name: "What would prove you wrong", fix: "Write the specific event or price that would prove you wrong." },
+  resolution_engagement:  { name: "The market's own terms", fix: "Argue the market's own terms: the date it resolves, its threshold or definition, and the source that settles it." },
+  probability_basis:      { name: "Where your odds come from", fix: "Make any odds you claim checkable: name the source, the figure and the date you read it." },
+  thesis_statement:       { name: "Why the price should move", fix: "Say in one sentence why the price should move." },
+  stop_loss:              { name: "Your stop", fix: "State the stop price." },
+  position_size:          { name: "Your size", fix: "State the position size." },
+  leverage:               { name: "Your leverage", fix: "State the leverage, or say there is none." },
+  take_profit:            { name: "Your target", fix: "State the price where you take profit." },
+  data_sources:           { name: "The data you relied on", fix: "Name the data behind the idea and when you read it." },
+  oracle_source:          { name: "Your price source", fix: "Name the price feed the trade depends on." },
+  confidence:             { name: "How sure you are", fix: "Say how confident you are and what that rests on." },
+};
+function flagRow(f){
+  const d = FLAG[f.name] ?? {};
+  const r = d.advice ? "wait" : (f.severity === "CRITICAL" || f.severity === "HIGH" ? "fail" : "wait");
+  const chip = d.advice ? "advice" : (f.severity ?? "flag").toLowerCase();
+  return `<div class="claim" data-r="${r}"><span class="tok">${r === "fail" ? "!!" : "!"}</span><p class="claim-name">${esc(d.name ?? plain(f.code, f.name))}<span class="chip">${esc(chip)}</span></p><p class="claim-body">${esc(d.what ?? f.description ?? "")}${d.fix ? `<span class="fix"><b>FIX //</b>${esc(d.fix)}</span>` : ""}</p></div>`;
+}
+function unsettledRow(u, verdict){
+  const d = UNSETTLED[u] ?? { name: u.replace(/_/g, " ") };
+  const why = verdict === "PASS" ? "The check could not settle this from your text. Under the rules it cannot change this verdict." : "The check could not settle this from your text. It may be missing, or worded so that three readings of it disagree.";
+  return `<div class="claim" data-r="idle"><span class="tok">?</span><p class="claim-name">${esc(d.name)}<span class="chip">unsettled</span></p><p class="claim-body">${why}${d.fix ? `<span class="fix"><b>FIX //</b>${esc(d.fix)}</span>` : ""}</p></div>`;
+}
 
-  <!-- 7: CALL IT -->
-  <section id="call">
-    <h2>Call it <span class="k">// two transports, one gate</span></h2>
-    <p><strong>Probe it free.</strong> An unpaid request returns the payment challenge and settles
-    nothing. This is the whole handshake, and it costs zero:</p>
-    <pre class="cert">curl -s -X POST https://mcp.djzs.ai/x402/verify_pm_trade \
-  -H 'content-type: application/json' \
-  -d '{"intent":"probe the payment challenge"}'</pre>
-    <p>You get back <code>402</code> with the price, the network, and the address to pay:
-    <code>exact</code> scheme, <code>eip155:8453</code>, 2.00 USDC, paid to the treasury. Sign the
-    authorization, retry, and the verdict comes back. The same 402 carries two challenges: x402 v2 in
-    the <code>PAYMENT-REQUIRED</code> header and MPP in <code>WWW-Authenticate: Payment</code> (evm/charge).
-    Pay with either. One settlement, one receipt.</p>
-    <p><span class="k">// http x402</span> <code>POST mcp.djzs.ai/x402/verify_pm_trade</code>: any HTTP x402
-    client pays this: Base MCP, MetaMask Agent Wallet, x402-axios.<br>
-    <span class="k">// mpp</span> the same routes take a Machine Payments Protocol credential from any MPP client.
-    No code: <code>npx mppx https://mcp.djzs.ai/x402/verify_perp_trade --protocol mpp -J '{"intent":{...}}'</code>
-    from a wallet holding USDC on Base. Same facilitator, same treasury; the 200 adds <code>Payment-Receipt</code>
-    beside <code>PAYMENT-RESPONSE</code>.<br>
-    <span class="k">// mcp</span> <code>mcp.djzs.ai/mcp</code>: streamable HTTP. Wrap your MCP client
-    with <code>withX402Client</code> from <code>agents/x402</code>; other x402 clients complete the
-    handshake against this server without settling.</p>
-    <p><span class="k">// free</span> <code>GET /openapi.json</code> is the discovery contract:
-    schema, price, and response shape. <code>GET /health/x402</code> reports payment configuration.
-    Through MCP, <code>query_pol_certificates</code> and <code>query_agent_trust</code> read the
-    certificate ledger and an agent's on-chain record. None of these cost anything.</p>
-    <p><span class="k">// refusals are free</span> If the engine returns <code>in_scope: false</code>,
-    no payment settles and your balance is unchanged. You are charged for an audit that ran, whatever
-    the verdict.</p>
-  </section>
+// ── what changed since the last check of the same kind. Computed from the two responses, never written by a model.
+const RANK = { FAIL: 0, WAIT: 1, PASS: 2 };
+function reasonKeys(b){
+  const f = (Array.isArray(b.flags_detail) ? b.flags_detail : []).map((x) => "f:" + (x.name ?? x.code));
+  const u = (Array.isArray(b.unknown_fields) ? b.unknown_fields : []).map((x) => "u:" + x);
+  return [...f, ...u];
+}
+function reasonName(key){
+  const n = key.slice(2);
+  return key[0] === "f" ? ((FLAG[n] && FLAG[n].name) || plain(n)) : ((UNSETTLED[n] && UNSETTLED[n].name) || n.replace(/_/g, " "));
+}
+function renderChange(prev, b){
+  $("change").hidden = true; $("cleared").hidden = true;
+  if (!prev || prev.kind !== b.kind) return;
+  const pv = prev.body.verdict, v = b.verdict;
+  if (!(pv in RANK) || !(v in RANK)) return;
+  const P = reasonKeys(prev.body), C = reasonKeys(b);
+  const cleared = P.filter((k) => !C.includes(k)), added = C.filter((k) => !P.includes(k));
+  const dir = Math.sign(RANK[v] - RANK[pv]) || Math.sign(prev.body.risk_score - b.risk_score) || Math.sign(cleared.length - added.length);
+  const head = dir > 0 ? "Closer." : dir < 0 ? "Further." : (cleared.length || added.length) ? "" : "No change.";
+  const counts = [cleared.length ? `${cleared.length} ${cleared.length === 1 ? "reason" : "reasons"} cleared` : "", added.length ? `${added.length} new` : ""].filter(Boolean).join(", ");
+  const flags = Array.isArray(b.flags_detail) ? b.flags_detail : [];
+  const unknown = Array.isArray(b.unknown_fields) ? b.unknown_fields.length : 0;
+  const tail = v === "PASS" ? "Nothing failed."
+    : v === "WAIT" ? `${unknown === 1 ? "One thing is" : unknown + " things are"} still unsettled.`
+    : flags.some((f) => f.severity === "CRITICAL") ? "A critical reason is open, and that alone is a FAIL."
+    : "What is still open reaches the failing line.";
+  $("change-from").textContent = `${pv} ${prev.body.risk_score}`;
+  $("change-to").textContent = `${v} ${b.risk_score}`;
+  $("change-say").textContent = [head, counts ? counts + "." : "", tail].filter(Boolean).join(" ");
+  $("change").hidden = false;
+  if (cleared.length) {
+    $("cleared-list").innerHTML = cleared.map((k) => `<p class="okrow"><span class="ok">OK</span>${esc(reasonName(k))}</p>`).join("");
+    $("cleared").hidden = false;
+  }
+}
 
-  <!-- 7: WHAT A THESIS NEEDS -->
-  <section id="thesis">
-    <h2>What a thesis needs <span class="k">// before you spend $2</span></h2>
-    <p>The gate audits reasoning, so the reasoning has to be there. A thesis missing any of these
-    returns FAIL with the code that fired, and no order should be placed. Abstention is a
-    first-class outcome.</p>
-    <ul>
-      <li><strong>The claim and its resolution.</strong> What settles, on which market, by when,
-      on whose price.</li>
-      <li><strong>A sourced probability.</strong> A number and where it came from. Someone else has
-      to be able to check it: a modelling firm, a dataset, a study. Your own estimate is not a
-      source, and neither is a social post.</li>
-      <li><strong>The falsification condition.</strong> The specific event that would prove you
-      wrong.</li>
-      <li><strong>The executable price.</strong> The ask on the side you are buying, read off the
-      book. Not inferred from the other side: a market quoting YES at 93 does not mean NO costs 7.</li>
-      <li><strong>Why the edge exists.</strong> The reason the market is mispriced.
-      &ldquo;Consensus disagrees&rdquo; is not a reason.</li>
-    </ul>
-    <p><span class="k">// shape only</span> The bracketed fields below are placeholders, not text to
-    submit. Replace every one with a real value; a thesis submitted with the brackets intact fails
-    on <code>DJZS-M03</code>, and it still costs $2.</p>
-    <p><code>[MARKET] resolves YES above [STRIKE] by [DATE], settled on [SOURCE].
-    Sourced probability [P]% per [CITATION, retrieved DATE]. Falsified if [SPECIFIC EVENT] before
-    settlement. The ask on [SIDE] is [N]c, so the edge is [P MINUS MARKET] points, because
-    [WHY THE MARKET IS WRONG].</code></p>
-    <p>The gate reads reasoning only. It does not check that your quoted price is still live, that
-    the instrument has not already settled, or that your source is right. Those are yours. See
-    <a href="/legal">legal</a>.</p>
-  </section>
+function renderVerdict(b, prev){
+  $("out").hidden = false; $("receipt").hidden = true; $("legend").hidden = true;
+  const kind = b.kind === "perp" ? "perp" : b.kind === "pm" ? "pm" : state.kind;
+  const v = $("verdict");
+  const st = b.verdict === "PASS" ? "pass" : b.verdict === "WAIT" ? "wait" : b.verdict === "FAIL" ? "fail" : "refused";
+  v.dataset.state = st;
+  $("vstamp").textContent = b.verdict === "REFUSED_SCOPE" ? "SKIP" : b.verdict;
+  const unknown = Array.isArray(b.unknown_fields) ? b.unknown_fields : [];
+  const flags = Array.isArray(b.flags_detail) ? b.flags_detail : [];
+  const critical = flags.filter((f) => f.severity === "CRITICAL").length;
+  const titles = { pass: "Nothing failed", wait: "Not enough to judge", fail: "Do not place this", refused: "Skipped: not the kind of idea selected above" };
+  $("vtitle").textContent = titles[st];
+  $("vmeta").textContent = st === "refused" ? "" : `score ${b.risk_score} · fails at ${LINE[kind]}`;
+  let note = "";
+  if (st === "pass") note = (unknown.length ? `Nothing failed. The check could not settle <b>${unknown.length === 1 ? "one detail" : unknown.length + " details"}</b> below; under the rules ${unknown.length === 1 ? "it cannot" : "they cannot"} change this verdict. ` : `Nothing failed and nothing was left unsettled. `) + `<b>The check does not verify that your facts are true, and it does not say the trade wins.</b> The price and the source are still yours to check.`;
+  if (st === "wait") note = `The check could not settle <b>${unknown.length === 1 ? "one thing" : unknown.length + " things"}</b> from your text. It does not guess. <b>Treat this as a no</b> until you fix ${unknown.length === 1 ? "it" : "them"} and check again.`;
+  if (st === "fail") note = critical ? `<b>${critical === 1 ? "A critical reason fired. That alone" : critical + " critical reasons fired. Any one of them alone"} is a FAIL.</b> Fix each reason below and check again, or drop the trade.` : `<b>The reasons below add up past the failing line.</b> Fix each one and check again, or drop the trade.`;
+  if (st === "refused") note = kind === "pm"
+    ? `<b>This did not read as a prediction-market bet.</b> Name the venue (Kalshi, Polymarket, Limitless) and the question it settles, then check again. If it is a perp or spot trade, pick that above.`
+    : `<b>This did not read as a perp or spot trade.</b> Say the instrument, long or short, and your entry, then check again. If it is a prediction-market bet, pick that above.`;
+  $("vnote").innerHTML = note;
+  renderChange(prev, { ...b, kind });
+  const rows = flags.map(flagRow).join("") + unknown.map((u) => unsettledRow(u, b.verdict)).join("");
+  $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="pass"><span class="tok">OK</span><p class="claim-name">No defects<span class="chip">0 flags</span></p><p class="claim-body">Every scored part of the idea was there and no failure pattern matched.</p></div>` : "");
+  $("ledger").hidden = !rows && st !== "pass";
+  $("again").hidden = st === "pass" || st === "refused";
+  $("keys").innerHTML = st === "refused" ? "" : `<span>codes</span><b>${esc((b.flags ?? []).join(", ") || "none")}</b><span>ruleset</span><b>${esc(b.ruleset ?? "")}</b><span>intent_sha256</span><b>${esc(b.intent_sha256 ?? "")}</b><span>intent_hash</span><b>${esc(b.intent_hash ?? "n/a (free-text intent)")}</b><span>verdict_hash</span><b>${esc(b.verdict_hash ?? "")}</b><span>attested</span><b>no. Free verdicts are not written anywhere.</b>`;
+  $("offer").hidden = st === "refused";
+  setReceiptFields(kind);
+  $("pay").disabled = false; log("pay-log", "");
+  $("run").textContent = "Check again";
+  const ls = $("last-status");
+  ls.innerHTML = st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the idea, then check again.</span>`;
+  ls.hidden = false;
+  scrollToEl($("out"));
+  v.focus({ preventScroll: true });
+}
 
-  <!-- 8: FOR AGENTS -->
-  <section id="agents">
-    <h2>For agents <span class="k">// this page is the API doc</span></h2>
-    <p><strong>curl this page and you get this pitch</strong>: every word is in the HTML, no
-    JavaScript required to read it. A machine-readable summary lives at
-    <a href="/llms.txt">/llms.txt</a> with the MCP endpoint and repository link. The gate is one
-    install command away (see the hero above); the source of truth for every number on this page is
-    the repository at <a href="https://github.com/SIFR0-dev/djzs-AI">github.com/SIFR0-dev/djzs-AI</a>.</p>
-    <p><span class="k">// two payment protocols</span> <code>verify_pm_trade</code> and <code>verify_perp_trade</code>
-    accept x402 v2 (<code>PAYMENT-SIGNATURE</code>) and MPP (<code>Authorization: Payment</code>, evm/charge, USDC on
-    Base 8453). Both settle through the same facilitator to the same treasury and return the same verdict,
-    <code>intent_hash</code>, <code>settlement_tx</code> and EAS attestation. The MPP offer is listed in
-    <a href="https://mcp.djzs.ai/openapi.json">openapi.json</a> under <code>x-payment-info.offers</code> and in
-    <a href="https://mcp.djzs.ai/.well-known/agent-card.json">agent-card.json</a>. <code>/x402/verify</code>
-    (legacy alias) is x402-only.</p>
-    <p><span class="k">// reference integration</span> A working client is published at
-    <a href="https://github.com/SIFR0-dev/djzs-pm-gate">djzs-pm-gate</a>: it audits a
-    Polymarket or Kalshi trade thesis and creates the order only on a clean in-scope PASS. It uses
-    <code>withX402Client</code> from <code>agents/x402</code>, the client this gate speaks. The
-    out-of-scope refusal is verified free on-chain; the paid execution path is not yet exercised.</p>
-    <p class="doctrine">Evidence before record.</p>
-  </section>
+// ── the receipt's two named fields follow the kind of the last check: a market id and YES/NO, or an instrument and LONG/SHORT.
+function setReceiptFields(kind){
+  const perp = kind === "perp";
+  $("r-market-label").textContent = perp ? "Instrument" : "Market id on the venue";
+  $("r-market").placeholder = perp ? "BTC-PERP" : "KXFEDDECISION-26DEC-H0";
+  const want = perp ? ["LONG", "SHORT"] : ["YES", "NO"], sel = $("r-side");
+  if ([...sel.options].map((o) => o.value).join() !== want.join()) { sel.innerHTML = want.map((v) => `<option value="${v}">${v}</option>`).join(""); $("r-market").value = ""; }
+}
 
-</main>
+// ── the receipt. This is the only place a wallet appears. x402 v2, exact EVM, EIP-3009 authorization signed in the wallet.
+async function connectWallet(){
+  const { getAddress } = await viem();
+  const provider = pickProvider();
+  if (!provider) throw new Error("no browser wallet found. Install Coinbase Wallet, Rabby or MetaMask, or use the agent path below");
+  const accounts = await provider.request({ method: "eth_requestAccounts" });
+  if (!accounts || !accounts[0]) throw new Error("no account returned");
+  state.provider = provider; state.address = getAddress(accounts[0]);
+}
+async function ensureBase(){
+  const chainId = await state.provider.request({ method: "eth_chainId" });
+  if (parseInt(chainId, 16) === EXPECT.chainId) return;
+  try {
+    await state.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x2105" }] });
+  } catch (e) {
+    if (e && e.code === 4902) {
+      await state.provider.request({ method: "wallet_addEthereumChain", params: [{ chainId: "0x2105", chainName: "Base", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://mainnet.base.org"], blockExplorerUrls: ["https://basescan.org"] }] });
+    } else throw e;
+  }
+}
+$("pay").addEventListener("click", async () => {
+  if (!state.last) return;
+  const { kind } = state.last;
+  // The paid route binds its record (intent_hash) to a market and a side, so a bare thesis cannot be attested:
+  // it is refused before any money moves. The receipt therefore carries the market and side the person names here.
+  const market = $("r-market").value.trim();
+  if (market.length < 2) { log("pay-log", kind === "perp" ? "Name the instrument first, for example BTC-PERP." : "Name the market id on the venue first, for example KXFEDDECISION-26DEC-H0.", "xx"); $("r-market").focus(); return; }
+  const side = $("r-side").value, thesis = state.last.intent.thesis;
+  const intent = kind === "perp" ? { instrument: market, side, thesis } : { market, side, thesis };
+  const url = ROUTE[kind];
+  const body = JSON.stringify({ intent });
+  const btn = $("pay"); btn.disabled = true;
+  try {
+    log("pay-log", "loading the wallet library…");
+    const { getAddress } = await viem();
+    if (!state.provider) { log("pay-log", "connect a wallet (this is the only step that needs one)…"); await connectWallet(); }
+    log("pay-log", "switching to Base…"); await ensureBase();
+    log("pay-log", "requesting the quote…");
+    const unpaid = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body });
+    if (unpaid.status !== 402) throw new Error(`expected a 402 quote, got ${unpaid.status}`);
+    const prHeader = unpaid.headers.get("PAYMENT-REQUIRED");
+    const pr = prHeader ? JSON.parse(b64decodeUtf8(prHeader)) : await unpaid.json();
+    const acc = (pr.accepts ?? [])[0];
+    if (!acc) throw new Error("quote carries no payment requirement");
+    // The quote is asserted against what this page told you it costs. Any drift stops here, unsigned.
+    if (acc.scheme !== "exact" || acc.network !== EXPECT.network) throw new Error(`quote is ${acc.scheme}/${acc.network}, not exact/${EXPECT.network}`);
+    if (String(acc.amount) !== EXPECT.amount) throw new Error(`quote asks ${acc.amount} atomic, page promised ${EXPECT.amount} (2.00 USDC)`);
+    if (String(acc.asset).toLowerCase() !== EXPECT.asset.toLowerCase()) throw new Error("quote asset is not Base USDC");
+    if (String(acc.payTo).toLowerCase() !== EXPECT.payTo.toLowerCase()) throw new Error("quote payTo is not the DJZS treasury");
+    if (!acc.extra?.name || !acc.extra?.version) throw new Error("quote lacks the EIP-712 domain");
+    const now = Math.floor(Date.now() / 1000);
+    const authorization = { from: state.address, to: getAddress(acc.payTo), value: String(acc.amount), validAfter: "0", validBefore: String(now + Number(acc.maxTimeoutSeconds ?? 120)), nonce: randomHex32() };
+    const typedData = {
+      types: {
+        EIP712Domain: [{ name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }],
+        TransferWithAuthorization: [{ name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" }, { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" }],
+      },
+      primaryType: "TransferWithAuthorization",
+      domain: { name: acc.extra.name, version: acc.extra.version, chainId: EXPECT.chainId, verifyingContract: getAddress(acc.asset) },
+      message: authorization,
+    };
+    log("pay-log", "sign the 2.00 USDC authorization in your wallet…");
+    const signature = await state.provider.request({ method: "eth_signTypedData_v4", params: [state.address, JSON.stringify(typedData)] });
+    const payload = { x402Version: 2, payload: { authorization, signature }, ...(pr.extensions ? { extensions: pr.extensions } : {}), resource: pr.resource, accepted: acc };
+    log("pay-log", "settling and auditing…");
+    const paid = await fetch(url, { method: "POST", headers: { "content-type": "application/json", "PAYMENT-SIGNATURE": b64encodeUtf8(JSON.stringify(payload)) }, body });
+    const text = await paid.text();
+    let res; try { res = JSON.parse(text); } catch { res = null; }
+    if (!res) throw new Error(`gate answered ${paid.status} without JSON`);
+    const settleHeader = paid.headers.get("PAYMENT-RESPONSE");
+    const payment_response = settleHeader ? JSON.parse(b64decodeUtf8(settleHeader)) : null;
+    if (res.verdict === "REFUSED_SCOPE") throw new Error(`refused as out of scope, not charged: ${res.reason ?? ""}`);
+    if (!paid.ok) throw new Error(`${res.error ?? "error"}${res.detail ? ": " + res.detail : ""}${res.charged ? " (charged; keep the PAYMENT-RESPONSE below and contact support)" : " (not charged)"}`);
+    renderReceipt({ intent, payment_response, ...res });
+    log("pay-log", "");
+  } catch (e) {
+    log("pay-log", walletErr(e), "xx");
+    btn.disabled = false;
+  }
+});
 
-<footer class="site">
-  <div class="wrap">
-    <span>No agent acts without audit.</span>
-    <span>
-      <a href="/try">Try</a>
-      <a href="/present">Ask</a>
-      <a href="/verify">Verify</a>
-      <a href="/ruleset">Ruleset</a>
-      <a href="/builders">Builders</a>
-      <a href="/build">Build</a>
-      <a href="/scan">Scan</a>
-      <a href="https://x.com/Djzs_ai">X @Djzs_ai</a>
-      <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a>
-      <a href="/legal">Legal</a>
-      <a href="/terms">Terms</a>
-    </span>
-  </div>
-  <div class="wrap transmission">
-    <span class="muted">END_TRANSMISSION. //</span>
-    <span class="ok">djzs.ai</span>
-  </div>
-</footer>
-<script src="/copy.js" defer></script>
+function renderReceipt(r){
+  const el = $("receipt"); el.hidden = false;
+  const st = r.verdict === "PASS" ? "pass" : r.verdict === "WAIT" ? "wait" : "fail";
+  $("rstamp").textContent = r.verdict; $("rstamp").style.color = `var(--${st})`;
+  $("rmeta").textContent = `score ${r.risk_score} · charged ${r.charged ? "2.00 USDC" : "no"}`;
+  const easLink = r.eas_uid ? `<a href="${EAS_VIEW}${esc(r.eas_uid)}" target="_blank" rel="noopener">${esc(short(r.eas_uid))}</a>` : `<span>${esc(r.eas_error ? "not attested: " + r.eas_error : "pending")}</span>`;
+  const tx = r.payment_response?.transaction;
+  $("rkeys").innerHTML = `<span>attestation</span><b>${easLink}</b><span>payment</span><b>${tx ? `<a href="${TX_VIEW}${esc(tx)}" target="_blank" rel="noopener">${esc(short(tx))}</a>` : "no PAYMENT-RESPONSE"}</b><span>intent_hash</span><b>${esc(r.intent_hash ?? "")}</b><span>verdict_hash</span><b>${esc(r.verdict_hash ?? "")}</b><span>codes</span><b>${esc((r.flags ?? []).join(", ") || "none")}</b><span>free vs paid</span><b>${state.last && state.last.body.verdict_hash === r.verdict_hash ? "same verdict_hash: the paid run reproduced the free verdict byte for byte" : "verdict_hash differs from the free run: extraction is measured at 95 to 100 percent stable, and the receipt is the run that was attested"}</b>`;
+  const json = JSON.stringify(r, null, 2);
+  $("verify-link").href = "/verify#r=" + b64encodeUtf8(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  $("copy-receipt").onclick = async () => { try { await navigator.clipboard.writeText(json); $("copy-receipt").textContent = "Copied"; setTimeout(() => { $("copy-receipt").textContent = "Copy receipt JSON"; }, 1600); } catch { /* clipboard blocked: the verify link still carries it */ } };
+  scrollToEl(el);
+}
+
+loadExamples();
+loadQuota();
+refresh();
+</script>
 </body>
 </html>

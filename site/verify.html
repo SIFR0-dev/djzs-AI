@@ -57,7 +57,7 @@
 <body>
 <div class="wrap">
   <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try">try</a><a href="/present">ask</a><a href="/verify" aria-current="page">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan">scan</a><a href="/guide">connect &rarr;</a></nav>
+    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/#idea">check</a><a href="/present">ask</a><a href="/verify" aria-current="page">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan">scan</a><a href="/guide">connect &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/verify</span> $ <span id="cmd">recompute --receipt --v2</span><span class="cursor"></span></p>
     <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Proof-of-Logic Verifier <span style="color:var(--muted);font-weight:500">v2</span></h1>
     <div class="boot">
@@ -186,7 +186,7 @@ const SAMPLE={
 const $=s=>document.querySelector(s), ta=$("#rcpt"), norm=a=>(a||"").toLowerCase();
 $("#load").onclick=()=>{ta.value=JSON.stringify(SAMPLE,null,2)}; $("#clear").onclick=()=>{ta.value="";$("#verdict").hidden=true;empty()}; $("#run").onclick=run;
 ta.value=JSON.stringify(SAMPLE,null,2);
-// /try hands a fresh receipt over in the fragment (#r=<base64url JSON>); the fragment never reaches the server.
+// The home page hands a fresh receipt over in the fragment (#r=<base64url JSON>); the fragment never reaches the server.
 (function fromFragment(){const m=/^#r=([A-Za-z0-9_-]+)$/.exec(location.hash||"");if(!m)return;try{const b64=m[1].replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-m[1].length%4)%4);const json=new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0)));JSON.parse(json);ta.value=json;history.replaceState(null,"",location.pathname);setTimeout(run,0)}catch{/* not a receipt: leave the sample */}})();
 function empty(){$("#ledger").innerHTML='<div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div>'}
 
