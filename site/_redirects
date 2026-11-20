@@ -1,2 +1,11 @@
 # Cloudflare static-assets redirects. One rule per line: source destination status.
 # /scan is a page of this site now (worker.js); the room itself lives at https://scan.djzs.ai
+#
+# 2026-11-20: the free check moved from /try to the home page. 302, not 301, while the change is measured
+# (the keep/revert bound is in the PR that made the move); a browser caches a 301 and a revert could not reach it.
+/try / 302
+/try/ / 302
+/try.html / 302
+# Two guessable doors to the agent setup on the home page. The MCP server itself is https://mcp.djzs.ai/mcp.
+/mcp /#agents 302
+/agents /#agents 302
