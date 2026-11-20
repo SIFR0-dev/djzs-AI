@@ -9,3 +9,8 @@
 # Two guessable doors to the agent setup on the home page. The MCP server itself is https://mcp.djzs.ai/mcp.
 /mcp /#agents 302
 /agents /#agents 302
+# The docs (GitBook, synced from docs/ in the repo). Until docs.djzs.ai is published they open on GitHub;
+# then these three lines point at https://docs.djzs.ai/ and https://docs.djzs.ai/:splat instead.
+/docs https://github.com/SIFR0-dev/djzs-AI/tree/main/docs 302
+/docs/ https://github.com/SIFR0-dev/djzs-AI/tree/main/docs 302
+/docs/* https://github.com/SIFR0-dev/djzs-AI/blob/main/docs/:splat.md 302

@@ -39,9 +39,10 @@
   leverage, data sources); it does not read the venue's live price, funding or liquidation data.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
-  `query_agent_trust` (LIVE: on-chain trust score read from the DJZS subgraph: totalAudits,
-  pass/fail counts, failRate, latest verdict/risk, DJZS-S01/X01 flag counts, and an action of
-  PROCEED, HALT, or NO_HISTORY; HALT if failRate > 0.3 or S01/X01 fired more than once).
+  `query_agent_trust` (on-chain audit record read from the DJZS subgraph: total_audits, scored_audits
+  (PASS plus FAIL; WAIT is excluded and reported as wait_count), pass/fail counts, fail_rate and its
+  Wilson 95% lower bound, latest verdict/risk, DJZS-S01/X01 flag counts. Below 10 scored audits it
+  returns INSUFFICIENT_HISTORY and no rate. It returns evidence, not a decision: no threshold, no HALT).
 - Paying: verify_pm_trade and verify_perp_trade each cost 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
   network "base", and maxPaymentValue 2000000n; the library's default cap is 0.10 USDC and
@@ -108,6 +109,7 @@
 
 ## Discovery
 
+- Docs (every technical detail, with sources in the code): https://djzs.ai/docs
 - AI Catalog, with the MCP server card inline: https://djzs.ai/.well-known/ai-catalog.json
 - MCP Registry: ai.djzs/trust-mcp (remote, streamable HTTP, https://mcp.djzs.ai/mcp)
 - A2A agent card: https://mcp.djzs.ai/.well-known/agent.json

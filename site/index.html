@@ -120,15 +120,13 @@
   /* for agents */
   .agents{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
   .agents h2{font-size:clamp(19px,3vw,24px);font-weight:800;line-height:1.25;margin:0;max-width:40ch;text-wrap:balance}
-  .agents .block{margin:26px 0 0}
-  .agents h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--text);margin:0 0 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .tagk{font-size:11px;font-weight:800;letter-spacing:.1em;padding:1px 7px;border:1px solid currentColor}.tagk.free{color:var(--pass)}.tagk.paid{color:var(--wait)}.tagk.mcpk{color:var(--text)}
-  .agents p{color:var(--muted);font-size:14px;margin:10px 0 0;max-width:78ch}.agents p b{color:var(--text)}
-  .agents code{font-size:13px;color:var(--text)}
-  .agents pre{margin:10px 0 0;background:var(--well);border:1px solid var(--rule);padding:12px 14px;font-size:12.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}
-  .code-wrap{position:relative}.code-wrap pre{padding-right:70px}
-  .copy-btn{position:absolute;top:7px;right:7px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);background:var(--canvas);border:1px solid var(--rule);border-radius:0;padding:4px 8px;cursor:pointer;line-height:1}.copy-btn:hover{color:var(--text);border-color:var(--muted)}.copy-btn.copied{color:var(--pass);border-color:var(--pass)}
-  .boot{display:grid;gap:6px;margin:10px 0 0}.boot .row{display:grid;grid-template-columns:40px 120px 1fr;gap:12px;align-items:baseline;font-size:13px}.boot .ok{color:var(--pass);font-weight:700}.boot .k{color:var(--muted)}.boot .v{color:var(--text);overflow-wrap:anywhere}
+  .agents .mcp.big{margin:16px 0 0}
+  .ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:18px 0 0}
+  .way{border:1px solid var(--rule);background:var(--panel);padding:14px 16px}.way p{margin:10px 0 0;font-size:14.5px}
+  .docsline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:18px 0 0;font-size:13.5px;color:var(--muted)}
+  .rfields{display:flex;flex-wrap:wrap;gap:10px 14px;width:100%}.rfields label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+  .rfields input,.rfields select{font-family:var(--mono);font-size:16px;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:42px}.rfields input{width:min(320px,80vw)}.rfields input:focus,.rfields select:focus{outline:none;border-color:var(--pass)}
 
   footer{margin:44px 0 0;padding:18px 0 28px;border-top:1px solid var(--rule);color:var(--muted);font-size:12.5px;line-height:1.9}
   footer nav{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 0 12px}
@@ -149,7 +147,6 @@
     #run{width:100%}.controls .btn.ghost{flex:1 1 0}
     .ans{grid-template-columns:64px 1fr;gap:12px}
     .keys{grid-template-columns:1fr}
-    .boot .row{grid-template-columns:34px 1fr;gap:2px 10px}.boot .v{grid-column:2}
     .claim{padding:14px 16px;grid-template-columns:30px 1fr;gap:0 10px}
   }
 </style>
@@ -159,7 +156,7 @@
 <div class="wrap">
   <header class="top">
     <a class="brand" href="/" aria-label="DJZS home"><img src="/favicon.svg" alt="" width="24" height="24"><span>DJZS<span class="dot">.</span></span></a>
-    <nav class="site" aria-label="Site"><a href="/ruleset">Rules</a><a href="/verify">Verify</a><a href="/guide">Connect &rarr;</a></nav>
+    <nav class="site" aria-label="Site"><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
   </header>
 
   <main id="main">
@@ -220,7 +217,11 @@
         <p class="again" id="again" hidden><a href="#thesis" id="edit-link">Edit the idea</a>, then press <b>Check again</b>. Fixing a reason clears its flag. It does not make the trade good.</p>
         <details class="tech"><summary>Technical details (hashes, codes, ruleset)</summary><div class="keys" id="keys"></div></details>
         <div class="offer" id="offer">
-          <p class="why"><b>Want this on record?</b> A receipt runs the check again and writes it to Base under EAS with your wallet as the recipient. On a rare idea the paid run can differ from this one; the receipt records the paid run. Anyone can check it later without trusting DJZS. 2.00 USDC, whichever way the verdict goes.</p>
+          <p class="why"><b>Want this on record?</b> A receipt checks the idea again with the market and your side named, and writes the result to Base with your wallet as the recipient. Anyone can check it later without trusting DJZS. The receipt records the paid run, which can differ from this one. 2.00 USDC, whichever way the verdict goes.</p>
+          <div class="rfields">
+            <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="KXFEDDECISION-26DEC-H0"></label>
+            <label><span>Your side</span><select id="r-side"><option value="YES">YES</option><option value="NO">NO</option></select></label>
+          </div>
           <button type="button" class="btn" id="pay">Get the receipt &middot; 2.00 USDC</button>
           <select id="provider-pick" hidden aria-label="Wallet"></select>
           <span class="log" id="pay-log"></span>
@@ -244,68 +245,28 @@
         <div class="card"><p class="st"><b class="no">--</b>not yet</p><p class="ct">Reads like a careful person</p><p class="cb">Tuned on 41 cases the founder labeled. Blind labels from anyone else: 0.</p></div>
         <div class="card"><p class="st"><b class="no">--</b>not yet</p><p class="ct">Verdicts predict outcomes</p><p class="cb">9 graded of the 100 needed for a first read. 8 of the 9 are one Fed meeting, and all 9 were WAIT. No outcome claim until then. <a href="https://github.com/SIFR0-dev/djzs-AI/tree/main/tests/q3/records">The grades are in the repo.</a></p></div>
       </div>
-      <p class="after">The sealed records and their anchors are on <a href="/verify">Verify</a>. Every rule and weight is on <a href="/ruleset">Rules</a>.</p>
+      <p class="after">The sealed records and their anchors are on <a href="/verify">Verify</a>. Every rule and weight, and how each number was measured, is in the <a href="/docs/measured">docs</a>.</p>
     </section>
 
     <section class="agents" id="agents" aria-labelledby="ag-h">
       <p class="label">for AI agents</p>
-      <h2 id="ag-h">Your agent gets the same check: one POST, or the MCP server.</h2>
-
-      <div class="block">
-        <h3><span class="tagk free">FREE</span>One POST, no wallet</h3>
-        <p>Send the idea as plain text with an id your agent keeps: any 32 lowercase hex characters. Three checks per id per UTC day, or five per wallet if you sign instead (<a href="https://mcp.djzs.ai/try/quota">the text to sign</a>). Same engine as the paid check; nothing is written on chain.</p>
-<pre>POST https://mcp.djzs.ai/try/verdict
-content-type: application/json
-
-{
-  "kind": "pm",
-  "anon": "&lt;32 lowercase hex characters your agent keeps&gt;",
-  "intent": { "thesis": "Kalshi, [the market question]. I am buying YES at [price]. [Source] puts it at [number] as of [date]. I am wrong if [event] happens before it settles." }
-}</pre>
-        <p><code>kind</code> is <code>"pm"</code> for a prediction-market bet and <code>"perp"</code> for a perp or spot trade. Back come <code>verdict</code> (PASS, WAIT or FAIL), <code>flags_detail</code> (what fired, in plain words), <code>unknown_fields</code> (what could not be settled), <code>risk_score</code> and <code>verdict_hash</code>. Up to 4 KB of text. Checks left today: <code>GET https://mcp.djzs.ai/try/quota?anon=&lt;id&gt;</code>.</p>
+      <h2 id="ag-h">Your agent can run the same check.</h2>
+      <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
+      <div class="ways">
+        <div class="way"><span class="tagk free">FREE</span><p>One POST with an id your agent keeps. Three checks a day, no wallet. <a href="/docs/agents/free-check">How &rarr;</a></p></div>
+        <div class="way"><span class="tagk paid">2.00 USDC</span><p>Through the MCP server above, or plain HTTP with x402 or MPP. Each check leaves a record on Base or Irys that anyone can check. <a href="/docs/agents/mcp">Setup &rarr;</a></p></div>
       </div>
-
-      <div class="block">
-        <h3><span class="tagk mcpk">MCP</span>Connect once, check before every order</h3>
-        <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
-<pre>claude mcp add --transport http djzs-trust https://mcp.djzs.ai/mcp</pre>
-<pre>{ "mcpServers": { "djzs-trust": { "type": "http", "url": "https://mcp.djzs.ai/mcp" } } }</pre>
-        <p>Streamable HTTP, no sign-in. <code>verify_pm_trade</code> and <code>verify_perp_trade</code> cost <b>2.00 USDC per check</b> over x402 on Base and come with a receipt anyone can check; <code>query_agent_trust</code> and <code>query_pol_certificates</code> are free. Listed in the MCP Registry as <code>ai.djzs/trust-mcp</code>. Paying from an MCP client: <a href="/guide#pay">Connect</a>.</p>
-      </div>
-
-      <div class="block">
-        <h3><span class="tagk paid">2.00 USDC</span>The receipt over plain HTTP</h3>
-<pre>POST https://mcp.djzs.ai/x402/verify_pm_trade     (or /x402/verify_perp_trade)
-{ "intent": { "thesis": "..." } }
-
-402: pay 2.00 USDC on Base (x402 exact, or MPP) and send it again
-200: the verdict plus eas_uid, its attestation on Base</pre>
-        <p>An idea of the wrong kind is refused and not charged. If the attestation write fails, the verdict still stands and <code>eas_error</code> says so. Contract: <a href="https://mcp.djzs.ai/openapi.json">openapi.json</a>. Check any receipt without trusting DJZS at <a href="/verify">Verify</a>.</p>
-      </div>
-
-      <div class="block">
-        <h3>Find it by machine</h3>
-        <div class="boot">
-          <div class="row"><span class="ok">OK</span><span class="k">llms.txt</span><span class="v"><a href="/llms.txt">djzs.ai/llms.txt</a></span></div>
-          <div class="row"><span class="ok">OK</span><span class="k">AI catalog</span><span class="v"><a href="/.well-known/ai-catalog.json">djzs.ai/.well-known/ai-catalog.json</a> &middot; the MCP server card, inline</span></div>
-          <div class="row"><span class="ok">OK</span><span class="k">agent card</span><span class="v"><a href="https://mcp.djzs.ai/.well-known/agent.json">mcp.djzs.ai/.well-known/agent.json</a></span></div>
-          <div class="row"><span class="ok">OK</span><span class="k">OpenAPI</span><span class="v"><a href="https://mcp.djzs.ai/openapi.json">mcp.djzs.ai/openapi.json</a></span></div>
-          <div class="row"><span class="ok">OK</span><span class="k">x402</span><span class="v"><a href="/.well-known/x402.json">djzs.ai/.well-known/x402.json</a></span></div>
-        </div>
-      </div>
+      <p class="docsline"><a class="btn" href="/docs">Read the docs &rarr;</a><span>For language models: <a href="/llms.txt">djzs.ai/llms.txt</a></span></p>
     </section>
   </main>
 
   <footer>
-    <nav aria-label="More"><a href="/scan">Scan room</a><a href="/builders">Builders</a><a href="/build">Build</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai">X @Djzs_ai</a></nav>
-    <div class="k"><b>free verdict</b>: same engine, same ruleset, not attested, not anchored. Extraction contract stated in every response.</div>
-    <div class="k"><b>receipt</b>: EAS on Base, attester 0xfB0e&hellip;7824, your wallet as recipient. Under schema v3 the verdict is re-derived on chain from the attested tally.</div>
+    <nav aria-label="More"><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/builders">Builders</a><a href="/build">Build</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai">X @Djzs_ai</a></nav>
     <div class="k"><b>audit, not advice</b>: a verdict says whether the idea is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. An example market, when one is loaded, is real; it is not a recommendation. <a href="/terms">Terms</a>.</div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai &middot; audit before act</p>
   </footer>
 </div>
 
-<script src="/copy.js" defer></script>
 <script type="module">
 // ── what this page believes it is buying. Restated, not fetched: a drift in the quote fails loudly before anything is signed.
 const WORKER = "https://mcp.djzs.ai";
@@ -362,7 +323,7 @@ function walletErr(e){ if (e && (e.code === 4001 || /rejected|denied/i.test(e.me
 function plain(code, name){ return (name ?? code ?? "").replace(/^DJZS-/, "").replace(/_/g, " ").toLowerCase(); }
 function scrollToEl(el){ el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }); }
 
-// ── copy the MCP address (the <pre> blocks get their own button from /copy.js)
+// ── copy the MCP address
 for (const b of document.querySelectorAll("button.copy[data-copy]")) {
   b.addEventListener("click", async () => {
     const text = b.dataset.copy; let ok = false;
@@ -562,6 +523,7 @@ function renderVerdict(b, prev){
   $("again").hidden = st === "pass" || st === "refused";
   $("keys").innerHTML = st === "refused" ? "" : `<span>codes</span><b>${esc((b.flags ?? []).join(", ") || "none")}</b><span>ruleset</span><b>${esc(b.ruleset ?? "")}</b><span>intent_sha256</span><b>${esc(b.intent_sha256 ?? "")}</b><span>intent_hash</span><b>${esc(b.intent_hash ?? "n/a (free-text intent)")}</b><span>verdict_hash</span><b>${esc(b.verdict_hash ?? "")}</b><span>attested</span><b>no. Free verdicts are not written anywhere.</b>`;
   $("offer").hidden = st === "refused";
+  setReceiptFields(kind);
   $("pay").disabled = false; log("pay-log", "");
   $("run").textContent = "Check again";
   const ls = $("last-status");
@@ -569,6 +531,15 @@ function renderVerdict(b, prev){
   ls.hidden = false;
   scrollToEl($("out"));
   v.focus({ preventScroll: true });
+}
+
+// ── the receipt's two named fields follow the kind of the last check: a market id and YES/NO, or an instrument and LONG/SHORT.
+function setReceiptFields(kind){
+  const perp = kind === "perp";
+  $("r-market-label").textContent = perp ? "Instrument" : "Market id on the venue";
+  $("r-market").placeholder = perp ? "BTC-PERP" : "KXFEDDECISION-26DEC-H0";
+  const want = perp ? ["LONG", "SHORT"] : ["YES", "NO"], sel = $("r-side");
+  if ([...sel.options].map((o) => o.value).join() !== want.join()) { sel.innerHTML = want.map((v) => `<option value="${v}">${v}</option>`).join(""); $("r-market").value = ""; }
 }
 
 // ── the receipt. This is the only place a wallet appears. x402 v2, exact EVM, EIP-3009 authorization signed in the wallet.
@@ -593,7 +564,13 @@ async function ensureBase(){
 }
 $("pay").addEventListener("click", async () => {
   if (!state.last) return;
-  const { kind, intent } = state.last;
+  const { kind } = state.last;
+  // The paid route binds its record (intent_hash) to a market and a side, so a bare thesis cannot be attested:
+  // it is refused before any money moves. The receipt therefore carries the market and side the person names here.
+  const market = $("r-market").value.trim();
+  if (market.length < 2) { log("pay-log", kind === "perp" ? "Name the instrument first, for example BTC-PERP." : "Name the market id on the venue first, for example KXFEDDECISION-26DEC-H0.", "xx"); $("r-market").focus(); return; }
+  const side = $("r-side").value, thesis = state.last.intent.thesis;
+  const intent = kind === "perp" ? { instrument: market, side, thesis } : { market, side, thesis };
   const url = ROUTE[kind];
   const body = JSON.stringify({ intent });
   const btn = $("pay"); btn.disabled = true;
