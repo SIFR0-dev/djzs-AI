@@ -22,16 +22,20 @@ import { BREAKEVEN_MIN_EDGE_E4, breakevenFloor } from "./floor";
  * the engine, risk_score, the verdict, verdict_hash or the anchored certificate.
  */
 export const PERP_BRACKET_INPUT = z.object({
-  side: z.enum(["long", "short"]),
-  entry: z.number().positive(),
-  stop: z.number().positive(),
-  target: z.number().positive(),
+  side: z.enum(["long", "short"])
+    .describe("Direction of the position: long profits if price rises, short if it falls"),
+  entry: z.number().positive()
+    .describe("Planned entry price, in the instrument's quote currency"),
+  stop: z.number().positive()
+    .describe("Stop-loss price, in the same units as entry"),
+  target: z.number().positive()
+    .describe("Take-profit price, in the same units as entry"),
   hit_rate_pct: z.number().min(1).max(99).optional()
     .describe("The thesis's stated probability, in percent, that the target prints before the stop"),
   taker_fee_bps: z.number().min(0).max(100)
-    .describe("The venue's taker fee in basis points, charged on entry and on exit"),
+    .describe("The venue's taker fee in basis points; the break-even calculation charges it on entry and again on exit"),
   funding_rate_8h: z.number().min(-0.05).max(0.05).optional()
-    .describe("Funding rate per 8 hours as a fraction (0.0001 = 0.01%); longs pay a positive rate. Counted only with sigma_annual"),
+    .describe("Funding rate per 8-hour interval as a fraction (0.0001 means 0.01%); a positive rate is paid by longs. Used only when sigma_annual is also sent"),
   sigma_annual: z.number().positive().max(10).optional()
     .describe("Annualized volatility as a fraction (0.45 = 45%); sets the expected hold, and so the funding paid"),
 });
@@ -41,7 +45,7 @@ export const VERIFY_PERP_TRADE_INPUT = {
   intent: z
     .string()
     .min(10, "intent must be at least 10 characters")
-    .describe("Free-text perpetual or spot trade thesis to audit: direction, size, leverage, entry, stop, target, venue, and the REASON"),
+    .describe("The trade as the user or upstream agent stated it, in plain text: instrument, direction, size, leverage, entry, stop, target, venue, and the reason the price should move that way. A position sent with no reason FAILS"),
   bracket: PERP_BRACKET_INPUT.optional()
     .describe("Optional exact bracket (side, entry, stop, target, taker_fee_bps, optional hit_rate_pct / funding_rate_8h / sigma_annual). Returns the break-even hit rate in the non-scoring mechanics block; never enters the verdict or its hash"),
 };

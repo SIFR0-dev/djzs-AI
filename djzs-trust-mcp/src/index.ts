@@ -238,6 +238,119 @@ function hardenPaidTool(tool: RegisteredTool): void {
   tool.update({ callback: (async (...a: unknown[]) => cleanPaymentResult(await inner(...a))) as never })
 }
 
+/**
+ * Behavior hints, set from what the handlers do (2026-11-20):
+ * - the two query tools only read the public Irys index / DJZS subgraph: read-only, repeatable,
+ *   external (open world);
+ * - the two paid audits settle a USDC payment, anchor a new permanent certificate under a fresh
+ *   audit id and, with agent_address, append an on-chain trust-score record. Every one of those
+ *   writes is additive (nothing is overwritten or deleted), so destructiveHint is false; a repeat
+ *   call pays and anchors again, so idempotentHint is false.
+ */
+const READ_ONLY_EXTERNAL = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+const PAID_AUDIT_HINTS = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }
+
+/**
+ * Output schemas. Loose objects with only the fields the handlers always set marked required: a
+ * paid result is validated AFTER settlement, so an over-strict schema would turn a paid verdict
+ * into an error. Extra fields pass through.
+ */
+const POL_CERTIFICATES_OUTPUT = z.looseObject({
+  total_returned: z.number().describe("Number of certificates in this response"),
+  pass_count: z.number(),
+  fail_count: z.number(),
+  wait_count: z.number(),
+  other_verdict_count: z.number().describe("Certificates whose verdict is none of PASS, FAIL, WAIT"),
+  target_system_unverified_count: z.number().describe("Certificates whose target_system carries the unverified: prefix"),
+  window: z.looseObject({
+    from_ms: z.number().describe("Window start actually searched, Unix ms"),
+    to_ms: z.number().describe("Window end, Unix ms"),
+    note: z.string().optional(),
+  }),
+  notes: z.record(z.string(), z.string()).optional(),
+  certificates: z.array(z.looseObject({
+    irys_id: z.string().describe("Irys transaction id of the certificate"),
+    irys_url: z.string().describe("Gateway URL to fetch the full certificate"),
+    timestamp: z.unknown().describe("Index timestamp as returned by Irys"),
+    verdict: z.string().describe("PASS, FAIL, WAIT, or unknown"),
+    tier: z.string(),
+    target_system: z.string().nullable().describe("Signed identifier, unverified:<value>, or null"),
+    target_system_verified: z.boolean(),
+    audit_id: z.string(),
+    corrections: z.array(z.unknown()).describe("Correction Records anchored against this certificate"),
+  })),
+})
+
+const AGENT_TRUST_OUTPUT = z.looseObject({
+  agent: z.string().describe("The queried address, lowercased"),
+  status: z.string().describe("no_history, INSUFFICIENT_HISTORY (under 10 scored audits, no rate returned) or OK"),
+  trust: z.string().optional(),
+  action: z.string().optional(),
+  message: z.string().optional(),
+  total_audits: z.number().optional(),
+  scored_audits: z.number().optional().describe("PASS plus FAIL audits; WAIT is excluded"),
+  pass_count: z.number().optional(),
+  fail_count: z.number().optional(),
+  wait_count: z.number().optional(),
+  latest_verdict: z.unknown().optional(),
+  latest_risk_score: z.number().optional(),
+  flag_counts: z.record(z.string(), z.number()).optional(),
+  subgraph_counters: z.looseObject({}).optional(),
+  fail_rate: z.number().nullable().optional().describe("FAIL / scored_audits; null below the minimum history"),
+  fail_rate_lower_bound_95: z.number().nullable().optional().describe("Wilson 95% lower bound on the fail rate"),
+  detail: z.string().optional(),
+  interpretation: z.string().optional(),
+})
+
+const TRADE_AUDIT_OUTPUT = z.looseObject({
+  schema_version: z.string(),
+  tool: z.string(),
+  in_scope: z.boolean(),
+  taxonomy: z.looseObject({}).optional().describe("Ruleset and extraction-contract versions and hashes the verdict ran under"),
+  verdict: z.string().describe("PASS, WAIT or FAIL"),
+  action: z.string().describe("PROCEED for PASS, HALT for WAIT, FAIL for FAIL"),
+  risk_score: z.number(),
+  flags: z.array(z.unknown()).optional().describe("Defects found, each with its DJZS code"),
+  unknown_fields: z.array(z.unknown()).optional().describe("Fields that could not be resolved from the thesis text"),
+  disagreements: z.unknown().optional(),
+  verdict_hash: z.string().describe("Reproducible hash binding the verdict to its inputs"),
+  tally: z.unknown().optional(),
+  extraction_failsafe: z.boolean().optional(),
+  halt_reason: z.string().optional().describe("Present on WAIT: what to clarify before re-auditing"),
+  fail_reason: z.string().optional(),
+  mechanics: z.looseObject({}).optional().describe("verify_perp_trade only: non-scoring execution mechanics"),
+  pol_certificate: z.looseObject({}).optional().describe("Anchoring status and Irys id of the Proof-of-Logic certificate"),
+  trust_score: z.looseObject({}).optional().describe("On-chain trust-score write status, when agent_address was given"),
+})
+
+/**
+ * Handshake metadata (MCP Implementation + server instructions), returned in the initialize result.
+ * name/version are unchanged; the rest is what clients and directories display. The icons are the
+ * djzs.ai site marks (an SVG plus the 512px PNG), served from the site Worker, not from this one.
+ */
+const SERVER_INFO = {
+  name: "djzs-trust-mcp",
+  version: "1.0.0",
+  title: "DJZS Trade Audit",
+  description:
+    "Pre-execution audit for AI trading agents. Checks a prediction-market, perpetual or spot trade thesis for a stated reason, " +
+    "a falsification condition and bounded risk before capital is committed, returns PASS, WAIT or FAIL with a reproducible " +
+    "verdict hash, and looks up an agent's audit certificates and trust score.",
+  websiteUrl: "https://djzs.ai",
+  icons: [
+    { src: "https://djzs.ai/favicon.svg", mimeType: "image/svg+xml", sizes: ["any"] },
+    { src: "https://djzs.ai/favicon-512.png", mimeType: "image/png", sizes: ["512x512"] },
+  ],
+}
+
+const SERVER_INSTRUCTIONS = [
+  "DJZS audits the reasoning behind a trade before it executes. It does not predict prices or place orders.",
+  "1. Checking a counterparty agent (free, read-only): call query_agent_trust with its wallet address for its pass/fail record, and query_pol_certificates to read its individual audit certificates.",
+  `2. Before opening, sizing or increasing a position: send the thesis in the user's own words. Prediction-market bets go to verify_pm_trade; perpetual and spot trades go to verify_perp_trade. Each audit costs ${VERIFY_PM_TRADE_PRICE_USD.toFixed(2)} USDC via x402 on Base and anchors a permanent certificate, so confirm with the user before calling. A thesis sent to the wrong tool is refused without charge.`,
+  "3. Act on the verdict: PASS (action PROCEED) means the thesis is complete and bounded; WAIT (action HALT) means fields named in halt_reason could not be resolved, so clarify and re-audit; FAIL means do not execute as stated until the flagged defects are fixed.",
+  "A verdict grades whether the reasoning is stated, falsifiable and bounded, not whether the trade will win.",
+].join("\n")
+
 function buildServer(env: Env): McpServer {
   // A10: the facilitator is CDP, its config (url + createAuthHeaders JWT signer)
   // built from request-scoped secrets. createFacilitatorConfig takes the keys
@@ -245,7 +358,7 @@ function buildServer(env: Env): McpServer {
   // config whose auth cannot sign -> the facilitator refuses -> the paid tool
   // errors BEFORE the handler runs (fail-closed: no free audit is ever served);
   // free tools are unaffected because withX402 gates only the paid tool.
-  const server = withX402(new McpServer({ name: "djzs-trust-mcp", version: "1.0.0" }), {
+  const server = withX402(new McpServer(SERVER_INFO, { instructions: SERVER_INSTRUCTIONS }), {
     network: X402_NETWORK,
     recipient: X402_RECIPIENT,
     facilitator: createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)
@@ -255,13 +368,15 @@ function buildServer(env: Env): McpServer {
     title: "Query DJZS ProofOfLogic Certificates",
     description: `Query immutable ProofOfLogic certificates stored on Irys Datachain by DJZS Protocol. USE THIS TOOL when you need to verify audit history for an agent or project before delegating work, check FAIL verdicts, or retrieve certificates by Irys tx ID. DO NOT use for on-chain trust scores — use query_agent_trust for those.`,
     inputSchema: {
-      targetSystem: z.string().optional().describe("Project name or wallet address"),
-      verdict: z.enum(["PASS", "FAIL"]).optional().describe("Filter by verdict"),
-      tier: z.enum(["micro", "founder", "treasury"]).optional().describe("Filter by tier"),
-      limit: z.number().min(1).max(100).default(20).describe("Number of results"),
-      from_ms: z.number().int().optional().describe("Window start (epoch ms). Default path auto-narrows (14d then 3d) to stay under the mainnet index timeout; pass an explicit value to reach older certificates (used as-is)."),
-      to_ms: z.number().int().optional().describe("Window end (epoch ms). Defaults to now + 1h.")
-    }
+      targetSystem: z.string().optional().describe("Return only certificates whose Target-System tag equals this agent or project identifier (a project name or wallet address), matched exactly as written on the certificate"),
+      verdict: z.enum(["PASS", "FAIL"]).optional().describe("Return only certificates with this audit outcome"),
+      tier: z.enum(["micro", "founder", "treasury"]).optional().describe("Return only certificates carrying this tier tag"),
+      limit: z.number().min(1).max(100).default(20).describe("Maximum number of certificates to return, newest first"),
+      from_ms: z.number().int().optional().describe("Start of the search window, as Unix time in milliseconds. When omitted the server searches the last 14 days, then the last 3 days if the wider search fails; set it to reach older certificates, and it is used as given"),
+      to_ms: z.number().int().optional().describe("End of the search window, as Unix time in milliseconds. When omitted it is one hour after the current time")
+    },
+    outputSchema: POL_CERTIFICATES_OUTPUT,
+    annotations: READ_ONLY_EXTERNAL,
   }, guardTool("query_pol_certificates", async ({ targetSystem, verdict, tier, limit, from_ms, to_ms }) => {
     const tags: Array<{ name: string; values: string[] }> = [
       { name: "Protocol", values: ["ProofOfLogic"] },
@@ -336,8 +451,7 @@ function buildServer(env: Env): McpServer {
     // named rather than implied.
     const countOf = (v: string) => certs.filter((c: any) => c.verdict === v).length
     const pass_count = countOf("PASS"), fail_count = countOf("FAIL"), wait_count = countOf("WAIT")
-    return {
-      content: [{ type: "text" as const, text: JSON.stringify({
+    const out = {
         total_returned: certs.length,
         pass_count, fail_count, wait_count,
         other_verdict_count: certs.length - pass_count - fail_count - wait_count,
@@ -348,18 +462,20 @@ function buildServer(env: Env): McpServer {
           corrections: "A non-empty corrections array lists Correction Records anchored against this certificate. The certificate itself is immutable and is never rewritten."
         },
         certificates: certs
-      }, null, 2) }]
     }
+    return { content: [{ type: "text" as const, text: JSON.stringify(out, null, 2) }], structuredContent: out }
   }))
 
   server.registerTool("query_agent_trust", {
-    title: "Query DJZS Agent Trust Score",
+    title: "Query Agent Trust Score",
     description: `Query an agent's DJZS trust score, aggregated on-chain (Base mainnet) from its audit history and indexed via the DJZS subgraph. USE BEFORE delegating work, releasing escrow, or executing agent transactions. Returns scored_audits, pass/fail counts, the raw fail rate, and a Wilson 95% lower bound on it, plus latest verdict/risk and DJZS-S01/DJZS-X01 flag counts. WAIT verdicts are abstentions: they are excluded from BOTH the numerator and the denominator of the fail rate and are reported separately as wait_count. Below 10 scored audits the tool returns INSUFFICIENT_HISTORY and NO rate - a 0-of-0 record is not evidence of reliability and must not compare as better than a 3-of-50. This tool returns evidence, not a decision: it applies no threshold and emits no HALT. Interpreting the bound against your own risk tolerance is the caller's job.`,
     inputSchema: {
-      agentAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").describe("Agent wallet address (0x-prefixed)")
-    }
+      agentAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").describe("Wallet address of the agent whose audit record you want, such as a counterparty you are about to delegate work to or pay")
+    },
+    outputSchema: AGENT_TRUST_OUTPUT,
+    annotations: READ_ONLY_EXTERNAL,
   }, guardTool("query_agent_trust", async ({ agentAddress }) => {
-    const jsonText = (o: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(o, null, 2) }] })
+    const jsonText = (o: Record<string, unknown>) => ({ content: [{ type: "text" as const, text: JSON.stringify(o, null, 2) }], structuredContent: o })
     if (!env.SUBGRAPH_URL) {
       return { ...jsonText({ status: "unavailable", detail: "SUBGRAPH_URL not configured on this Worker; trust index not wired." }), isError: true }
     }
@@ -491,11 +607,11 @@ function buildServer(env: Env): McpServer {
       // omitted entirely. A free-text box on a permanent record is how a
       // certificate came to name a company with no involvement in the audit.
       target_system: z.string().min(1).max(128).optional()
-        .describe("Optional agent/project identifier. Written to the certificate ONLY with a matching target_system_subject + target_system_signature; unsigned values are DISCARDED, not stored"),
+        .describe("Agent or project name to record on the anchored certificate. It is stored ONLY when target_system_subject and target_system_signature are also sent and the signature verifies; otherwise it is DISCARDED, not stored"),
       target_system_subject: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional()
-        .describe("Address that signed the target_system claim. Must be the address that recovers from target_system_signature"),
+        .describe("Wallet address that signed the target_system claim; the server checks that target_system_signature recovers to it"),
       target_system_signature: z.string().regex(/^0x[0-9a-fA-F]{130}$/).optional()
-        .describe(`EIP-191 personal_sign over "${TARGET_SYSTEM_CLAIM_VERSION} target-system claim\\nsubject: <lowercased subject>\\ntarget_system: <value>"`),
+        .describe(`Signature by target_system_subject proving the claim: EIP-191 personal_sign over the text "${TARGET_SYSTEM_CLAIM_VERSION} target-system claim\\nsubject: <lowercased subject>\\ntarget_system: <value>"`),
       // D1 ruling 2026-07-16: optional 0x agent wallet. Present => this audit's
       // verdict is written on-chain to that agent's DJZS trust score (fail-open,
       // after the cert anchors). Absent => Irys cert only, no on-chain score.
@@ -503,7 +619,7 @@ function buildServer(env: Env): McpServer {
       agent_address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").optional()
         .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
-    { title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)" },
+    { title: "Verify Prediction-Market Trade", ...PAID_AUDIT_HINTS },
     guardTool("verify_pm_trade", async ({ intent, target_system, target_system_subject, target_system_signature, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
@@ -592,15 +708,18 @@ function buildServer(env: Env): McpServer {
     let response: Record<string, unknown> = result
     if (pol_certificate) response = { ...response, pol_certificate }
     if (trust_score) response = { ...response, trust_score }
-    return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
+    return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }], structuredContent: response }
     })
   )
 
   // S6a — top-level title, alongside the annotations.title kept above.
   hardenPaidTool(verifyPmTradeTool)
   verifyPmTradeTool.update({
-    title: "Verify Prediction-Market Trade Thesis (DJZS pre-execution audit)",
+    title: "Verify Prediction-Market Trade",
   })
+  // paidTool takes no outputSchema; set it on the RegisteredTool (update() would rebuild it from a raw
+  // shape, which drops the loose-object setting). Validated only on non-error results.
+  verifyPmTradeTool.outputSchema = TRADE_AUDIT_OUTPUT
 
   // verify_perp_trade — Phase 1 (2026-09-08). Cloned from the verify_pm_trade block above at fill time; same payment rail, same PoL/trust pipeline, perp extraction prompt + perp engine path.
   const verifyPerpTradeTool = server.paidTool(
@@ -623,11 +742,11 @@ function buildServer(env: Env): McpServer {
       // omitted entirely. A free-text box on a permanent record is how a
       // certificate came to name a company with no involvement in the audit.
       target_system: z.string().min(1).max(128).optional()
-        .describe("Optional agent/project identifier. Written to the certificate ONLY with a matching target_system_subject + target_system_signature; unsigned values are DISCARDED, not stored"),
+        .describe("Agent or project name to record on the anchored certificate. It is stored ONLY when target_system_subject and target_system_signature are also sent and the signature verifies; otherwise it is DISCARDED, not stored"),
       target_system_subject: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional()
-        .describe("Address that signed the target_system claim. Must be the address that recovers from target_system_signature"),
+        .describe("Wallet address that signed the target_system claim; the server checks that target_system_signature recovers to it"),
       target_system_signature: z.string().regex(/^0x[0-9a-fA-F]{130}$/).optional()
-        .describe(`EIP-191 personal_sign over "${TARGET_SYSTEM_CLAIM_VERSION} target-system claim\\nsubject: <lowercased subject>\\ntarget_system: <value>"`),
+        .describe(`Signature by target_system_subject proving the claim: EIP-191 personal_sign over the text "${TARGET_SYSTEM_CLAIM_VERSION} target-system claim\\nsubject: <lowercased subject>\\ntarget_system: <value>"`),
       // D1 ruling 2026-07-16: optional 0x agent wallet. Present => this audit's
       // verdict is written on-chain to that agent's DJZS trust score (fail-open,
       // after the cert anchors). Absent => Irys cert only, no on-chain score.
@@ -635,7 +754,7 @@ function buildServer(env: Env): McpServer {
       agent_address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x-prefixed 20-byte address").optional()
         .describe("Optional agent wallet (0x). If set, this audit updates that agent's on-chain DJZS trust score")
     },
-    { title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)" },
+    { title: "Verify Perpetual or Spot Trade", ...PAID_AUDIT_HINTS },
     guardTool("verify_perp_trade", async ({ intent, bracket, target_system, target_system_subject, target_system_signature, agent_address }) => {
     if (!env.ANTHROPIC_API_KEY) {
       return {
@@ -725,15 +844,16 @@ function buildServer(env: Env): McpServer {
     let response: Record<string, unknown> = result
     if (pol_certificate) response = { ...response, pol_certificate }
     if (trust_score) response = { ...response, trust_score }
-    return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }] }
+    return { content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }], structuredContent: response }
     })
   )
 
   // S6a — top-level title, alongside the annotations.title kept above.
   hardenPaidTool(verifyPerpTradeTool)
   verifyPerpTradeTool.update({
-    title: "Verify Perpetual / Spot Trade Thesis (DJZS pre-execution audit)",
+    title: "Verify Perpetual or Spot Trade",
   })
+  verifyPerpTradeTool.outputSchema = TRADE_AUDIT_OUTPUT
 
   return server
 }

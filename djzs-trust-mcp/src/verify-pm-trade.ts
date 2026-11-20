@@ -29,7 +29,7 @@ export const VERIFY_PM_TRADE_INPUT = {
   intent: z
     .string()
     .min(10, "intent must be at least 10 characters")
-    .describe("Free-text prediction-market trade thesis to audit"),
+    .describe("The prediction-market bet as the user or upstream agent stated it, in plain text: the market, the side, the reason, the probability and where it comes from, the size, and what would prove the bet wrong. Send the original wording; the audit judges only what is written"),
 };
 
 /**

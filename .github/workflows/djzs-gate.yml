@@ -83,6 +83,11 @@ jobs:
         working-directory: djzs-trust-mcp
         timeout-minutes: 8
         env: { DJZS_BUNDLE: /tmp/dry/index.js }
+      - name: MCP metadata — serverInfo, instructions, tool hints and output schemas; successful calls validate against their schemas (built bundle in workerd)
+        run: npx tsx test/mcp-metadata.bundle.test.mjs
+        working-directory: djzs-trust-mcp
+        timeout-minutes: 5
+        env: { DJZS_BUNDLE: /tmp/dry/index.js }
       - name: Predeploy guard — refuses a dirty tree or a HEAD that is not origin/main; wired as wrangler's own [build] step
         run: npx tsx test/predeploy-guard.test.mjs
         working-directory: djzs-trust-mcp
