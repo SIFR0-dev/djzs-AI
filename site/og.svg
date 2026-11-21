@@ -33,7 +33,7 @@
   <rect x="1058" y="270" width="26" height="50" fill="#3DFF88"/>
 
   <!-- what you get -->
-  <text x="70" y="378" font-size="28" class="text">Paste a trade idea. Get the verdict and the line to fix.</text>
+  <text x="70" y="378" font-size="28" class="text">Narratives move markets. Check your thesis first.</text>
 
   <!-- verdict trio -->
   <g font-size="44" class="b">
