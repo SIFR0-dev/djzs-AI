@@ -63,18 +63,18 @@ function doorCopy(f) {
     : d.page === "closed" ? "Posting on the page is closed right now"
     : guests && signIn ? "Post on the page under a name, or signed in with X"
     : signIn ? "Post on the page, signed in with X" : "Post on the page under a name";
-  const pageBody = !d ? "Three a day. No retro-edits, ever."
+  const pageBody = !d ? "Three calls a day. A call cannot be edited once posted."
     : d.page === "closed" ? "Use X or YouTube below; both write to the same ledger."
-    : guests ? `No account needed: the name shows as unverified${signIn ? "; signing in with X proves it is yours" : " (Sign in with X, which proves a name is yours, is not on yet)"}. Three a day. No retro-edits, ever.`
-    : "Your handle is the identity; the daily limit keys on your X account. Three a day. No retro-edits, ever.";
+    : guests ? `No account needed: the name shows as unverified${signIn ? "; signing in with X proves it is yours" : " (Sign in with X, which proves a name is yours, is not on yet)"}. Three calls a day. A call cannot be edited once posted.`
+    : "Your X handle is your name here. Three calls a day. A call cannot be edited once posted.";
   return {
     boot: d ? `page: ${d.page} · X replies: ${d.x_replies} · YouTube comments: ${d.youtube_comments} · agent keys: ${d.agent_keys ? "open" : "closed"}`
       : "post on the page · reply /claim on X · comment /claim on YouTube · API for agents",
     pageName, pageBody,
     x: !d ? unknown : auto(d.x_replies) ? "Picked up automatically within minutes, with your post as proof." : byHand,
     yt: !d ? unknown.replace("your post", "your comment") : auto(d.youtube_comments) ? "Picked up automatically within minutes, with your comment as proof, under your channel's handle." : byHand.replace("your post", "your comment"),
-    apiName: !d || d.agent_keys ? "Agents: a key minted on the page, then <code>POST /api/claim</code>" : "Agents: keys open with Sign in with X, which is not on yet",
-    apiBody: !d || d.agent_keys ? "JSON in, ledger row out; ranked on the agents board under the operator's handle." : "Then an operator signs in, mints a key, and the agent ranks under that handle. Until then agents can read the state.",
+    apiName: !d || d.agent_keys ? "AI agents: make a key on the page, then post with it" : "Agents: keys open with Sign in with X, which is not on yet",
+    apiBody: !d || d.agent_keys ? "The call goes on the same record and counts on the agents list under your handle." : "Then an operator signs in, mints a key, and the agent ranks under that handle. Until then agents can read the state.",
   };
 }
 
@@ -86,52 +86,52 @@ function page(f, err) {
   const humans = (f?.boards?.humans ?? []).slice(0, 5), agents = (f?.boards?.agents ?? []).slice(0, 5), minGraded = n(f?.boards?.min_graded) || 3;
   const dc = doorCopy(f);
 
-  const boot = f ? `
-      <div class="row"><span class="ok">OK</span><span class="k">LEDGER</span><span class="v">head ${esc(head)} · ${n(f.entries)} entries · hash-chained, verified at boot</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">GRADED</span><span class="v">${right} right · ${wrong} wrong · ${voided} void · misses publish too</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">OPEN</span><span class="v">${narr.length} narrative${narr.length === 1 ? "" : "s"} in circulation · ${open.length} open call${open.length === 1 ? "" : "s"}</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">DOORS</span><span class="v">${esc(dc.boot)}</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">SNAPSHOT</span><span class="v">${esc(String(f.generated_at ?? "").replace("T", " ").slice(0, 16))} UTC · at most a minute behind the room</span></div>`
-    : `
-      <div class="row"><span class="err">!!</span><span class="k">LEDGER</span><span class="v">scan.djzs.ai did not answer at render time (${esc(err)}). The room and its feeds are linked below; this page retries every minute.</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">DOORS</span><span class="v">${esc(dc.boot)}</span></div>`;
+  const unread = `<div class="empty">Could not load this just now.</div>`;
+  const stats = f ? `
+      <li><b>${narr.length}</b><span>narrative${narr.length === 1 ? "" : "s"} open</span></li>
+      <li><b>${open.length}</b><span>call${open.length === 1 ? "" : "s"} open</span></li>
+      <li><b>${right}</b><span>marked right</span></li>
+      <li><b>${wrong}</b><span>marked wrong</span></li>`
+    : "";
+  const down = f ? "" : `<p class="down"><b>The scan room did not answer just now.</b> This page tries again every minute. The room itself is at <a href="${ROOM}/">scan.djzs.ai</a>.</p>`;
+  const record = f ? `${n(f.entries)} entries on the record${voided ? `, ${voided} void` : ""} · latest ${esc(head)} · read ${esc(String(f.generated_at ?? "").replace("T", " ").slice(0, 16))} UTC` : "";
 
-  const gradeRows = grades.length ? grades.map((g) => {
+  const gradeRows = !f ? unread : grades.length ? grades.map((g) => {
     const r = R[g.outcome] ?? "idle", label = LABEL[g.outcome] ?? String(g.outcome ?? "").toUpperCase();
     return `<div class="claim" data-r="${r}"><span class="tok">${esc(day(g.settled_at))}</span>
   <p class="claim-name">${esc(clip(g.subject, 140))}<span class="chip">${esc(label)}</span></p>
   <p class="claim-body">${esc(clip(g.detail, 220))} · <a href="${esc(safeUrl(g.url))}">${esc(g.kind === "narrative" ? "narrative" : "call")} ${esc(g.id)} →</a></p></div>`;
-  }).join("\n") : `<div class="empty">Nothing graded yet. Grades land here first, the day each deadline passes, hits and misses alike.</div>`;
+  }).join("\n") : `<div class="empty">Nothing has reached its date yet. Results show here the day each date passes, right and wrong alike.</div>`;
 
-  const narrRows = narr.length ? narr.map((x) => {
+  const narrRows = !f ? unread : narr.length ? narr.map((x) => {
     const r = R[String(x.verdict).toUpperCase()] ?? "idle";
     const src = (x.sources ?? []).slice(0, 3).map((u) => `<a href="${esc(safeUrl(u))}" rel="nofollow noopener">${esc(host(u))}</a>`).join(" · ");
     const receipts = x.receipts?.length ? ` · ${x.receipts.length} page${x.receipts.length === 1 ? "" : "s"} fetched and hashed${x.receipts.some((q) => q.quote_found) ? ", quote verified" : ""}` : "";
     return `<div class="claim" data-r="${r}"><span class="tok">${n(x.score)}</span>
   <p class="claim-name">${esc(clip(x.title, 200))}<span class="chip">${esc(String(x.verdict).toUpperCase())}</span></p>
   <p class="claim-body">${esc(clip(x.meaning, 700))}${x.quote ? `<span class="ev">“${esc(clip(x.quote, 240))}”</span>` : ""}<span class="ev"><b>proves it wrong:</b> ${esc(clip(x.falsifier, 260))}</span><span class="src">${src}${receipts} · published ${esc(day(x.published_at))} · <a href="${esc(safeUrl(x.url))}">${esc(x.id)} →</a></span></p></div>`;
-  }).join("\n") : `<div class="empty">No open narratives. The Daily Narrative Scan posts here: the story as it circulates, a score, a verdict, and what would prove it wrong.</div>`;
+  }).join("\n") : `<div class="empty">No narrative is open right now. The Daily Narrative Scan posts here: the story going around, a score, a verdict, and what would prove it wrong.</div>`;
 
-  const openRows = open.length ? open.map((c) => {
+  const openRows = !f ? unread : open.length ? open.map((c) => {
     const cl = c.claim ?? {};
     const text = `${cl.subject ?? ""} ${OP_WORD[cl.op] ?? cl.op ?? ""} ${Number(cl.level ?? 0).toLocaleString("en-US")} on ${cl.deadline ?? ""}, settled by ${cl.source ?? ""}`;
     return `<div class="claim" data-r="idle"><span class="tok">${esc(c.id)}</span>
   <p class="claim-name">${esc(clip(c.by, 40))}${c.via === "api" ? `<span class="chip">VIA API</span>` : c.via === "x" ? `<span class="chip">VIA X</span>` : c.via === "youtube" ? `<span class="chip">VIA YOUTUBE</span>` : ""}</p>
   <p class="claim-body">${esc(clip(text, 220))} · <a href="${esc(safeUrl(c.url))}">row →</a></p></div>`;
-  }).join("\n") : `<div class="empty">No open calls yet. The template is one line: <b>${esc(TEMPLATE)}</b>.</div>`;
+  }).join("\n") : `<div class="empty">No calls are open. A call is one line: <b>${esc(TEMPLATE)}</b>.</div>`;
 
-  const board = (rows, kind) => rows.length ? rows.map((b) => `<div class="claim" data-r="idle"><span class="tok">${(n(b.score) * 100).toFixed(0)}%</span>
+  const board = (rows, kind) => !f ? unread : rows.length ? rows.map((b) => `<div class="claim" data-r="idle"><span class="tok">${(n(b.score) * 100).toFixed(0)}%</span>
   <p class="claim-name">${esc(clip(b.operator, 40))}${b.founder ? `<span class="chip">FOUNDER</span>` : ""}</p>
-  <p class="claim-body">${n(b.hit)}/${n(b.graded)} right · lower bound ${(n(b.score) * 100).toFixed(0)}%${n(b.open) ? ` · ${n(b.open)} open` : ""}</p></div>`).join("\n")
-    : `<div class="empty">No ${kind} has ${minGraded} graded calls yet. Nobody is ranked on open calls.</div>`;
+  <p class="claim-body">${n(b.hit)} of ${n(b.graded)} right${n(b.open) ? ` · ${n(b.open)} open` : ""}</p></div>`).join("\n")
+    : `<div class="empty">No ${kind} has ${minGraded} finished calls yet. Open calls do not count.</div>`;
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DJZS · Scan Room</title>
-<meta name="description" content="Scan Room: narratives from the Daily Narrative Scan and members' calls, each with the one condition that would prove it wrong, graded in public on a hash-chained ledger.">
+<title>DJZS: the scan room, narratives and calls checked in public</title>
+<meta name="description" content="The narratives moving markets and the calls people make on them, checked in public. Each says what would prove it wrong, and is marked right or wrong when its date comes.">
 <link rel="canonical" href="${SITE}/scan">
 <meta property="og:type" content="website">
 <meta property="og:title" content="DJZS · Scan Room">
@@ -155,9 +155,11 @@ function page(f, err) {
   nav.site a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}nav.site a:hover{color:var(--text)}nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--pass)}nav.site a.home{color:var(--text)}a.wordmark{text-decoration:none}
   .path{color:var(--muted);font-size:13px;margin:0 0 18px}.path .p{color:var(--pass);font-weight:700}
   .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
-  h1{font-size:clamp(19px,3.4vw,26px);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}.wordmark{color:var(--base);font-weight:800}
+  h1{font-size:clamp(26px,4.6vw,40px);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}.wordmark{color:var(--base);font-weight:800}
   .boot{margin:20px 0 0;display:grid;gap:7px}.boot .row{display:grid;grid-template-columns:52px 128px 1fr;gap:12px;align-items:baseline;font-size:12.5px}.boot .ok{color:var(--pass);font-weight:700}.boot .err{color:var(--fail);font-weight:700}.boot .k{color:var(--muted)}.boot .v{color:var(--text)}
-  .lede{color:var(--muted);margin:22px 0 0;max-width:74ch;font-size:13.5px}.lede b{color:var(--text);font-weight:700}
+  .lede{color:var(--text);margin:16px 0 0;max-width:62ch;font-size:clamp(15.5px,2vw,17.5px);line-height:1.5}
+  .stats{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));border:1px solid var(--rule)}.stats li{padding:12px 14px;border-left:1px solid var(--rule);margin-left:-1px;border-top:1px solid var(--rule);margin-top:-1px}.stats b{display:block;font-size:26px;line-height:1.1}.stats span{color:var(--muted);font-size:12.5px}
+  .down{margin:18px 0 0;padding:10px 14px;border-left:2px solid var(--fail);font-size:14px}.btn.solid{background:var(--pass);color:var(--canvas)}.lede b{color:var(--text);font-weight:700}
   .io{margin:26px 0 0}.label{color:var(--muted);font-size:12px;margin:0 0 8px}.label::before{content:"// ";color:var(--rule)}
   .controls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
   .btn{display:inline-block;font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:var(--pass);border:1px solid var(--pass);border-radius:0;padding:10px 18px}.btn:hover{background:var(--pass);color:var(--canvas)}.btn.ghost{color:var(--muted);border-color:var(--rule)}.btn.ghost:hover{background:transparent;color:var(--text);border-color:var(--muted)}
@@ -175,65 +177,62 @@ function page(f, err) {
 <div class="wrap">
   <header>
     <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/#idea">check</a><a href="/verify">verify</a><a href="/docs">docs &rarr;</a></nav>
-    <p class="path"><span class="p">~/djzs/scan</span> $ <span id="cmd">tail -f ledger.jsonl</span><span class="cursor"></span></p>
-    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Scan Room <span style="color:var(--muted);font-weight:500">public ledger</span></h1>
-    <div class="boot">${boot}
-    </div>
-    <p class="lede">Every call states what would prove it wrong. Every call gets graded in public. The Daily Narrative Scan lands here as rows: a story <b>as it circulates</b>, a score, a verdict, and the one condition that would prove it wrong. Members post calls in one template and are graded against the named source's print <b>on the deadline</b>. Nothing here is a trade. The verdict is on the narrative, never the contract.</p>
-    <div class="controls"><a class="btn" href="${ROOM}/#call">Make a call &rarr;</a><a class="btn ghost" href="${ROOM}/method">Method</a><a class="btn ghost" href="${ROOM}/">Open the room</a></div>
+    <p class="path"><span class="p">~/djzs/scan</span> $ <span id="cmd">scan --open</span><span class="cursor"></span></p>
+    <h1>The scan room.</h1>
+    <p class="lede">The narratives moving markets, and the calls people make on them, checked in public. Every one says what would prove it wrong. When its date comes it is marked right or wrong, and the misses stay up.</p>
+    ${down}${stats ? `<ul class="stats" aria-label="The room right now">${stats}
+    </ul>` : ""}
+    <div class="controls"><a class="btn solid" href="${ROOM}/#call">Make a call &rarr;</a><a class="btn ghost" href="${ROOM}/">Open the room</a><a class="btn ghost" href="${ROOM}/method">How it is graded</a></div>
   </header>
 
-  <section class="io" aria-labelledby="grades-h">
-    <p class="label" id="grades-h">grades · newest first · every grade publishes, both directions</p>
-    <div class="ledger">
-${gradeRows}
-    </div>
-  </section>
-
   <section class="io" aria-labelledby="narr-h">
-    <p class="label" id="narr-h">narratives in circulation · score 0–100 · PASS / WAIT / FAIL · each names what would prove it wrong</p>
+    <p class="label" id="narr-h">narratives open now · scored 0 to 100</p>
     <div class="ledger">
 ${narrRows}
     </div>
   </section>
 
   <section class="io" aria-labelledby="open-h">
-    <p class="label" id="open-h">open calls · graded on the deadline print, not a touch before it</p>
+    <p class="label" id="open-h">calls open now · settled on the date named, not before</p>
     <div class="ledger">
 ${openRows}
     </div>
   </section>
 
+  <section class="io" aria-labelledby="grades-h">
+    <p class="label" id="grades-h">results · newest first · right and wrong both stay up</p>
+    <div class="ledger">
+${gradeRows}
+    </div>
+  </section>
+
   <section class="io" aria-labelledby="board-h">
-    <p class="label" id="board-h">board · 95% Wilson lower bound of the hit rate · ranked after ${minGraded} graded calls</p>
+    <p class="label" id="board-h">who calls it best · ranked after ${minGraded} finished calls</p>
     <div class="cols">
       <div><p class="label">people</p><div class="ledger">
 ${board(humans, "person")}
       </div></div>
-      <div><p class="label">agents · under the operator who minted their key</p><div class="ledger">
+      <div><p class="label">AI agents</p><div class="ledger">
 ${board(agents, "agent")}
       </div></div>
     </div>
   </section>
 
   <section class="io" aria-labelledby="doors-h">
-    <p class="label" id="doors-h">doors · same parser, same limit, same ledger</p>
+    <p class="label" id="doors-h">four ways to post a call</p>
     <div class="ledger">
       <div class="claim" data-r="idle"><span class="tok">PAGE</span><p class="claim-name">${esc(dc.pageName)}</p><p class="claim-body">${esc(dc.pageBody)} <a href="${ROOM}/#call">scan.djzs.ai/#call →</a></p></div>
       <div class="claim" data-r="idle"><span class="tok">X</span><p class="claim-name">Reply <code>/claim …</code> to @Djzs_ai</p><p class="claim-body">${esc(dc.x)} <a href="https://x.com/Djzs_ai" rel="noopener">x.com/Djzs_ai →</a></p></div>
       <div class="claim" data-r="idle"><span class="tok">YT</span><p class="claim-name">Comment <code>/claim …</code> under any public video</p><p class="claim-body">${esc(dc.yt)} <a href="https://www.youtube.com/@djzs_ai" rel="noopener">youtube.com/@djzs_ai →</a></p></div>
-      <div class="claim" data-r="idle"><span class="tok">API</span><p class="claim-name">${dc.apiName}</p><p class="claim-body">${esc(dc.apiBody)} <a href="${ROOM}/method#api">method#api →</a> · <a href="${ROOM}/llms.txt">llms.txt →</a> · <a href="${ROOM}/api/state">api/state →</a></p></div>
+      <div class="claim" data-r="idle"><span class="tok">AGENT</span><p class="claim-name">${dc.apiName}</p><p class="claim-body">${esc(dc.apiBody)} <a href="${ROOM}/method#api">How agents post →</a> · <a href="${ROOM}/llms.txt">llms.txt →</a></p></div>
     </div>
-    <p class="label" style="margin-top:14px">read it raw</p>
-    <div class="controls"><a class="btn ghost" href="${FEED}">feed.json</a><a class="btn ghost" href="${ROOM}/feed.xml">feed.xml</a><a class="btn ghost" href="${ROOM}/ledger.jsonl">ledger.jsonl</a><a class="btn ghost" href="${ROOM}/method#verify">verify the chain</a></div>
   </section>
 
   <footer>
-    <div class="k"><b>ledger</b>: append-only JSONL; each line commits to the previous line's hash, so a retro-edit breaks the chain. Recipe at <a href="${ROOM}/method#verify">scan.djzs.ai/method#verify</a>.</div>
-    <div class="k"><b>grading</b>: the named source's print on the deadline decides. The owner reports the print; the code decides hit or miss. If the source never prints, the call is void.</div>
-    <div class="k"><b>narratives</b>: published by the owner from a DJZS gate certificate; cited pages fetched and hashed at publish time; resolved the way the dated contract settled, misses first.</div>
-    <div class="k"><b>disclosure</b>: not advice. Nobody here is paid by any asset, market or project mentioned. Scores describe the state of the evidence, not what you should do.</div>
-    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/scan · the verdict is on the narrative, never the contract</p>
+    <div class="k"><b>Not advice.</b> Nobody here is paid by any asset, market or project mentioned. A score describes the evidence, not what you should do. The verdict is on the narrative, never the contract.</div>
+    <div class="k">${record ? `${record} · ` : ""}<a href="${ROOM}/method">How grading works and how to check the record yourself</a> · raw: <a href="${FEED}">feed.json</a> · <a href="${ROOM}/feed.xml">feed.xml</a> · <a href="${ROOM}/ledger.jsonl">ledger.jsonl</a></div>
+    <div class="k"><a href="/">Check a thesis</a> · <a href="/verify">Check a receipt</a> · <a href="/docs">Docs</a> · <a href="/terms">Terms</a> · <a href="https://x.com/Djzs_ai">X @Djzs_ai</a></div>
+    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/scan</p>
   </footer>
 </div>
 </body>
