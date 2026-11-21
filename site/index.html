@@ -631,6 +631,11 @@ $("pay").addEventListener("click", async () => {
     const settleHeader = paid.headers.get("PAYMENT-RESPONSE");
     const payment_response = settleHeader ? JSON.parse(b64decodeUtf8(settleHeader)) : null;
     if (res.verdict === "REFUSED_SCOPE") throw new Error(`refused as out of scope, not charged: ${res.reason ?? ""}`);
+    // The signature carries its own deadline (validBefore, from the quote's maxTimeoutSeconds). Past it the payment check refuses it before any money moves.
+    if (!paid.ok && !res.charged && res.detail === "invalid_exact_evm_payload_authorization_valid_before") {
+      const mins = Math.max(1, Math.round(Number(acc.maxTimeoutSeconds ?? 120) / 60));
+      throw new Error(`The signature expired before it reached the check. Nothing was charged. Click the receipt button again and confirm in your wallet within ${mins === 1 ? "1 minute" : mins + " minutes"}.`);
+    }
     if (!paid.ok) throw new Error(`${res.error ?? "error"}${res.detail ? ": " + res.detail : ""}${res.charged ? " (charged; keep the PAYMENT-RESPONSE below and contact support)" : " (not charged)"}`);
     renderReceipt({ intent, payment_response, ...res });
     log("pay-log", "");
