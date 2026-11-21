@@ -4,18 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DJZS: everyone has a take. Check yours before you trade.</title>
-<meta name="description" content="Paste a prediction-market bet or a perp trade. Get PASS, WAIT or FAIL with the reasons in plain words. Free, no wallet. Agents: mcp.djzs.ai/mcp">
+<meta name="description" content="Narratives move markets. Paste your thesis for a prediction-market bet or a perp trade and get PASS, WAIT or FAIL with the reasons in plain words. Free, no wallet. Agents: mcp.djzs.ai/mcp">
 <link rel="canonical" href="https://djzs.ai/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DJZS">
 <meta property="og:title" content="Everyone has a take. Check yours before you trade.">
-<meta property="og:description" content="Paste the idea. Get PASS, WAIT or FAIL with the reasons in plain words and the line to fix. Free, three a day, no wallet. Agents connect at mcp.djzs.ai/mcp.">
+<meta property="og:description" content="Narratives move markets. Check that your thesis stands on more than the story. PASS, WAIT or FAIL with the line to fix. Free, three a day, no wallet. Agents connect at mcp.djzs.ai/mcp.">
 <meta property="og:url" content="https://djzs.ai/">
-<meta property="og:image" content="https://djzs.ai/og.png?v=2">
+<meta property="og:image" content="https://djzs.ai/og.png?v=3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://djzs.ai/og.png?v=2">
+<meta name="twitter:image" content="https://djzs.ai/og.png?v=3">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="base:app_id" content="6a4ff1335b92d87d8ee9e8f0">
 <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -52,6 +52,7 @@
   /* the hero shows one real check as the terminal would print it */
   .demo{border:1px solid var(--fail);background:var(--well);padding:18px 20px 16px;font-size:14px}
   @media (min-width:980px){.hero h1{font-size:min(46px,3.6vw)}}
+  .demo > .label{margin:0 0 10px}
   .demo .exrow{margin:0 0 16px;gap:0}
   .demo .exrow .btn{flex:1 1 0;min-width:0;min-height:46px;padding:8px 10px;font-size:11.5px;letter-spacing:.04em;background:transparent;border-color:var(--rule);color:var(--muted);margin-left:-1px}.demo .exrow .btn:first-child{margin-left:0}
   .demo .exrow .btn.on{color:var(--canvas);background:var(--text);border-color:var(--text)}
@@ -104,7 +105,7 @@
   .log{margin:12px 0 0;font-size:14px;color:var(--muted);min-height:1.6em}.log .xx{color:var(--fail)}.log .ok{color:var(--pass)}
   .quota{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
 
-  /* the examples: sample ideas on real markets, each with the answer the live check gave for it */
+  /* the examples: sample theses on real markets, each with the answer the live check gave for it */
   .examples{margin:0 0 20px}
   .exrow{display:flex;flex-wrap:wrap;gap:8px}
   .exrow .btn{flex:1 1 200px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;font-size:13.5px;letter-spacing:.05em;padding:12px 16px;min-height:60px;color:var(--text);border-color:#3a3a3a;background:var(--panel)}.exrow .btn .m{font-size:11.5px;font-weight:400;letter-spacing:.04em;color:var(--muted);text-transform:none}
@@ -186,11 +187,12 @@
       <div class="hero-copy">
       <p class="path"><span class="p">~/djzs</span> $ <span id="cmd">check --pm</span><span class="cursor" aria-hidden="true"></span></p>
       <h1 id="h1">Everyone has a take. <span class="l2">Check yours before you trade.</span></h1>
-      <p class="lede">Find the hole in your trade before the market does: the missing stop, the odds with no source, the rule you did not read.</p>
-      <p class="lede2">Paste the idea. Get <b class="c-pass">PASS</b>, <b class="c-wait">WAIT</b> or <b class="c-fail">FAIL</b> and the line to fix. Free, three a day, no wallet.</p>
+      <p class="lede">Narratives move markets. Check that your thesis stands on more than the story: a stop, a source for your odds, and the rule the market really pays on.</p>
+      <p class="lede2">Paste the thesis. Get <b class="c-pass">PASS</b>, <b class="c-wait">WAIT</b> or <b class="c-fail">FAIL</b> and the line to fix. Free, three a day, no wallet.</p>
       </div>
       <div class="demo" id="demo">
-        <div class="exrow" id="ex-row" role="group" aria-label="Sample ideas from the news">
+        <p class="label">three narratives in the news, one thesis on each</p>
+        <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
           <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
           <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
           <button type="button" class="btn" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
@@ -215,7 +217,7 @@
     </ul>
 
     <section class="step" id="idea" aria-labelledby="s1">
-      <p class="label" id="s1">your trade idea</p>
+      <p class="label" id="s1">your trade thesis</p>
       <div class="panel">
         <p class="status" id="last-status" hidden></p>
         <div class="kind" role="group" aria-label="What are you checking?">
@@ -223,8 +225,8 @@
           <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
         </div>
         <p class="hint" id="kind-hint">Name the venue and the question.</p>
-        <details class="needs" id="needs"><summary>What a complete idea includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
-        <label class="flabel" for="thesis" id="thesis-label">Your idea</label>
+        <details class="needs" id="needs"><summary>What a complete thesis includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
+        <label class="flabel" for="thesis" id="thesis-label">Your thesis</label>
         <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
         <div class="controls">
           <button type="button" class="btn" id="run" disabled>Check it</button>
@@ -244,7 +246,7 @@
         <div class="change" id="change" hidden><p class="line"><b>change //</b> <span id="change-from"></span> &rarr; <span id="change-to"></span></p><p class="say" id="change-say"></p></div>
         <div class="ledger" id="ledger"></div>
         <div class="cleared" id="cleared" hidden><p class="label">cleared since the last check</p><div id="cleared-list"></div></div>
-        <p class="again" id="again" hidden><a href="#thesis" id="edit-link">Edit the idea</a>, then press <b>Check again</b>. Fixing a reason clears its flag. It does not make the trade good.</p>
+        <p class="again" id="again" hidden><a href="#thesis" id="edit-link">Edit the thesis</a>, then press <b>Check again</b>. Fixing a reason clears its flag. It does not make the trade good.</p>
         <p class="again" id="recorded" hidden></p>
         <details class="tech"><summary>Technical details (hashes, codes, ruleset)</summary><div class="keys" id="keys"></div></details>
         <div class="offer" id="offer">
@@ -283,12 +285,12 @@
 
   <footer>
     <nav aria-label="More"><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/build">Services</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai">X @Djzs_ai</a></nav>
-    <div class="k"><b>audit, not advice</b>: a verdict says whether the idea is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. An example market, when one is loaded, is real; it is not a recommendation. <a href="/terms">Terms</a>. <a href="/docs/measured">What has and has not been measured</a>.</div>
+    <div class="k"><b>audit, not advice</b>: a verdict says whether the thesis is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. An example market, when one is loaded, is real; it is not a recommendation. <a href="/terms">Terms</a>. <a href="/docs/measured">What has and has not been measured</a>.</div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai &middot; audit before act</p>
   </footer>
 </div>
 
-<!-- Three sample ideas on real markets. Each `body` is the answer the live free check gave for that exact `thesis` on the
+<!-- Three sample theses on real markets. Each `body` is the answer the live free check gave for that exact `thesis` on the
      `checked` day, recorded unchanged after two runs agreed. djzs-trust-mcp/test/site-examples.test.mjs recomputes both
      hashes from the text. To swap one: write the text, POST it to /try/verdict twice, paste the answer, move `closes`.
      After `closes` (a UTC day) the page stops offering them. -->
@@ -389,9 +391,9 @@ $("clear").addEventListener("click", () => { $("thesis").value = ""; dropExample
 $("edit-link").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 const KIND = {
   pm: { needs: ["The market's own terms: the question, the date it settles, and the source that settles it.", "Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.", "What would prove you wrong: the specific event, before the market settles.", "Why the market is wrong. \u201CEveryone agrees\u201D is not a reason. This one is advice; it never changes the verdict."],
-        hint: "Name the venue and the question.", label: "Your idea", ph: "Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
+        hint: "Name the venue and the question.", label: "Your thesis", ph: "Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
   perp: { needs: ["The instrument, long or short, and your entry.", "Your stop, or the event that would prove you wrong.", "Your size and leverage.", "Why the price should move, in one sentence, with the data behind it and the date you read it. What other people are doing is not a reason."],
-        hint: "Name the instrument and say long or short.", label: "Your idea", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
+        hint: "Name the instrument and say long or short.", label: "Your thesis", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
 };
 function setKind(k){
   state.kind = k;
@@ -408,7 +410,7 @@ $("kind-perp").addEventListener("click", () => setKind("perp"));
 // A link can open the perp check directly: djzs.ai/?kind=perp
 if (new URLSearchParams(location.search).get("kind") === "perp") setKind("perp");
 
-// ── the three examples. Sample ideas on real markets, each carrying the answer the live check gave for that exact
+// ── the three examples. Sample theses on real markets, each carrying the answer the live check gave for that exact
 // text, recorded unchanged. Loading one calls nothing and uses no free check. Past `closes` none is offered.
 const EX = (() => { try { return JSON.parse($("examples-data").textContent); } catch { return null; } })();
 const exampleList = EX && Array.isArray(EX.examples) && new Date().toISOString().slice(0, 10) <= EX.closes ? EX.examples : [];
@@ -454,7 +456,7 @@ function dropExample(){
   state.last = null; markExample(null);
   $("out").hidden = true; $("last-status").hidden = true;
 }
-// An example's recorded answer is a fair "before" only for an edit of that example, not for another idea typed over it.
+// An example's recorded answer is a fair "before" only for an edit of that example, not for another thesis typed over it.
 function sameIdea(a, b){
   const words = (t) => new Set(t.toLowerCase().match(/[a-z0-9$%]+/g) ?? []);
   const A = words(a), B = words(b); let n = 0;
@@ -486,7 +488,7 @@ $("run").addEventListener("click", async () => {
   const kind = state.kind;
   const btn = $("run"); btn.disabled = true;
   try {
-    log("run-log", "Reading the idea, then scoring it…");
+    log("run-log", "Reading the thesis, then scoring it…");
     const r = await fetch(`${WORKER}/try/verdict`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, intent, anon: anonId() }) });
     const body = await r.json().catch(() => ({ ok: false, error: `the check answered HTTP ${r.status}` }));
     if (!r.ok || !body.ok) {
@@ -510,13 +512,13 @@ $("run").addEventListener("click", async () => {
 // Plain names, what fired, and the line to fix. Fixed text keyed by the engine's code name: nothing here is written by a model.
 // The engine's `evidence` field is its own rule sentence, not a quote of the user's text, so it is never shown as one.
 const FLAG = {
-  FALSIFICATION_ABSENT:     { name: "No way to be wrong", what: "The idea treats the outcome as settled and names nothing that would prove it wrong.", fix: "Write the specific event that would prove you wrong before the market settles." },
+  FALSIFICATION_ABSENT:     { name: "No way to be wrong", what: "The thesis treats the outcome as settled and names nothing that would prove it wrong.", fix: "Write the specific event that would prove you wrong before the market settles." },
   NARRATIVE_RESOLUTION_GAP: { name: "Off the market's terms", what: "The reasoning argues something next to this market's question, not its own date, threshold, definition or settlement source.", fix: "Argue the market's own terms: the date it resolves, its threshold or definition, and the source that settles it." },
   PROBABILITY_UNSOURCED:    { name: "Odds with no source", what: "There is a probability, or an implied one, with no checkable source behind it.", fix: "Back the claim with something checkable: a dataset, an official source or your own math, and the date you read it." },
   CONSENSUS_NO_EDGE:        { name: "Agreement is not an edge", what: "The reason given is that everyone agrees, or that the price already says so.", fix: "Say why the market is wrong. This one is advice: it never changes the verdict.", advice: true },
-  EXECUTION_UNBOUND:        { name: "No stop or size limit", what: "Nothing in the idea limits the loss or says when the trade ends.", fix: "Write the stop level and the largest size you will allow, before the order goes out." },
-  CIRCULAR_LOGIC:           { name: "No reason for the trade", what: "The idea states a position but no reason the price should move.", fix: "Say in one sentence why the price should move." },
-  ORACLE_UNVERIFIED:        { name: "Data source not vouched for", what: "The trade leans on a data source the idea does not vouch for.", fix: "Name each source you rely on, who publishes it, and when you read it." },
+  EXECUTION_UNBOUND:        { name: "No stop or size limit", what: "Nothing in the thesis limits the loss or says when the trade ends.", fix: "Write the stop level and the largest size you will allow, before the order goes out." },
+  CIRCULAR_LOGIC:           { name: "No reason for the trade", what: "The thesis states a position but no reason the price should move.", fix: "Say in one sentence why the price should move." },
+  ORACLE_UNVERIFIED:        { name: "Data source not vouched for", what: "The trade leans on a data source the thesis does not vouch for.", fix: "Name each source you rely on, who publishes it, and when you read it." },
   FOMO_LOOP:                { name: "Chasing the crowd", what: "The reason given is what other people are doing or saying.", fix: "Replace the social signal with a number you can check, or say why the crowd is wrong." },
 };
 const UNSETTLED = {
@@ -528,7 +530,7 @@ const UNSETTLED = {
   position_size:          { name: "Your size", fix: "State the position size." },
   leverage:               { name: "Your leverage", fix: "State the leverage, or say there is none." },
   take_profit:            { name: "Your target", fix: "State the price where you take profit." },
-  data_sources:           { name: "The data you relied on", fix: "Name the data behind the idea and when you read it." },
+  data_sources:           { name: "The data you relied on", fix: "Name the data behind the thesis and when you read it." },
   oracle_source:          { name: "Your price source", fix: "Name the price feed the trade depends on." },
   confidence:             { name: "How sure you are", fix: "Say how confident you are and what that rests on." },
 };
@@ -615,8 +617,8 @@ function renderExampleHead(ex){
   head.hidden = !ex; rec.hidden = !ex;
   if (!ex) { head.innerHTML = ""; rec.innerHTML = ""; return; }
   const where = ex.url ? `<a href="${esc(ex.url)}" target="_blank" rel="noopener">${esc(ex.where)}</a>` : esc(ex.where);
-  head.innerHTML = `<p class="label">sample idea</p><q>${esc(ex.thesis)}</q>${ex.rule ? `<span class="src rule">${esc(ex.rule)}</span>` : ""}<span class="src">Real market: ${where}. Written ${esc(EX.checked)}. A sample, not a recommendation.</span>`;
-  rec.innerHTML = `Recorded ${esc(EX.checked)}: the answer the live check gave for this exact text. <a href="#thesis" id="ex-edit">Edit the idea</a>, then check it yourself. That uses one free check.`;
+  head.innerHTML = `<p class="label">sample thesis</p><q>${esc(ex.thesis)}</q>${ex.rule ? `<span class="src rule">${esc(ex.rule)}</span>` : ""}<span class="src">Real market: ${where}. Written ${esc(EX.checked)}. A sample, not a recommendation.</span>`;
+  rec.innerHTML = `Recorded ${esc(EX.checked)}: the answer the live check gave for this exact text. <a href="#thesis" id="ex-edit">Edit the thesis</a>, then check it yourself. That uses one free check.`;
   $("ex-edit").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 }
 
@@ -631,7 +633,7 @@ function renderVerdict(b, prev, ex){
   const unknown = Array.isArray(b.unknown_fields) ? b.unknown_fields : [];
   const flags = Array.isArray(b.flags_detail) ? b.flags_detail : [];
   const critical = flags.filter((f) => f.severity === "CRITICAL").length;
-  const titles = { pass: "Nothing failed", wait: "Not enough to judge", fail: "Do not place this", refused: "Skipped: not the kind of idea selected above" };
+  const titles = { pass: "Nothing failed", wait: "Not enough to judge", fail: "Do not place this", refused: "Skipped: not the kind of thesis selected above" };
   $("vtitle").textContent = titles[st];
   $("vmeta").textContent = st === "refused" ? "" : `score ${b.risk_score} · fails at ${LINE[kind]}`;
   let note = "";
@@ -645,16 +647,16 @@ function renderVerdict(b, prev, ex){
   renderChange(prev, { ...b, kind });
   const detail = Array.isArray(b.unsettled) ? Object.fromEntries(b.unsettled.filter((x) => x && typeof x.field === "string").map((x) => [x.field, x])) : {};
   const rows = flags.map(flagRow).join("") + unknown.map((u) => unsettledRow(u, b.verdict, detail[u])).join("");
-  $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="pass"><span class="tok">OK</span><p class="claim-name">No defects<span class="chip">0 flags</span></p><p class="claim-body">Every scored part of the idea was there and no failure pattern matched.</p></div>` : "");
+  $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="pass"><span class="tok">OK</span><p class="claim-name">No defects<span class="chip">0 flags</span></p><p class="claim-body">Every scored part of the thesis was there and no failure pattern matched.</p></div>` : "");
   $("ledger").hidden = !rows && st !== "pass";
   $("again").hidden = !!ex || st === "pass" || st === "refused";
   $("keys").innerHTML = st === "refused" ? "" : `<span>codes</span><b>${esc((b.flags ?? []).join(", ") || "none")}</b><span>ruleset</span><b>${esc(b.ruleset ?? "")}</b><span>intent_sha256</span><b>${esc(b.intent_sha256 ?? "")}</b><span>intent_hash</span><b>${esc(b.intent_hash ?? "n/a (free-text intent)")}</b><span>verdict_hash</span><b>${esc(b.verdict_hash ?? "")}</b><span>attested</span><b>no. Free verdicts are not written anywhere.</b>`;
-  // A sample idea is not something to buy a receipt for. The offer comes back with the person's own check.
+  // A sample thesis is not something to buy a receipt for. The offer comes back with the person's own check.
   $("offer").hidden = st === "refused" || !!ex;
   setReceiptFields(kind);
   $("pay").disabled = false; log("pay-log", "");
   const ls = $("last-status");
-  ls.innerHTML = ex ? `<span class="ok">EX</span><span class="v">Example loaded, with the answer the check gave it. Edit it and check it yourself, or press <b>Clear</b> and paste your own.</span>` : st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the idea, then check again.</span>`;
+  ls.innerHTML = ex ? `<span class="ok">EX</span><span class="v">Example loaded, with the answer the check gave it. Edit it and check it yourself, or press <b>Clear</b> and paste your own.</span>` : st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the thesis, then check again.</span>`;
   ls.hidden = false;
   scrollToEl($("out"));
   v.focus({ preventScroll: true });

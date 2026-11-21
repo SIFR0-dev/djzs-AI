@@ -67,7 +67,7 @@
     <p class="lede">Paste a DJZS receipt. This page looks up the payment and the public record on Base and tells you whether they match what the receipt says. <b>It does not ask DJZS.</b></p>
     <ul class="checks" aria-label="What gets checked">
       <li><span class="ok" aria-hidden="true">01</span><span><b>The payment happened.</b> Read from Base.</span></li>
-      <li><span class="ok" aria-hidden="true">02</span><span><b>The receipt is for this exact idea.</b> Recomputed from its text.</span></li>
+      <li><span class="ok" aria-hidden="true">02</span><span><b>The receipt is for this exact thesis.</b> Recomputed from its text.</span></li>
       <li><span class="ok" aria-hidden="true">03</span><span><b>The verdict is on the public record.</b> Read from Base.</span></li>
     </ul>
   </header>
@@ -125,7 +125,7 @@
 
   <footer>
     <div class="k">How a receipt is built and what each row means: <a href="/docs/concepts/receipts">receipts in the docs</a>.</div>
-    <div class="k"><a href="/">Check an idea</a> · <a href="/docs">Docs</a> · <a href="/scan">Scan room</a> · <a href="/build">Services</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a> · <a href="/legal">Legal</a> · <a href="/terms">Terms</a> · <a href="https://x.com/Djzs_ai">X @Djzs_ai</a></div>
+    <div class="k"><a href="/">Check a thesis</a> · <a href="/docs">Docs</a> · <a href="/scan">Scan room</a> · <a href="/build">Services</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a> · <a href="/legal">Legal</a> · <a href="/terms">Terms</a> · <a href="https://x.com/Djzs_ai">X @Djzs_ai</a></div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/verify · audit before act</p>
   </footer>
 </div>
@@ -233,15 +233,15 @@ async function run(){
   // 2: binding; v2 EIP-712 (intent_hash) and v1 renderIntentText (intent_sha256), checked independently
   let recomputed=null,bindOK=false;
   if(r.intent&&r.intent_hash){try{recomputed=hashTypedData({domain:DOMAIN,types:TYPES,primaryType:"DJZSIntent",message:toDJZSIntent(r.intent)});bindOK=norm(recomputed)===norm(r.intent_hash);
-      C.push({r:bindOK?"pass":"fail",tok:bindOK?"OK":"FAIL",name:"The idea it was for",chip:bindOK?"PROVEN":"MISMATCH",
+      C.push({r:bindOK?"pass":"fail",tok:bindOK?"OK":"FAIL",name:"The thesis it was for",chip:bindOK?"PROVEN":"MISMATCH",
         body:bindOK?"intent_hash reproduced from the intent alone as EIP-712 typed data. The verdict is provably bound to this exact intent, by anyone, with no access to DJZS.":"Recomputed EIP-712 hash does not equal the receipt's intent_hash. Either the intent text differs from what was audited, or the engine's canonicalization has diverged from the published contract.",
         ev:`receipt     ${r.intent_hash}\nrecomputed  ${recomputed}\ndomain      DJZS · 2 · eip155:8453`})}
-    catch(e){C.push({r:"wait",tok:"WAIT",name:"The idea it was for",chip:"ERROR",body:"Could not compute EIP-712 hash.",ev:e.message})}}
+    catch(e){C.push({r:"wait",tok:"WAIT",name:"The thesis it was for",chip:"ERROR",body:"Could not compute EIP-712 hash.",ev:e.message})}}
   if(r.intent&&r.intent_sha256){const v1=await sha256hex(renderIntentText(r.intent));const m=norm(v1)===norm(r.intent_sha256);
-    C.push({r:m?"pass":"fail",tok:m?"OK":"FAIL",name:"The idea it was for (older receipt)",chip:m?"PROVEN":"MISMATCH",
+    C.push({r:m?"pass":"fail",tok:m?"OK":"FAIL",name:"The thesis it was for (older receipt)",chip:m?"PROVEN":"MISMATCH",
       body:m?"intent_sha256 reproduced: sha256 over renderIntentText(intent): sorted keys, one key: value line each, nested objects as compact JSON. A pure function of the intent, recomputable by anyone.":"Recomputed intent_sha256 does not equal the receipt's; the intent text differs from what was audited.",
       ev:`receipt     ${r.intent_sha256}\nrecomputed  ${v1}`})}
-  if(!(r.intent&&(r.intent_hash||r.intent_sha256)))C.push({r:"wait",tok:"WAIT",name:"The idea it was for",chip:"ABSENT",body:"Receipt lacks intent + a binding key."});
+  if(!(r.intent&&(r.intent_hash||r.intent_sha256)))C.push({r:"wait",tok:"WAIT",name:"The thesis it was for",chip:"ABSENT",body:"Receipt lacks intent + a binding key."});
 
   // 3: attestation on EAS
   let attOK=false;
@@ -314,11 +314,11 @@ async function run(){
   // the receipt is not contradicted by somebody else's upload existing. A real
   // provenance failure on the certificate THIS receipt names does, and is
   // included via the Settlement/Attestation/binding trio plus the row itself.
-  const prov=C.find(c=>c.name==="The permanent copy");const bR=C.filter(c=>c.name.startsWith("The idea it was for"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
+  const prov=C.find(c=>c.name==="The permanent copy");const bR=C.filter(c=>c.name.startsWith("The thesis it was for"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
   if(s?.r==="fail"||b?.r==="fail"||a?.r==="fail"||prov?.r==="fail")setV("fail","FAIL","This receipt does not match","At least one thing the receipt says is contradicted by what is on Base. Do not rely on it. The rows below show which.");
-  else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","It checks out","The payment is on Base. The receipt is for exactly this idea. The verdict is on the public record under the payer's address. All three were read without asking DJZS.","Anyone who runs this gets the same answer.");
-  else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","Not on the public record yet","The payment and the idea both check out. The public record of the verdict is missing or could not be reached, so this page cannot confirm it.","When it cannot tell, it says so.");
-  else if(s?.r==="pass")setV("wait","WAIT","Cannot tie it to the idea","The payment checks out, but this is an older kind of receipt and the link to the idea could not be recomputed. Run the check again to get a current receipt.","When it cannot tell, it says so.");
+  else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","It checks out","The payment is on Base. The receipt is for exactly this thesis. The verdict is on the public record under the payer's address. All three were read without asking DJZS.","Anyone who runs this gets the same answer.");
+  else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","Not on the public record yet","The payment and the thesis both check out. The public record of the verdict is missing or could not be reached, so this page cannot confirm it.","When it cannot tell, it says so.");
+  else if(s?.r==="pass")setV("wait","WAIT","Cannot tie it to the thesis","The payment checks out, but this is an older kind of receipt and the link to the thesis could not be recomputed. Run the check again to get a current receipt.","When it cannot tell, it says so.");
   else setV("wait","WAIT","Could not confirm the payment","This browser could not reach Base to look the payment up. Try again in a moment.","When it cannot tell, it says so.");
   reset(btn);
 }
