@@ -26,3 +26,4 @@
 ## Evidence
 
 * [What is measured](measured.md)
+* [Disclosures and corrections](disclosures.md)
