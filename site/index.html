@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DJZS: check a trade idea before the order goes out</title>
+<title>DJZS: everyone has a take. Check yours before you trade.</title>
 <meta name="description" content="Paste a prediction-market bet or a perp trade. Get PASS, WAIT or FAIL with the reasons in plain words. Free, no wallet. Agents: mcp.djzs.ai/mcp">
 <link rel="canonical" href="https://djzs.ai/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DJZS">
-<meta property="og:title" content="DJZS: check a trade idea before the order goes out">
+<meta property="og:title" content="Everyone has a take. Check yours before you trade.">
 <meta property="og:description" content="Paste the idea. Get PASS, WAIT or FAIL with the reasons in plain words and the line to fix. Free, three a day, no wallet. Agents connect at mcp.djzs.ai/mcp.">
 <meta property="og:url" content="https://djzs.ai/">
-<meta property="og:image" content="https://djzs.ai/og.png">
+<meta property="og:image" content="https://djzs.ai/og.png?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://djzs.ai/og.png">
+<meta name="twitter:image" content="https://djzs.ai/og.png?v=2">
 <meta name="theme-color" content="#0A0A0A">
 <meta name="base:app_id" content="6a4ff1335b92d87d8ee9e8f0">
 <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -49,7 +49,7 @@
   .hero{padding:26px 0 0}
   .path{color:var(--muted);font-size:13px;margin:0 0 14px}.path .p{color:var(--pass);font-weight:700}
   .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
-  h1{font-size:clamp(27px,5vw,40px);font-weight:800;letter-spacing:-.015em;margin:0;line-height:1.12;text-wrap:balance}
+  h1{font-size:clamp(27px,5vw,40px);font-weight:800;letter-spacing:-.015em;margin:0;line-height:1.12;text-wrap:balance}h1 .l2{display:inline-block;text-wrap:balance}
   .lede{font-size:clamp(15.5px,2vw,17.5px);margin:16px 0 0;max-width:64ch;line-height:1.55}.lede .dim{color:var(--muted)}
   .c-pass{color:var(--pass)}.c-wait{color:var(--wait)}.c-fail{color:var(--fail)}
 
@@ -80,11 +80,16 @@
   .log{margin:12px 0 0;font-size:14px;color:var(--muted);min-height:1.6em}.log .xx{color:var(--fail)}.log .ok{color:var(--pass)}
   .quota{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
 
-  /* the three answers, shown until the first verdict */
-  .legend{margin:22px 0 0;border:1px solid var(--rule);background:var(--panel);padding:4px 18px}
-  .ans{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:baseline;padding:12px 0;border-top:1px solid var(--rule)}.ans:first-of-type{border-top:0}
-  .ans p{margin:0;font-size:14.5px}
-  .chipv{display:inline-block;text-align:center;padding:2px 0;font-weight:800;letter-spacing:.16em;font-size:13px;color:var(--canvas)}.chipv.pass{background:var(--pass)}.chipv.wait{background:var(--wait)}.chipv.fail{background:var(--fail)}
+  /* the examples: sample ideas on real markets, each with the answer the live check gave for it */
+  .examples{margin:0 0 20px}
+  .exrow{display:flex;flex-wrap:wrap;gap:8px}
+  .exrow .btn{font-size:12px;letter-spacing:.06em;padding:8px 14px;min-height:42px;color:var(--text);border-color:#3a3a3a}
+  .exrow .btn:hover{background:transparent;color:var(--pass);border-color:var(--pass)}
+  .exrow .btn.on{color:var(--pass);border-color:var(--pass)}
+  .examples .log{margin:8px 0 0;min-height:0;font-size:13.5px;color:var(--text)}.examples .log:empty{display:none}
+  .exidea{padding:16px 20px;border-bottom:1px solid var(--rule)}.exidea .label{margin-bottom:6px}
+  .exidea q{display:block;font-size:15px;max-width:76ch;quotes:"\201C" "\201D"}
+  .exidea .src{display:block;margin-top:8px;font-size:12.5px;color:var(--muted);max-width:76ch}.exidea .src.rule{color:var(--text);font-size:13.5px}
 
   /* the verdict */
   .verdict{border:1px solid var(--rule);background:var(--panel)}.verdict:focus{outline:none}.verdict[data-state="pass"]{border-color:var(--pass)}.verdict[data-state="wait"]{border-color:var(--wait)}.verdict[data-state="fail"]{border-color:var(--fail);border-width:2px}.verdict[data-state="refused"]{border-color:var(--muted)}
@@ -108,10 +113,15 @@
   .offer select{font-family:var(--mono);background:var(--well);color:var(--text);border:1px solid var(--rule);padding:8px}
   .receipt{margin:16px 0 0;border:1px solid var(--pass);background:var(--panel)}.receipt .keys{padding-top:14px}
 
-  /* what is measured */
+  /* why trust the answer: the only technical copy on the page */
+  .why{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
+  .proof{list-style:none;margin:0;padding:0 18px;border:1px solid var(--rule);background:var(--panel)}
+  .proof li{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:baseline;padding:13px 0;border-top:1px solid var(--rule);font-size:15.5px}.proof li:first-child{border-top:0}
+  .proof .n{color:var(--pass);font-weight:700;font-size:13px;letter-spacing:.06em}
+  .rline{margin:16px 0 0;font-size:14.5px}.rline a{white-space:nowrap}
 
   /* for agents */
-  .agents{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
+  .agents{margin:26px 0 0;border-top:1px solid var(--rule);padding-top:20px}
   .docsline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:0;font-size:13.5px;color:var(--muted)}
   .rfields{display:flex;flex-wrap:wrap;gap:10px 14px;width:100%}.rfields label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
   .rfields input,.rfields select{font-family:var(--mono);font-size:16px;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:42px}.rfields input{width:min(320px,80vw)}.rfields input:focus,.rfields select:focus{outline:none;border-color:var(--pass)}
@@ -133,7 +143,8 @@
     .agentline.only-narrow{margin:16px 0 0}
     .verdict-meta{margin-left:0;flex-basis:100%}
     #run{width:100%}.controls .btn.ghost{flex:1 1 0}
-    .ans{grid-template-columns:64px 1fr;gap:12px}
+    .exrow .btn{flex:1 1 auto}
+    .exidea{padding:14px 16px}
     .keys{grid-template-columns:1fr}
     .claim{padding:14px 16px;grid-template-columns:30px 1fr;gap:0 10px}
   }
@@ -150,7 +161,7 @@
   <main id="main">
     <section class="hero" aria-labelledby="h1">
       <p class="path"><span class="p">~/djzs</span> $ <span id="cmd">check --pm</span><span class="cursor" aria-hidden="true"></span></p>
-      <h1 id="h1">Check a trade idea before the order goes out.</h1>
+      <h1 id="h1">Everyone has a take. <span class="l2">Check yours before you trade.</span></h1>
       <p class="lede">Paste the idea. Get <b class="c-pass">PASS</b>, <b class="c-wait">WAIT</b> or <b class="c-fail">FAIL</b> and the line to fix. <span class="dim">Free, three a day, no wallet.</span></p>
       <div class="agentline only-wide">
         <span class="tag">AI agent?</span>
@@ -160,9 +171,17 @@
     </section>
 
     <section class="step" id="idea" aria-labelledby="s1">
+      <div class="examples" id="examples">
+        <p class="label" id="ex-label">no idea ready? load one from the news</p>
+        <div class="exrow" id="ex-row" role="group" aria-labelledby="ex-label">
+          <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
+          <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
+          <button type="button" class="btn" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
+        </div>
+        <p class="log" id="ex-log" role="status" aria-live="polite"></p>
+      </div>
       <p class="label" id="s1">your trade idea</p>
       <div class="panel">
-        <p class="status" id="example-status" hidden></p>
         <p class="status" id="last-status" hidden></p>
         <div class="kind" role="group" aria-label="What are you checking?">
           <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
@@ -174,7 +193,6 @@
         <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
         <div class="controls">
           <button type="button" class="btn" id="run" disabled>Check it</button>
-          <button type="button" class="btn ghost" id="example" hidden>Other real example</button>
           <button type="button" class="btn ghost" id="clear">Clear</button>
         </div>
         <p class="log" id="run-log" role="status" aria-live="polite"></p>
@@ -187,24 +205,20 @@
       </div>
     </section>
 
-    <section class="legend" id="legend" aria-label="The three possible answers">
-      <div class="ans"><span class="chipv pass">PASS</span><p>Nothing failed. It does not check your facts or say the trade wins.</p></div>
-      <div class="ans"><span class="chipv wait">WAIT</span><p>Not enough to judge. Treat it as a no until you fix it.</p></div>
-      <div class="ans"><span class="chipv fail">FAIL</span><p>A rule fired. Fix the line it names, or drop the trade.</p></div>
-    </section>
-
     <section class="step" id="out" hidden aria-labelledby="s3">
       <p class="label" id="s3">verdict</p>
       <div class="verdict" id="verdict" data-state="idle" tabindex="-1">
+        <div class="exidea" id="ex-idea" hidden></div>
         <div class="verdict-head"><span class="stamp" id="vstamp">&middot;</span><span class="verdict-title" id="vtitle"></span><span class="verdict-meta" id="vmeta"></span></div>
         <p class="verdict-note" id="vnote"></p>
         <div class="change" id="change" hidden><p class="line"><b>change //</b> <span id="change-from"></span> &rarr; <span id="change-to"></span></p><p class="say" id="change-say"></p></div>
         <div class="ledger" id="ledger"></div>
         <div class="cleared" id="cleared" hidden><p class="label">cleared since the last check</p><div id="cleared-list"></div></div>
         <p class="again" id="again" hidden><a href="#thesis" id="edit-link">Edit the idea</a>, then press <b>Check again</b>. Fixing a reason clears its flag. It does not make the trade good.</p>
+        <p class="again" id="recorded" hidden></p>
         <details class="tech"><summary>Technical details (hashes, codes, ruleset)</summary><div class="keys" id="keys"></div></details>
         <div class="offer" id="offer">
-          <p class="why"><b>Want this on record?</b> A receipt runs the check again and writes the result to Base, where anyone can check it. 2.00 USDC, whatever the verdict. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
+          <p class="why"><b>Want proof you checked first?</b> A receipt runs the check again and writes the result to Base, where anyone can check it. 2.00 USDC, whatever the verdict. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
           <div class="rfields">
             <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="paste it from the venue"></label>
             <label><span>Your side</span><select id="r-side"><option value="YES">YES</option><option value="NO">NO</option></select></label>
@@ -225,6 +239,16 @@
       </div>
     </section>
 
+    <section class="why" id="why" aria-labelledby="why-h">
+      <p class="label" id="why-h">why trust the answer</p>
+      <ol class="proof">
+        <li><span class="n" aria-hidden="true">01</span><span>Three separate readings of your text must agree.</span></li>
+        <li><span class="n" aria-hidden="true">02</span><span>Then fixed rules decide. The same reading always gets the same answer.</span></li>
+        <li><span class="n" aria-hidden="true">03</span><span>It does not pick a side, check facts or predict prices.</span></li>
+      </ol>
+      <p class="rline">Want proof you checked first? A public receipt is 2.00 USDC. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
+    </section>
+
     <section class="agents" id="agents" aria-label="For AI agents">
       <p class="docsline"><a href="/docs/agents/mcp">Connect an agent &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="/builders">For treasuries</a></p>
     </section>
@@ -236,6 +260,22 @@
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai &middot; audit before act</p>
   </footer>
 </div>
+
+<!-- Three sample ideas on real markets. Each `body` is the answer the live free check gave for that exact `thesis` on the
+     `checked` day, recorded unchanged after two runs agreed. djzs-trust-mcp/test/site-examples.test.mjs recomputes both
+     hashes from the text. To swap one: write the text, POST it to /try/verdict twice, paste the answer, move `closes`.
+     After `closes` (a UTC day) the page stops offering them. -->
+<script type="application/json" id="examples-data">
+{
+  "checked": "2026-11-21",
+  "closes": "2026-12-19",
+  "examples": [
+    {"id": "dip", "kind": "perp", "where": "Hyperliquid BTC perp", "thesis": "Hyperliquid, BTC perp. Buying the dip, long 5x with $2,000 around $60,400. It fell from $81,000 to $55,700 in a month and the Fear and Greed Index is at 12. I do not want to miss the bounce back to $70,000.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["oracle_source", "confidence"], "verdict_hash": "0xd890f5a662f8f8218f97da26abe6e2645659ee59b0efc4de69848d3220fadb24", "intent_sha256": "0x72b3bf7a4c5ed10159e47e6c8dbb943e7c60ca1949b1f3ddbe5f904b52d7e78a", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}},
+    {"id": "headline", "kind": "pm", "where": "Kalshi KXNVDACEO-29JAN-JENS", "url": "https://kalshi.com/markets/kxnvdaceo/next-nvidia-ceo/kxnvdaceo-29jan", "rule": "Kalshi's rule for this market: YES only if he is named CEO before Jan 1, 2029. Interim or acting appointments do not count.", "thesis": "Kalshi, Who will be the next CEO of NVIDIA? Buying YES on Jensen Huang at 11 cents. On Nov 20 Trump said he would love to see Jensen given a second chance. He is too important to keep out. He will be back at Nvidia in some role, adviser or chairman, within months. Easy money at 11 cents.", "body": {"kind": "pm", "verdict": "FAIL", "risk_score": 85, "flags": ["DJZS-M02", "DJZS-M01", "DJZS-M03"], "flags_detail": [{"code": "DJZS-M02", "name": "FALSIFICATION_ABSENT", "severity": "CRITICAL"}, {"code": "DJZS-M01", "name": "NARRATIVE_RESOLUTION_GAP", "severity": "CRITICAL"}, {"code": "DJZS-M03", "name": "PROBABILITY_UNSOURCED", "severity": "HIGH"}], "unknown_fields": [], "verdict_hash": "0x931bf2ef819ae44e841c8ea5ee52a02a089505b2890b49afb5afedc9f68780d6", "intent_sha256": "0xa01820afb25b7ec696724fe9c0993c5d99010394715633ec7fd80cffca38a548", "intent_hash": null, "ruleset": "DJZS-PM-v1.0"}},
+    {"id": "bubble", "kind": "perp", "where": "QQQ, the fund that tracks the Nasdaq 100", "thesis": "Short QQQ near $608, 2x on margin, $5,000. The AI bubble is bursting. QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. This goes a lot lower. No stop, and nothing changes my mind on this one.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:take_profit", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["take_profit", "oracle_source", "confidence"], "verdict_hash": "0x7f2af25c50e1225b95982b912b05db22f492dd89a4585115edf8445ba94e9542", "intent_sha256": "0x1562e93f9b5fdc8a9a8a2cc92b82cc89601f88e0469151f933f109ca5908f540", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}}
+  ]
+}
+</script>
 
 <script type="module">
 // ── what this page believes it is buying. Restated, not fetched: a drift in the quote fails loudly before anything is signed.
@@ -252,7 +292,7 @@ let viemMod = null;
 async function viem(){ if (!viemMod) viemMod = await import(VIEM); return viemMod; }
 
 const $ = (id) => document.getElementById(id);
-const state = { provider: null, address: null, kind: "pm", last: null, examples: [], exampleIx: 0, out: false, bracketsFor: null };
+const state = { provider: null, address: null, kind: "pm", last: null, out: false, bracketsFor: null };
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ── the browser's free-verdict id. Random, local, never tied to a wallet. Created on the first check, not on page load.
@@ -313,12 +353,12 @@ const RESETS = `resets 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : 
 function refresh(){
   const run = $("run");
   if (state.out) { run.disabled = true; run.textContent = "No free checks left today"; return; }
-  run.textContent = state.last ? "Check again" : "Check it";
+  run.textContent = !state.last ? "Check it" : (state.last.example && $("thesis").value.trim() === state.last.example.thesis) ? "Check it live" : "Check again";
   run.disabled = !intentValid(currentIntent());
 }
 $("thesis").addEventListener("input", refresh);
 $("thesis").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("run").disabled) { e.preventDefault(); $("run").click(); } });
-$("clear").addEventListener("click", () => { $("thesis").value = ""; refresh(); $("thesis").focus(); });
+$("clear").addEventListener("click", () => { $("thesis").value = ""; dropExample(); log("ex-log", ""); refresh(); $("thesis").focus(); });
 $("edit-link").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 const KIND = {
   pm: { needs: ["The market's own terms: the question, the date it settles, and the source that settles it.", "Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.", "What would prove you wrong: the specific event, before the market settles.", "Why the market is wrong. \u201CEveryone agrees\u201D is not a reason. This one is advice; it never changes the verdict."],
@@ -332,9 +372,8 @@ function setKind(k){
   for (const id of ["pm", "perp"]) { const on = id === k; $("kind-" + id).classList.toggle("on", on); $("kind-" + id).setAttribute("aria-pressed", String(on)); }
   $("kind-hint").textContent = KIND[k].hint; $("thesis-label").textContent = KIND[k].label; $("thesis").placeholder = KIND[k].ph;
   $("needs-list").innerHTML = KIND[k].needs.map((x) => `<li>${esc(x)}</li>`).join("");
-  // The curated examples are prediction markets. Switching to perp clears a loaded example, never the user's own text.
-  if (k === "perp" && state.examples.some((e) => e.thesis === $("thesis").value.trim())) $("thesis").value = "";
-  $("example").hidden = k !== "pm" || state.examples.length === 0;
+  // Switching kind away from a loaded example drops it. The person's own text is never cleared.
+  if (state.last && state.last.example && state.last.example.kind !== k) { if (isExampleText($("thesis").value.trim())) $("thesis").value = ""; dropExample(); }
   refresh();
 }
 $("kind-pm").addEventListener("click", () => setKind("pm"));
@@ -342,28 +381,47 @@ $("kind-perp").addEventListener("click", () => setKind("perp"));
 // A link can open the perp check directly: djzs.ai/?kind=perp
 if (new URLSearchParams(location.search).get("kind") === "perp") setKind("perp");
 
-// ── the real example. Fetched from the worker, which reads the venue's live price and serves only open markets.
-// No open market, or the fetch fails: the box stays empty with its template, and nothing claims an example exists.
-async function loadExamples(){
-  try {
-    const r = await fetch(`${WORKER}/try/example`, { cache: "no-store" });
-    const j = await r.json();
-    if (!r.ok || !j.ok || !Array.isArray(j.examples) || j.examples.length === 0) return;
-    state.examples = j.examples;
-    if (state.kind === "pm") { $("example").hidden = false; showExample(0); }
-  } catch { /* the check itself reports if the worker is down */ }
+// ── the three examples. Sample ideas on real markets, each carrying the answer the live check gave for that exact
+// text, recorded unchanged. Loading one calls nothing and uses no free check. Past `closes` none is offered.
+const EX = (() => { try { return JSON.parse($("examples-data").textContent); } catch { return null; } })();
+const exampleList = EX && Array.isArray(EX.examples) && new Date().toISOString().slice(0, 10) <= EX.closes ? EX.examples : [];
+const isExampleText = (t) => exampleList.some((e) => e.thesis === t);
+const exButtons = () => document.querySelectorAll("#ex-row button[data-ex]");
+function markExample(id){ for (const b of exButtons()) { const on = b.dataset.ex === id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); } }
+function initExamples(){
+  let shown = 0;
+  for (const b of exButtons()) {
+    const ex = exampleList.find((e) => e.id === b.dataset.ex);
+    b.hidden = !ex; if (!ex) continue;
+    shown++; b.addEventListener("click", () => loadExample(ex));
+  }
+  $("examples").hidden = shown === 0;
 }
-function showExample(ix){
-  const ex = state.examples[ix]; if (!ex) return;
-  state.exampleIx = ix;
-  if (!$("thesis").value.trim() || state.examples.some((e) => e.thesis === $("thesis").value.trim())) $("thesis").value = ex.thesis;
-  const when = ex.price.live ? `live ${new Date(ex.price.as_of).toISOString().slice(11, 16)} UTC` : `snapshot ${esc(ex.price.as_of)}, venue unreachable`;
-  const st = $("example-status");
-  st.innerHTML = `<span class="ok">OK</span><span class="v">Real market loaded: <b>${esc(ex.venue)} ${esc(ex.market_id)}</b> · YES ${esc(String(ex.price.yes_bid))}/${esc(String(ex.price.yes_ask))}c, ${when} · <a href="${esc(ex.url)}" target="_blank" rel="noopener">open on ${esc(ex.venue)}</a>. Edit it or replace it with your own.</span>`;
-  st.hidden = false;
+function loadExample(ex){
+  const cur = $("thesis").value.trim();
+  if (cur && !isExampleText(cur)) { log("ex-log", "Your own text is in the box. Press Clear first, then load an example."); return; }
+  log("ex-log", ""); log("run-log", "");
+  setKind(ex.kind);
+  $("thesis").value = ex.thesis;
+  state.bracketsFor = null;
+  state.last = { kind: ex.kind, intent: { thesis: ex.thesis }, body: ex.body, example: ex };
+  markExample(ex.id);
+  renderVerdict(ex.body, null, ex);
   refresh();
 }
-$("example").addEventListener("click", () => { if (!state.examples.length) return; $("thesis").value = ""; showExample((state.exampleIx + 1) % state.examples.length); });
+// The box no longer holds a loaded example: its recorded answer leaves the page with it.
+function dropExample(){
+  if (!state.last || !state.last.example) return;
+  state.last = null; markExample(null);
+  $("out").hidden = true; $("last-status").hidden = true;
+}
+// An example's recorded answer is a fair "before" only for an edit of that example, not for another idea typed over it.
+function sameIdea(a, b){
+  const words = (t) => new Set(t.toLowerCase().match(/[a-z0-9$%]+/g) ?? []);
+  const A = words(a), B = words(b); let n = 0;
+  for (const w of A) if (B.has(w)) n++;
+  return n / Math.max(1, Math.min(A.size, B.size)) >= 0.5;
+}
 
 // ── checks left today. Asked only for a browser that already has an id; a first visit creates nothing.
 function showQuota(q){
@@ -397,8 +455,9 @@ $("run").addEventListener("click", async () => {
       const why = body.error === "wallet_quota_exhausted" ? `This browser has used its three free checks for today. They come back at 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}.` : body.error === "free_tier_exhausted_today" ? `The free checks are used up for everyone today. They come back at 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}.` : `${body.error ?? "error"}${body.detail ? ": " + body.detail : ""}`;
       throw new Error(why);
     }
-    const prev = state.last;
+    const prev = state.last && state.last.example && !sameIdea(state.last.example.thesis, intent.thesis) ? null : state.last;
     state.last = { kind, intent, body };
+    markExample(null);
     renderVerdict(body, prev);
     showQuota(body.quota);
     log("run-log", "");
@@ -511,8 +570,20 @@ function renderChange(prev, b){
   }
 }
 
-function renderVerdict(b, prev){
-  $("out").hidden = false; $("receipt").hidden = true; $("legend").hidden = true;
+// An example shows its own text above the answer, the venue's rule when the rule is the lesson, and where the answer came from.
+function renderExampleHead(ex){
+  const head = $("ex-idea"), rec = $("recorded");
+  head.hidden = !ex; rec.hidden = !ex;
+  if (!ex) { head.innerHTML = ""; rec.innerHTML = ""; return; }
+  const where = ex.url ? `<a href="${esc(ex.url)}" target="_blank" rel="noopener">${esc(ex.where)}</a>` : esc(ex.where);
+  head.innerHTML = `<p class="label">sample idea</p><q>${esc(ex.thesis)}</q>${ex.rule ? `<span class="src rule">${esc(ex.rule)}</span>` : ""}<span class="src">Real market: ${where}. Written ${esc(EX.checked)}. A sample, not a recommendation.</span>`;
+  rec.innerHTML = `Recorded ${esc(EX.checked)}: the answer the live check gave for this exact text. <a href="#thesis" id="ex-edit">Edit the idea</a>, then check it yourself. That uses one free check.`;
+  $("ex-edit").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
+}
+
+function renderVerdict(b, prev, ex){
+  $("out").hidden = false; $("receipt").hidden = true;
+  renderExampleHead(ex);
   const kind = b.kind === "perp" ? "perp" : b.kind === "pm" ? "pm" : state.kind;
   const v = $("verdict");
   const st = b.verdict === "PASS" ? "pass" : b.verdict === "WAIT" ? "wait" : b.verdict === "FAIL" ? "fail" : "refused";
@@ -537,13 +608,14 @@ function renderVerdict(b, prev){
   const rows = flags.map(flagRow).join("") + unknown.map((u) => unsettledRow(u, b.verdict, detail[u])).join("");
   $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="pass"><span class="tok">OK</span><p class="claim-name">No defects<span class="chip">0 flags</span></p><p class="claim-body">Every scored part of the idea was there and no failure pattern matched.</p></div>` : "");
   $("ledger").hidden = !rows && st !== "pass";
-  $("again").hidden = st === "pass" || st === "refused";
+  $("again").hidden = !!ex || st === "pass" || st === "refused";
   $("keys").innerHTML = st === "refused" ? "" : `<span>codes</span><b>${esc((b.flags ?? []).join(", ") || "none")}</b><span>ruleset</span><b>${esc(b.ruleset ?? "")}</b><span>intent_sha256</span><b>${esc(b.intent_sha256 ?? "")}</b><span>intent_hash</span><b>${esc(b.intent_hash ?? "n/a (free-text intent)")}</b><span>verdict_hash</span><b>${esc(b.verdict_hash ?? "")}</b><span>attested</span><b>no. Free verdicts are not written anywhere.</b>`;
-  $("offer").hidden = st === "refused";
+  // A sample idea is not something to buy a receipt for. The offer comes back with the person's own check.
+  $("offer").hidden = st === "refused" || !!ex;
   setReceiptFields(kind);
   $("pay").disabled = false; log("pay-log", "");
   const ls = $("last-status");
-  ls.innerHTML = st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the idea, then check again.</span>`;
+  ls.innerHTML = ex ? `<span class="ok">EX</span><span class="v">Example loaded, with the answer the check gave it. Edit it and check it yourself, or press <b>Clear</b> and paste your own.</span>` : st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the idea, then check again.</span>`;
   ls.hidden = false;
   scrollToEl($("out"));
   v.focus({ preventScroll: true });
@@ -658,7 +730,7 @@ function renderReceipt(r){
   scrollToEl(el);
 }
 
-loadExamples();
+initExamples();
 loadQuota();
 refresh();
 </script>

@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <!-- DJZS OG master (brand patch 2026-07-17). Raster og.png is the shipped artifact;
-       this file is the editable source. Fonts: JetBrains Mono with mono fallback. -->
+  <!-- DJZS OG master (brand patch 2026-07-17; headline for people 2026-11-21). Raster og.png is the
+       shipped artifact; this file is the editable source. Fonts: JetBrains Mono with mono fallback.
+       When the card changes, bump the ?v= on og:image and twitter:image in index.html: X holds cards. -->
   <defs>
     <style>
       text { font-family: 'JetBrains Mono', 'DejaVu Sans Mono', ui-monospace, monospace; }
@@ -26,27 +27,28 @@
   <!-- doctrine -->
   <text x="70" y="158" font-size="24" class="muted">// AUDIT BEFORE ACT</text>
 
-  <!-- hero wordmark + cursor block -->
-  <text x="62" y="330" font-size="170" class="b text">DJZS</text>
-  <rect x="500" y="218" width="56" height="130" class="pass" fill="#3DFF88"/>
+  <!-- headline + cursor block -->
+  <text x="70" y="246" font-size="56" class="b text">Everyone has a take.</text>
+  <text x="70" y="316" font-size="56" class="b text">Check yours before you trade.</text>
+  <rect x="1058" y="270" width="26" height="50" fill="#3DFF88"/>
 
-  <!-- hero line -->
-  <text x="70" y="422" font-size="28" class="text">The reasoning gate every trading agent calls before it acts.</text>
+  <!-- what you get -->
+  <text x="70" y="378" font-size="28" class="text">Paste a trade idea. Get the verdict and the line to fix.</text>
 
   <!-- verdict trio -->
   <g font-size="44" class="b">
-    <rect x="70"  y="446" width="160" height="58" fill="none" stroke="#3DFF88" stroke-width="3"/>
-    <text x="150" y="489" text-anchor="middle" class="pass">PASS</text>
-    <text x="252" y="489" class="muted" font-weight="400">-</text>
-    <rect x="300" y="446" width="160" height="58" fill="none" stroke="#FFB000" stroke-width="3"/>
-    <text x="380" y="489" text-anchor="middle" class="wait">WAIT</text>
-    <text x="482" y="489" class="muted" font-weight="400">-</text>
-    <rect x="530" y="446" width="160" height="58" fill="none" stroke="#FF4D4D" stroke-width="3"/>
-    <text x="610" y="489" text-anchor="middle" class="fail">FAIL</text>
+    <rect x="70"  y="410" width="160" height="58" fill="none" stroke="#3DFF88" stroke-width="3"/>
+    <text x="150" y="453" text-anchor="middle" class="pass">PASS</text>
+    <text x="252" y="453" class="muted" font-weight="400">-</text>
+    <rect x="300" y="410" width="160" height="58" fill="none" stroke="#FFB000" stroke-width="3"/>
+    <text x="380" y="453" text-anchor="middle" class="wait">WAIT</text>
+    <text x="482" y="453" class="muted" font-weight="400">-</text>
+    <rect x="530" y="410" width="160" height="58" fill="none" stroke="#FF4D4D" stroke-width="3"/>
+    <text x="610" y="453" text-anchor="middle" class="fail">FAIL</text>
   </g>
 
   <!-- price line -->
-  <text x="70" y="556" font-size="27"><tspan class="b text">verify_pm_trade</tspan><tspan class="muted"> - 2.00 USDC - </tspan><tspan class="text">x402</tspan></text>
+  <text x="70" y="528" font-size="27"><tspan class="b text">Free</tspan><tspan class="muted"> - three checks a day - </tspan><tspan class="text">no wallet</tspan></text>
 
   <!-- transmission footer -->
   <line x1="70" y1="580" x2="1130" y2="580" stroke="#1C1C1C" stroke-width="2"/>
