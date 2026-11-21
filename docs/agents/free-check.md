@@ -76,6 +76,7 @@ the date. What fails and why: [Rulesets](../concepts/rulesets.md).
 | `flags` | Codes that fired, then `unknown:<field>` for each unsettled field. |
 | `flags_detail` | One object per code: `code`, `name`, `description`, `severity`, `weight`, `evidence`. `evidence` is the rule's own sentence, not a quote of your text. |
 | `unknown_fields` | Fields the check could not settle from the text. |
+| `unsettled` | On a `WAIT` only: for each unknown field, what the three readings did and which of your sentences they pointed at. [Below](#which-sentence-a-wait-is-about). |
 | `verdict_hash` | Recomputable fingerprint: [Verdicts](../concepts/verdicts.md#the-verdict-hash). |
 | `intent_sha256` | Binding key for the exact text checked. |
 | `intent_hash` | The EIP-712 key the paid route would attest, or `null` when the intent lacks the fields it needs (a bare `thesis` gives `null`). |
@@ -86,6 +87,38 @@ the date. What fails and why: [Rulesets](../concepts/rulesets.md).
 
 **Wrong kind.** If the idea does not read as the `kind` named, the answer is `200` with
 `verdict: "REFUSED_SCOPE"`, a `reason`, and no score. It still uses one of the day's checks.
+
+### Which sentence a WAIT is about
+
+A `WAIT` carries one `unsettled` entry per field in `unknown_fields`, in the same order. Source:
+`djzs-trust-mcp/src/unsettled.ts`.
+
+```json
+"unsettled": [
+  {
+    "field": "invalidation_condition",
+    "why": "split",
+    "states": { "present": 2, "absent": 0, "unknown": 1 },
+    "sentences": [
+      {
+        "text": "I am wrong if a voting FOMC member publicly calls for a rate change before December 8, 2026.",
+        "present": 2,
+        "absent": 0
+      }
+    ]
+  }
+]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `why` | `split`: the three readings disagreed. `evidence`: all three found the fact missing but quoted different text, so the check does not rely on any of them. `silent`: none of them could settle it. |
+| `states` | How many readings ended `present`, `absent` or `unknown` after the extraction's own checks ([Extraction](../concepts/extraction.md)). |
+| `sentences` | Sentences from your intent, verbatim (whitespace collapsed, the rendered `key: ` prefix removed, at most 400 characters), in text order. `present`: readings that found the fact there. `absent`: readings that quoted it as showing the fact is missing. Can be empty. |
+
+The sentences are located, never written: one appears only when a reading's quote or value matches it, exactly
+or, for a paraphrase, by most of its words. The field comes from the readings the check already ran. It is not
+part of the verdict or `verdict_hash`, and the paid routes do not return it.
 
 ## Errors
 

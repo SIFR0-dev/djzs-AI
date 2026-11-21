@@ -16,7 +16,9 @@
 - Returns verdict (PASS, WAIT or FAIL; REFUSED_SCOPE when the idea is not the kind named), risk_score,
   flags_detail (each fired rule with a plain name and severity), unknown_fields (what the check could not
   settle), verdict_hash, intent_sha256, ruleset and quota. WAIT means treat it as a no until the unknown
-  fields are fixed. Free verdicts are not attested and not anchored.
+  fields are fixed. A WAIT also carries unsettled: per unknown field, whether the three readings disagreed,
+  all flagged it but quoted different text, or found nothing, and the sentences of your text they pointed
+  at, verbatim. Free verdicts are not attested and not anchored.
 - 3 per anon id per UTC day, or 5 per wallet when the caller signs (see "Free verdicts" below); a global
   daily cap also applies. Checks left: GET https://mcp.djzs.ai/try/quota?anon=<id>. Intent up to 4096 bytes.
 - The same check in a browser: https://djzs.ai/ (paste the idea into the box).
@@ -110,6 +112,7 @@
 ## Discovery
 
 - Docs (every technical detail, with sources in the code): https://djzs.ai/docs
+- The same docs as an MCP server, to search and read from an agent: https://docs.djzs.ai/~gitbook/mcp
 - AI Catalog, with the MCP server card inline: https://djzs.ai/.well-known/ai-catalog.json
 - MCP Registry: ai.djzs/trust-mcp (remote, streamable HTTP, https://mcp.djzs.ai/mcp)
 - A2A agent card: https://mcp.djzs.ai/.well-known/agent.json
