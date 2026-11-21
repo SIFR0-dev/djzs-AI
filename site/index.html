@@ -190,7 +190,7 @@
           <button type="button" class="btn ghost" id="clear">Clear</button>
         </div>
         <p class="log" id="run-log" role="status" aria-live="polite"></p>
-        <p class="quota" id="quota">Three free checks a day &middot; resets 00:00 UTC</p>
+        <p class="quota" id="quota">Three free checks a day</p>
       </div>
       <div class="agentline only-narrow">
         <span class="tag">AI agent?</span>
@@ -219,7 +219,7 @@
         <div class="offer" id="offer">
           <p class="why"><b>Want this on record?</b> A receipt checks the idea again with the market and your side named, and writes the result to Base with your wallet as the recipient. Anyone can check it later without trusting DJZS. The receipt records the paid run, which can differ from this one. 2.00 USDC, whichever way the verdict goes.</p>
           <div class="rfields">
-            <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="KXFEDDECISION-26DEC-H0"></label>
+            <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="paste it from the venue"></label>
             <label><span>Your side</span><select id="r-side"><option value="YES">YES</option><option value="NO">NO</option></select></label>
           </div>
           <button type="button" class="btn" id="pay">Get the receipt &middot; 2.00 USDC</button>
@@ -282,7 +282,7 @@ let viemMod = null;
 async function viem(){ if (!viemMod) viemMod = await import(VIEM); return viemMod; }
 
 const $ = (id) => document.getElementById(id);
-const state = { provider: null, address: null, kind: "pm", last: null, examples: [], exampleIx: 0 };
+const state = { provider: null, address: null, kind: "pm", last: null, examples: [], exampleIx: 0, out: false, bracketsFor: null };
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ── the browser's free-verdict id. Random, local, never tied to a wallet. Created on the first check, not on page load.
@@ -337,7 +337,15 @@ for (const b of document.querySelectorAll("button.copy[data-copy]")) {
 // ── the one field
 function currentIntent(){ return { thesis: $("thesis").value.trim() }; }
 function intentValid(intent){ return intent.thesis.length >= 40; }
-function refresh(){ $("run").disabled = !intentValid(currentIntent()); }
+// 00:00 UTC in the reader's own clock, so "resets" means something without a time-zone sum.
+const RESET_LOCAL = (() => { try { const d = new Date(); d.setUTCHours(24, 0, 0, 0); return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch { return ""; } })();
+const RESETS = `resets 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}`;
+function refresh(){
+  const run = $("run");
+  if (state.out) { run.disabled = true; run.textContent = "No free checks left today"; return; }
+  run.textContent = state.last ? "Check again" : "Check it";
+  run.disabled = !intentValid(currentIntent());
+}
 $("thesis").addEventListener("input", refresh);
 $("thesis").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("run").disabled) { e.preventDefault(); $("run").click(); } });
 $("clear").addEventListener("click", () => { $("thesis").value = ""; refresh(); $("thesis").focus(); });
@@ -388,7 +396,12 @@ function showExample(ix){
 $("example").addEventListener("click", () => { if (!state.examples.length) return; $("thesis").value = ""; showExample((state.exampleIx + 1) % state.examples.length); });
 
 // ── checks left today. Asked only for a browser that already has an id; a first visit creates nothing.
-function showQuota(q){ if (q && typeof q.remaining === "number" && typeof q.limit === "number") $("quota").textContent = `${q.remaining} of ${q.limit} free checks left today · resets 00:00 UTC`; }
+function showQuota(q){
+  if (!q || typeof q.remaining !== "number" || typeof q.limit !== "number") return;
+  state.out = q.remaining <= 0;
+  $("quota").textContent = state.out ? `No free checks left in this browser today · ${RESETS}` : `${q.remaining} of ${q.limit} free checks left today · ${RESETS}`;
+  refresh();
+}
 async function loadQuota(){
   const id = storedAnon(); if (!id) return;
   try { const r = await fetch(`${WORKER}/try/quota?anon=${id}`, { cache: "no-store" }); const j = await r.json(); if (r.ok && j.ok) showQuota(j); } catch { /* the line keeps its default */ }
@@ -398,6 +411,11 @@ async function loadQuota(){
 $("run").addEventListener("click", async () => {
   const intent = currentIntent();
   if (!intentValid(intent)) return;
+  if (/\[[^\]\n]{1,80}\]/.test(intent.thesis) && state.bracketsFor !== intent.thesis) {
+    state.bracketsFor = intent.thesis;
+    log("run-log", "Your text still has [brackets] in it. Replace each one with your real value, then check. Nothing was used. Press again to check it as it is.", "xx");
+    return;
+  }
   const kind = state.kind;
   const btn = $("run"); btn.disabled = true;
   try {
@@ -405,8 +423,8 @@ $("run").addEventListener("click", async () => {
     const r = await fetch(`${WORKER}/try/verdict`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, intent, anon: anonId() }) });
     const body = await r.json().catch(() => ({ ok: false, error: `the check answered HTTP ${r.status}` }));
     if (!r.ok || !body.ok) {
-      if (body.error === "wallet_quota_exhausted") showQuota({ remaining: 0, limit: body.limit ?? 3 });
-      const why = body.error === "wallet_quota_exhausted" ? "This browser has used its three free checks for today. The receipt still works, or come back after 00:00 UTC." : body.error === "free_tier_exhausted_today" ? "The free checks are used up for everyone today. The receipt still works." : `${body.error ?? "error"}${body.detail ? ": " + body.detail : ""}`;
+      if (body.error === "wallet_quota_exhausted" || body.error === "free_tier_exhausted_today") showQuota({ remaining: 0, limit: body.limit ?? 3 });
+      const why = body.error === "wallet_quota_exhausted" ? `This browser has used its three free checks for today. They come back at 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}.` : body.error === "free_tier_exhausted_today" ? `The free checks are used up for everyone today. They come back at 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}.` : `${body.error ?? "error"}${body.detail ? ": " + body.detail : ""}`;
       throw new Error(why);
     }
     const prev = state.last;
@@ -525,7 +543,6 @@ function renderVerdict(b, prev){
   $("offer").hidden = st === "refused";
   setReceiptFields(kind);
   $("pay").disabled = false; log("pay-log", "");
-  $("run").textContent = "Check again";
   const ls = $("last-status");
   ls.innerHTML = st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the idea, then check again.</span>`;
   ls.hidden = false;
@@ -537,7 +554,7 @@ function renderVerdict(b, prev){
 function setReceiptFields(kind){
   const perp = kind === "perp";
   $("r-market-label").textContent = perp ? "Instrument" : "Market id on the venue";
-  $("r-market").placeholder = perp ? "BTC-PERP" : "KXFEDDECISION-26DEC-H0";
+  $("r-market").placeholder = perp ? "type it, for example BTC-PERP" : "paste it from the venue";
   const want = perp ? ["LONG", "SHORT"] : ["YES", "NO"], sel = $("r-side");
   if ([...sel.options].map((o) => o.value).join() !== want.join()) { sel.innerHTML = want.map((v) => `<option value="${v}">${v}</option>`).join(""); $("r-market").value = ""; }
 }
@@ -568,7 +585,7 @@ $("pay").addEventListener("click", async () => {
   // The paid route binds its record (intent_hash) to a market and a side, so a bare thesis cannot be attested:
   // it is refused before any money moves. The receipt therefore carries the market and side the person names here.
   const market = $("r-market").value.trim();
-  if (market.length < 2) { log("pay-log", kind === "perp" ? "Name the instrument first, for example BTC-PERP." : "Name the market id on the venue first, for example KXFEDDECISION-26DEC-H0.", "xx"); $("r-market").focus(); return; }
+  if (market.length < 2) { log("pay-log", kind === "perp" ? "The instrument box above is empty. Type it, for example BTC-PERP." : "The market id box above is empty. Paste the id from the venue, for example KXFEDDECISION-26DEC-H0.", "xx"); $("r-market").focus(); return; }
   const side = $("r-side").value, thesis = state.last.intent.thesis;
   const intent = kind === "perp" ? { instrument: market, side, thesis } : { market, side, thesis };
   const url = ROUTE[kind];
