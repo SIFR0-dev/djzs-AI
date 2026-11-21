@@ -9,6 +9,10 @@
 # Two guessable doors to the agent setup on the home page. The MCP server itself is https://mcp.djzs.ai/mcp.
 /mcp /#agents 302
 /agents /#agents 302
+# 2026-11-21: the Connect guide moved into the docs (its payer recipe is on the MCP page there).
+/guide /docs/agents/mcp 302
+/guide/ /docs/agents/mcp 302
+/guide.html /docs/agents/mcp 302
 # The docs: GitBook, synced from docs/ on main through gitbook-docs.yaml. GitBook files each page under its
 # SUMMARY.md group, not under its repo path: docs/agents/x.md is served at /for-agents/x, docs/concepts/x.md at
 # /how-a-verdict-is-made/x, and docs/measured.md at /evidence/measured. So every page is mapped one to one; a bare

@@ -48,7 +48,7 @@
 - Paying: verify_pm_trade and verify_perp_trade each cost 2.00 USDC per audit on Base mainnet over x402. MCP-native payer:
   wrap your MCP client with withX402Client (agents/x402) using an account holding USDC on Base,
   network "base", and maxPaymentValue 2000000n; the library's default cap is 0.10 USDC and
-  refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/guide.html#pay
+  refuses this price. Gas is facilitator-paid. Full recipe: https://djzs.ai/docs/agents/mcp
 - MPP (Machine Payments Protocol), live 2026-11-01: verify_pm_trade and verify_perp_trade also accept an MPP
   credential. The 402 carries WWW-Authenticate: Payment (method evm, intent charge, USDC on Base 8453,
   2000000 atomic) beside PAYMENT-REQUIRED. No-code client: npx mppx https://mcp.djzs.ai/x402/verify_perp_trade

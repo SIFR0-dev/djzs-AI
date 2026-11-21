@@ -57,7 +57,32 @@ from a transaction history). The tested client is `withX402Client` from `agents/
   header.
 * **Ask first.** A `confirmationCallback` lets the agent ask a person before each payment.
 
-Full walkthrough with code: the [Connect guide](https://djzs.ai/guide#pay).
+The call, as the deploy check runs it against production:
+
+```ts
+import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
+import { withX402Client } from "agents/x402"
+import { privateKeyToAccount } from "viem/accounts"
+
+const client = new Client({ name: "my-agent", version: "1.0.0" })
+await client.connect(new StreamableHTTPClientTransport(new URL("https://mcp.djzs.ai/mcp")))
+
+const paid = withX402Client(client, {
+  account: privateKeyToAccount(PAYER_KEY), // a wallet holding USDC on Base
+  network: "base",
+  maxPaymentValue: 2000000n, // 2.00 USDC; the default cap is 0.10 USDC
+})
+
+const res = await paid.callTool(
+  async (offer) => true, // inspect the offer; return true to sign and pay
+  { name: "verify_pm_trade", arguments: { intent: "<the bet in the user's own words>" } },
+)
+```
+
+The wrapped client's `callTool` takes the confirmation callback first and the tool call second. Other x402
+clients are not documented here until they have been proven against this server. To pay with MPP from a
+terminal instead, see [Paid check over HTTP](paid-http.md).
 
 ## What a paid MCP call writes
 
