@@ -13,6 +13,10 @@
 /guide /docs/agents/mcp 302
 /guide/ /docs/agents/mcp 302
 /guide.html /docs/agents/mcp 302
+# 2026-11-21: the plain-language legal page merged into the Terms (its summary and T-14).
+/legal /terms 302
+/legal/ /terms 302
+/legal.html /terms 302
 # The docs: GitBook, synced from docs/ on main through gitbook-docs.yaml. GitBook files each page under its
 # SUMMARY.md group, not under its repo path: docs/agents/x.md is served at /for-agents/x, docs/concepts/x.md at
 # /how-a-verdict-is-made/x, and docs/measured.md at /evidence/measured. So every page is mapped one to one; a bare
