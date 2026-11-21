@@ -59,14 +59,24 @@ p:last-child{margin-bottom:0;}
 
 <div class="boot"><b>// SYS_ID:</b> DJZS_OPERATOR
 <b>// DOCUMENT:</b> TERMS_OF_SERVICE
-<b>// VERSION:</b> 1.0.0-draft
-<b>// EFFECTIVE:</b> 2026-08-20
+<b>// VERSION:</b> 1.1.0-draft
+<b>// EFFECTIVE:</b> 2026-11-21
 <b>// SCOPE:</b> all paid and unpaid calls to services operated under djzs.ai and mcp.djzs.ai
 <b>// STATUS:</b> BINDING upon use</div>
 
 <p class="sub" style="margin-bottom:24px"><a href="/">&larr; djzs.ai</a> &nbsp; <a href="/#idea">check</a> &nbsp; <a href="/verify">verify</a> &nbsp; <a href="/docs">docs</a></p>
 <h1>Terms of Service</h1>
-<p class="sub">These terms govern every interaction with the DJZS audit gate, by humans and by autonomous software. Reading them costs nothing. Ignoring them does not exempt you from them.</p>
+<p class="sub" style="margin-bottom:24px">These terms govern every interaction with the DJZS audit gate, by humans and by autonomous software. Reading them costs nothing. Ignoring them does not exempt you from them.</p>
+<section class="clause" id="plain" style="padding-top:24px">
+<span class="code">IN PLAIN WORDS</span>
+<h2>The short version</h2>
+<p>This summary is here to help you read the terms. Where it and the numbered terms below differ, the numbered terms apply.</p>
+<p><b>It is a check, not advice.</b> A verdict says whether the reasoning you sent is complete and free of the listed defects. It does not check that your facts or prices are true, whether a venue is open to you, or whether the trade wins. Decisions and outcomes are yours. (T-03)</p>
+<p><b>Paid checks are final.</b> A paid check is charged whatever the verdict, including WAIT and FAIL, and cannot be refunded once it settles. A request the check refuses as the wrong kind is not charged. (T-04)</p>
+<p><b>Paid checks leave a permanent public record.</b> Nobody can edit or delete it, including us. Do not send secrets, private keys or personal data. (T-06)</p>
+<p><b>No warranty, and liability is capped</b> at what you paid for the check in question. (T-08, T-09)</p>
+<p><b>What is stored</b> is listed in T-14.</p>
+</section>
 
 <section class="clause" id="t01">
 <span class="code">T-01 // OPERATOR</span>
@@ -146,6 +156,15 @@ p:last-child{margin-bottom:0;}
 <p>These terms are versioned. The current version is published at this URL; the version identifier appears in the document header above. Continued use of the Service after a new version is published constitutes acceptance of that version. Material changes take effect on publication.</p>
 </section>
 
+<section class="clause" id="t14">
+<span class="code">T-14 // PRIVACY</span>
+<h2>What is stored</h2>
+<p>There are no accounts and no logins, and this site sets no cookies. The free check keeps a random id in your browser's storage so your daily checks can be counted. The Service's database stores that id, or your wallet address if you sign, with the number of checks per day. It does not record IP addresses. Cloudflare serves the site and processes requests as any host does.</p>
+<p>The text you submit is sent to a third-party AI model provider so it can be read. The Service's database does not keep the text of a free check, and a free check is not written to any public record. A paid check is published as described in T-06.</p>
+<p>Requests for the Service's public description files (such as llms.txt) are logged with the path, the software making the request, the country and the network, without an IP address.</p>
+<p>The presenter page at /present runs on a third-party video provider. Your audio and anything you type there go to that provider under its own terms.</p>
+</section>
+
 <section class="clause" id="t13">
 <span class="code">T-13 // CONTACT</span>
 <h2>Contact</h2>
@@ -155,8 +174,8 @@ p:last-child{margin-bottom:0;}
 <div class="meta"><b>// MACHINE_READABLE</b>
 {
   "document": "djzs-terms-of-service",
-  "version": "1.0.0-draft",
-  "effective": "2026-08-20",
+  "version": "1.1.0-draft",
+  "effective": "2026-11-21",
   "operator": "DJZS AI, LLC (California)",
   "canonical": "https://djzs.ai/terms",
   "machine_pointer": "https://djzs.ai/.well-known/x402.json",
@@ -164,7 +183,7 @@ p:last-child{margin-bottom:0;}
   "payments": { "rail": "x402", "asset": "USDC", "network": "eip155:8453", "final": true }
 }</div>
 
-<p class="sub" style="margin:32px 0 0"><a href="/docs">docs</a> · <a href="/scan">scan room</a> · <a href="/build">services</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">support</a> · <a href="/legal">legal</a> · <a href="https://x.com/Djzs_ai">X @Djzs_ai</a></p>
+<p class="sub" style="margin:32px 0 0"><a href="/docs">docs</a> · <a href="/scan">scan room</a> · <a href="/build">services</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">support</a> · <a href="https://x.com/Djzs_ai">X @Djzs_ai</a></p>
 <p class="end">END_TRANSMISSION. //</p>
 
 </body>
