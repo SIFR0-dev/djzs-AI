@@ -85,7 +85,6 @@
   .ans{display:grid;grid-template-columns:76px 1fr;gap:14px;align-items:baseline;padding:12px 0;border-top:1px solid var(--rule)}.ans:first-of-type{border-top:0}
   .ans p{margin:0;font-size:14.5px}
   .chipv{display:inline-block;text-align:center;padding:2px 0;font-weight:800;letter-spacing:.16em;font-size:13px;color:var(--canvas)}.chipv.pass{background:var(--pass)}.chipv.wait{background:var(--wait)}.chipv.fail{background:var(--fail)}
-  .legend .foot{margin:0;padding:12px 0;border-top:1px solid var(--rule);font-size:13px;color:var(--muted)}
 
   /* the verdict */
   .verdict{border:1px solid var(--rule);background:var(--panel)}.verdict:focus{outline:none}.verdict[data-state="pass"]{border-color:var(--pass)}.verdict[data-state="wait"]{border-color:var(--wait)}.verdict[data-state="fail"]{border-color:var(--fail);border-width:2px}.verdict[data-state="refused"]{border-color:var(--muted)}
@@ -110,22 +109,10 @@
   .receipt{margin:16px 0 0;border:1px solid var(--pass);background:var(--panel)}.receipt .keys{padding-top:14px}
 
   /* what is measured */
-  .measured{margin:40px 0 0}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-  .card{border:1px solid var(--rule);background:var(--panel);padding:16px}
-  .card .st{margin:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.card .st b{font-weight:800;margin-right:8px;letter-spacing:.04em}.card .st .ok{color:var(--pass)}.card .st .no{color:var(--wait)}
-  .card .ct{margin:8px 0 6px;font-weight:700;font-size:15.5px}
-  .card .cb{margin:0;font-size:13.5px;color:var(--muted)}
-  .measured .after{margin:12px 0 0;font-size:13.5px;color:var(--muted)}
 
   /* for agents */
   .agents{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
-  .agents h2{font-size:clamp(19px,3vw,24px);font-weight:800;line-height:1.25;margin:0;max-width:40ch;text-wrap:balance}
-  .tagk{font-size:11px;font-weight:800;letter-spacing:.1em;padding:1px 7px;border:1px solid currentColor}.tagk.free{color:var(--pass)}.tagk.paid{color:var(--wait)}.tagk.mcpk{color:var(--text)}
-  .agents .mcp.big{margin:16px 0 0}
-  .ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:18px 0 0}
-  .way{border:1px solid var(--rule);background:var(--panel);padding:14px 16px}.way p{margin:10px 0 0;font-size:14.5px}
-  .docsline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:18px 0 0;font-size:13.5px;color:var(--muted)}
+  .docsline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:0;font-size:13.5px;color:var(--muted)}
   .rfields{display:flex;flex-wrap:wrap;gap:10px 14px;width:100%}.rfields label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
   .rfields input,.rfields select{font-family:var(--mono);font-size:16px;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:42px}.rfields input{width:min(320px,80vw)}.rfields input:focus,.rfields select:focus{outline:none;border-color:var(--pass)}
 
@@ -164,11 +151,11 @@
     <section class="hero" aria-labelledby="h1">
       <p class="path"><span class="p">~/djzs</span> $ <span id="cmd">check --pm</span><span class="cursor" aria-hidden="true"></span></p>
       <h1 id="h1">Check a trade idea before the order goes out.</h1>
-      <p class="lede">Paste a prediction-market bet or a perp trade. Get <b class="c-pass">PASS</b>, <b class="c-wait">WAIT</b> or <b class="c-fail">FAIL</b> in seconds, with the reasons in plain words and the line to fix. <span class="dim">Free, three a day, no wallet.</span></p>
+      <p class="lede">Paste the idea. Get <b class="c-pass">PASS</b>, <b class="c-wait">WAIT</b> or <b class="c-fail">FAIL</b> and the line to fix. <span class="dim">Free, three a day, no wallet.</span></p>
       <div class="agentline only-wide">
         <span class="tag">AI agent?</span>
         <span class="mcp"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
-        <a href="#agents">MCP setup, or one free POST &darr;</a>
+        <a href="/docs/agents/mcp">Setup &rarr;</a>
       </div>
     </section>
 
@@ -181,10 +168,10 @@
           <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
           <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
         </div>
-        <p class="hint" id="kind-hint">Kalshi, Polymarket or Limitless. Name the venue and the question, or the check will skip it.</p>
+        <p class="hint" id="kind-hint">Name the venue and the question.</p>
         <details class="needs" id="needs"><summary>What a complete idea includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
-        <label class="flabel" for="thesis" id="thesis-label">The market (venue and question), your side, why, and what would prove you wrong</label>
-        <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
+        <label class="flabel" for="thesis" id="thesis-label">Your idea</label>
+        <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
         <div class="controls">
           <button type="button" class="btn" id="run" disabled>Check it</button>
           <button type="button" class="btn ghost" id="example" hidden>Other real example</button>
@@ -196,15 +183,14 @@
       <div class="agentline only-narrow">
         <span class="tag">AI agent?</span>
         <span class="mcp"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
-        <a href="#agents">MCP setup, or one free POST &darr;</a>
+        <a href="/docs/agents/mcp">Setup &rarr;</a>
       </div>
     </section>
 
     <section class="legend" id="legend" aria-label="The three possible answers">
-      <div class="ans"><span class="chipv pass">PASS</span><p>Nothing failed. The check does not verify your facts, and it does not say the trade wins.</p></div>
-      <div class="ans"><span class="chipv wait">WAIT</span><p>The check could not settle part of your idea, and it names which part. Treat it as a no until you fix it.</p></div>
-      <div class="ans"><span class="chipv fail">FAIL</span><p>A rule fired on what your idea says. Each reason says what fired and ends with the line to fix.</p></div>
-      <p class="foot">The rules are fixed code. A model reads your text; it never returns the verdict.</p>
+      <div class="ans"><span class="chipv pass">PASS</span><p>Nothing failed. It does not check your facts or say the trade wins.</p></div>
+      <div class="ans"><span class="chipv wait">WAIT</span><p>Not enough to judge. Treat it as a no until you fix it.</p></div>
+      <div class="ans"><span class="chipv fail">FAIL</span><p>A rule fired. Fix the line it names, or drop the trade.</p></div>
     </section>
 
     <section class="step" id="out" hidden aria-labelledby="s3">
@@ -218,7 +204,7 @@
         <p class="again" id="again" hidden><a href="#thesis" id="edit-link">Edit the idea</a>, then press <b>Check again</b>. Fixing a reason clears its flag. It does not make the trade good.</p>
         <details class="tech"><summary>Technical details (hashes, codes, ruleset)</summary><div class="keys" id="keys"></div></details>
         <div class="offer" id="offer">
-          <p class="why"><b>Want this on record?</b> A receipt checks the idea again with the market and your side named, and writes the result to Base with your wallet as the recipient. Anyone can check it later without trusting DJZS. The receipt records the paid run, which can differ from this one. 2.00 USDC, whichever way the verdict goes.</p>
+          <p class="why"><b>Want this on record?</b> A receipt runs the check again and writes the result to Base, where anyone can check it. 2.00 USDC, whatever the verdict. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
           <div class="rfields">
             <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="paste it from the venue"></label>
             <label><span>Your side</span><select id="r-side"><option value="YES">YES</option><option value="NO">NO</option></select></label>
@@ -234,36 +220,19 @@
         <div class="offer">
           <a class="btn" id="verify-link" href="/verify" target="_blank" rel="noopener">Check it at /verify</a>
           <button type="button" class="btn ghost" id="copy-receipt">Copy receipt JSON</button>
-          <p class="why">The checker reads the payment from Base, recomputes the binding key from your text, and reads the attestation from EAS. Nothing there trusts DJZS.</p>
+          <p class="why">Anyone can check this receipt without trusting DJZS.</p>
         </div>
       </div>
     </section>
 
-    <section class="measured" aria-labelledby="m-h">
-      <p class="label" id="m-h">what is measured &middot; as of 2026-11-20</p>
-      <div class="cards">
-        <div class="card"><p class="st"><b class="ok">OK</b>measured</p><p class="ct">Same idea, same verdict</p><p class="cb">95 to 100% of replays, on short ideas written for the test. On 8 study records built from published theses, 6 came back WAIT because the three readings of the text disagreed on a fact.</p></div>
-        <div class="card"><p class="st"><b class="no">--</b>not yet</p><p class="ct">Reads like a careful person</p><p class="cb">Tuned on 41 cases the founder labeled. Blind labels from anyone else: 0.</p></div>
-        <div class="card"><p class="st"><b class="no">--</b>not yet</p><p class="ct">Verdicts predict outcomes</p><p class="cb">9 graded of the 100 needed for a first read. 8 of the 9 are one Fed meeting, and all 9 were WAIT. No outcome claim until then. <a href="https://github.com/SIFR0-dev/djzs-AI/tree/main/tests/q3/records">The grades are in the repo.</a></p></div>
-      </div>
-      <p class="after">The sealed records and their anchors are on <a href="/verify">Verify</a>. Every rule and weight, and how each number was measured, is in the <a href="/docs/measured">docs</a>.</p>
-    </section>
-
-    <section class="agents" id="agents" aria-labelledby="ag-h">
-      <p class="label">for AI agents</p>
-      <h2 id="ag-h">Your agent can run the same check.</h2>
-      <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
-      <div class="ways">
-        <div class="way"><span class="tagk free">FREE</span><p>One POST with an id your agent keeps. Three checks a day, no wallet. <a href="/docs/agents/free-check">How &rarr;</a></p></div>
-        <div class="way"><span class="tagk paid">2.00 USDC</span><p>Through the MCP server above, or plain HTTP with x402 or MPP. Each check leaves a record on Base or Irys that anyone can check. <a href="/docs/agents/mcp">Setup &rarr;</a></p></div>
-      </div>
-      <p class="docsline"><a class="btn" href="/docs">Read the docs &rarr;</a><span>For language models: <a href="/llms.txt">djzs.ai/llms.txt</a>. For treasuries and agent frameworks: <a href="/builders">djzs.ai/builders</a></span></p>
+    <section class="agents" id="agents" aria-label="For AI agents">
+      <p class="docsline"><a href="/docs/agents/mcp">Connect an agent &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="/builders">For treasuries</a></p>
     </section>
   </main>
 
   <footer>
     <nav aria-label="More"><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/build">Services</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai">X @Djzs_ai</a></nav>
-    <div class="k"><b>audit, not advice</b>: a verdict says whether the idea is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. An example market, when one is loaded, is real; it is not a recommendation. <a href="/terms">Terms</a>.</div>
+    <div class="k"><b>audit, not advice</b>: a verdict says whether the idea is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. An example market, when one is loaded, is real; it is not a recommendation. <a href="/terms">Terms</a>. <a href="/docs/measured">What has and has not been measured</a>.</div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai &middot; audit before act</p>
   </footer>
 </div>
@@ -353,9 +322,9 @@ $("clear").addEventListener("click", () => { $("thesis").value = ""; refresh(); 
 $("edit-link").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 const KIND = {
   pm: { needs: ["The market's own terms: the question, the date it settles, and the source that settles it.", "Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.", "What would prove you wrong: the specific event, before the market settles.", "Why the market is wrong. \u201CEveryone agrees\u201D is not a reason. This one is advice; it never changes the verdict."],
-        hint: "Kalshi, Polymarket or Limitless. Name the venue and the question, or the check will skip it.", label: "The market (venue and question), your side, why, and what would prove you wrong", ph: "Kalshi, [the market question]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
+        hint: "Name the venue and the question.", label: "Your idea", ph: "Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
   perp: { needs: ["The instrument, long or short, and your entry.", "Your stop, or the event that would prove you wrong.", "Your size and leverage.", "Why the price should move, in one sentence, with the data behind it and the date you read it. What other people are doing is not a reason."],
-        hint: "Hyperliquid or any venue. Say the instrument, long or short, entry, stop, size, leverage, and why the price should move.", label: "The instrument, long or short, entry, stop, size, leverage, and why the price should move", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
+        hint: "Name the instrument and say long or short.", label: "Your idea", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
 };
 function setKind(k){
   state.kind = k;
