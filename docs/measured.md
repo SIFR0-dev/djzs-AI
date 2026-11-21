@@ -23,7 +23,7 @@ What this covers, and what it does not:
   distinct texts, 191 to 1,569 characters), 7 had a scored fact turned `unknown` because the readings disagreed,
   and 6 of those 7 came back WAIT. Eight records is an observation, not a measurement.
 
-Sources: the extraction entries on [djzs.ai/ruleset](https://djzs.ai/ruleset); harness and raw runs in `tests/`.
+Sources: the measurement history in [Disclosures and corrections](disclosures.md); harness and raw runs in `tests/`.
 
 ## Reads like a careful person: not yet
 
