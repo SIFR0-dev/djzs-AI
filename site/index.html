@@ -100,6 +100,7 @@
   .claim-name{font-weight:700;font-size:16.5px;margin:0}.claim-name .chip{font-weight:800;font-size:11px;letter-spacing:.06em;border:1px solid currentColor;padding:1px 6px;margin-left:10px;vertical-align:2px;text-transform:uppercase}[data-r="fail"] .chip{color:var(--fail)}[data-r="wait"] .chip{color:var(--wait)}[data-r="idle"] .chip{color:var(--muted)}[data-r="pass"] .chip{color:var(--pass)}
   .claim-body{margin:6px 0 0;color:var(--muted);font-size:14.5px;max-width:76ch}
   .fix{display:block;color:var(--text);font-size:15.5px;margin-top:10px;max-width:70ch}.fix b{color:var(--pass);font-size:12px;letter-spacing:.12em;margin-right:6px}
+  .said{display:block;margin:10px 0 0;padding:8px 12px;border-left:2px solid var(--wait);background:var(--well);max-width:70ch}.said q{display:block;color:var(--text);font-size:15px;quotes:"\201C" "\201D"}.said .who{display:block;font-size:12.5px;color:var(--muted);margin-top:4px}
   .cleared{border-top:1px solid var(--rule);padding:14px 20px}.cleared .label{margin-bottom:6px}.okrow{margin:4px 0 0;font-size:14.5px}.okrow .ok{color:var(--pass);font-weight:700;display:inline-block;width:40px}
   .again{margin:0;padding:14px 20px;border-top:1px solid var(--rule);font-size:14px;color:var(--muted)}.again b{color:var(--text)}
   details.tech{border-top:1px solid var(--rule)}details.tech summary{cursor:pointer;padding:12px 20px;color:var(--muted);font-size:12.5px}details.tech summary:hover{color:var(--text)}
@@ -470,10 +471,38 @@ function flagRow(f){
   const chip = d.advice ? "advice" : (f.severity ?? "flag").toLowerCase();
   return `<div class="claim" data-r="${r}"><span class="tok">${r === "fail" ? "!!" : "!"}</span><p class="claim-name">${esc(d.name ?? plain(f.code, f.name))}<span class="chip">${esc(chip)}</span></p><p class="claim-body">${esc(d.what ?? f.description ?? "")}${d.fix ? `<span class="fix"><b>FIX //</b>${esc(d.fix)}</span>` : ""}</p></div>`;
 }
-function unsettledRow(u, verdict){
+// What the three readings did with an unsettled part: the `unsettled` field a WAIT carries. The quoted sentence is
+// the person's own text, located by the check; every other word here is fixed text. An answer without the field
+// (an older worker, or a PASS) gets the plain row below.
+const READ_AS = {
+  invalidation_condition: { present: "read it as what would prove you wrong", absent: "read it as saying nothing could" },
+  resolution_engagement:  { present: "read it as arguing the market's own terms", absent: "read it as arguing something next to the market's terms" },
+  probability_basis:      { present: "read it as the source for your odds", absent: "read it as odds with no checkable source" },
+  thesis_statement:       { present: "read it as your reason for the trade", absent: "read it as a position with no reason" },
+};
+function readAs(field, as){ return (READ_AS[field] && READ_AS[field][as]) || (as === "present" ? "found it here" : "flagged this"); }
+function unsettledDetail(u, d, x){
+  const st = x.states ?? {};
+  const n = (st.present ?? 0) + (st.absent ?? 0) + (st.unknown ?? 0) || 3;
+  const sents = Array.isArray(x.sentences) ? x.sentences : [];
+  const said = sents.map((s) => {
+    const who = [s.present ? `${s.present} of ${n} ${readAs(u, "present")}` : "", s.absent ? `${s.absent} of ${n} ${readAs(u, "absent")}` : ""].filter(Boolean).join("; ");
+    return `<span class="said"><q>${esc(s.text)}</q><span class="who">${esc(who)}</span></span>`;
+  }).join("");
+  const parts = [st.present ? `${st.present} found it` : "", st.absent ? `${st.absent} found it missing` : "", st.unknown ? `${st.unknown} could not tell` : ""].filter(Boolean).join(", ");
+  const lead = x.why === "silent" ? `None of the ${n} readings found this in your text.`
+    : x.why === "evidence" ? `All ${n} readings found it missing but quoted different words, so the check will not rely on it.`
+    : `The ${n} readings did not agree on this${parts ? `: ${parts}` : ""}.`;
+  const one = sents.length === 1;
+  const fix = x.why === "split" && sents.length ? `Rewrite the quoted ${one ? "sentence so it" : "sentences so they"} can only be read one way. ${d.fix ?? ""}`.trim() : d.fix;
+  return `${esc(lead)}${said}${fix ? `<span class="fix"><b>FIX //</b>${esc(fix)}</span>` : ""}`;
+}
+function unsettledRow(u, verdict, detail){
   const d = UNSETTLED[u] ?? { name: u.replace(/_/g, " ") };
+  const head = `<div class="claim" data-r="idle"><span class="tok">?</span><p class="claim-name">${esc(d.name)}<span class="chip">unsettled</span></p>`;
+  if (detail && typeof detail === "object") return `${head}<p class="claim-body">${unsettledDetail(u, d, detail)}</p></div>`;
   const why = verdict === "PASS" ? "The check could not settle this from your text. Under the rules it cannot change this verdict." : "The check could not settle this from your text. It may be missing, or worded so that three readings of it disagree.";
-  return `<div class="claim" data-r="idle"><span class="tok">?</span><p class="claim-name">${esc(d.name)}<span class="chip">unsettled</span></p><p class="claim-body">${why}${d.fix ? `<span class="fix"><b>FIX //</b>${esc(d.fix)}</span>` : ""}</p></div>`;
+  return `${head}<p class="claim-body">${why}${d.fix ? `<span class="fix"><b>FIX //</b>${esc(d.fix)}</span>` : ""}</p></div>`;
 }
 
 // ── what changed since the last check of the same kind. Computed from the two responses, never written by a model.
@@ -535,7 +564,8 @@ function renderVerdict(b, prev){
     : `<b>This did not read as a perp or spot trade.</b> Say the instrument, long or short, and your entry, then check again. If it is a prediction-market bet, pick that above.`;
   $("vnote").innerHTML = note;
   renderChange(prev, { ...b, kind });
-  const rows = flags.map(flagRow).join("") + unknown.map((u) => unsettledRow(u, b.verdict)).join("");
+  const detail = Array.isArray(b.unsettled) ? Object.fromEntries(b.unsettled.filter((x) => x && typeof x.field === "string").map((x) => [x.field, x])) : {};
+  const rows = flags.map(flagRow).join("") + unknown.map((u) => unsettledRow(u, b.verdict, detail[u])).join("");
   $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="pass"><span class="tok">OK</span><p class="claim-name">No defects<span class="chip">0 flags</span></p><p class="claim-body">Every scored part of the idea was there and no failure pattern matched.</p></div>` : "");
   $("ledger").hidden = !rows && st !== "pass";
   $("again").hidden = st === "pass" || st === "refused";

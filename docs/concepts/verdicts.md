@@ -46,7 +46,8 @@ The perp scored facts: `leverage`, `position_size`, `stop_loss`, `take_profit`, 
 A fact becomes `unknown` when the check cannot confirm it either way: the three readings of the text disagree,
 or a reading says it is missing without quoting the text that shows it ([Extraction](extraction.md)). The engine
 abstains instead of guessing. The way out of a WAIT is to fix the text: the same text checked again usually gets
-the same answer ([What is measured](../measured.md)).
+the same answer ([What is measured](../measured.md)). The free check names the sentences the readings pointed at
+([Free check](../agents/free-check.md#which-sentence-a-wait-is-about)).
 
 ## The verdict hash
 
