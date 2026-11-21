@@ -28,7 +28,7 @@
 <link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
 <link rel="alternate" type="application/json" href="https://mcp.djzs.ai/.well-known/agent.json" title="A2A agent card">
 <link rel="alternate" type="application/json" href="https://mcp.djzs.ai/openapi.json" title="OpenAPI">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DJZS","alternateName":"DJZS Protocol","url":"https://djzs.ai/","applicationCategory":"DeveloperApplication","operatingSystem":"Any","description":"Checks the reasoning behind a prediction-market bet or a perp trade before the order goes out. Returns PASS, WAIT or FAIL with the reasons in plain words and a reproducible verdict_hash. AI agents connect over MCP at https://mcp.djzs.ai/mcp or send one HTTP POST.","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free check: three a day per browser or agent id, no wallet, not attested","url":"https://djzs.ai/"},{"@type":"Offer","price":"2.00","priceCurrency":"USDC","description":"Per check with an EAS receipt on Base, paid over x402 on Base mainnet","url":"https://mcp.djzs.ai/x402/verify_pm_trade"}],"provider":{"@type":"Organization","name":"DJZS AI, LLC","url":"https://djzs.ai/","sameAs":["https://x.com/Djzs_ai","https://github.com/SIFR0-dev/djzs-AI"]},"softwareHelp":"https://djzs.ai/guide"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DJZS","alternateName":"DJZS Protocol","url":"https://djzs.ai/","applicationCategory":"DeveloperApplication","operatingSystem":"Any","description":"Checks the reasoning behind a prediction-market bet or a perp trade before the order goes out. Returns PASS, WAIT or FAIL with the reasons in plain words and a reproducible verdict_hash. AI agents connect over MCP at https://mcp.djzs.ai/mcp or send one HTTP POST.","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free check: three a day per browser or agent id, no wallet, not attested","url":"https://djzs.ai/"},{"@type":"Offer","price":"2.00","priceCurrency":"USDC","description":"Per check with an EAS receipt on Base, paid over x402 on Base mainnet","url":"https://mcp.djzs.ai/x402/verify_pm_trade"}],"provider":{"@type":"Organization","name":"DJZS AI, LLC","url":"https://djzs.ai/","sameAs":["https://x.com/Djzs_ai","https://github.com/SIFR0-dev/djzs-AI"]},"softwareHelp":"https://djzs.ai/docs"}</script>
 <style>
   :root{--canvas:#0A0A0A;--panel:#0D0D0D;--well:#080808;--rule:#1C1C1C;--text:#E6E6E6;--muted:#8A8A8A;--pass:#3DFF88;--wait:#FFB000;--fail:#FF4D4D;--mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
   *{box-sizing:border-box}html,body{margin:0}html{-webkit-text-size-adjust:100%}
@@ -257,12 +257,12 @@
         <div class="way"><span class="tagk free">FREE</span><p>One POST with an id your agent keeps. Three checks a day, no wallet. <a href="/docs/agents/free-check">How &rarr;</a></p></div>
         <div class="way"><span class="tagk paid">2.00 USDC</span><p>Through the MCP server above, or plain HTTP with x402 or MPP. Each check leaves a record on Base or Irys that anyone can check. <a href="/docs/agents/mcp">Setup &rarr;</a></p></div>
       </div>
-      <p class="docsline"><a class="btn" href="/docs">Read the docs &rarr;</a><span>For language models: <a href="/llms.txt">djzs.ai/llms.txt</a></span></p>
+      <p class="docsline"><a class="btn" href="/docs">Read the docs &rarr;</a><span>For language models: <a href="/llms.txt">djzs.ai/llms.txt</a>. For treasuries and agent frameworks: <a href="/builders">djzs.ai/builders</a></span></p>
     </section>
   </main>
 
   <footer>
-    <nav aria-label="More"><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/builders">Builders</a><a href="/build">Build</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai">X @Djzs_ai</a></nav>
+    <nav aria-label="More"><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/build">Services</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai">X @Djzs_ai</a></nav>
     <div class="k"><b>audit, not advice</b>: a verdict says whether the idea is complete and free of the listed defects. It does not check that your facts are true, and never says the trade wins. An example market, when one is loaded, is real; it is not a recommendation. <a href="/terms">Terms</a>.</div>
     <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai &middot; audit before act</p>
   </footer>
