@@ -62,7 +62,9 @@
   .agentbar{margin:34px 0 0;border:1px solid var(--pass);background:var(--panel);padding:16px 18px;display:grid;gap:10px 24px;align-items:center}
   @media (min-width:860px){.agentbar{grid-template-columns:1fr auto}.agentbar .how,.agentbar .docsline{grid-column:1/-1}}
   .agentbar p{margin:0}.agentbar .who{font-size:16px}.agentbar .who b{color:var(--pass)}.agentbar .how{font-size:13.5px;color:var(--muted)}.agentbar .how code{color:var(--text);overflow-wrap:anywhere}
-  @media (max-width:700px){main{display:flex;flex-direction:column}#out{order:1}.agentbar{order:2}.why{order:3}}
+  .hero-side{display:grid;gap:20px;min-width:0}.hero-side .agentbar{margin:0}
+  @media (min-width:980px){.hero-side .agentbar{grid-template-columns:minmax(0,1fr)}.hero-side .agentbar .mcp{justify-self:start;max-width:100%}}
+  @media (max-width:700px){main{display:flex;flex-direction:column}.hero,.hero-side{display:contents}.hero-copy{padding-top:18px}.demo{order:1;margin-top:20px}#out{order:2}.agentbar,.hero-side .agentbar{order:3;margin-top:24px}.why{order:4}}
   .demo p{margin:0}.demo .cmd{color:var(--muted)}.demo .cmd .p{color:var(--pass);font-weight:700}.demo .cmd q{color:var(--text);quotes:"\201C" "\201D"}
   .demo .v{display:flex;align-items:center;gap:12px;margin:16px 0 10px;font-weight:700;font-size:17px}.demo .v .stamp{color:var(--fail);border-width:2px;font-size:19px}
   .demo ul{list-style:none;margin:0;padding:0}.demo li{display:grid;grid-template-columns:28px 1fr;padding:5px 0;font-size:15px}.demo li .tok{color:var(--fail);font-weight:700}
@@ -176,7 +178,7 @@
 <div class="wrap">
   <header class="top">
     <a class="brand" href="/" aria-label="DJZS home"><img src="/favicon.svg" alt="" width="24" height="24"><span>DJZS<span class="dot">.</span></span></a>
-    <nav class="site" aria-label="Site"><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
+    <nav class="site" aria-label="Site"><a href="#agents">Agents</a><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
   </header>
 
   <main id="main">
@@ -207,23 +209,24 @@
         </div>
       </section>
       </div>
-      <div class="demo" id="demo">
-        <p class="label">three narratives in the news, one thesis on each</p>
-        <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
-          <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
-          <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
-          <button type="button" class="btn" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
+      <div class="hero-side">
+        <div class="demo" id="demo">
+          <p class="label">three narratives in the news, one thesis on each</p>
+          <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
+            <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
+            <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
+            <button type="button" class="btn" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
+          </div>
+          <div id="demo-body"></div>
+          <p class="log" id="ex-log" role="status" aria-live="polite"></p>
         </div>
-        <div id="demo-body"></div>
-        <p class="log" id="ex-log" role="status" aria-live="polite"></p>
+      <section class="agentbar" id="agents" aria-label="For AI agents">
+        <p class="who"><b>AI agent?</b> Run the same check before you place an order.</p>
+        <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
+        <p class="how">No MCP? One request, free, no wallet: <code>POST https://mcp.djzs.ai/try/verdict</code></p>
+        <p class="docsline"><a href="/docs/agents/mcp">Connect over MCP &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="https://mcp.djzs.ai/openapi.json">OpenAPI</a><a href="/builders">For treasuries</a></p>
+      </section>
       </div>
-    </section>
-
-    <section class="agentbar" id="agents" aria-label="For AI agents">
-      <p class="who"><b>AI agent?</b> Run the same check before you place an order.</p>
-      <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
-      <p class="how">No MCP? One request, free, no wallet: <code>POST https://mcp.djzs.ai/try/verdict</code></p>
-      <p class="docsline"><a href="/docs/agents/mcp">Connect over MCP &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="https://mcp.djzs.ai/openapi.json">OpenAPI</a><a href="/builders">For treasuries</a></p>
     </section>
 
     <section class="step" id="out" hidden aria-labelledby="s3">
