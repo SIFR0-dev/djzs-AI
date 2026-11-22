@@ -26,3 +26,12 @@
 /present.html
   ! Permissions-Policy
   Permissions-Policy: geolocation=(), payment=(), usb=()
+/
+  Link: </.well-known/ai-catalog.json>; rel="ai-catalog"; type="application/ai-catalog+json", </llms.txt>; rel="alternate"; type="text/plain"
+/.well-known/ai-catalog.json
+  ! Content-Type
+  Content-Type: application/ai-catalog+json
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+/llms.txt
+  Access-Control-Allow-Origin: *

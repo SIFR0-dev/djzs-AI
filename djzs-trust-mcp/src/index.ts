@@ -44,6 +44,7 @@ import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, US
 import { createEngineAdapter } from "./engine-adapter"
 import { startSourceCheck, type SourcesBlock } from "./source-check"
 import { handleTryExample, handleTryQuota, handleTryVerdict } from "./try-route"
+import { handleTryMarkets } from "./try-markets"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
 import { attesterBalance } from "./attest-worker"
@@ -1764,6 +1765,8 @@ app.all("/x402/verify_pm_trade", async (c) => {
 // Quota lives in D1 (TELEMETRY); without the binding the route fails closed. Details in try-route.ts.
 app.all("/try/quota", (c) => handleTryQuota(c.req.raw, c.env))
 app.all("/try/example", (c) => handleTryExample(c.req.raw))
+// Markets trading today, for the home page's starter buttons. Public venue reads only: no model, no key, no D1.
+app.all("/try/markets", (c) => handleTryMarkets(c.req.raw))
 app.all("/try/verdict", async (c) => {
   try {
     return await handleTryVerdict(c.req.raw, c.env)

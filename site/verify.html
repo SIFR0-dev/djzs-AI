@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DJZS · Proof-of-Logic Verifier v2</title>
+<title>DJZS: check a receipt yourself</title>
+<meta name="description" content="Paste a DJZS receipt. This page looks up the payment and the public record on Base and tells you whether they match. It does not ask DJZS.">
   <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/fonts.css">
 <style>
@@ -16,9 +17,9 @@
   header{border-bottom:1px solid var(--rule);padding-bottom:22px;margin-bottom:26px}
   .path{color:var(--muted);font-size:13px;margin:0 0 18px}.path .p{color:var(--pass);font-weight:700}
   .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
-  h1{font-size:clamp(19px,3.4vw,26px);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}.wordmark{color:var(--base);font-weight:800}
+  h1{font-size:clamp(26px,4.6vw,40px);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.15}.wordmark{color:var(--base);font-weight:800}
   .boot{margin:20px 0 0;display:grid;gap:7px}.boot .row{display:grid;grid-template-columns:52px 128px 1fr;gap:12px;align-items:baseline;font-size:12.5px}.boot .ok{color:var(--pass);font-weight:700}.boot .k{color:var(--muted)}.boot .v{color:var(--text)}
-  .lede{color:var(--muted);margin:22px 0 0;max-width:74ch;font-size:13.5px}.lede b{color:var(--text);font-weight:700}
+  .lede{color:var(--text);margin:16px 0 0;max-width:62ch;font-size:clamp(15.5px,2vw,17.5px);line-height:1.5}.lede b{color:var(--text);font-weight:700}
   .io{margin:26px 0 0}.label{color:var(--muted);font-size:12px;margin:0 0 8px}.label::before{content:"// ";color:var(--rule)}
   textarea{width:100%;min-height:220px;resize:vertical;background:#080808;color:var(--text);border:1px solid var(--rule);border-radius:0;padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.55;tab-size:2}textarea:focus{outline:none;border-color:var(--pass)}
   .controls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
@@ -48,7 +49,34 @@
   nav.site a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
   nav.site a:hover{color:var(--text)} nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--green)}
   nav.site a.home{color:var(--text)} a.wordmark{text-decoration:none}
-  body::after{display:none}</style>
+  .checks{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));border:1px solid var(--rule)}
+  .checks li{display:grid;grid-template-columns:34px 1fr;padding:12px 14px;font-size:14px;border-left:1px solid var(--rule);margin-left:-1px;border-top:1px solid var(--rule);margin-top:-1px}.checks .ok{color:var(--pass);font-weight:700;font-size:12.5px}
+  details.more{margin:34px 0 0;border-top:1px solid var(--rule);padding-top:14px}details.more summary{cursor:pointer;color:var(--muted);font-size:13px}details.more summary:hover{color:var(--text)}details.more .anchors{margin-top:14px}
+  body::after{display:none}
+  /* 2026-11-22: the page wears the same header, type scale and buttons as the home page and /build. */
+  body{font-size:15px;padding:0}
+  .wrap{max-width:1040px;padding:0 16px 40px}@media (min-width:700px){.wrap{padding:0 40px 56px}}
+  :focus-visible{outline:2px solid var(--pass);outline-offset:3px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:16px 0;margin:0;border-bottom:1px solid var(--rule)}
+  .brand{display:inline-flex;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px}.brand:hover{background:transparent;color:var(--pass)}.brand .dot{color:var(--pass)}
+  nav.site{gap:6px 26px;margin:0;font-size:12.5px}nav.site a{padding:6px 0}nav.site a:hover{background:transparent;color:var(--pass)}nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--pass)}
+  .hero{padding:30px 0 0}
+  .path{font-size:clamp(13px,1.8vw,17px);letter-spacing:.04em;margin:0 0 14px}.path::before{content:"// "}
+  h1{font-size:clamp(26px,5.4vw,46px);letter-spacing:-.015em;line-height:1.12}
+  .lede{font-size:clamp(16px,2.1vw,20px);margin:18px 0 0;max-width:60ch}.lede b{color:var(--pass)}
+  .checks{margin:26px 0 0;grid-template-columns:1fr}@media (min-width:760px){.checks{grid-template-columns:repeat(3,1fr)}}
+  .checks li{display:block;padding:14px 16px;font-size:14.5px;margin:0;border:0;border-top:1px solid var(--rule)}.checks li:first-child{border-top:0}
+  @media (min-width:760px){.checks li{border-top:0;border-left:1px solid var(--rule)}.checks li:first-child{border-left:0}}
+  .checks b{display:block;color:var(--pass);font-weight:800}.checks span{color:var(--text)}
+  .io{margin:44px 0 0}.h2{font-size:clamp(19px,2.6vw,24px);font-weight:800;margin:0 0 16px;letter-spacing:-.005em}
+  textarea{font-size:13.5px}
+  .btn{font-size:14px;min-height:48px;padding:10px 22px}#run{min-height:52px;padding:12px 28px;font-size:15px;font-weight:800;background:var(--pass);color:var(--canvas)}#run:hover{background:#7dffb0;border-color:#7dffb0}
+  .stamp{font-size:19px;border-width:2px}.verdict-title{font-size:17px}.verdict-note{font-size:14.5px}
+  .claim-name{font-size:15px}.claim-body{font-size:14px}.empty{font-size:14.5px}
+  details.more{margin:44px 0 0}details.more summary{font-size:14px}
+  footer{margin-top:52px;font-size:13px;line-height:1.6}footer nav{display:flex;flex-wrap:wrap;gap:6px 20px;margin:12px 0}footer .how{margin:0}
+  footer .sig{margin:10px 0 0}footer .sig b{color:var(--pass)}
+  @media (max-width:560px){#run{width:100%}}</style>
 <link rel="canonical" href="https://djzs.ai/verify">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
@@ -56,26 +84,28 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/try">try</a><a href="/present">ask</a><a href="/verify" aria-current="page">verify</a><a href="/ruleset">ruleset</a><a href="/builders">builders</a><a href="/build">build</a><a href="/scan">scan</a><a href="/guide">connect &rarr;</a></nav>
-    <p class="path"><span class="p">~/djzs/verify</span> $ <span id="cmd">recompute --receipt --v2</span><span class="cursor"></span></p>
-    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> Proof-of-Logic Verifier <span style="color:var(--muted);font-weight:500">v2</span></h1>
-    <div class="boot">
-      <div class="row"><span class="ok">OK</span><span class="k">SCOPE</span><span class="v">recomputation · trusts the chain, not DJZS</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">SETTLEMENT</span><span class="v">USDC transfer read direct from Base</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">BINDING</span><span class="v">intent_hash recomputed as EIP-712 typed data · domain DJZS · 2 · 8453</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">ATTESTATION</span><span class="v">EAS getAttestation(eas_uid) · schema, attester, recipient, fields</span></div>
-      <div class="row"><span class="ok">OK</span><span class="k">LADDER</span><span class="v">PASS reproduced · WAIT unprovable · FAIL contradicted</span></div>
-    </div>
-    <p class="lede">A receipt is a claim. This tool recomputes it. Settlement from the chain; the binding key from the intent alone; the attestation from EAS. It checks that all three <b>agree with each other</b>. Nothing here trusts DJZS. Unknown resolves to <b>WAIT</b>, contradiction to <b>FAIL</b>.</p>
+  <header class="top">
+    <a class="brand" href="/" aria-label="DJZS home"><span aria-hidden="true">&gt;_</span><span>DJZS<span class="dot">.</span></span></a>
+    <nav class="site" aria-label="Site"><a href="/#idea">Check a thesis</a><a href="/verify" aria-current="page">Verify</a><a href="/docs">Docs &rarr;</a></nav>
   </header>
 
+  <section class="hero" aria-labelledby="h1">
+    <p class="path">VERIFY</p>
+    <h1 id="h1">Check a receipt yourself.</h1>
+    <p class="lede">Paste a DJZS receipt. This page looks up the payment and the public record on Base and tells you whether they match what the receipt says. <b>It does not ask DJZS.</b></p>
+    <ul class="checks" aria-label="What gets checked">
+      <li><b>The payment happened.</b><span>Read from Base.</span></li>
+      <li><b>The receipt is for this exact thesis.</b><span>Recomputed from its text.</span></li>
+      <li><b>The verdict is on the public record.</b><span>Read from Base.</span></li>
+    </ul>
+  </section>
+
   <div class="io">
-    <p class="label">receipt · json · body + payment_response as the gate returned them</p>
+    <h2 class="h2" id="paste">Paste the receipt you copied after paying</h2>
     <textarea id="rcpt" spellcheck="false"></textarea>
     <div class="controls">
-      <button class="btn" id="run">Recompute</button>
-      <button class="btn ghost" id="load">Load live v2 receipt</button>
+      <button class="btn" id="run">Check this receipt</button>
+      <button class="btn ghost" id="load">Load a real one</button>
       <button class="btn ghost" id="clear">Clear</button>
     </div>
   </div>
@@ -84,8 +114,10 @@
     <div class="verdict-head"><span class="stamp" id="vstamp">·</span><span class="verdict-title" id="vtitle"></span></div>
     <p class="verdict-note" id="vnote"></p>
   </div>
-  <div class="ledger" id="ledger"><div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div></div>
+  <div class="ledger" id="ledger"><div class="empty">Nothing checked yet. Paste a receipt, or load a real one, then press the button.</div></div>
 
+  <details class="more">
+  <summary>For auditors: the outcome study's record book</summary>
   <section class="anchors" aria-labelledby="anchors-h">
     <p class="label" id="anchors-h">Q3 daily anchors · the study's record book, Merkle-rooted to Irys</p>
     <div class="ledger">
@@ -117,12 +149,12 @@
     <p class="note">Each day's sealed <code class="inl">record_hash</code> values are Merkle-rooted and the root written to Irys. Git history alone is rewritable and is not tamper-evidence; these items are. Recompute with <code class="inl">npx tsx tests/q3/q3-anchor.ts --verify &lt;date&gt;</code>; it fetches the item and compares the anchored root against one recomputed from the committed records.</p>
   </section>
 
+  </details>
+
   <footer>
-    <div class="k"><b>settlement</b>: Base chain read, independent of DJZS.</div>
-    <div class="k"><b>binding</b>: EIP-712 hashStruct(DJZSIntent) under the published domain. v1 <code class="inl">intent_sha256</code> recomputed via renderIntentText.</div>
-    <div class="k"><b>attestation</b>: EAS on Base · schema 0x5ef67e2b…2030 · attester 0xfB0e…7824.</div>
-    <div class="k"><b>verdict</b>: attested by DJZS. Under schema v3 the verdict is re-derived on chain by DJZSVerdictRule (DJZS-VR-v1.0) from the attested tally, and read back here; under v2, re-deriving it requires the published engine.</div>
-    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/verify · audit before act</p>
+    <p class="how">How a receipt is built and what each row means: <a href="/docs/concepts/receipts">receipts in the docs</a>.</p>
+    <nav aria-label="Footer"><a href="/">Check a thesis</a><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/build">Services</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai" rel="noopener">X @Djzs_ai</a></nav>
+    <p class="sig"><b>END_TRANSMISSION.</b> // djzs.ai/verify</p>
   </footer>
 </div>
 
@@ -186,9 +218,9 @@ const SAMPLE={
 const $=s=>document.querySelector(s), ta=$("#rcpt"), norm=a=>(a||"").toLowerCase();
 $("#load").onclick=()=>{ta.value=JSON.stringify(SAMPLE,null,2)}; $("#clear").onclick=()=>{ta.value="";$("#verdict").hidden=true;empty()}; $("#run").onclick=run;
 ta.value=JSON.stringify(SAMPLE,null,2);
-// /try hands a fresh receipt over in the fragment (#r=<base64url JSON>); the fragment never reaches the server.
+// The home page hands a fresh receipt over in the fragment (#r=<base64url JSON>); the fragment never reaches the server.
 (function fromFragment(){const m=/^#r=([A-Za-z0-9_-]+)$/.exec(location.hash||"");if(!m)return;try{const b64=m[1].replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-m[1].length%4)%4);const json=new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0)));JSON.parse(json);ta.value=json;history.replaceState(null,"",location.pathname);setTimeout(run,0)}catch{/* not a receipt: leave the sample */}})();
-function empty(){$("#ledger").innerHTML='<div class="empty">Awaiting a receipt. Recompute to produce the proof ledger.</div>'}
+function empty(){$("#ledger").innerHTML='<div class="empty">Nothing checked yet. Paste a receipt, or load a real one, then press the button.</div>'}
 
 // same documented defaults as the engine's toDJZSIntent (djzs-trust-mcp/src/djzs-intent.ts):
 // PM: venue "" unless supplied, cents, ZERO32. PERP (instrument present, market absent): market=instrument,
@@ -209,43 +241,43 @@ async function sha256hex(s){const b=await crypto.subtle.digest("SHA-256",new Tex
 async function rpc(method,params){let last;for(const url of RPCS){try{const r=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});if(!r.ok){last=new Error(url+" HTTP "+r.status);continue}const j=await r.json();if(j.error){last=new Error(j.error.message);continue}return{result:j.result,node:url.replace("https://","")}}catch(e){last=e}}throw last||new Error("no reachable Base node")}
 
 async function run(){
-  const btn=$("#run");btn.disabled=true;btn.textContent="Recomputing…";
-  const C=[];let r;try{r=JSON.parse(ta.value)}catch(e){setV("fail","FAIL","receipt unreadable","Not valid JSON.");render([{r:"fail",tok:"FAIL",name:"Parse receipt",chip:"FAIL",body:e.message}]);reset(btn);return}
+  const btn=$("#run");btn.disabled=true;btn.textContent="Checking…";
+  const C=[];let r;try{r=JSON.parse(ta.value)}catch(e){setV("fail","FAIL","This is not a receipt","The text could not be read. Copy the whole receipt and paste it again.");render([{r:"fail",tok:"FAIL",name:"Reading the receipt",chip:"FAIL",body:e.message}]);reset(btn);return}
 
   // 1: settlement
   let settleOK=false;const tx=r?.payment_response?.transaction;
-  if(!tx)C.push({r:"fail",tok:"FAIL",name:"Settlement present",chip:"FAIL",body:"No payment_response.transaction in receipt."});
+  if(!tx)C.push({r:"fail",tok:"FAIL",name:"The payment",chip:"FAIL",body:"No payment_response.transaction in receipt."});
   else try{const {result:rc,node}=await rpc("eth_getTransactionReceipt",[tx]);
-    if(!rc)C.push({r:"wait",tok:"WAIT",name:"Settlement on Base",chip:"NOT FOUND",body:"No receipt for this hash yet.",ev:tx});
+    if(!rc)C.push({r:"wait",tok:"WAIT",name:"The payment",chip:"NOT FOUND",body:"No receipt for this hash yet.",ev:tx});
     else{const ok=rc.status==="0x1";const x=(rc.logs||[]).find(l=>norm(l.address)===USDC&&norm(l.topics?.[0])===XFER&&l.topics.length===3);
       let to,amt;if(x){to="0x"+x.topics[2].slice(26);amt=parseInt(x.data,16)/1e6}
       const wTo=norm(r.pay_to),wAmt=parseFloat(r.expected_amount_usdc);const toOK=wTo?norm(to)===wTo:!!to,amtOK=isFinite(wAmt)?Math.abs(amt-wAmt)<1e-6:!!amt;
       settleOK=ok&&!!x&&toOK&&amtOK;
-      C.push({r:settleOK?"pass":"fail",tok:settleOK?"OK":"FAIL",name:"Settlement on Base",chip:settleOK?"PROVEN":"MISMATCH",
+      C.push({r:settleOK?"pass":"fail",tok:settleOK?"OK":"FAIL",name:"The payment",chip:settleOK?"PROVEN":"MISMATCH",
         body:settleOK?"Chain confirms a successful USDC transfer matching the receipt.":"Transaction exists but does not match the receipt.",
         ev:`status ${ok?"0x1 success":rc.status} · block ${parseInt(rc.blockNumber,16)} · node ${node}`+(x?`\nUSDC ${amt?.toFixed(2)} -> ${to}`:"\nno USDC Transfer log"),link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}}
-  catch(e){C.push({r:"wait",tok:"WAIT",name:"Settlement on Base",chip:"UNREACHABLE",body:"No Base node reachable from this browser.",ev:e.message,link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}
+  catch(e){C.push({r:"wait",tok:"WAIT",name:"The payment",chip:"UNREACHABLE",body:"No Base node reachable from this browser.",ev:e.message,link:["recompute on Basescan","https://basescan.org/tx/"+tx]})}
 
   // 2: binding; v2 EIP-712 (intent_hash) and v1 renderIntentText (intent_sha256), checked independently
   let recomputed=null,bindOK=false;
   if(r.intent&&r.intent_hash){try{recomputed=hashTypedData({domain:DOMAIN,types:TYPES,primaryType:"DJZSIntent",message:toDJZSIntent(r.intent)});bindOK=norm(recomputed)===norm(r.intent_hash);
-      C.push({r:bindOK?"pass":"fail",tok:bindOK?"OK":"FAIL",name:"Intent binding · v2",chip:bindOK?"PROVEN":"MISMATCH",
+      C.push({r:bindOK?"pass":"fail",tok:bindOK?"OK":"FAIL",name:"The thesis it was for",chip:bindOK?"PROVEN":"MISMATCH",
         body:bindOK?"intent_hash reproduced from the intent alone as EIP-712 typed data. The verdict is provably bound to this exact intent, by anyone, with no access to DJZS.":"Recomputed EIP-712 hash does not equal the receipt's intent_hash. Either the intent text differs from what was audited, or the engine's canonicalization has diverged from the published contract.",
         ev:`receipt     ${r.intent_hash}\nrecomputed  ${recomputed}\ndomain      DJZS · 2 · eip155:8453`})}
-    catch(e){C.push({r:"wait",tok:"WAIT",name:"Intent binding · v2",chip:"ERROR",body:"Could not compute EIP-712 hash.",ev:e.message})}}
+    catch(e){C.push({r:"wait",tok:"WAIT",name:"The thesis it was for",chip:"ERROR",body:"Could not compute EIP-712 hash.",ev:e.message})}}
   if(r.intent&&r.intent_sha256){const v1=await sha256hex(renderIntentText(r.intent));const m=norm(v1)===norm(r.intent_sha256);
-    C.push({r:m?"pass":"fail",tok:m?"OK":"FAIL",name:"Intent binding · v1 (intent_sha256)",chip:m?"PROVEN":"MISMATCH",
+    C.push({r:m?"pass":"fail",tok:m?"OK":"FAIL",name:"The thesis it was for (older receipt)",chip:m?"PROVEN":"MISMATCH",
       body:m?"intent_sha256 reproduced: sha256 over renderIntentText(intent): sorted keys, one key: value line each, nested objects as compact JSON. A pure function of the intent, recomputable by anyone.":"Recomputed intent_sha256 does not equal the receipt's; the intent text differs from what was audited.",
       ev:`receipt     ${r.intent_sha256}\nrecomputed  ${v1}`})}
-  if(!(r.intent&&(r.intent_hash||r.intent_sha256)))C.push({r:"wait",tok:"WAIT",name:"Intent binding",chip:"ABSENT",body:"Receipt lacks intent + a binding key."});
+  if(!(r.intent&&(r.intent_hash||r.intent_sha256)))C.push({r:"wait",tok:"WAIT",name:"The thesis it was for",chip:"ABSENT",body:"Receipt lacks intent + a binding key."});
 
   // 3: attestation on EAS
   let attOK=false;
-  if(!r.eas_uid)C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"ABSENT",body:r.eas_error?"Gate reported an attestation failure. The verdict was still delivered and charged; the on-chain record did not land.":"Receipt carries no eas_uid (pre-v2 receipt).",ev:r.eas_error||""});
+  if(!r.eas_uid)C.push({r:"wait",tok:"WAIT",name:"The public record",chip:"ABSENT",body:r.eas_error?"Gate reported an attestation failure. The verdict was still delivered and charged; the on-chain record did not land.":"Receipt carries no eas_uid (pre-v2 receipt).",ev:r.eas_error||""});
   else try{const data=encodeFunctionData({abi:EAS_ABI,functionName:"getAttestation",args:[r.eas_uid]});
       const {result,node}=await rpc("eth_call",[{to:EAS,data},"latest"]);
       const a=decodeFunctionResult({abi:EAS_ABI,functionName:"getAttestation",data:result});
-      if(!a||norm(a.uid)!==norm(r.eas_uid)||/^0x0+$/.test(a.uid))C.push({r:"fail",tok:"FAIL",name:"Attestation on Base",chip:"NOT FOUND",body:"No attestation exists at this UID.",ev:r.eas_uid});
+      if(!a||norm(a.uid)!==norm(r.eas_uid)||/^0x0+$/.test(a.uid))C.push({r:"fail",tok:"FAIL",name:"The public record",chip:"NOT FOUND",body:"No attestation exists at this UID.",ev:r.eas_uid});
       else{const isV3=!!DJZS_SCHEMA_V3&&norm(a.schema)===DJZS_SCHEMA_V3;
         const [ih,verdict,risk,flags,ruleset,unknownCount,bounded,thesisPresent]=decodeAbiParameters(isV3?FIELDS_V3:FIELDS,a.data);
         const schemaOK=norm(a.schema)===DJZS_SCHEMA||isV3,attesterOK=norm(a.attester)===DJZS_ATTESTER,revoked=a.revocationTime!==0n;
@@ -253,7 +285,7 @@ async function run(){
         const verdictOK=verdict===r.verdict&&Number(risk)===Number(r.risk_score)&&JSON.stringify([...flags].sort())===JSON.stringify([...(r.flags||[])].sort());
         attOK=schemaOK&&attesterOK&&!revoked&&bindMatch&&verdictOK;
         const why=[!schemaOK&&"schema is not the DJZS schema",!attesterOK&&"attester is not the DJZS attester",revoked&&"attestation revoked",!bindMatch&&"attested intentHash != recomputed binding key",!verdictOK&&"attested verdict/risk/flags != receipt"].filter(Boolean);
-        C.push({r:attOK?"pass":"fail",tok:attOK?"OK":"FAIL",name:"Attestation on Base",chip:attOK?"PROVEN":"CONTRADICTED",
+        C.push({r:attOK?"pass":"fail",tok:attOK?"OK":"FAIL",name:"The public record",chip:attOK?"PROVEN":"CONTRADICTED",
           body:attOK?"EAS holds an attestation from the DJZS attester, under the DJZS schema, onto the paying agent, binding this exact intent hash to this exact verdict. Read from the chain, not from DJZS.":"The on-chain attestation contradicts the receipt: "+why.join("; ")+".",
           ev:`uid        ${a.uid}\nschema     ${a.schema}${schemaOK?(isV3?"  == DJZS v3 (resolver-checked)":"  == DJZS v2"):"  MISMATCH"}\nattester   ${a.attester}${attesterOK?"  == DJZS":"  MISMATCH"}\nrecipient  ${a.recipient}\ntime       ${new Date(Number(a.time)*1000).toISOString()}\nfields     ${verdict} · ${risk} · [${flags.join(",")}] · ${ruleset}${isV3?`\ntally      unknown ${unknownCount} · bounded ${bounded} · thesis ${thesisPresent}`:""}\nintentHash ${ih}${bindMatch?"  == binding key":"  MISMATCH"}\nnode       ${node}`,
           link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]});
@@ -263,11 +295,11 @@ async function run(){
             const {result:res,node:n2}=await rpc("eth_call",[{to:DJZS_RESOLVER,data:q},"latest"]);
             const [ok,rRisk,rCode]=decodeFunctionResult({abi:RESOLVER_ABI,functionName:"check",data:res});
             const derived=VERDICT_OF_CODE[Number(rCode)]||"?";const ruleOK=ok&&derived===verdict&&Number(rRisk)===Number(risk);
-            C.push({r:ruleOK?"pass":"fail",tok:ruleOK?"OK":"FAIL",name:"Rule on chain",chip:ruleOK?"DERIVED":"CONTRADICTED",
+            C.push({r:ruleOK?"pass":"fail",tok:ruleOK?"OK":"FAIL",name:"The verdict rule on Base",chip:ruleOK?"DERIVED":"CONTRADICTED",
               body:ruleOK?"DJZSVerdictRule, called from this browser, derives the attested verdict and risk score from the attested tally alone. The verdict is a function of the record, not a claim on top of it.":`The on-chain rule derives ${derived} at ${rRisk} from the attested tally; the attestation says ${verdict} at ${risk}.`,
               ev:`resolver   ${DJZS_RESOLVER}\nrule input ${ruleset} · [${flags.join(",")}] · unknown ${unknownCount} · bounded ${bounded} · thesis ${thesisPresent}\nderived    ${derived} · ${rRisk}\nattested   ${verdict} · ${risk}\nnode       ${n2}`})}
-          catch(e){C.push({r:"wait",tok:"WAIT",name:"Rule on chain",chip:"UNREACHABLE",body:"Could not call the resolver from this browser.",ev:e.message})}}}}
-    catch(e){C.push({r:"wait",tok:"WAIT",name:"Attestation on Base",chip:"UNREACHABLE",body:"Could not read EAS from this browser.",ev:e.message,link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}
+          catch(e){C.push({r:"wait",tok:"WAIT",name:"The verdict rule on Base",chip:"UNREACHABLE",body:"Could not call the resolver from this browser.",ev:e.message})}}}}
+    catch(e){C.push({r:"wait",tok:"WAIT",name:"The public record",chip:"UNREACHABLE",body:"Could not read EAS from this browser.",ev:e.message,link:["view on EASScan","https://base.easscan.org/attestation/view/"+r.eas_uid]})}
 
   // 4: Irys provenance. Applies to the certificate this receipt names AND to
   // every registered correction: an item is ours only if the DJZS signer signed
@@ -275,9 +307,9 @@ async function run(){
   // and text, signed by a throwaway key, and it is named below as not ours.
   const certId=r?.pol_certificate?.irys_id;
   if(certId){const g=await irysSigner(certId);
-    if(g.err)C.push({r:"wait",tok:"WAIT",name:"Certificate provenance on Irys",chip:"UNREACHABLE",body:"Could not read the Irys index from this browser.",ev:certId+"\n"+g.err});
+    if(g.err)C.push({r:"wait",tok:"WAIT",name:"The permanent copy",chip:"UNREACHABLE",body:"Could not read the Irys index from this browser.",ev:certId+"\n"+g.err});
     else{const ok=g.signer===DJZS_IRYS_SIGNER;
-      C.push({r:ok?"pass":"fail",tok:ok?"OK":"FAIL",name:"Certificate provenance on Irys",chip:ok?"PROVEN":"NOT OURS",
+      C.push({r:ok?"pass":"fail",tok:ok?"OK":"FAIL",name:"The permanent copy",chip:ok?"PROVEN":"NOT OURS",
         body:ok?"The certificate this receipt names was signed by the DJZS Irys signer. Read from the Irys index, not from DJZS.":"This item was NOT signed by the DJZS signer. Its tags may say DJZS; the signature does not. Treat it as somebody else's item.",
         ev:`item     ${certId}\nsigner   ${g.signer}${ok?"  == DJZS":"  MISMATCH"}\nexpected ${DJZS_IRYS_SIGNER}`,
         link:["view on the gateway","https://gateway.irys.xyz/"+certId]})}}
@@ -301,25 +333,25 @@ async function run(){
   }
 
   // 5: verdict reproducibility
-  C.push({r:"idle",tok:"----",name:"Verdict reproducibility",chip:attOK?"ATTESTED":"NEEDS RULESET",body:attOK?"The verdict is attested on-chain by DJZS. Re-deriving it from the rules independently requires the published engine; the attestation is the binding commitment.":"verdict_hash attests DJZS produced this verdict; re-deriving it requires the published ruleset.",ev:r.verdict_hash||""});
+  C.push({r:"idle",tok:"----",name:"The verdict",chip:attOK?"ATTESTED":"NEEDS RULESET",body:attOK?"The verdict is attested on-chain by DJZS. Re-deriving it from the rules independently requires the published engine; the attestation is the binding commitment.":"verdict_hash attests DJZS produced this verdict; re-deriving it requires the published ruleset.",ev:r.verdict_hash||""});
 
   render(C);
-  const s=C.find(c=>c.name.startsWith("Settlement")),a=C.find(c=>c.name.startsWith("Attestation"));
+  const s=C.find(c=>c.name==="The payment"),a=C.find(c=>c.name==="The public record");
   // The stray rows are FAIL by their own nature; they are the page saying "this
   // item is not ours". They deliberately do NOT drag the receipt's verdict down:
   // the receipt is not contradicted by somebody else's upload existing. A real
   // provenance failure on the certificate THIS receipt names does, and is
   // included via the Settlement/Attestation/binding trio plus the row itself.
-  const prov=C.find(c=>c.name==="Certificate provenance on Irys");const bR=C.filter(c=>c.name.startsWith("Intent binding"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
-  if(s?.r==="fail"||b?.r==="fail"||a?.r==="fail"||prov?.r==="fail")setV("fail","FAIL","receipt contradicts the chain","At least one recomputation contradicts what the receipt claims. Treat it as unverified.","Recompute or it didn't happen.");
-  else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","fully reproduced","Payment settled on Base. The binding key recomputes from the intent alone. An EAS attestation from the DJZS identity binds that key to this verdict on the paying agent's record. Three independent reads, one consistent story, and none of them trusted DJZS.","Same receipt, same result, any machine.");
-  else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","attestation not on chain","Settlement and binding both reproduce; the on-chain attestation is absent or unreachable. The verdict is real and bound; it just isn't yet on the public record.","Unknown means WAIT.");
-  else if(s?.r==="pass")setV("wait","WAIT","binding unprovable","Settlement proven; the binding could not be reproduced. v1 receipt; re-audit for v2.","Unknown means WAIT.");
-  else setV("wait","WAIT","settlement unconfirmed","Could not confirm settlement from this browser.","Read the chain, don't trust the tab.");
+  const prov=C.find(c=>c.name==="The permanent copy");const bR=C.filter(c=>c.name.startsWith("The thesis it was for"));const b={r:bR.some(c=>c.r==="fail")?"fail":bR.some(c=>c.r==="pass")?"pass":"wait"};
+  if(s?.r==="fail"||b?.r==="fail"||a?.r==="fail"||prov?.r==="fail")setV("fail","FAIL","This receipt does not match","At least one thing the receipt says is contradicted by what is on Base. Do not rely on it. The rows below show which.");
+  else if(s?.r==="pass"&&b?.r==="pass"&&a?.r==="pass")setV("pass","PASS","It checks out","The payment is on Base. The receipt is for exactly this thesis. The verdict is on the public record under the payer's address. All three were read without asking DJZS.","Anyone who runs this gets the same answer.");
+  else if(s?.r==="pass"&&b?.r==="pass")setV("wait","WAIT","Not on the public record yet","The payment and the thesis both check out. The public record of the verdict is missing or could not be reached, so this page cannot confirm it.","When it cannot tell, it says so.");
+  else if(s?.r==="pass")setV("wait","WAIT","Cannot tie it to the thesis","The payment checks out, but this is an older kind of receipt and the link to the thesis could not be recomputed. Run the check again to get a current receipt.","When it cannot tell, it says so.");
+  else setV("wait","WAIT","Could not confirm the payment","This browser could not reach Base to look the payment up. Try again in a moment.","When it cannot tell, it says so.");
   reset(btn);
 }
-function reset(b){b.disabled=false;b.textContent="Recompute"}
-function setV(st,stamp,title,note,coda){const v=$("#verdict");v.hidden=false;v.dataset.state=st;$("#vstamp").textContent=stamp;$("#vtitle").textContent="// "+title;$("#vnote").innerHTML=note+(coda?`<span class="coda">${coda}</span>`:"")}
+function reset(b){b.disabled=false;b.textContent="Check this receipt"}
+function setV(st,stamp,title,note,coda){const v=$("#verdict");v.hidden=false;v.dataset.state=st;$("#vstamp").textContent=stamp;$("#vtitle").textContent=title;$("#vnote").innerHTML=note+(coda?`<span class="coda">${coda}</span>`:"")}
 function render(C){$("#ledger").innerHTML=C.map(c=>`<div class="claim" data-r="${c.r}"><span class="tok">${c.tok}</span><p class="claim-name">${c.name}<span class="chip">${c.chip}</span></p><div class="claim-body">${c.body}${c.ev?`<span class="ev">${c.ev}</span>`:""}${c.link?`<span class="ev"><a href="${c.link[1]}" target="_blank" rel="noopener">${c.link[0]} -></a></span>`:""}</div></div>`).join("")}
 </script>
 </body>

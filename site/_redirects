@@ -1,2 +1,40 @@
 # Cloudflare static-assets redirects. One rule per line: source destination status.
 # /scan is a page of this site now (worker.js); the room itself lives at https://scan.djzs.ai
+#
+# 2026-11-20: the free check moved from /try to the home page. 302, not 301, while the change is measured
+# (the keep/revert bound is in the PR that made the move); a browser caches a 301 and a revert could not reach it.
+/try / 302
+/try/ / 302
+/try.html / 302
+# Two guessable doors to the agent setup on the home page. The MCP server itself is https://mcp.djzs.ai/mcp.
+/mcp /#agents 302
+/agents /#agents 302
+# 2026-11-21: the Connect guide moved into the docs (its payer recipe is on the MCP page there).
+/guide /docs/agents/mcp 302
+/guide/ /docs/agents/mcp 302
+/guide.html /docs/agents/mcp 302
+# The docs: GitBook, synced from docs/ on main through gitbook-docs.yaml. GitBook files each page under its
+# SUMMARY.md group, not under its repo path: docs/agents/x.md is served at /for-agents/x, docs/concepts/x.md at
+# /how-a-verdict-is-made/x, and docs/measured.md at /evidence/measured. So every page is mapped one to one; a bare
+# :splat sent /docs/measured to a GitBook 404 (checked live 2026-11-20).
+# The host is the GitBook address, not docs.djzs.ai: the custom domain runs on a GitBook trial (7 days from
+# 2026-11-20). While the domain is active, GitBook forwards this address to docs.djzs.ai with the path kept; if
+# the trial lapses, this address keeps serving. If the paid plan is kept, swap the host for https://docs.djzs.ai.
+# Static rules first, the one dynamic fallback last (Cloudflare: static redirects before dynamic ones).
+/docs https://djzsx.gitbook.io/djzs.ai/ 302
+/docs/ https://djzsx.gitbook.io/djzs.ai/ 302
+/docs/quickstart https://djzsx.gitbook.io/djzs.ai/quickstart 302
+/docs/agents/free-check https://djzsx.gitbook.io/djzs.ai/for-agents/free-check 302
+/docs/agents/mcp https://djzsx.gitbook.io/djzs.ai/for-agents/mcp 302
+/docs/agents/paid-http https://djzsx.gitbook.io/djzs.ai/for-agents/paid-http 302
+/docs/agents/discovery https://djzsx.gitbook.io/djzs.ai/for-agents/discovery 302
+/docs/concepts/verdicts https://djzsx.gitbook.io/djzs.ai/how-a-verdict-is-made/verdicts 302
+/docs/concepts/rulesets https://djzsx.gitbook.io/djzs.ai/how-a-verdict-is-made/rulesets 302
+/docs/concepts/extraction https://djzsx.gitbook.io/djzs.ai/how-a-verdict-is-made/extraction 302
+/docs/concepts/receipts https://djzsx.gitbook.io/djzs.ai/how-a-verdict-is-made/receipts 302
+/docs/reference/verify-pm-trade https://djzsx.gitbook.io/djzs.ai/reference/verify-pm-trade 302
+/docs/reference/verify-perp-trade https://djzsx.gitbook.io/djzs.ai/reference/verify-perp-trade 302
+/docs/reference/registry-tools https://djzsx.gitbook.io/djzs.ai/reference/registry-tools 302
+/docs/measured https://djzsx.gitbook.io/djzs.ai/evidence/measured 302
+/docs/disclosures https://djzsx.gitbook.io/djzs.ai/evidence/disclosures 302
+/docs/* https://djzsx.gitbook.io/djzs.ai/:splat 302

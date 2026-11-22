@@ -28,12 +28,18 @@
  *
  * ORDER OF EVENTS. Validate, verify the signature, reserve a slot (wallet, then global), run the
  * pipeline. A pipeline failure releases the slot; a scope refusal keeps it (the extraction ran).
+ *
+ * WHICH SENTENCE (2026-11-21). A WAIT also carries `unsettled`: per unsettled field, whether the three
+ * readings disagreed, all flagged it with different quotes, or found nothing, and the caller's own
+ * sentences they pointed at (unsettled.ts). Computed after the verdict from the readings the pipeline
+ * already returned: no extra model call, nothing added to the verdict, its hash or the paid routes.
  */
 import { createPublicClient, http, getAddress, isAddress, verifyMessage as verifyMessageOffline, type Hex } from "viem"
 import { base } from "viem/chains"
 import type { ModelFn } from "../../server/engine-v2/extraction-layer"
-import { buildAnthropicModelFn, runVerifyPmTrade, type VerifyPmTradeResult } from "./verify-pm-trade"
-import { runVerifyPerpTrade } from "./verify-perp-trade"
+import { buildAnthropicModelFn, runVerifyPmTradeDetailed, type VerifyPmTradeResult } from "./verify-pm-trade"
+import { runVerifyPerpTradeDetailed } from "./verify-perp-trade"
+import { explainUnsettled, type UnsettledField } from "./unsettled"
 import { intentSha256, renderIntentText } from "./engine-adapter"
 import { intentHash, toDJZSIntent, type PmIntentLike, type PerpIntentLike } from "./djzs-intent"
 import { PERP_RESOURCE, PM_RESOURCE, PRICE_USD, NETWORK, TERMS_URL } from "./http-x402-bazaar.v2"
@@ -247,7 +253,7 @@ export async function handleTryQuota(request: Request, env: TryEnv): Promise<Res
   )
 }
 
-type Runner = (text: string, model: ModelFn) => Promise<VerifyPmTradeResult>
+type Runner = (text: string, model: ModelFn) => Promise<{ result: VerifyPmTradeResult; raw: string }>
 
 export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: ModelFn): Promise<Response> {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS })
@@ -321,10 +327,12 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   const quota = { day, limit: keyLimit, used, remaining: Math.max(0, keyLimit - used), resets_at: nextUtcMidnight() }
 
   // 4. the same pipeline the paid route runs, once
-  const runner: Runner = kind === "perp" ? (runVerifyPerpTrade as unknown as Runner) : runVerifyPmTrade
+  const runner: Runner = kind === "perp" ? (t, m) => runVerifyPerpTradeDetailed(t, m) : runVerifyPmTradeDetailed
+  const text = renderIntentText(intent)
   let result: VerifyPmTradeResult
+  let raw: string
   try {
-    result = await runner(renderIntentText(intent), model)
+    ;({ result, raw } = await runner(text, model))
   } catch (e) {
     await releaseGlobal(db, day)
     await releaseWallet(db, day, address)
@@ -367,6 +375,17 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
     intent_hash = null // the paid route computes the binding key; a shape it cannot map is reported as null here, not as a failure
   }
   const taxonomy = result.taxonomy && typeof result.taxonomy === "object" ? (result.taxonomy as Record<string, unknown>) : undefined
+  // Which sentence a WAIT is about. Fail open: an error here drops the field and never the verdict.
+  let unsettled: UnsettledField[] | undefined
+  if (verdict === "WAIT") {
+    try {
+      const disagreements = Array.isArray(result.disagreements) ? (result.disagreements as unknown[]).filter((d): d is string => typeof d === "string") : []
+      unsettled = await explainUnsettled({ text, raw, unknownFields: unknown, disagreements, context: kind === "perp" ? "perp" : undefined, keyPrefixes: Object.keys(intent) })
+    } catch (e) {
+      logFault("try.unsettled", e)
+      unsettled = undefined
+    }
+  }
   return json(
     {
       ok: true,
@@ -376,6 +395,7 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
       flags,
       flags_detail,
       unknown_fields: unknown,
+      ...(unsettled ? { unsettled } : {}),
       verdict_hash: typeof result.verdict_hash === "string" ? result.verdict_hash : null,
       intent_sha256: sha,
       intent_hash,

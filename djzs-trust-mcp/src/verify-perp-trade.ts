@@ -112,17 +112,33 @@ export async function runVerifyPerpTrade(
   modelFn: ModelFn,
   bracket?: PerpBracket,
 ): Promise<VerifyPerpTradeResult> {
+  return (await runVerifyPerpTradeDetailed(intent, modelFn, bracket)).result;
+}
+
+/**
+ * The same pipeline, also returning the three raw readings it was decided from. The free /try
+ * route reads them to name the sentence a WAIT is about (unsettled.ts); every paid transport calls
+ * runVerifyPerpTrade, whose output this does not change.
+ */
+export async function runVerifyPerpTradeDetailed(
+  intent: string,
+  modelFn: ModelFn,
+  bracket?: PerpBracket,
+): Promise<{ result: VerifyPerpTradeResult; raw: string }> {
   const r = await extractAuditInputConsensus(intent, modelFn, 3, "perp");
 
   // PERP-ONLY SCOPE: a prediction-market thesis is refused, not reinterpreted.
   if (r.input.audit_context === "prediction_market") {
     return {
-      schema_version: "DJZS-ENGINE-V2",
-      tool: "verify_perp_trade",
-      in_scope: false,
-      reason:
-        "Perp-only tool: the intent extracted as a prediction-market thesis. Use verify_pm_trade.",
-      verdict: null,
+      result: {
+        schema_version: "DJZS-ENGINE-V2",
+        tool: "verify_perp_trade",
+        in_scope: false,
+        reason:
+          "Perp-only tool: the intent extracted as a prediction-market thesis. Use verify_pm_trade.",
+        verdict: null,
+      },
+      raw: r.raw,
     };
   }
   r.input.audit_context = "perp";
@@ -173,5 +189,5 @@ export async function runVerifyPerpTrade(
   if (action === "FAIL" && Array.isArray(result.flags) && result.flags.some((f: { code: string }) => f.code === "DJZS-S01")) {
     response.fail_reason = "Position stated with no articulated thesis. Mechanics can be checked; reasoning cannot. Add the reason for the direction and re-audit.";
   }
-  return response;
+  return { result: response, raw: r.raw };
 }

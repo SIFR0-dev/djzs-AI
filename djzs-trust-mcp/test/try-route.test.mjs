@@ -228,6 +228,35 @@ check(2, "the text names the cap and that nothing moves", TRY_MESSAGE_FORMAT.inc
   check(38, "kind pm, a perp-shaped body: a verdict, but intent_hash is null. The pm class cannot bind it, and it does not borrow perp_trade", c.status === 200 && c.body.ok === true && c.body.intent_hash === null, `${c.status} ${String(c.body.intent_hash)}`)
 }
 
+// 9. A WAIT names the sentence (2026-11-21): `unsettled` rides a WAIT only, from the readings the pipeline
+//    already ran. No extra model call, the same slot, the engine's verdict_hash.
+{
+  const { createHash } = await import("node:crypto")
+  const env = { TELEMETRY: fakeD1() }
+  const THESIS = "Kalshi KXFEDDECISION-26DEC-H0, buying YES at 9c. Resolves YES if the FOMC leaves the target range unchanged on December 9, 2026, per the Fed statement. CME FedWatch put a hold at 91% on Nov 21. I am wrong if a voting FOMC member calls for a December cut before December 8, 2026."
+  const FALSIFIER = "I am wrong if a voting FOMC member calls for a December cut before December 8, 2026."
+  const OK = {
+    ...PM_EXTRACTION,
+    invalidation_condition: { state: "present", value: "a voting FOMC member calls for a December cut before December 8, 2026" },
+    resolution_engagement: { state: "present", value: "leaves the target range unchanged on December 9, 2026" },
+    probability_basis: { state: "present", value: "CME FedWatch put a hold at 91% on Nov 21" },
+    edge_claim: { state: "unknown" },
+  }
+  const seq = (ps) => { let i = 0; const fn = async () => JSON.stringify(ps[i++ % ps.length]); fn.calls = () => i; return fn }
+  const model = seq([OK, OK, { ...OK, invalidation_condition: { state: "unknown" } }])
+  const w = await j(await handleTryVerdict(post({ kind: "pm", intent: { thesis: THESIS }, anon: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }), env, model))
+  const u = w.body.unsettled?.[0]
+  check(57, "WAIT carries unsettled: field, why, reading states", w.status === 200 && w.body.verdict === "WAIT" && w.body.unsettled.length === 1 && u?.field === "invalidation_condition" && u.why === "split" && u.states.present === 2 && u.states.absent === 0 && u.states.unknown === 1, JSON.stringify(w.body).slice(0, 300))
+  check(58, "...naming the caller's sentence, without the rendered \"thesis: \" prefix", u?.sentences?.length === 1 && u.sentences[0].text === FALSIFIER && u.sentences[0].present === 2, JSON.stringify(u?.sentences))
+  check(59, "one extraction (3 calls), one slot, flags and unknown_fields as before", model.calls() === 3 && w.body.quota.used === 1 && JSON.stringify(w.body.unknown_fields) === '["invalidation_condition"]' && JSON.stringify(w.body.flags) === '["unknown:invalidation_condition"]')
+  const pre = JSON.stringify({ flags: [], risk_score: 0, unknown_fields: ["invalidation_condition"], verdict: "WAIT" })
+  check(60, "the WAIT's verdict_hash is the engine's own, recomputed from its four fields", w.body.verdict_hash === "0x" + createHash("sha256").update(pre).digest("hex"), w.body.verdict_hash)
+  const f = await j(await handleTryVerdict(post({ kind: "pm", intent: PM_INTENT, anon: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }), env, stubModel(PM_EXTRACTION)))
+  check(61, "a FAIL carries no unsettled", f.body.verdict === "FAIL" && !("unsettled" in f.body))
+  const p = await j(await handleTryVerdict(post({ kind: "pm", intent: { thesis: THESIS }, anon: "cccccccccccccccccccccccccccccccc" }), env, stubModel(OK)))
+  check(62, "a PASS carries no unsettled", p.body.verdict === "PASS" && !("unsettled" in p.body), p.body.verdict)
+}
+
 // ── wallet-free path (2026-10-24): `anon` id instead of address + signature ──
 {
   const db = fakeD1()

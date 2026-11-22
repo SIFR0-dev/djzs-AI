@@ -67,22 +67,39 @@ export type VerifyPmTradeResult = Record<string, unknown>;
 /**
  * Pure audit pipeline: (intent, modelFn) → ratified contract object.
  * The only I/O is via modelFn (N=3 consensus extraction); the engine is pure.
+ * Every paid transport calls this; its output is unchanged by runVerifyPmTradeDetailed.
  */
 export async function runVerifyPmTrade(
   intent: string,
   modelFn: ModelFn,
 ): Promise<VerifyPmTradeResult> {
+  return (await runVerifyPmTradeDetailed(intent, modelFn)).result;
+}
+
+/**
+ * The same pipeline, also returning the three raw readings it was decided from
+ * (ConsensusExtractionResult.raw). The free /try route reads them to name the
+ * sentence a WAIT is about (unsettled.ts). `result` is the object runVerifyPmTrade
+ * returns, built once, here.
+ */
+export async function runVerifyPmTradeDetailed(
+  intent: string,
+  modelFn: ModelFn,
+): Promise<{ result: VerifyPmTradeResult; raw: string }> {
   const r = await extractAuditInputConsensus(intent, modelFn, 3);
 
   // PM-ONLY SCOPE (ratified): never silently run a perp audit on a non-PM intent.
   if (r.input.audit_context !== "prediction_market") {
     return {
-      schema_version: "DJZS-ENGINE-V2",
-      tool: "verify_pm_trade",
-      in_scope: false,
-      reason:
-        "PM-only tool: the intent did not extract as a prediction-market thesis. Perp auditing ships separately.",
-      verdict: null,
+      result: {
+        schema_version: "DJZS-ENGINE-V2",
+        tool: "verify_pm_trade",
+        in_scope: false,
+        reason:
+          "PM-only tool: the intent did not extract as a prediction-market thesis. Perp auditing ships separately.",
+        verdict: null,
+      },
+      raw: r.raw,
     };
   }
 
@@ -123,5 +140,5 @@ export async function runVerifyPmTrade(
       `[${result.unknown_fields.join(", ")}]. Clarify intent and re-audit.`;
   }
 
-  return response;
+  return { result: response, raw: r.raw };
 }
