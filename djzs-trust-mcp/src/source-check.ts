@@ -1,5 +1,5 @@
 /**
- * source-check.ts — DJZS-SRC-v0.1: does the source a thesis cites actually say what the thesis says?
+ * source-check.ts — DJZS-SRC-v0.2: does the source a thesis cites actually say what the thesis says?
  *
  * The engine can only tell whether a basis is STATED. "Per Reuters, odds are 70%" reads as a sourced
  * probability whether or not the linked page says anything of the kind. This module reads each URL the
@@ -15,7 +15,19 @@
  *   - source_sha256 is the sha256 of the fetched markdown, so anyone holding the page bytes can confirm
  *     what the gate read.
  *
- * NOT SCORED (v0.1). The block rides beside the verdict like the perp `mechanics` block: it never enters
+ * ROUTES (v0.2). Each cited URL takes exactly one route, chosen by parsing the URL (no model):
+ *   typed:polymarket  polymarket.com/event/<slug>[/<market>] → the event's own market record (outcome prices)
+ *   typed:fred        fred.stlouisfed.org/series/<ID>        → the series' latest observations
+ *   page              everything else, and any typed lookup that fails (typed_error names why)
+ * A typed route reads the source's DATA through a Firecrawl data provider, not its web page, and involves
+ * no LLM step at all: claim figures are compared against the record's own numbers. A record value matches
+ * a claim figure when it equals it, or rounds to it at the precision the claim states ("337.5" matches
+ * 337.511; "91%" matches a 0.905 price, which the venue itself displays as 91%). A whole-number claim is
+ * never matched by a value below 1.
+ * The page route also records where the fetch ended up (resolved_url, after redirects), who served it
+ * (served_by, when Firecrawl answered through a data provider, as it does for X posts) and when (fetched_at).
+ *
+ * NOT SCORED (v0.2). The block rides beside the verdict like the perp `mechanics` block: it never enters
  * the extraction input, risk_score, the verdict, verdict_hash, the PoL certificate or the EAS attestation.
  * Letting a status move the verdict is a versioned taxonomy change and goes through the Q2 acceptance bar
  * first. Every failure here is fail-soft: the audit is never blocked, delayed past the budget, or altered.
@@ -24,20 +36,26 @@
  *   unreachable           the page could not be read (fetch error, non-2xx page, empty body, timeout)
  *   figure_not_in_source  the page was read and at least one figure in the claim appears nowhere on it
  *   span_figure_mismatch  a verbatim passage was found, but a claim figure is not in that passage
- *                         (the source says something else, e.g. "4 credits" where the claim says 9)
+ *                         (the source says something else, e.g. "4 credits" where the claim says 9).
+ *                         Page route only: a typed record has no passage to rest on.
  *   supported             a verbatim passage was found and every claim figure appears inside it
  *   no_supporting_span    the page was read but no verbatim passage for the claim could be confirmed
  *   not_checked           no FIRECRAWL_API_KEY, or the citation is past the per-audit cap
  */
 import { sha256Hex } from "../../server/engine-v2/hash"
 
-export const SOURCE_CHECK_CONTRACT = "DJZS-SRC-v0.1" as const
+export const SOURCE_CHECK_CONTRACT = "DJZS-SRC-v0.2" as const
 export const MAX_SOURCES = 3
 const FIRECRAWL_SCRAPE_URL = "https://api.firecrawl.dev/v2/scrape"
 const PER_SOURCE_TIMEOUT_MS = 25_000
 const MIN_SPAN_CHARS = 24
 const MAX_SPAN_CHARS = 280 // a short evidence excerpt, never a reproduction of the page
 const MAX_CLAIM_CHARS = 1_000
+const TYPED_TIMEOUT_MS = 12_000
+const MAX_TYPED_LINES = 80
+const FRED_OBSERVATIONS = 60
+
+export type SourceRoute = "page" | "typed:polymarket" | "typed:fred"
 
 export type SourceStatus =
   | "unreachable"
@@ -62,6 +80,16 @@ export interface SourceCheck {
   source_sha256: string | null
   /** HTTP status the target page returned, as Firecrawl reports it. */
   page_status: number | null
+  /** How the source was read: its web page, or its own data through a typed provider. */
+  route: SourceRoute
+  /** Where the fetch ended up when the page redirected; null when it did not, or on a typed route. */
+  resolved_url: string | null
+  /** The data provider that answered, when one did (a typed route, or a provider-served page such as an X post). */
+  served_by: string | null
+  /** ISO time the source was read; null when nothing was read. */
+  fetched_at: string | null
+  /** Fixed code when a typed lookup failed and the page route was used instead. */
+  typed_error?: string
   /** Fixed code when status is unreachable or not_checked. Never raw error text. */
   reason?: string
 }
@@ -86,13 +114,40 @@ export interface FetchedPage {
   highlights: string
   /** Fixed failure code when ok is false. */
   reason?: string
+  /** metadata.url: the URL the fetch ended on. */
+  finalUrl?: string | null
+  /** metadata.provider.id when a data provider served the URL. */
+  servedBy?: string | null
+  fetchedAt?: string | null
 }
 export type PageFetcher = (url: string, highlightQuery: string) => Promise<FetchedPage>
+
+/** A typed lookup, derived from the cited URL alone. */
+export interface TypedCall {
+  route: Exclude<SourceRoute, "page">
+  provider: string
+  capability: string
+  options: Record<string, string | number>
+  /** Polymarket only: the market slug in the URL, when the citation names one market of the event. */
+  marketSlug?: string
+}
+/** What a typed lookup returns: the provider's record, untouched. The offline seam for tests. */
+export interface TypedResult {
+  ok: boolean
+  data: unknown
+  upstreamStatus: number | null
+  reason?: string
+  fetchedAt?: string | null
+}
+export type TypedFetcher = (call: TypedCall) => Promise<TypedResult>
 
 const RULE =
   "Not scored: never enters risk_score, the verdict, verdict_hash or the attestation. " +
   "A passage counts only if it appears verbatim on the fetched page; every figure in the claim is looked up on the page by exact value. " +
-  "figure_not_in_source = a stated figure is nowhere on the page; span_figure_mismatch = the confirmed passage carries different figures. source_sha256 = sha256 of the markdown the gate read."
+  "figure_not_in_source = a stated figure is nowhere on the page; span_figure_mismatch = the confirmed passage carries different figures. source_sha256 = sha256 of the markdown the gate read. " +
+  "route typed:* = the source's own data was read through a data provider with no LLM step: a record value matches a claim figure when it equals it or rounds to it at the claim's stated precision, " +
+  "the span is the record line carrying the figures, and source_sha256 covers the record lines as rendered. A typed check says the figure is in the source's data at fetched_at; " +
+  "read the span to see which market or date it belongs to. Prices move: a figure that was true when written can read figure_not_in_source later."
 
 // ─── Citation extraction (deterministic) ────────────────────────────────────
 
@@ -245,7 +300,11 @@ function confirmSpanFull(markdown: string, highlights: string): { display: strin
 export function decideSource(url: string, claim: string, page: FetchedPage): SourceCheck {
   const claimFigs = figuresIn(claim)
   const claim_figures = [...new Set(claimFigs.map((f) => f.canonical))]
-  const base = { url, claim, claim_figures, figures_missing: [] as string[], span: null, page_status: page.pageStatus }
+  const resolved = page.finalUrl && page.finalUrl !== url ? page.finalUrl : null
+  const base = {
+    url, claim, claim_figures, figures_missing: [] as string[], span: null, page_status: page.pageStatus,
+    route: "page" as SourceRoute, resolved_url: resolved, served_by: page.servedBy ?? null, fetched_at: page.fetchedAt ?? null,
+  }
 
   const pageOk = page.ok && page.pageStatus !== null && ((page.pageStatus >= 200 && page.pageStatus < 300) || page.pageStatus === 304)
   if (!pageOk || page.markdown.trim().length === 0) {
@@ -254,7 +313,7 @@ export function decideSource(url: string, claim: string, page: FetchedPage): Sou
       : page.pageStatus !== null && !(page.pageStatus >= 200 && page.pageStatus < 300) && page.pageStatus !== 304
         ? `page_status_${page.pageStatus}`
         : "empty_page"
-    return { ...base, status: "unreachable", source_sha256: null, reason }
+    return { ...base, status: "unreachable", source_sha256: null, fetched_at: null, reason }
   }
 
   const source_sha256 = sha256Hex(page.markdown)
@@ -275,6 +334,126 @@ export function decideSource(url: string, claim: string, page: FetchedPage): Sou
   return { ...base, status: "no_supporting_span", source_sha256 }
 }
 
+// ─── Typed routes (deterministic, no LLM) ───────────────────────────────────
+
+/** The typed lookup a URL maps to, or null for the page route. Pure URL parsing. */
+export function typedCallFor(url: string): TypedCall | null {
+  let u: URL
+  try {
+    u = new URL(url)
+  } catch {
+    return null
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\./, "")
+  const seg = u.pathname.split("/").filter(Boolean)
+  if (host === "polymarket.com" && seg[0] === "event" && /^[a-z0-9-]{1,200}$/i.test(seg[1] ?? "")) {
+    const marketSlug = /^[a-z0-9-]{1,300}$/i.test(seg[2] ?? "") ? seg[2] : undefined
+    return { route: "typed:polymarket", provider: "polymarket", capability: "events/by-slug", options: { slug: seg[1] }, ...(marketSlug ? { marketSlug } : {}) }
+  }
+  if (host === "fred.stlouisfed.org" && seg[0] === "series" && /^[A-Za-z0-9_]{1,40}$/.test(seg[1] ?? "")) {
+    return {
+      route: "typed:fred", provider: "fred", capability: "series/observations",
+      options: { series_id: seg[1].toUpperCase(), sort_order: "desc", limit: FRED_OBSERVATIONS },
+    }
+  }
+  return null
+}
+
+/** One line of a typed record: the text shown as the span, and the numbers it states (explicit, never parsed back out of the text). */
+export interface RecordLine { text: string; values: number[] }
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v)
+const clean = (v: unknown, max = 140) => collapse(String(v ?? "")).slice(0, max)
+const trim4 = (n: number) => Number(n.toFixed(4))
+
+function jsonArray(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v
+  if (typeof v !== "string") return []
+  try {
+    const p: unknown = JSON.parse(v)
+    return Array.isArray(p) ? p : []
+  } catch {
+    return []
+  }
+}
+
+/** Render a provider record as lines. Pure. Unknown shapes render as no lines (→ the page route). */
+export function renderRecord(call: TypedCall, data: unknown): RecordLine[] {
+  const lines: RecordLine[] = []
+  if (!isObj(data)) return lines
+  if (call.route === "typed:polymarket") {
+    const title = clean(data.title)
+    const all = Array.isArray(data.markets) ? data.markets.filter(isObj) : []
+    const named = call.marketSlug ? all.filter((m) => m.slug === call.marketSlug) : []
+    for (const m of named.length > 0 ? named : all) {
+      const outcomes = jsonArray(m.outcomes)
+      const prices = jsonArray(m.outcomePrices).map((p) => Number(p))
+      const parts: string[] = []
+      const values: number[] = []
+      outcomes.forEach((o, i) => {
+        const p = prices[i]
+        if (!Number.isFinite(p) || p < 0 || p > 1) return
+        const pct = trim4(p * 100)
+        const shown = Math.round(pct)
+        parts.push(`${clean(o, 40)} ${pct}% (price ${p}${shown !== pct ? `, shown as ${shown}%` : ""})`)
+        values.push(p, pct, shown)
+      })
+      if (parts.length === 0) continue
+      lines.push({ text: `Polymarket | ${title} | ${clean(m.groupItemTitle || m.question)}: ${parts.join(", ")}`, values })
+    }
+  } else if (call.route === "typed:fred") {
+    const obs = Array.isArray(data.observations) ? data.observations.filter(isObj) : []
+    for (const o of obs) {
+      const value = Number(o.value)
+      if (typeof o.value !== "string" || o.value.trim() === "." || !Number.isFinite(value)) continue // "." = missing, never zero
+      lines.push({ text: `FRED ${call.options.series_id} observation ${clean(o.date, 10)}: ${o.value}`, values: [value] })
+    }
+  }
+  return lines.slice(0, MAX_TYPED_LINES)
+}
+
+/** Decimal places the claim states: "337.5" → 1, "91%" → 0. */
+function decimalsOf(canonical: string): number {
+  const m = /\.(\d+)/.exec(canonical)
+  return m ? m[1].length : 0
+}
+
+/** Does a record value state claim figure f? Equal, or rounds to it at the claim's own precision. */
+function valueStates(f: Figure, v: number): boolean {
+  if (Math.abs(v - f.value) < 1e-9) return true
+  const d = decimalsOf(f.canonical)
+  if (d === 0 && Math.abs(v) < 1) return false // a whole-number claim is never "stated" by a fraction (a 0.905 price is not "1")
+  const k = 10 ** d
+  return Math.abs(Math.round(v * k + 1e-9) / k - f.value) < 1e-9
+}
+
+/** Pure: (url, claim, typed record) → one SourceCheck, or null when the record is unusable (→ page route). No I/O, no model. */
+export function decideTyped(url: string, claim: string, call: TypedCall, res: TypedResult): SourceCheck | null {
+  if (!res.ok) return null
+  const lines = renderRecord(call, res.data)
+  if (lines.length === 0) return null
+  const claimFigs = figuresIn(claim)
+  const claim_figures = [...new Set(claimFigs.map((f) => f.canonical))]
+  const base = {
+    url, claim, claim_figures, page_status: res.upstreamStatus, route: call.route as SourceRoute,
+    resolved_url: null, served_by: call.provider, fetched_at: res.fetchedAt ?? null,
+    source_sha256: sha256Hex(lines.map((l) => l.text).join("\n")),
+  }
+  if (claimFigs.length === 0) return { ...base, status: "no_supporting_span", figures_missing: [], span: null }
+  const stated = (f: Figure, l: RecordLine) => l.values.some((v) => valueStates(f, v))
+  // The line carrying the most claim figures; ties go to the first (most recent observation, first listed market).
+  let best = lines[0]
+  let bestHits = -1
+  for (const l of lines) {
+    const hits = claimFigs.filter((f) => stated(f, l)).length
+    if (hits > bestHits) { best = l; bestHits = hits }
+  }
+  const span = bestHits > 0 ? (best.text.length > MAX_SPAN_CHARS ? best.text.slice(0, MAX_SPAN_CHARS - 1) + "…" : best.text) : null
+  const figures_missing = [...new Set(claimFigs.filter((f) => !lines.some((l) => stated(f, l))).map((f) => f.canonical))]
+  if (figures_missing.length > 0) return { ...base, status: "figure_not_in_source", figures_missing, span }
+  return { ...base, status: "supported", figures_missing: [], span }
+}
+
 // ─── Firecrawl fetcher (the only network I/O) ───────────────────────────────
 
 interface FirecrawlScrapeResponse {
@@ -282,7 +461,8 @@ interface FirecrawlScrapeResponse {
   data?: {
     markdown?: string
     highlights?: string | null
-    metadata?: { statusCode?: number }
+    metadata?: { statusCode?: number; url?: string; provider?: { id?: string } }
+    alexandria?: { data?: unknown; error?: unknown; upstreamStatus?: number }[]
   }
 }
 
@@ -313,9 +493,47 @@ export function buildFirecrawlFetcher(apiKey: string, fetchImpl: typeof fetch = 
         pageStatus: typeof body.data.metadata?.statusCode === "number" ? body.data.metadata.statusCode : null,
         markdown: typeof body.data.markdown === "string" ? body.data.markdown : "",
         highlights: typeof body.data.highlights === "string" ? body.data.highlights : "",
+        finalUrl: typeof body.data.metadata?.url === "string" ? body.data.metadata.url : null,
+        servedBy: typeof body.data.metadata?.provider?.id === "string" ? body.data.metadata.provider.id : null,
+        fetchedAt: new Date().toISOString(),
       }
     } catch (e) {
       return { ok: false, pageStatus: null, markdown: "", highlights: "", reason: ctrl.signal.aborted ? "timeout" : "fetch_failed" }
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+}
+
+/** Production typed fetcher: the same Firecrawl scrape endpoint, run against a data provider instead of a URL. */
+export function buildFirecrawlTypedFetcher(apiKey: string, fetchImpl: typeof fetch = fetch): TypedFetcher {
+  return async (call) => {
+    const fail = (reason: string): TypedResult => ({ ok: false, data: null, upstreamStatus: null, reason })
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), TYPED_TIMEOUT_MS)
+    try {
+      const res = await fetchImpl(FIRECRAWL_SCRAPE_URL, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          alexandria: { provider: call.provider, capability: call.capability, options: call.options },
+          timeout: TYPED_TIMEOUT_MS - 2_000,
+        }),
+      })
+      if (!res.ok) return fail(`provider_http_${res.status}`)
+      const body = (await res.json()) as FirecrawlScrapeResponse
+      const item = body.success === true ? body.data?.alexandria?.[0] : undefined
+      if (!item) return fail("provider_bad_response")
+      if (item.error !== undefined && item.error !== null) return fail("provider_error")
+      if (item.data === undefined || item.data === null) return fail("provider_no_record")
+      return {
+        ok: true, data: item.data,
+        upstreamStatus: typeof item.upstreamStatus === "number" ? item.upstreamStatus : null,
+        fetchedAt: new Date().toISOString(),
+      }
+    } catch {
+      return fail(ctrl.signal.aborted ? "timeout" : "fetch_failed")
     } finally {
       clearTimeout(timer)
     }
@@ -339,8 +557,9 @@ function highlightQuery(claim: string): string {
 /**
  * Check every cited source. `fetcher` null = no key configured: each citation reports not_checked.
  * Never throws.
+ * `typedFetcher` absent = every source takes the page route (v0.1 behavior).
  */
-export async function runSourceCheck(intent: string, fetcher: PageFetcher | null): Promise<SourcesBlock> {
+export async function runSourceCheck(intent: string, fetcher: PageFetcher | null, typedFetcher: TypedFetcher | null = null): Promise<SourcesBlock> {
   const block = (status: SourcesBlock["status"], checks: SourceCheck[]): SourcesBlock => ({
     contract: SOURCE_CHECK_CONTRACT, scored: false, status, provider: "firecrawl", checks, summary: summarize(checks), rule: RULE,
   })
@@ -352,7 +571,8 @@ export async function runSourceCheck(intent: string, fetcher: PageFetcher | null
       const claim = claimFor(intent, url)
       return {
         url, status: "not_checked", claim, claim_figures: [...new Set(figuresIn(claim).map((f) => f.canonical))],
-        figures_missing: [], span: null, source_sha256: null, page_status: null, reason,
+        figures_missing: [], span: null, source_sha256: null, page_status: null,
+        route: typedCallFor(url)?.route ?? "page", resolved_url: null, served_by: null, fetched_at: null, reason,
       }
     }
     if (!fetcher) return block("not_configured", urls.map((u) => notChecked(u, "not_configured")))
@@ -361,8 +581,23 @@ export async function runSourceCheck(intent: string, fetcher: PageFetcher | null
     const results = await Promise.all(
       checked.map(async (url) => {
         const claim = claimFor(intent, url)
+        // Typed first: the source's own data, no LLM. Any failure falls through to the page, never to a guess.
+        const call = typedFetcher ? typedCallFor(url) : null
+        let typed_error: string | undefined
+        if (call && typedFetcher) {
+          let res: TypedResult
+          try {
+            res = await typedFetcher(call)
+          } catch {
+            res = { ok: false, data: null, upstreamStatus: null, reason: "fetch_failed" }
+          }
+          const decided = decideTyped(url, claim, call, res)
+          if (decided) return decided
+          typed_error = res.ok ? "unusable_record" : (res.reason ?? "fetch_failed")
+        }
         const page = await fetcher(url, highlightQuery(claim))
-        return decideSource(url, claim, page)
+        const out = decideSource(url, claim, page)
+        return typed_error ? { ...out, typed_error } : out
       }),
     )
     const overCap = urls.slice(MAX_SOURCES).map((u) => notChecked(u, "over_cap"))
@@ -374,5 +609,6 @@ export async function runSourceCheck(intent: string, fetcher: PageFetcher | null
 
 /** Env-driven entry point for the Worker. Starts the check; the caller awaits it beside extraction. */
 export function startSourceCheck(env: { FIRECRAWL_API_KEY?: string }, intent: string): Promise<SourcesBlock> {
-  return runSourceCheck(intent, env.FIRECRAWL_API_KEY ? buildFirecrawlFetcher(env.FIRECRAWL_API_KEY) : null)
+  const key = env.FIRECRAWL_API_KEY
+  return runSourceCheck(intent, key ? buildFirecrawlFetcher(key) : null, key ? buildFirecrawlTypedFetcher(key) : null)
 }

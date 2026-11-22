@@ -38,7 +38,7 @@ function isTally(t: unknown): t is VerdictTally {
 /** Only the binding this adapter reads. Request-scoped, never module-scope. */
 export interface EngineAdapterEnv {
   ANTHROPIC_API_KEY?: string
-  /** DJZS-SRC-v0.1 source check. Absent => every cited source reports not_checked; the audit is unchanged. */
+  /** DJZS-SRC-v0.2 source check. Absent => every cited source reports not_checked; the audit is unchanged. */
   FIRECRAWL_API_KEY?: string
 }
 
@@ -121,7 +121,7 @@ export function createEngineAdapter(
       return Promise.reject(new Error("EXTRACTION_UNAVAILABLE: ANTHROPIC_API_KEY not configured"))
     }
     const text = renderIntentText(intent)
-    // DJZS-SRC-v0.1 runs beside extraction, not after it, and is attached only to an in-scope result.
+    // DJZS-SRC-v0.2 runs beside extraction, not after it, and is attached only to an in-scope result.
     // It is NOT SCORED: it never reaches the engine, verdict_hash, the attestation or the certificate.
     const sources = startSourceCheck(env, text)
     const p = runner(text, model).then(async (r) =>
@@ -161,7 +161,7 @@ export function createEngineAdapter(
         intent_sha256: intentSha256(intent),
         // DJZS-VR-v1.0: what the verdict was derived from, for the v3 attestation and its resolver.
         ...(isTally((result as { tally?: unknown }).tally) ? { tally: (result as { tally: VerdictTally }).tally } : {}),
-        // DJZS-SRC-v0.1, non-scoring: rides beside the verdict on the wire, never inside it.
+        // DJZS-SRC-v0.2, non-scoring: rides beside the verdict on the wire, never inside it.
         ...((result as { sources?: SourcesBlock }).sources ? { sources: (result as { sources: SourcesBlock }).sources } : {}),
       }
     },
