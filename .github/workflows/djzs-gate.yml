@@ -72,6 +72,9 @@ jobs:
       - name: "/try: signature binds wallet, day and intent; 5 per wallet, global cap, fail closed without D1"
         run: npx tsx test/try-route.test.mjs
         working-directory: djzs-trust-mcp
+      - name: "/try/markets: open narrative markets only, no sports, no death markets, no side picked; a venue down is an empty list, not an error"
+        run: npx tsx test/try-markets.test.mjs
+        working-directory: djzs-trust-mcp
       - name: "Home page examples: each recorded answer hashes to the text beside it and to its own verdict; today's ruleset"
         run: npx tsx test/site-examples.test.mjs
         working-directory: djzs-trust-mcp
