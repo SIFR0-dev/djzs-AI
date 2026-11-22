@@ -55,8 +55,8 @@
   .tx{display:flex;justify-content:space-between;gap:16px;margin:30px 0 0;padding:14px 0 0;border-top:1px solid var(--rule);font-size:13.5px;color:var(--muted)}.tx b{color:var(--pass)}
   .sys{margin:0;font-size:13.5px;color:var(--muted);letter-spacing:.04em}.sys b[data-s="ok"]{color:var(--pass)}.sys b[data-s="down"]{color:var(--fail)}
   .brand .pr{font-weight:800}
-  .next{display:grid;gap:22px 28px;margin:34px 0 0;align-items:start}@media (min-width:980px){.next{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
-  .next .agentbar{margin:0;grid-template-columns:minmax(0,1fr)}.next .agentbar .mcp{justify-self:start}
+  .next{display:grid;gap:22px;margin:34px 0 0}.next > *{min-width:0}
+  .next .agentbar{margin:0}
   .lede2{font-size:15px;color:var(--muted);margin:10px 0 0}.lede2 b{font-weight:700}
   /* the hero shows one real check as the terminal would print it */
   .demo{border:1px solid var(--fail);background:var(--well);padding:18px 20px 16px;font-size:14px}
