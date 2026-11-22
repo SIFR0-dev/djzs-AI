@@ -108,7 +108,7 @@
   .flabel{display:block;font-size:13.5px;color:var(--text);margin:0 0 6px}
   details.needs{margin:-4px 0 12px;font-size:14px}details.needs summary{cursor:pointer;color:var(--pass);font-size:13px;width:max-content;max-width:100%}details.needs summary:hover{color:var(--text)}
   details.needs ul{margin:8px 0 0;padding:0 0 0 18px;color:var(--text);max-width:74ch}details.needs li{margin:4px 0}details.needs li::marker{color:var(--pass)}
-  textarea{display:block;width:100%;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:12px 14px;font-family:var(--mono);font-size:16px;line-height:1.5;min-height:180px;resize:vertical}textarea:focus{outline:none;border-color:var(--pass)}textarea::placeholder{color:#6b6b6b}
+  textarea{display:block;width:100%;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:12px 14px;font-family:var(--mono);font-size:16px;line-height:1.5;min-height:180px;resize:vertical}@media (max-width:560px){textarea{min-height:250px}}textarea:focus{outline:none;border-color:var(--pass)}textarea::placeholder{color:#6b6b6b}
   .controls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
   #run{font-size:15px;min-height:52px;padding:12px 30px;background:var(--pass);color:var(--canvas)}#run:hover{background:#7dffb0;border-color:#7dffb0}#run:disabled,#run:disabled:hover{background:transparent;color:var(--pass);border-color:var(--pass)}
   .log{margin:12px 0 0;font-size:14px;color:var(--muted);min-height:1.6em}.log .xx{color:var(--fail)}.log .ok{color:var(--pass)}
@@ -390,7 +390,10 @@ function intentValid(intent){ return intent.thesis.length >= 40; }
 // 00:00 UTC in the reader's own clock, so "resets" means something without a time-zone sum.
 const RESET_LOCAL = (() => { try { const d = new Date(); d.setUTCHours(24, 0, 0, 0); return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch { return ""; } })();
 const RESETS = `resets 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}`;
+// The box grows with the text, up to most of the screen, then scrolls. Empty, it returns to its starting size.
+function fitBox(){ const t = $("thesis"); t.style.height = "auto"; if (t.value) t.style.height = Math.min(Math.round(innerHeight * 0.7), t.scrollHeight + 2) + "px"; }
 function refresh(){
+  fitBox();
   const run = $("run");
   if (state.out) { run.disabled = true; run.textContent = "No free checks left today"; $("need").textContent = ""; return; }
   run.textContent = !state.last ? "Check it" : (state.last.example && $("thesis").value.trim() === state.last.example.thesis) ? "Check it live" : "Check again";
