@@ -46,12 +46,20 @@
   nav.site{display:flex;flex-wrap:wrap;gap:6px 26px;font-size:12.5px;text-transform:uppercase;letter-spacing:.12em}nav.site a{color:var(--muted);border-bottom:1px solid transparent;padding:6px 0}nav.site a:hover{color:var(--text);background:transparent;border-bottom-color:var(--pass)}
 
   /* hero */
-  .hero{padding:30px 0 0;display:grid;gap:28px 56px;align-items:start}
-  @media (min-width:980px){.hero{grid-template-columns:minmax(0,1fr) 440px;padding-top:44px}}
+  .hero{padding:26px 0 0}
+  @media (min-width:980px){.hero{padding-top:38px}}
+  .hero h1 .l2{display:block}.hero h1 .cursor{width:.42em;height:.92em;margin-left:.28em;vertical-align:-.08em}
+  .hero .lede{max-width:none;margin-top:22px}
+  .trio{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 0}.trio .stamp{font-size:clamp(22px,4.4vw,34px);border-width:2px;padding:.12em .62em;letter-spacing:.06em;min-width:4.4em;text-align:center}.trio i{font-style:normal;color:var(--muted);font-size:26px}
+  .free{margin:22px 0 0;font-size:clamp(15.5px,2vw,20px)}.free i{font-style:normal;color:var(--muted)}
+  .tx{display:flex;justify-content:space-between;gap:16px;margin:30px 0 0;padding:14px 0 0;border-top:1px solid var(--rule);font-size:13.5px;color:var(--muted)}.tx b{color:var(--pass)}
+  .sys{margin:0;font-size:13.5px;color:var(--muted);letter-spacing:.04em}.sys b[data-s="ok"]{color:var(--pass)}.sys b[data-s="down"]{color:var(--fail)}
+  .brand .pr{font-weight:800}
+  .next{display:grid;gap:22px 28px;margin:34px 0 0;align-items:start}@media (min-width:980px){.next{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+  .next .agentbar{margin:0;grid-template-columns:minmax(0,1fr)}.next .agentbar .mcp{justify-self:start}
   .lede2{font-size:15px;color:var(--muted);margin:10px 0 0}.lede2 b{font-weight:700}
   /* the hero shows one real check as the terminal would print it */
   .demo{border:1px solid var(--fail);background:var(--well);padding:18px 20px 16px;font-size:14px}
-  @media (min-width:980px){.hero h1{font-size:min(40px,3.2vw)}}
   .demo > .label{margin:0 0 10px}
   .demo .exrow{margin:0 0 16px;gap:0}
   .demo .exrow .btn{flex:1 1 0;min-width:0;min-height:46px;padding:8px 10px;font-size:11.5px;letter-spacing:.04em;background:transparent;border-color:var(--rule);color:var(--muted);margin-left:-1px}.demo .exrow .btn:first-child{margin-left:0}
@@ -62,16 +70,13 @@
   .agentbar{margin:34px 0 0;border:1px solid var(--pass);background:var(--panel);padding:16px 18px;display:grid;gap:10px 24px;align-items:center}
   @media (min-width:860px){.agentbar{grid-template-columns:1fr auto}.agentbar .how,.agentbar .docsline{grid-column:1/-1}}
   .agentbar p{margin:0}.agentbar .who{font-size:16px}.agentbar .who b{color:var(--pass)}.agentbar .how{font-size:13.5px;color:var(--muted)}.agentbar .how code{color:var(--text);overflow-wrap:anywhere}
-  .hero-side{display:grid;gap:20px;min-width:0}.hero-side .agentbar{margin:0}
-  @media (min-width:980px){.hero-side .agentbar{grid-template-columns:minmax(0,1fr)}.hero-side .agentbar .mcp{justify-self:start;max-width:100%}}
-  @media (max-width:700px){main{display:flex;flex-direction:column}.hero,.hero-side{display:contents}.hero-copy{padding-top:18px}.demo{order:1;margin-top:20px}#out{order:2}.agentbar,.hero-side .agentbar{order:3;margin-top:24px}.why{order:4}}
   .demo p{margin:0}.demo .cmd{color:var(--muted)}.demo .cmd .p{color:var(--pass);font-weight:700}.demo .cmd q{color:var(--text);quotes:"\201C" "\201D"}
   .demo .v{display:flex;align-items:center;gap:12px;margin:16px 0 10px;font-weight:700;font-size:17px}.demo .v .stamp{color:var(--fail);border-width:2px;font-size:19px}
   .demo ul{list-style:none;margin:0;padding:0}.demo li{display:grid;grid-template-columns:28px 1fr;padding:5px 0;font-size:15px}.demo li .tok{color:var(--fail);font-weight:700}
   .demo .rule{margin:12px 0 0;padding:8px 12px;border-left:2px solid var(--wait);color:var(--text);font-size:13.5px}
   .demo .foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:16px 0 0}.demo .foot span{color:var(--muted);font-size:12.5px}
   .demo .btn{padding:8px 14px;min-height:40px;font-size:12px}
-  .path{color:var(--muted);font-size:13px;letter-spacing:.08em;margin:0 0 14px}.path .p{color:var(--pass);font-weight:700}
+  .path{color:var(--muted);font-size:clamp(13px,1.8vw,17px);letter-spacing:.04em;margin:0 0 16px}.path::before{content:"// "}.path .p{color:var(--pass);font-weight:700}
   .cursor{display:inline-block;width:.5em;height:1.05em;background:var(--pass);vertical-align:text-bottom;margin-left:.15rem;animation:blink 1.1s steps(1) infinite}@keyframes blink{50%{opacity:0}}
   h1{font-size:clamp(26px,6.6vw,46px);font-weight:800;letter-spacing:-.015em;margin:0;line-height:1.12;text-wrap:balance}h1 .l2{display:inline-block;text-wrap:balance}
   .lede{font-size:clamp(16.5px,2vw,19px);margin:18px 0 0;max-width:56ch;line-height:1.5}.lede .dim{color:var(--muted)}
@@ -160,8 +165,8 @@
   @media (max-width:560px){
     .only-wide{display:none !important}.only-narrow{display:flex !important}
     header.top{padding:12px 0}nav.site{gap:4px 18px;font-size:12px}
-    .hero{padding-top:18px;gap:20px}.hero .path{margin-bottom:8px}.lede{margin-top:12px}
-    section.step{margin-top:20px}#idea > .label{display:none}
+    .hero{padding-top:18px}.hero .path{margin-bottom:8px}.hero .lede{margin-top:14px}.trio,.free{margin-top:16px}.trio{flex-wrap:nowrap;gap:8px}.trio .stamp{font-size:20px;min-width:0;padding:.14em .5em}.trio i{font-size:18px}.tx{margin-top:20px}.sys{display:none}
+    section.step{margin-top:20px}
     .panel{padding:14px}
     .kind .btn{flex:1 1 0;min-width:0;font-size:12px;letter-spacing:.04em;padding:8px 6px}
     .agentline.only-narrow{margin:16px 0 0}
@@ -177,55 +182,39 @@
 <a class="skip" href="#idea">Skip to the check</a>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="/" aria-label="DJZS home"><img src="/favicon.svg" alt="" width="24" height="24"><span>DJZS<span class="dot">.</span></span></a>
+    <a class="brand" href="/" aria-label="DJZS home"><span class="pr" aria-hidden="true">&gt;_</span><span>DJZS<span class="dot">.</span></span></a>
     <nav class="site" aria-label="Site"><a href="#agents">Agents</a><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
+    <p class="sys">STATUS: <b id="sys" data-s="wait">CHECKING</b></p>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="h1">
-      <div class="hero-copy">
-      <p class="path"><span class="p">//</span> AUDIT BEFORE ACT</p>
-      <h1 id="h1">Trading the narrative? <span class="l2">Check your thesis before you trade it.</span></h1>
-      <p class="lede">Narratives move markets. See if yours stands on more than the story: a stop, a source for your odds, and the rule the market really pays on.</p>
-      <p class="lede2">Paste the thesis. Get <b class="c-pass">PASS</b>, <b class="c-wait">WAIT</b> or <b class="c-fail">FAIL</b> and the line to fix. Free, three a day, no wallet.</p>
-      <section class="step" id="idea" aria-labelledby="s1">
-        <p class="label" id="s1">your trade thesis</p>
-        <div class="panel">
-          <p class="status" id="last-status" hidden></p>
-          <div class="kind" role="group" aria-label="What are you checking?">
-            <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
-            <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
-          </div>
-          <p class="hint" id="kind-hint">Name the venue and the question.</p>
-          <details class="needs" id="needs"><summary>What a complete thesis includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
-          <label class="flabel" for="thesis" id="thesis-label">Your thesis</label>
-          <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
-          <div class="controls">
-            <button type="button" class="btn" id="run" disabled>Check it</button>
-            <button type="button" class="btn ghost" id="clear">Clear</button>
-          </div>
-          <p class="log" id="run-log" role="status" aria-live="polite"></p>
-          <p class="quota" id="quota">Three free checks a day</p>
+      <p class="path">AUDIT BEFORE ACT</p>
+      <h1 id="h1">Trading the narrative?<span class="cursor" aria-hidden="true"></span> <span class="l2">Check your thesis before you trade it.</span></h1>
+      <p class="lede">Narratives move markets. Stand on more than the story.</p>
+      <p class="trio" aria-label="The answer is PASS, WAIT or FAIL"><span class="stamp c-pass">PASS</span><i aria-hidden="true">-</i><span class="stamp c-wait">WAIT</span><i aria-hidden="true">-</i><span class="stamp c-fail">FAIL</span></p>
+      <p class="free"><b>Free</b> <i>- three checks a day -</i> no wallet</p>
+      <p class="tx" aria-hidden="true"><span>END_TRANSMISSION. //</span><b>djzs.ai</b></p>
+    </section>
+
+    <section class="step" id="idea" aria-labelledby="s1">
+      <p class="label" id="s1">your trade thesis</p>
+      <div class="panel">
+        <p class="status" id="last-status" hidden></p>
+        <div class="kind" role="group" aria-label="What are you checking?">
+          <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
+          <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
         </div>
-      </section>
-      </div>
-      <div class="hero-side">
-        <div class="demo" id="demo">
-          <p class="label">three narratives in the news, one thesis on each</p>
-          <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
-            <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
-            <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
-            <button type="button" class="btn" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
-          </div>
-          <div id="demo-body"></div>
-          <p class="log" id="ex-log" role="status" aria-live="polite"></p>
+        <p class="hint" id="kind-hint">Name the venue and the question.</p>
+        <details class="needs" id="needs"><summary>What a complete thesis includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
+        <label class="flabel" for="thesis" id="thesis-label">Your thesis</label>
+        <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
+        <div class="controls">
+          <button type="button" class="btn" id="run" disabled>Check it</button>
+          <button type="button" class="btn ghost" id="clear">Clear</button>
         </div>
-      <section class="agentbar" id="agents" aria-label="For AI agents">
-        <p class="who"><b>AI agent?</b> Run the same check before you place an order.</p>
-        <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
-        <p class="how">No MCP? One request, free, no wallet: <code>POST https://mcp.djzs.ai/try/verdict</code></p>
-        <p class="docsline"><a href="/docs/agents/mcp">Connect over MCP &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="https://mcp.djzs.ai/openapi.json">OpenAPI</a><a href="/builders">For treasuries</a></p>
-      </section>
+        <p class="log" id="run-log" role="status" aria-live="polite"></p>
+        <p class="quota" id="quota">Three free checks a day</p>
       </div>
     </section>
 
@@ -262,6 +251,25 @@
         </div>
       </div>
     </section>
+
+    <div class="next">
+      <div class="demo" id="demo">
+        <p class="label">three narratives in the news, one thesis on each</p>
+        <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
+          <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
+          <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
+          <button type="button" class="btn" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
+        </div>
+        <div id="demo-body"></div>
+        <p class="log" id="ex-log" role="status" aria-live="polite"></p>
+      </div>
+      <section class="agentbar" id="agents" aria-label="For AI agents">
+        <p class="who"><b>AI agent?</b> Run the same check before you place an order.</p>
+        <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
+        <p class="how">No MCP? One request, free, no wallet: <code>POST https://mcp.djzs.ai/try/verdict</code></p>
+        <p class="docsline"><a href="/docs/agents/mcp">Connect over MCP &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="https://mcp.djzs.ai/openapi.json">OpenAPI</a><a href="/builders">For treasuries</a></p>
+      </section>
+    </div>
 
     <section class="why" id="why" aria-labelledby="why-h">
       <p class="label" id="why-h">why trust the answer</p>
@@ -352,6 +360,7 @@ function randomHex32(){ const a = new Uint8Array(32); crypto.getRandomValues(a);
 function log(id, msg, cls){ const el = $(id); el.innerHTML = msg ? `<span class="${cls ?? ""}">${esc(msg)}</span>` : ""; }
 function walletErr(e){ if (e && (e.code === 4001 || /rejected|denied/i.test(e.message ?? ""))) return "declined in the wallet; nothing was sent"; return (e && e.message) ? e.message.slice(0, 160) : String(e); }
 function plain(code, name){ return (name ?? code ?? "").replace(/^DJZS-/, "").replace(/_/g, " ").toLowerCase(); }
+function sys(ok){ const e = $("sys"); e.dataset.s = ok ? "ok" : "down"; e.textContent = ok ? "OPERATIONAL" : "UNREACHABLE"; }
 function scrollToEl(el){ el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }); }
 
 // ── copy the MCP address
@@ -463,8 +472,9 @@ function showQuota(q){
   refresh();
 }
 async function loadQuota(){
-  const id = storedAnon(); if (!id) return;
-  try { const r = await fetch(`${WORKER}/try/quota?anon=${id}`, { cache: "no-store" }); const j = await r.json(); if (r.ok && j.ok) showQuota(j); } catch { /* the line keeps its default */ }
+  // A returning browser reads its count. A new one sends no id; the worker's refusal still shows it is answering, which is all STATUS claims.
+  const id = storedAnon();
+  try { const r = await fetch(`${WORKER}/try/quota${id ? `?anon=${id}` : ""}`, { cache: "no-store" }); const j = await r.json(); if (id && r.ok && j.ok) showQuota(j); sys(typeof j.day === "string"); } catch { sys(false); /* the quota line keeps its default */ }
 }
 
 // ── the verdict. No wallet, no signature: the browser id is the quota key.
