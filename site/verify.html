@@ -52,7 +52,31 @@
   .checks{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));border:1px solid var(--rule)}
   .checks li{display:grid;grid-template-columns:34px 1fr;padding:12px 14px;font-size:14px;border-left:1px solid var(--rule);margin-left:-1px;border-top:1px solid var(--rule);margin-top:-1px}.checks .ok{color:var(--pass);font-weight:700;font-size:12.5px}
   details.more{margin:34px 0 0;border-top:1px solid var(--rule);padding-top:14px}details.more summary{cursor:pointer;color:var(--muted);font-size:13px}details.more summary:hover{color:var(--text)}details.more .anchors{margin-top:14px}
-  body::after{display:none}</style>
+  body::after{display:none}
+  /* 2026-11-22: the page wears the same header, type scale and buttons as the home page and /build. */
+  body{font-size:15px;padding:0}
+  .wrap{max-width:1040px;padding:0 16px 40px}@media (min-width:700px){.wrap{padding:0 40px 56px}}
+  :focus-visible{outline:2px solid var(--pass);outline-offset:3px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:16px 0;margin:0;border-bottom:1px solid var(--rule)}
+  .brand{display:inline-flex;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px}.brand:hover{background:transparent;color:var(--pass)}.brand .dot{color:var(--pass)}
+  nav.site{gap:6px 26px;margin:0;font-size:12.5px}nav.site a{padding:6px 0}nav.site a:hover{background:transparent;color:var(--pass)}nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--pass)}
+  .hero{padding:30px 0 0}
+  .path{font-size:clamp(13px,1.8vw,17px);letter-spacing:.04em;margin:0 0 14px}.path::before{content:"// "}
+  h1{font-size:clamp(26px,5.4vw,46px);letter-spacing:-.015em;line-height:1.12}
+  .lede{font-size:clamp(16px,2.1vw,20px);margin:18px 0 0;max-width:60ch}.lede b{color:var(--pass)}
+  .checks{margin:26px 0 0;grid-template-columns:1fr}@media (min-width:760px){.checks{grid-template-columns:repeat(3,1fr)}}
+  .checks li{display:block;padding:14px 16px;font-size:14.5px;margin:0;border:0;border-top:1px solid var(--rule)}.checks li:first-child{border-top:0}
+  @media (min-width:760px){.checks li{border-top:0;border-left:1px solid var(--rule)}.checks li:first-child{border-left:0}}
+  .checks b{display:block;color:var(--pass);font-weight:800}.checks span{color:var(--text)}
+  .io{margin:44px 0 0}.h2{font-size:clamp(19px,2.6vw,24px);font-weight:800;margin:0 0 16px;letter-spacing:-.005em}
+  textarea{font-size:13.5px}
+  .btn{font-size:14px;min-height:48px;padding:10px 22px}#run{min-height:52px;padding:12px 28px;font-size:15px;font-weight:800;background:var(--pass);color:var(--canvas)}#run:hover{background:#7dffb0;border-color:#7dffb0}
+  .stamp{font-size:19px;border-width:2px}.verdict-title{font-size:17px}.verdict-note{font-size:14.5px}
+  .claim-name{font-size:15px}.claim-body{font-size:14px}.empty{font-size:14.5px}
+  details.more{margin:44px 0 0}details.more summary{font-size:14px}
+  footer{margin-top:52px;font-size:13px;line-height:1.6}footer nav{display:flex;flex-wrap:wrap;gap:6px 20px;margin:12px 0}footer .how{margin:0}
+  footer .sig{margin:10px 0 0}footer .sig b{color:var(--pass)}
+  @media (max-width:560px){#run{width:100%}}</style>
 <link rel="canonical" href="https://djzs.ai/verify">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
@@ -60,20 +84,24 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/#idea">check</a><a href="/verify" aria-current="page">verify</a><a href="/docs">docs &rarr;</a></nav>
-    <p class="path"><span class="p">~/djzs/verify</span> $ <span id="cmd">check --receipt</span><span class="cursor"></span></p>
-    <h1>Check a receipt yourself.</h1>
-    <p class="lede">Paste a DJZS receipt. This page looks up the payment and the public record on Base and tells you whether they match what the receipt says. <b>It does not ask DJZS.</b></p>
-    <ul class="checks" aria-label="What gets checked">
-      <li><span class="ok" aria-hidden="true">01</span><span><b>The payment happened.</b> Read from Base.</span></li>
-      <li><span class="ok" aria-hidden="true">02</span><span><b>The receipt is for this exact thesis.</b> Recomputed from its text.</span></li>
-      <li><span class="ok" aria-hidden="true">03</span><span><b>The verdict is on the public record.</b> Read from Base.</span></li>
-    </ul>
+  <header class="top">
+    <a class="brand" href="/" aria-label="DJZS home"><span aria-hidden="true">&gt;_</span><span>DJZS<span class="dot">.</span></span></a>
+    <nav class="site" aria-label="Site"><a href="/#idea">Check a thesis</a><a href="/verify" aria-current="page">Verify</a><a href="/docs">Docs &rarr;</a></nav>
   </header>
 
+  <section class="hero" aria-labelledby="h1">
+    <p class="path">VERIFY</p>
+    <h1 id="h1">Check a receipt yourself.</h1>
+    <p class="lede">Paste a DJZS receipt. This page looks up the payment and the public record on Base and tells you whether they match what the receipt says. <b>It does not ask DJZS.</b></p>
+    <ul class="checks" aria-label="What gets checked">
+      <li><b>The payment happened.</b><span>Read from Base.</span></li>
+      <li><b>The receipt is for this exact thesis.</b><span>Recomputed from its text.</span></li>
+      <li><b>The verdict is on the public record.</b><span>Read from Base.</span></li>
+    </ul>
+  </section>
+
   <div class="io">
-    <p class="label">paste the receipt you copied after paying</p>
+    <h2 class="h2" id="paste">Paste the receipt you copied after paying</h2>
     <textarea id="rcpt" spellcheck="false"></textarea>
     <div class="controls">
       <button class="btn" id="run">Check this receipt</button>
@@ -124,9 +152,9 @@
   </details>
 
   <footer>
-    <div class="k">How a receipt is built and what each row means: <a href="/docs/concepts/receipts">receipts in the docs</a>.</div>
-    <div class="k"><a href="/">Check a thesis</a> · <a href="/docs">Docs</a> · <a href="/scan">Scan room</a> · <a href="/build">Services</a> · <a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a> · <a href="/legal">Legal</a> · <a href="/terms">Terms</a> · <a href="https://x.com/Djzs_ai">X @Djzs_ai</a></div>
-    <p class="sig"><span class="p">END_TRANSMISSION.</span> // djzs.ai/verify · audit before act</p>
+    <p class="how">How a receipt is built and what each row means: <a href="/docs/concepts/receipts">receipts in the docs</a>.</p>
+    <nav aria-label="Footer"><a href="/">Check a thesis</a><a href="/docs">Docs</a><a href="/scan">Scan room</a><a href="/build">Services</a><a href="https://github.com/SIFR0-dev/djzs-AI/issues">Support</a><a href="/legal">Legal</a><a href="/terms">Terms</a><a href="https://x.com/Djzs_ai" rel="noopener">X @Djzs_ai</a></nav>
+    <p class="sig"><b>END_TRANSMISSION.</b> // djzs.ai/verify</p>
   </footer>
 </div>
 
