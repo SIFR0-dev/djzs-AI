@@ -28,12 +28,12 @@
   <text x="70" y="158" font-size="24" class="muted">// AUDIT BEFORE ACT</text>
 
   <!-- headline + cursor block -->
-  <text x="70" y="246" font-size="56" class="b text">Everyone has a take.</text>
-  <text x="70" y="316" font-size="56" class="b text">Check yours before you trade.</text>
-  <rect x="1058" y="270" width="26" height="50" fill="#3DFF88"/>
+  <text x="70" y="240" font-size="46" class="b text">Trading the narrative?</text>
+  <text x="70" y="304" font-size="46" class="b text">Check your thesis before you trade it.</text>
+  <rect x="692" y="202" width="22" height="42" fill="#3DFF88"/>
 
   <!-- what you get -->
-  <text x="70" y="378" font-size="28" class="text">Narratives move markets. Check your thesis first.</text>
+  <text x="70" y="378" font-size="28" class="text">Narratives move markets. Stand on more than the story.</text>
 
   <!-- verdict trio -->
   <g font-size="44" class="b">
