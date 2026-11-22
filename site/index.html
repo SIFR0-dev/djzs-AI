@@ -103,6 +103,8 @@
   .starts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 16px;font-size:13.5px;color:var(--muted)}.starts span{margin-right:2px}
   .chip{font:inherit;font-size:13px;color:var(--pass);background:transparent;border:1px solid var(--pass);padding:6px 12px;min-height:36px;cursor:pointer}.chip:hover{background:var(--pass);color:var(--canvas)}
   .need{font-size:13px;color:var(--muted)}
+  .starts[data-pending]{visibility:hidden}.chip .vn{color:var(--muted);font-size:11.5px;margin-left:8px}.chip:hover .vn{color:var(--canvas)}
+  .demo .more{color:var(--pass);font-size:13px}
   .flabel{display:block;font-size:13.5px;color:var(--text);margin:0 0 6px}
   details.needs{margin:-4px 0 12px;font-size:14px}details.needs summary{cursor:pointer;color:var(--pass);font-size:13px;width:max-content;max-width:100%}details.needs summary:hover{color:var(--text)}
   details.needs ul{margin:8px 0 0;padding:0 0 0 18px;color:var(--text);max-width:74ch}details.needs li{margin:4px 0}details.needs li::marker{color:var(--pass)}
@@ -210,7 +212,7 @@
         </div>
         <p class="hint" id="kind-hint">The headline is not the market's rule. Name the venue and the question.</p>
         <details class="needs" id="needs"><summary>What a complete thesis includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
-        <p class="starts" id="starts"><span>No thesis yet? Start from a narrative in the news:</span><button type="button" class="chip" data-start="dip">BTC dip</button><button type="button" class="chip" data-start="headline">Nvidia CEO</button><button type="button" class="chip" data-start="bubble">AI bubble</button></p>
+        <p class="starts" id="starts" data-pending><span id="starts-say">No thesis yet? Start from a narrative in the news:</span><button type="button" class="chip" data-start="dip">BTC dip</button><button type="button" class="chip" data-start="headline">Nvidia CEO</button><button type="button" class="chip" data-start="bubble">AI bubble</button></p>
         <label class="flabel" for="thesis" id="thesis-label">Your thesis</label>
         <textarea id="thesis" rows="6" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
         <div class="controls">
@@ -259,7 +261,8 @@
 
     <div class="next">
       <div class="demo" id="demo">
-        <p class="label">three narratives in the news, one thesis on each, checked</p>
+        <p class="label" id="demo-label">three narratives in the news, one thesis on each, checked</p>
+        <div class="exrow" id="scan-row" role="group" aria-label="Narratives from the Daily Narrative Scan" hidden></div>
         <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
           <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
           <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
@@ -326,7 +329,7 @@ let viemMod = null;
 async function viem(){ if (!viemMod) viemMod = await import(VIEM); return viemMod; }
 
 const $ = (id) => document.getElementById(id);
-const state = { provider: null, address: null, kind: "pm", last: null, out: false, bracketsFor: null };
+const state = { provider: null, address: null, kind: "pm", last: null, out: false, bracketsFor: null, starter: null };
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ── the browser's free-verdict id. Random, local, never tied to a wallet. Created on the first check, not on page load.
@@ -395,7 +398,7 @@ function refresh(){
 }
 $("thesis").addEventListener("input", refresh);
 $("thesis").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("run").disabled) { e.preventDefault(); $("run").click(); } });
-$("clear").addEventListener("click", () => { $("thesis").value = ""; dropExample(); log("ex-log", ""); refresh(); $("thesis").focus(); });
+$("clear").addEventListener("click", () => { $("thesis").value = ""; state.starter = null; dropExample(); log("ex-log", ""); log("run-log", ""); refresh(); $("thesis").focus(); });
 $("edit-link").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 const KIND = {
   pm: { needs: ["The market's own terms: the question, the date it settles, and the source that settles it.", "Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.", "What would prove you wrong: the specific event, before the market settles.", "Why the market is wrong. \u201CEveryone agrees\u201D is not a reason. This one is advice; it never changes the verdict."],
@@ -423,6 +426,8 @@ const EX = (() => { try { return JSON.parse($("examples-data").textContent); } c
 const exampleList = EX && Array.isArray(EX.examples) && new Date().toISOString().slice(0, 10) <= EX.closes ? EX.examples : [];
 const isExampleText = (t) => exampleList.some((e) => e.thesis === t);
 const exButtons = () => document.querySelectorAll("#ex-row button[data-ex]");
+// Text the page itself put in the box (a sample, or a market starter left unedited) may be replaced. A person's own text never is.
+const replaceable = (t) => !t || isExampleText(t) || t === state.starter;
 function markExample(id){ if (!id) return; for (const b of exButtons()) { const on = b.dataset.ex === id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); } }
 function initExamples(){
   let shown = 0;
@@ -438,6 +443,7 @@ function initExamples(){
 }
 // The hero prints the chosen sample as a terminal would: its recorded answer, nothing added. Switching calls nothing.
 function showDemo(ex){
+  demoMode("samples");
   const b = ex.body, st = b.verdict === "PASS" ? "pass" : b.verdict === "WAIT" ? "wait" : "fail";
   const title = { pass: "Nothing failed", wait: "Not enough to judge", fail: "Do not place this" }[st];
   const flags = b.flags_detail.map((f) => `<li><span class="tok">${f.severity === "CRITICAL" || f.severity === "HIGH" ? "!!" : "!"}</span><span>${esc((FLAG[f.name] && FLAG[f.name].name) || plain(f.code, f.name))}</span></li>`).join("");
@@ -449,7 +455,7 @@ function showDemo(ex){
 }
 function loadExample(ex){
   const cur = $("thesis").value.trim();
-  if (cur && !isExampleText(cur)) { const m = "Your own text is in the box. Press Clear first, then load an example."; log("ex-log", m); log("run-log", m); return; }
+  if (!replaceable(cur)) { const m = "Your own text is in the box. Press Clear first, then load an example."; log("ex-log", m); log("run-log", m); return; }
   log("ex-log", ""); log("run-log", "");
   setKind(ex.kind);
   $("thesis").value = ex.thesis;
@@ -781,7 +787,85 @@ function renderReceipt(r){
   scrollToEl(el);
 }
 
+// ── live feeds. Both are optional: when one is empty or cannot be read, the recorded samples above stay.
+function demoMode(mode){
+  const scan = mode === "scan";
+  $("scan-row").hidden = !scan; $("ex-row").hidden = scan;
+  $("demo-label").textContent = scan ? "from the Daily Narrative Scan, checked" : "three narratives in the news, one thesis on each, checked";
+}
+const clip = (t, n) => (t.length <= n ? t : t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…");
+const VENUE = { kalshi: "Kalshi", polymarket: "Polymarket" };
+
+// Starters: prediction markets open today (worker /try/markets). The button names the market; the person writes
+// the thesis. No outcome, side or price is filled in.
+function marketThesis(m){
+  const title = /[.?!]$/.test(m.title) ? m.title : m.title + ".";
+  const rule = m.rule && m.rule.replace(/[.?!]$/, "") !== m.title.replace(/[.?!]$/, "") ? " " + m.rule : "";
+  return `${VENUE[m.venue]}, ${title} It closes on ${m.closes}.${rule} I am buying [YES or NO] on [which outcome] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles.`;
+}
+function startFromMarket(m){
+  const cur = $("thesis").value.trim();
+  if (!replaceable(cur)) { log("run-log", "Your own text is in the box. Press Clear first, then pick a market."); return; }
+  log("run-log", ""); dropExample(); setKind("pm");
+  const text = marketThesis(m);
+  $("thesis").value = text; state.starter = text; state.bracketsFor = null;
+  refresh();
+  const i = text.indexOf("["); $("thesis").focus(); if (i >= 0) $("thesis").setSelectionRange(i, text.indexOf("]", i) + 1);
+}
+async function loadMarkets(){
+  let markets = [];
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch(`${WORKER}/try/markets`, { signal: ctl.signal }); clearTimeout(t);
+    const j = await r.json();
+    if (r.ok && j.ok && Array.isArray(j.markets)) markets = j.markets.filter((m) => m && VENUE[m.venue] && typeof m.title === "string" && /^\d{4}-\d{2}-\d{2}$/.test(m.closes)).slice(0, 3);
+  } catch { /* the recorded starters stay */ }
+  const box = $("starts");
+  if (markets.length) {
+    for (const c of box.querySelectorAll("[data-start]")) c.remove();
+    $("starts-say").textContent = "No thesis yet? Start from a market trading today:";
+    markets.forEach((m) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip";
+      b.innerHTML = `${esc(clip(m.title, 34))}<span class="vn">${esc(VENUE[m.venue])}</span>`; b.title = m.title;
+      b.addEventListener("click", () => startFromMarket(m)); box.appendChild(b);
+    });
+    box.hidden = false;
+  }
+  box.removeAttribute("data-pending");
+}
+
+// Sample area: the open narratives from the Scan Room's public feed, newest first. What is shown is what the room
+// published: the story, its score and verdict, what that means, and what would prove it wrong.
+const ROOM = "https://scan.djzs.ai";
+function showScan(n, list){
+  demoMode("scan");
+  const st = n.verdict === "PASS" ? "pass" : n.verdict === "WAIT" ? "wait" : "fail";
+  $("demo").dataset.state = st;
+  for (const b of $("scan-row").querySelectorAll("button")) { const on = b.dataset.n === n.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); }
+  const url = typeof n.url === "string" && n.url.startsWith(ROOM + "/") ? n.url : ROOM + "/";
+  $("demo-body").innerHTML = `<p class="k">the narrative</p><p class="story">${esc(n.title)}</p>${n.quote ? `<p class="cmd"><q>${esc(n.quote)}</q></p>` : ""}<p class="k">the scan</p><p class="v"><span class="stamp">${esc(n.verdict)}</span><span>score ${esc(n.score)}</span></p><p class="story">${esc(n.meaning)}</p><p class="k">it is wrong if</p><p class="story">${esc(n.falsifier)}</p><p class="foot"><button type="button" class="btn" id="scan-write">Write your thesis on this</button><a class="more" href="${esc(url)}" rel="noopener">Open in the Scan Room</a><span>Published ${esc(String(n.published_at).slice(0, 10))}.</span></p>`;
+  $("scan-write").addEventListener("click", () => { scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
+}
+async function loadScan(){
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch(`${ROOM}/feed.json`, { signal: ctl.signal }); clearTimeout(t);
+    const f = await r.json();
+    const ok = (n) => n && typeof n.id === "string" && typeof n.title === "string" && ["PASS", "WAIT", "FAIL"].includes(n.verdict) && Number.isFinite(n.score) && typeof n.meaning === "string" && typeof n.falsifier === "string";
+    const list = (Array.isArray(f.narratives) ? f.narratives : []).filter(ok).sort((a, b) => String(b.published_at).localeCompare(String(a.published_at))).slice(0, 3);
+    if (!list.length) return;
+    // A sample the person already opened is not pulled out from under them.
+    if (state.last && state.last.example) return;
+    const row = $("scan-row"); row.innerHTML = "";
+    for (const n of list) { const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.dataset.n = n.id; b.textContent = clip(n.title, 44); b.title = n.title; b.setAttribute("aria-pressed", "false"); b.addEventListener("click", () => showScan(n, list)); row.appendChild(b); }
+    $("demo").hidden = false;
+    showScan(list[0], list);
+  } catch { /* the recorded samples stay */ }
+}
+
 initExamples();
+loadMarkets();
+loadScan();
 loadQuota();
 refresh();
 </script>
