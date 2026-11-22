@@ -14,9 +14,14 @@
  * Venue text is data, not instructions. It is length-capped and stripped of control characters here and
  * HTML-escaped by the page. Titles that turn on someone's death or on violence are not served on a home page.
  *
+ * It also serves up to three perps trading today on Hyperliquid (`perps`): the one with the most volume in
+ * the last day, and the biggest riser and faller among the twelve most traded. A perp is named with its move
+ * over the last day, which is a fact about the market. No direction is suggested.
+ *
  * Sources (read 2026-11-22):
  *   Polymarket  gamma-api.polymarket.com/events?closed=false&active=true&order=volume24hr&tag_slug=<tag>
  *   Kalshi      api.elections.kalshi.com/v1/search/series?order_by=event-volume&status=open&category=<cat>
+ *   Hyperliquid POST api.hyperliquid.xyz/info {"type":"metaAndAssetCtxs"} (the published info endpoint)
  * The Kalshi search path is the one kalshi.com itself calls. It is not in Kalshi's published API reference,
  * so it can change without notice; when it does, Kalshi drops out of the list and Polymarket remains.
  * (The published v2 API has no volume ordering and lists about seventeen thousand open events.)
@@ -40,7 +45,9 @@ export const POLYMARKET_TAGS = [
   { slug: "crypto", limit: 2 },
   { slug: "politics", limit: 1 },
 ] as const
+export type TryPerp = { venue: "hyperliquid"; id: string; title: string; change_24h: number; volume_24h: number; url: string }
 export const TRY_MARKETS_MAX = 6
+export const TRY_PERPS_MAX = 3
 /** How long one read of the venues is reused. The venues are read at most this often, whatever the traffic. */
 export const TRY_MARKETS_TTL_SECONDS = 1800
 
@@ -130,11 +137,41 @@ export function arrange(kalshi: TryMarket[], polymarket: TryMarket[], max = TRY_
   return out
 }
 
-async function getJson(url: string, ms: number): Promise<unknown> {
+/**
+ * Pure. Hyperliquid's [meta, assetCtxs] -> up to three perps: the most traded in the last day, then the biggest
+ * riser and the biggest faller among the twelve most traded, then the next most traded to fill.
+ */
+export function pickHyperliquid(data: unknown, max = TRY_PERPS_MAX): TryPerp[] {
+  if (!Array.isArray(data) || data.length < 2) return []
+  const universe = (data[0] as { universe?: unknown } | null)?.universe
+  const ctxs = data[1]
+  if (!Array.isArray(universe) || !Array.isArray(ctxs)) return []
+  const rows: TryPerp[] = []
+  for (let i = 0; i < universe.length && i < ctxs.length; i++) {
+    const u = universe[i] as Record<string, unknown> | null, c = ctxs[i] as Record<string, unknown> | null
+    if (!u || !c || u.isDelisted === true) continue
+    const name = typeof u.name === "string" ? u.name : ""
+    if (!/^[A-Za-z0-9]{1,12}$/.test(name)) continue
+    const vol = Number(c.dayNtlVlm), mark = Number(c.markPx), prev = Number(c.prevDayPx)
+    if (!(vol > 0) || !(mark > 0) || !(prev > 0)) continue
+    rows.push({ venue: "hyperliquid", id: name, title: `${name} perp`, change_24h: Math.round((mark / prev - 1) * 1000) / 10, volume_24h: Math.round(vol), url: `https://app.hyperliquid.xyz/trade/${name}` })
+  }
+  rows.sort((a, b) => b.volume_24h - a.volume_24h)
+  const top = rows.slice(0, 12)
+  const out: TryPerp[] = []
+  const add = (r: TryPerp | undefined) => { if (r && out.length < max && !out.some((o) => o.id === r.id)) out.push(r) }
+  add(top[0])
+  add([...top].sort((a, b) => b.change_24h - a.change_24h)[0])
+  add([...top].sort((a, b) => a.change_24h - b.change_24h)[0])
+  for (const r of top) add(r)
+  return out
+}
+
+async function getJson(url: string, ms: number, post?: unknown): Promise<unknown> {
   const ctl = new AbortController()
   const t = setTimeout(() => ctl.abort(), ms)
   try {
-    const r = await fetch(url, { signal: ctl.signal, headers: { accept: "application/json" } })
+    const r = await fetch(url, post === undefined ? { signal: ctl.signal, headers: { accept: "application/json" } } : { method: "POST", signal: ctl.signal, headers: { accept: "application/json", "content-type": "application/json" }, body: JSON.stringify(post) })
     return r.ok ? await r.json() : null
   } catch {
     return null // a venue that cannot be read is left out; no error text leaves this module
@@ -144,15 +181,16 @@ async function getJson(url: string, ms: number): Promise<unknown> {
 }
 
 /** Reads both venues. Never throws: a venue that fails contributes nothing. */
-export async function readMarkets(now: Date): Promise<{ markets: TryMarket[]; venues: { kalshi: boolean; polymarket: boolean } }> {
-  const [k, p] = await Promise.all([
+export async function readMarkets(now: Date): Promise<{ markets: TryMarket[]; perps: TryPerp[]; venues: { kalshi: boolean; polymarket: boolean; hyperliquid: boolean } }> {
+  const [k, p, h] = await Promise.all([
     Promise.all(KALSHI_CATEGORIES.map((c) => getJson(`https://api.elections.kalshi.com/v1/search/series?order_by=event-volume&status=open&page_size=8&category=${encodeURIComponent(c)}`, 3000))),
     Promise.all(POLYMARKET_TAGS.map((t) => getJson(`https://gamma-api.polymarket.com/events?closed=false&active=true&order=volume24hr&ascending=false&limit=${t.limit}&tag_slug=${t.slug}`, 3000))),
+    getJson("https://api.hyperliquid.xyz/info", 3000, { type: "metaAndAssetCtxs" }),
   ])
   // One event per Kalshi category, the busiest in it, so one loud category cannot take every slot.
   const kalshi = k.flatMap((j) => pickKalshi((j as { current_page?: unknown } | null)?.current_page, now).sort((a, b) => b.volume_24h - a.volume_24h).slice(0, 1))
   const polymarket = p.flatMap((j, i) => pickPolymarket(j, POLYMARKET_TAGS[i].slug, now))
-  return { markets: arrange(kalshi, polymarket), venues: { kalshi: k.some((j) => j !== null), polymarket: p.some((j) => j !== null) } }
+  return { markets: arrange(kalshi, polymarket), perps: pickHyperliquid(h), venues: { kalshi: k.some((j) => j !== null), polymarket: p.some((j) => j !== null), hyperliquid: h !== null } }
 }
 
 type EdgeCache = { match(req: Request): Promise<Response | undefined>; put(req: Request, res: Response): Promise<void> }
@@ -161,15 +199,15 @@ export async function handleTryMarkets(request: Request, deps: { read?: typeof r
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS })
   if (request.method !== "GET") return json({ error: "method_not_allowed", allow: "GET, OPTIONS" }, 405)
   const cache = deps.cache === undefined ? ((globalThis as { caches?: { default?: EdgeCache } }).caches?.default ?? null) : deps.cache
-  const key = new Request("https://mcp.djzs.ai/try/markets?v=1")
+  const key = new Request("https://mcp.djzs.ai/try/markets?v=2")
   if (cache) {
     try { const hit = await cache.match(key); if (hit) return hit } catch { /* a cache that cannot be read is skipped */ }
   }
   const now = (deps.now ?? (() => new Date()))()
-  const { markets, venues } = await (deps.read ?? readMarkets)(now)
-  const body = { ok: true, as_of: now.toISOString(), venues, markets }
-  // A read that reached neither venue is not kept: the next request tries again.
-  const reached = venues.kalshi || venues.polymarket
+  const { markets, perps, venues } = await (deps.read ?? readMarkets)(now)
+  const body = { ok: true, as_of: now.toISOString(), venues, markets, perps }
+  // A read that reached no venue is not kept: the next request tries again.
+  const reached = venues.kalshi || venues.polymarket || venues.hyperliquid
   const res = json(body, 200, { "cache-control": reached ? `public, max-age=${TRY_MARKETS_TTL_SECONDS}` : "no-store" })
   if (cache && reached) {
     try { await cache.put(key, res.clone()) } catch { /* not kept this time */ }

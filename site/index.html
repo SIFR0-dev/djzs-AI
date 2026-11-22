@@ -103,7 +103,7 @@
   .starts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 16px;font-size:13.5px;color:var(--muted)}.starts span{margin-right:2px}
   .chip{font:inherit;font-size:13px;color:var(--pass);background:transparent;border:1px solid var(--pass);padding:6px 12px;min-height:36px;cursor:pointer}.chip:hover{background:var(--pass);color:var(--canvas)}
   .need{font-size:13px;color:var(--muted)}
-  .starts[data-pending]{visibility:hidden}.chip .vn{color:var(--muted);font-size:11.5px;margin-left:8px}.chip:hover .vn{color:var(--canvas)}
+  .starts[data-pending]{visibility:hidden}.chip .vn{color:var(--muted);font-size:11.5px;margin-left:8px}.chip:hover .vn,.chip:hover .c-pass,.chip:hover .c-fail{color:var(--canvas)}
   .demo .more{color:var(--pass);font-size:13px}
   .flabel{display:block;font-size:13.5px;color:var(--text);margin:0 0 6px}
   details.needs{margin:-4px 0 12px;font-size:14px}details.needs summary{cursor:pointer;color:var(--pass);font-size:13px;width:max-content;max-width:100%}details.needs summary:hover{color:var(--text)}
@@ -330,6 +330,8 @@ async function viem(){ if (!viemMod) viemMod = await import(VIEM); return viemMo
 
 const $ = (id) => document.getElementById(id);
 const state = { provider: null, address: null, kind: "pm", last: null, out: false, bracketsFor: null, starter: null };
+// Starters read from the worker: prediction markets and perps trading today. Empty until loadMarkets() answers.
+const live = { pm: [], perp: [], ready: false };
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ── the browser's free-verdict id. Random, local, never tied to a wallet. Created on the first check, not on page load.
@@ -407,10 +409,13 @@ const KIND = {
         hint: "A narrative gets you in. Say when you are out. Name the instrument, long or short.", label: "Your thesis", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
 };
 function setKind(k){
+  // A starter the page put in the box belongs to the tab it was picked on. Changing tab removes it; typed text stays.
+  if (state.kind !== k && state.starter && $("thesis").value.trim() === state.starter) { $("thesis").value = ""; state.starter = null; }
   state.kind = k;
   for (const id of ["pm", "perp"]) { const on = id === k; $("kind-" + id).classList.toggle("on", on); $("kind-" + id).setAttribute("aria-pressed", String(on)); }
   $("kind-hint").textContent = KIND[k].hint; $("thesis-label").textContent = KIND[k].label; $("thesis").placeholder = KIND[k].ph;
   $("needs-list").innerHTML = KIND[k].needs.map((x) => `<li>${esc(x)}</li>`).join("");
+  renderStarts();
   // Switching kind away from a loaded example drops it. The person's own text is never cleared.
   if (state.last && state.last.example && state.last.example.kind !== k) { if (isExampleText($("thesis").value.trim())) $("thesis").value = ""; dropExample(); }
   refresh();
@@ -812,26 +817,44 @@ function startFromMarket(m){
   refresh();
   const i = text.indexOf("["); $("thesis").focus(); if (i >= 0) $("thesis").setSelectionRange(i, text.indexOf("]", i) + 1);
 }
+// Perps trading today on Hyperliquid (same worker answer). The button names the perp and its move over the last day,
+// which is a fact. Long or short, entry, stop and exit are left for the person.
+function perpThesis(x){ return `Hyperliquid, ${x.id} perp, [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event].`; }
+function startFromPerp(x){
+  const cur = $("thesis").value.trim();
+  if (!replaceable(cur)) { log("run-log", "Your own text is in the box. Press Clear first, then pick a perp."); return; }
+  log("run-log", ""); dropExample(); setKind("perp");
+  const text = perpThesis(x);
+  $("thesis").value = text; state.starter = text; state.bracketsFor = null;
+  refresh();
+  const i = text.indexOf("["); $("thesis").focus(); if (i >= 0) $("thesis").setSelectionRange(i, text.indexOf("]", i) + 1);
+}
+// The starters follow the tab: prediction markets on one, perps on the other. With no live list for a tab, the
+// recorded samples of that kind are offered instead.
+function renderStarts(){
+  const box = $("starts"); if (!live.ready) return;
+  for (const c of box.querySelectorAll(".chip.live")) c.remove();
+  const list = live[state.kind]; let shown = 0;
+  for (const c of box.querySelectorAll("[data-start]")) { const ex = exampleList.find((e) => e.id === c.dataset.start); c.hidden = list.length > 0 || !ex || ex.kind !== state.kind; if (!c.hidden) shown++; }
+  for (const m of list) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip live";
+    if (state.kind === "pm") { b.innerHTML = `${esc(clip(m.title, 34))}<span class="vn">${esc(VENUE[m.venue])}</span>`; b.title = m.title; b.addEventListener("click", () => startFromMarket(m)); }
+    else { const up = m.change_24h >= 0; b.innerHTML = `${esc(m.id)} <span class="${up ? "c-pass" : "c-fail"}">${up ? "+" : ""}${esc(m.change_24h.toFixed(1))}%</span><span class="vn">Hyperliquid</span>`; b.title = `${m.id} perp, ${up ? "up" : "down"} ${Math.abs(m.change_24h).toFixed(1)}% in the last day`; b.addEventListener("click", () => startFromPerp(m)); }
+    box.appendChild(b); shown++;
+  }
+  $("starts-say").textContent = list.length ? (state.kind === "pm" ? "No thesis yet? Start from a market trading today:" : "No thesis yet? Start from a perp trading today:") : "No thesis yet? Start from a narrative in the news:";
+  box.hidden = shown === 0;
+}
 async function loadMarkets(){
-  let markets = [];
   try {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
     const r = await fetch(`${WORKER}/try/markets`, { signal: ctl.signal }); clearTimeout(t);
     const j = await r.json();
-    if (r.ok && j.ok && Array.isArray(j.markets)) markets = j.markets.filter((m) => m && VENUE[m.venue] && typeof m.title === "string" && /^\d{4}-\d{2}-\d{2}$/.test(m.closes)).slice(0, 3);
+    if (r.ok && j.ok && Array.isArray(j.markets)) live.pm = j.markets.filter((m) => m && VENUE[m.venue] && typeof m.title === "string" && /^\d{4}-\d{2}-\d{2}$/.test(m.closes)).slice(0, 3);
+    if (r.ok && j.ok && Array.isArray(j.perps)) live.perp = j.perps.filter((x) => x && x.venue === "hyperliquid" && /^[A-Za-z0-9]{1,12}$/.test(x.id) && Number.isFinite(x.change_24h)).slice(0, 3);
   } catch { /* the recorded starters stay */ }
-  const box = $("starts");
-  if (markets.length) {
-    for (const c of box.querySelectorAll("[data-start]")) c.remove();
-    $("starts-say").textContent = "No thesis yet? Start from a market trading today:";
-    markets.forEach((m) => {
-      const b = document.createElement("button"); b.type = "button"; b.className = "chip";
-      b.innerHTML = `${esc(clip(m.title, 34))}<span class="vn">${esc(VENUE[m.venue])}</span>`; b.title = m.title;
-      b.addEventListener("click", () => startFromMarket(m)); box.appendChild(b);
-    });
-    box.hidden = false;
-  }
-  box.removeAttribute("data-pending");
+  live.ready = true; renderStarts();
+  $("starts").removeAttribute("data-pending");
 }
 
 // Sample area: the open narratives from the Scan Room's public feed, newest first. What is shown is what the room
