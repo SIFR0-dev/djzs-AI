@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DJZS: legal, in plain language</title>
   <meta name="description" content="Plain-language terms for the DJZS audit tool: no warranty, informational verdicts, final non-custodial payments, permanent public certificates." />
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DJZS">
+<meta property="og:title" content="DJZS: legal, in plain language">
+<meta property="og:description" content="Plain-language terms for the DJZS audit tool: no warranty, informational verdicts, final non-custodial payments, permanent public certificates.">
+<meta property="og:url" content="https://djzs.ai/legal">
+<meta property="og:image" content="https://djzs.ai/og.png?v=4">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://djzs.ai/og.png?v=4">
   <link rel="canonical" href="https://djzs.ai/legal" />
   <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/fonts.css">
@@ -15,28 +25,29 @@
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
 <link rel="alternate" type="application/json" href="https://mcp.djzs.ai/.well-known/agent.json" title="A2A agent card">
+<style>
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:0 0 16px;margin:0 0 26px;border-bottom:1px solid var(--rule);position:static;background:transparent}
+  header.top .brand{display:inline-flex;align-items:baseline;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px;text-decoration:none}header.top .brand:hover{background:transparent;color:var(--pass)}header.top .brand .dot{color:var(--pass);margin-left:0}
+  header.top nav.site{display:flex;flex-wrap:wrap;gap:6px 26px;margin:0;font-size:12.5px;text-transform:uppercase;letter-spacing:.12em;flex:0 1 auto}header.top nav.site a{color:var(--muted);padding:6px 0;border:0;text-decoration:none}header.top nav.site a:hover{background:transparent;color:var(--pass)}
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-<header class="site">
-  <div class="wrap">
-    <a class="brand" href="/"><img class="brandmark" src="/favicon.svg" alt="" width="26" height="26" />DJZS<span class="dot">.</span></a>
-    <nav aria-label="Main">
-      <a href="/#idea">Check</a>
-      <a href="/verify">Verify</a>
-      <a href="/docs">Docs</a>
-    </nav>
-  </div>
-</header>
 
 <main class="wrap" id="main">
+
+  <header class="top" style="margin-top:18px">
+    <a class="brand" href="/" aria-label="DJZS home"><span aria-hidden="true">&gt;_</span><span>DJZS<span class="dot">.</span></span></a>
+    <nav class="site" aria-label="Site"><a href="/#idea">Check a thesis</a><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
+  </header>
 
   <p class="path"><span class="p">~/djzs/legal</span> $<span class="cursor"></span></p>
 
   <section>
     <h1>Legal, in plain language</h1>
     <p class="lede">Short, honest, and readable, like the rest of this site. This page is
-    plain-language disclosure, not a substitute for legal advice.</p>
+    plain-language disclosure, not a substitute for legal advice. If it and the
+    <a href="/terms">Terms of Service</a> ever differ, the Terms govern.</p>
     <div class="status">
       <div class="row"><span class="ok">OK</span><span class="label">MODE</span><span class="val">DISCLOSURE · plain language, no boilerplate veil</span></div>
       <div class="row"><span class="ok">OK</span><span class="label">SCOPE</span><span class="val">no warranty · informational verdicts · final payments · permanent records</span></div>
@@ -45,7 +56,8 @@
 
   <section>
     <h2>What the tool is <span class="k">// 01 · and is not</span></h2>
-    <p><code>verify_pm_trade</code> is an automated logic audit. It analyzes the <em>reasoning</em> in
+    <p>The DJZS check is an automated logic audit of a prediction-market, perp or spot trade thesis.
+    It runs free on this site and as a paid tool for agents. It analyzes the <em>reasoning</em> in
     a trade thesis and returns a verdict computed by a deterministic engine. It is
     <strong>informational only</strong>. It is not financial, investment, trading, or legal advice; it
     does not predict outcomes; a PASS is not a recommendation to trade and does not mean a trade will
@@ -66,7 +78,8 @@
 
   <section>
     <h2>Payments <span class="k">// 03 · x402, final, non-custodial</span></h2>
-    <p>The audit costs <strong>2.00 USDC per call</strong> on Base mainnet over x402. Payment is
+    <p>The check on this site is free, three a day, with no wallet and no payment. The paid audit for
+    agents costs <strong>2.00 USDC per call</strong> on Base mainnet over x402. Payment is
     non-custodial: your EIP-3009 signature authorizes a transfer from your wallet directly to the
     DJZS treasury; the facilitator submits it and pays the gas. You sign the exact amount; nothing
     more can be taken. <strong>Payments are final</strong>: they settle on-chain and cannot be
@@ -88,8 +101,10 @@
 
   <section>
     <h2>Privacy <span class="k">// 05</span></h2>
-    <p>No accounts, no logins, no cookies set by this site. Cloudflare serves the site and provides
-    basic aggregate analytics (the beacon script). Submitted intents are processed to produce the
+    <p>No accounts, no logins, no cookies set by this site. To count your three free checks a day, the
+    home page keeps one random id in your browser's storage and sends it with each free check. It is
+    not tied to your name or your IP address, and clearing site data removes it. Cloudflare serves the
+    site and provides basic aggregate analytics (the beacon script). Submitted intents are processed to produce the
     audit, including LLM extraction, and survive only in the public certificate described above.
     Wallet addresses involved in payment or trust records are public on-chain data by nature.</p>
   </section>
@@ -104,7 +119,7 @@
     your trading decisions, or the content you submit.</p>
     <p>These terms are governed by the laws of the <strong>State of California</strong>, without
     regard to its conflict-of-laws rules. Any dispute will be brought in the state or federal courts
-    located in California. If any provision is held unenforceable, the rest remains in force.</p>
+    located in Santa Clara County, California. If any provision is held unenforceable, the rest remains in force.</p>
   </section>
 
   <section>

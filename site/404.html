@@ -14,21 +14,21 @@
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
 <link rel="alternate" type="application/json" href="https://mcp.djzs.ai/.well-known/agent.json" title="A2A agent card">
+<style>
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:0 0 16px;margin:0 0 26px;border-bottom:1px solid var(--rule);position:static;background:transparent}
+  header.top .brand{display:inline-flex;align-items:baseline;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px;text-decoration:none}header.top .brand:hover{background:transparent;color:var(--pass)}header.top .brand .dot{color:var(--pass);margin-left:0}
+  header.top nav.site{display:flex;flex-wrap:wrap;gap:6px 26px;margin:0;font-size:12.5px;text-transform:uppercase;letter-spacing:.12em;flex:0 1 auto}header.top nav.site a{color:var(--muted);padding:6px 0;border:0;text-decoration:none}header.top nav.site a:hover{background:transparent;color:var(--pass)}
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-<header class="site">
-  <div class="wrap">
-    <a class="brand" href="/"><img class="brandmark" src="/favicon.svg" alt="" width="26" height="26" />DJZS<span class="dot">.</span></a>
-    <nav aria-label="Main">
-      <a href="/#idea">Check</a>
-      <a href="/verify">Verify</a>
-      <a href="/docs">Docs</a>
-    </nav>
-  </div>
-</header>
 
 <main class="wrap" id="main">
+
+  <header class="top" style="margin-top:18px">
+    <a class="brand" href="/" aria-label="DJZS home"><span aria-hidden="true">&gt;_</span><span>DJZS<span class="dot">.</span></span></a>
+    <nav class="site" aria-label="Site"><a href="/#idea">Check a thesis</a><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
+  </header>
 
   <p class="path"><span class="p">~/djzs/404</span> $<span class="cursor"></span></p>
 
