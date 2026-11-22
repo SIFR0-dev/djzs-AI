@@ -14,7 +14,7 @@
  */
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { pickKalshi, pickPolymarket, arrange, cleanText, firstSentences, blockedTitle, handleTryMarkets, KALSHI_CATEGORIES, TRY_MARKETS_MAX, TRY_MARKETS_TTL_SECONDS } from "../src/try-markets.ts"
+import { pickHyperliquid, TRY_PERPS_MAX, pickKalshi, pickPolymarket, arrange, cleanText, firstSentences, blockedTitle, handleTryMarkets, KALSHI_CATEGORIES, TRY_MARKETS_MAX, TRY_MARKETS_TTL_SECONDS } from "../src/try-markets.ts"
 
 let pass = 0
 const failures = []
@@ -59,15 +59,22 @@ const arranged = arrange([mk("kalshi", "k1", 5), mk("kalshi", "k2", 50), mk("kal
 check(30, "busiest first within a venue, one per id, venues take turns", arranged.map((m) => m.id).join() === "k2,p2,k1,p1")
 check(31, `never more than ${TRY_MARKETS_MAX}`, arrange(Array.from({ length: 9 }, (_, i) => mk("kalshi", "k" + i, i)), Array.from({ length: 9 }, (_, i) => mk("polymarket", "p" + i, i))).length === TRY_MARKETS_MAX)
 
+// ── Hyperliquid perps ──
+const hl = pickHyperliquid(fx.hyperliquid)
+check(32, `Hyperliquid: ${TRY_PERPS_MAX} perps, the most traded first, each with a plain name, its move over the day and a link`, hl.length === TRY_PERPS_MAX && hl[0].id === "BTC" && new Set(hl.map((p) => p.id)).size === hl.length && hl.every((p) => p.venue === "hyperliquid" && /^[A-Za-z0-9]{1,12}$/.test(p.id) && p.title === `${p.id} perp` && Number.isFinite(p.change_24h) && p.volume_24h > 0 && p.url === `https://app.hyperliquid.xyz/trade/${p.id}`))
+check(33, "Hyperliquid: the second is the day's biggest riser and the third its biggest faller among the twelve most traded", hl[1].change_24h >= hl[0].change_24h && hl[2].change_24h <= hl[0].change_24h && hl[1].change_24h > hl[2].change_24h)
+check(34, "Hyperliquid: a perp is named with a fact, never a direction", hl.every((p) => Object.keys(p).sort().join() === "change_24h,id,title,url,venue,volume_24h"))
+check(35, "Hyperliquid: delisted, zero-volume and oddly named assets are refused, and junk is an empty list", pickHyperliquid([{ universe: [{ name: "OLD", isDelisted: true }, { name: "ZERO" }, { name: "bad/../x" }, { name: "OK" }] }, [{ dayNtlVlm: "9", markPx: "1", prevDayPx: "1" }, { dayNtlVlm: "0", markPx: "1", prevDayPx: "1" }, { dayNtlVlm: "9", markPx: "1", prevDayPx: "1" }, { dayNtlVlm: "5", markPx: "11", prevDayPx: "10" }]]).map((p) => p.id + p.change_24h).join() === "OK10" && pickHyperliquid(null).length === 0 && pickHyperliquid([{}, 3]).length === 0)
+
 // ── the route ──
 const j = async (r) => ({ status: r.status, headers: r.headers, body: await r.json() })
 const real = arrange(kAll, pEco)
 const fakeCache = () => { const m = new Map(); return { m, async match(req) { const r = m.get(req.url); return r ? r.clone() : undefined }, async put(req, res) { m.set(req.url, res) } } }
 {
   const cache = fakeCache(); let reads = 0
-  const read = async () => { reads++; return { markets: real, venues: { kalshi: true, polymarket: true } } }
+  const read = async () => { reads++; return { markets: real, perps: hl, venues: { kalshi: true, polymarket: true, hyperliquid: true } } }
   const a = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read, cache, now: () => NOW }))
-  check(40, "GET answers 200 with the markets and the time they were read", a.status === 200 && a.body.ok === true && a.body.as_of === NOW.toISOString() && a.body.markets.length === real.length && a.body.markets.length > 0)
+  check(40, "GET answers 200 with the markets and the time they were read", a.status === 200 && a.body.ok === true && a.body.as_of === NOW.toISOString() && a.body.markets.length === real.length && a.body.markets.length > 0 && a.body.perps.length === hl.length)
   check(41, "the answer names markets and nothing else: no price, outcome or side", a.body.markets.every((m) => Object.keys(m).every((k) => ["venue", "id", "title", "category", "closes", "url", "volume_24h", "rule"].includes(k))))
   check(42, "CORS is open and the answer may be kept for the TTL", a.headers.get("access-control-allow-origin") === "*" && a.headers.get("cache-control") === `public, max-age=${TRY_MARKETS_TTL_SECONDS}`)
   const b = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read, cache, now: () => new Date(NOW.getTime() + 60_000) }))
@@ -75,14 +82,14 @@ const fakeCache = () => { const m = new Map(); return { m, async match(req) { co
 }
 {
   const cache = fakeCache()
-  const a = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read: async () => ({ markets: [], venues: { kalshi: false, polymarket: false } }), cache, now: () => NOW }))
-  check(44, "neither venue readable: 200 with an empty list, not an error, and not kept", a.status === 200 && a.body.ok === true && a.body.markets.length === 0 && a.headers.get("cache-control") === "no-store" && cache.m.size === 0)
-  const one = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read: async () => ({ markets: pEco, venues: { kalshi: false, polymarket: true } }), cache: null, now: () => NOW }))
+  const a = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read: async () => ({ markets: [], perps: [], venues: { kalshi: false, polymarket: false, hyperliquid: false } }), cache, now: () => NOW }))
+  check(44, "neither venue readable: 200 with an empty list, not an error, and not kept", a.status === 200 && a.body.ok === true && a.body.markets.length === 0 && a.body.perps.length === 0 && a.headers.get("cache-control") === "no-store" && cache.m.size === 0)
+  const one = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read: async () => ({ markets: pEco, perps: [], venues: { kalshi: false, polymarket: true, hyperliquid: false } }), cache: null, now: () => NOW }))
   check(45, "one venue down: the other is still served and the answer says which was reached", one.body.markets.length === pEco.length && one.body.venues.kalshi === false && one.body.venues.polymarket === true)
 }
 check(46, "POST is refused, OPTIONS answers the preflight", (await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets", { method: "POST" }), { cache: null })).status === 405 && (await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets", { method: "OPTIONS" }), { cache: null })).status === 204)
 {
-  const a = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read: async () => ({ markets: real, venues: { kalshi: true, polymarket: true } }), cache: { async match() { throw new Error("secret-cache-detail") }, async put() { throw new Error("secret-cache-detail") } }, now: () => NOW }))
+  const a = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read: async () => ({ markets: real, perps: hl, venues: { kalshi: true, polymarket: true, hyperliquid: true } }), cache: { async match() { throw new Error("secret-cache-detail") }, async put() { throw new Error("secret-cache-detail") } }, now: () => NOW }))
   check(47, "a cache that throws is skipped and its error text never reaches the answer", a.status === 200 && !JSON.stringify(a.body).includes("secret-cache-detail"))
 }
 

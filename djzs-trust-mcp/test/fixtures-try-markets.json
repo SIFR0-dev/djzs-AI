@@ -1134,5 +1134,141 @@
     }
    ]
   }
+ ],
+ "hyperliquid": [
+  {
+   "universe": [
+    {
+     "name": "BTC"
+    },
+    {
+     "name": "ETH"
+    },
+    {
+     "name": "HYPE"
+    },
+    {
+     "name": "ZEC"
+    },
+    {
+     "name": "SOL"
+    },
+    {
+     "name": "NEAR"
+    },
+    {
+     "name": "XRP"
+    },
+    {
+     "name": "PUMP"
+    },
+    {
+     "name": "VVV"
+    },
+    {
+     "name": "AAVE"
+    },
+    {
+     "name": "XMR"
+    },
+    {
+     "name": "ACE"
+    },
+    {
+     "name": "LIT"
+    },
+    {
+     "name": "kPEPE"
+    },
+    {
+     "name": "ADA"
+    },
+    {
+     "name": "UNI"
+    }
+   ]
+  },
+  [
+   {
+    "dayNtlVlm": "3167300708.5068097115",
+    "markPx": "60699.0",
+    "prevDayPx": "60329.0"
+   },
+   {
+    "dayNtlVlm": "518095986.037599802",
+    "markPx": "1714.4",
+    "prevDayPx": "1686.1"
+   },
+   {
+    "dayNtlVlm": "247369508.9188600779",
+    "markPx": "62.321",
+    "prevDayPx": "61.179"
+   },
+   {
+    "dayNtlVlm": "98941451.8139999509",
+    "markPx": "788.29",
+    "prevDayPx": "792.23"
+   },
+   {
+    "dayNtlVlm": "81817428.1600799263",
+    "markPx": "70.255",
+    "prevDayPx": "70.59"
+   },
+   {
+    "dayNtlVlm": "29378988.5302399956",
+    "markPx": "2.9881",
+    "prevDayPx": "2.8739"
+   },
+   {
+    "dayNtlVlm": "22308173.3351599984",
+    "markPx": "0.92775",
+    "prevDayPx": "0.93593"
+   },
+   {
+    "dayNtlVlm": "20856527.6918520033",
+    "markPx": "0.002583",
+    "prevDayPx": "0.002389"
+   },
+   {
+    "dayNtlVlm": "18784570.2664100006",
+    "markPx": "26.177",
+    "prevDayPx": "24.05"
+   },
+   {
+    "dayNtlVlm": "14031022.5947500039",
+    "markPx": "98.268",
+    "prevDayPx": "97.494"
+   },
+   {
+    "dayNtlVlm": "13819476.4873099979",
+    "markPx": "493.73",
+    "prevDayPx": "485.98"
+   },
+   {
+    "dayNtlVlm": "8099116.5684729973",
+    "markPx": "0.0562",
+    "prevDayPx": "0.0856"
+   },
+   {
+    "dayNtlVlm": "7809770.200699999",
+    "markPx": "2.3166",
+    "prevDayPx": "2.367"
+   },
+   {
+    "dayNtlVlm": "7728552.4562040018",
+    "markPx": "0.003401",
+    "prevDayPx": "0.003391"
+   },
+   {
+    "dayNtlVlm": "7180665.8719899999",
+    "markPx": "0.14447",
+    "prevDayPx": "0.14497"
+   },
+   {
+    "dayNtlVlm": "6691295.0304200044",
+    "markPx": "4.6821",
+    "prevDayPx": "4.6987"
+   }
+  ]
  ]
 }
