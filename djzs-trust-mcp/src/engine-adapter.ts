@@ -25,6 +25,7 @@ import type { ModelFn } from "../../server/engine-v2/extraction-layer"
 import { sha256Hex } from "../../server/engine-v2/hash"
 import type { EngineAdapter, ScopeResult, VerdictResult } from "./http-x402-bazaar.v2"
 import type { VerdictTally } from "../../server/engine-v2/verdict-rule"
+import { startSourceCheck, type SourcesBlock } from "./source-check"
 
 /** Structural check on the engine's tally, so a malformed one is dropped rather than attested. */
 function isTally(t: unknown): t is VerdictTally {
@@ -37,6 +38,8 @@ function isTally(t: unknown): t is VerdictTally {
 /** Only the binding this adapter reads. Request-scoped, never module-scope. */
 export interface EngineAdapterEnv {
   ANTHROPIC_API_KEY?: string
+  /** DJZS-SRC-v0.2 source check. Absent => every cited source reports not_checked; the audit is unchanged. */
+  FIRECRAWL_API_KEY?: string
 }
 
 /** Shape of an engine flag as the deterministic engine returns it. */
@@ -117,7 +120,12 @@ export function createEngineAdapter(
       // Fail CLOSED and fail EARLY: thrown from scopeCheck this is an uncharged refusal.
       return Promise.reject(new Error("EXTRACTION_UNAVAILABLE: ANTHROPIC_API_KEY not configured"))
     }
-    const p = runner(renderIntentText(intent), model)
+    const text = renderIntentText(intent)
+    // DJZS-SRC-v0.2 runs beside extraction, not after it, and is attached only to an in-scope result.
+    // It is NOT SCORED: it never reaches the engine, verdict_hash, the attestation or the certificate.
+    const sources = startSourceCheck(env, text)
+    const p = runner(text, model).then(async (r) =>
+      r.in_scope === true ? ({ ...r, sources: await sources } as VerifyPmTradeResult) : r)
     runs.set(key, p)
     return p
   }
@@ -153,6 +161,8 @@ export function createEngineAdapter(
         intent_sha256: intentSha256(intent),
         // DJZS-VR-v1.0: what the verdict was derived from, for the v3 attestation and its resolver.
         ...(isTally((result as { tally?: unknown }).tally) ? { tally: (result as { tally: VerdictTally }).tally } : {}),
+        // DJZS-SRC-v0.2, non-scoring: rides beside the verdict on the wire, never inside it.
+        ...((result as { sources?: SourcesBlock }).sources ? { sources: (result as { sources: SourcesBlock }).sources } : {}),
       }
     },
   }

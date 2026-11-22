@@ -47,3 +47,9 @@ SUBGRAPH_URL="<graph-studio-query-url>"
 # Routes ONLY the new HTTP x402 transport to Base Sepolia. The /mcp route never
 # reads this var and stays on mainnet. Absent => the route uses X402_NETWORK.
 X402_HTTP_NETWORK="base-sepolia"
+
+# Firecrawl key for the source check (DJZS-SRC-v0.2): reads each URL a thesis cites. SECRET.
+# Absent = every cited source reports not_checked and audits are unchanged.
+# Production: wrangler secret put FIRECRAWL_API_KEY
+# Prove the key before deploying: npx tsx --env-file=.dev.vars harness/source-check-live.ts
+FIRECRAWL_API_KEY=

@@ -96,6 +96,8 @@ export interface VerdictResult {
   eas_schema?: string;
   eas_error?: string;          // a fixed code ("attester_not_configured" | "attestation_failed"), never raw error text; verdict still valid
   pol_certificate?: unknown;
+  /** DJZS-SRC-v0.2 source check: non-scoring, never enters the verdict, its hash or the attestation. */
+  sources?: unknown;
 }
 
 export interface EngineAdapter {
