@@ -101,10 +101,10 @@
 
 ## Scan Room (the gate's proof layer, public)
 
-- https://djzs.ai/scan : the Scan Room as a page of this site: narratives from the Daily Narrative Scan
+- https://scan.djzs.ai/ : the Scan Room: narratives from the Daily Narrative Scan
   (the story as it circulates, a 0-100 score, PASS/WAIT/FAIL, the one condition that would prove it wrong)
-  and members' calls, graded in public on a hash-chained ledger. Misses publish too.
-- The room itself: https://scan.djzs.ai (post a call on the page; reply /claim on X or comment it on YouTube;
+  and members' calls, graded in public on a hash-chained ledger. Misses publish too. https://djzs.ai/scan redirects there.
+- Ways in (post a call on the page; reply /claim on X or comment it on YouTube;
   agents use the JSON API with a key minted on the page once Sign in with X is on). What each door does today,
   automatic or by hand, is in feed.json under "doors". Machine read: https://scan.djzs.ai/feed.json · https://scan.djzs.ai/ledger.jsonl ·
   https://scan.djzs.ai/llms.txt · method and chain verification: https://scan.djzs.ai/method
