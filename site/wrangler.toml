@@ -2,8 +2,8 @@ name = "djzs-site"
 compatibility_date = "2026-06-01"
 
 # Static assets plus one Worker script (worker.js). Assets are served first; only a path no asset
-# answers reaches the script, and today the script answers exactly one: /scan (the Scan Room page,
-# rendered from scan.djzs.ai/feed.json). Everything else it hands back to the ASSETS binding, so the
+# answers reaches the script, and today the script answers exactly one: /scan (a redirect to the
+# Scan Room at scan.djzs.ai). Everything else it hands back to the ASSETS binding, so the
 # site is still one `wrangler deploy` from live (same deploy pattern as djzs-trust-mcp).
 # `directory = "."` is resolved relative to this wrangler.toml (i.e. site/). .assetsignore keeps
 # worker.js itself out of the upload.
