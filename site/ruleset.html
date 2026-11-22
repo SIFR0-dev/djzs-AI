@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DJZS · The rules: where they live, and the outcome study</title>
+<title>DJZS: the rules, where they live, and the outcome study</title>
 <meta name="description" content="The three answers the DJZS check gives, links to the full rules in the docs, and where the outcome study's result will be published.">
   <link rel="preload" href="/assets/fonts/JetBrainsMono-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/fonts.css">
@@ -82,7 +82,20 @@
   nav.site a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
   nav.site a:hover{color:var(--text)} nav.site a[aria-current]{color:var(--text);border-bottom-color:var(--green)}
   nav.site a.home{color:var(--text)} a.wordmark{text-decoration:none}
-  body::after{display:none}</style>
+  body::after{display:none}  header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:0 0 16px;margin:0 0 26px;border-bottom:1px solid var(--rule);position:static;background:transparent}
+  header.top .brand{display:inline-flex;align-items:baseline;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px;text-decoration:none}header.top .brand:hover{background:transparent;color:var(--pass)}header.top .brand .dot{color:var(--pass);margin-left:0}
+  header.top nav.site{display:flex;flex-wrap:wrap;gap:6px 26px;margin:0;font-size:12.5px;text-transform:uppercase;letter-spacing:.12em;flex:0 1 auto}header.top nav.site a{color:var(--muted);padding:6px 0;border:0;text-decoration:none}header.top nav.site a:hover{background:transparent;color:var(--pass)}
+</style>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DJZS">
+<meta property="og:title" content="DJZS · The rules: where they live, and the outcome study">
+<meta property="og:description" content="The three answers the DJZS check gives, links to the full rules in the docs, and where the outcome study's result will be published.">
+<meta property="og:url" content="https://djzs.ai/ruleset">
+<meta property="og:image" content="https://djzs.ai/og.png?v=4">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://djzs.ai/og.png?v=4">
 <link rel="canonical" href="https://djzs.ai/ruleset">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <link rel="alternate" type="application/json" href="/.well-known/x402.json" title="x402 discovery">
@@ -90,19 +103,22 @@
 </head>
 <body>
 <div class="wrap">
+  <header class="top">
+    <a class="brand" href="/" aria-label="DJZS home"><span aria-hidden="true">&gt;_</span><span>DJZS<span class="dot">.</span></span></a>
+    <nav class="site" aria-label="Site"><a href="/#idea">Check a thesis</a><a href="/verify">Verify</a><a href="/docs">Docs &rarr;</a></nav>
+  </header>
   <header>
-    <nav class="site" aria-label="Site"><a class="home" href="/">&larr; djzs.ai</a><a href="/#idea">check</a><a href="/verify">verify</a><a href="/docs">docs &rarr;</a></nav>
     <p class="path"><span class="p">~/djzs/ruleset</span> $ cat DJZS-PM-v1.0<span class="cursor"></span></p>
-    <h1><a class="wordmark" href="/" title="djzs.ai">DJZS.</a> The rules</h1>
+    <h1>The rules</h1>
     <p class="lede">Every rule the check applies is fixed, published and versioned. <b>The full rules, the hash recipe and the receipt format now live in the docs.</b> This page keeps the three answers, the links, and the place where the outcome study's result will be published.</p>
   </header>
 
   <section>
     <h2>The three answers <span class="sub">three outcomes, never two</span></h2>
     <div class="ladder">
-      <div class="rung pass"><span class="verdict">PASS</span><span class="d">Nothing failed and the idea is complete. It does not say the facts are true or that the trade wins.</span></div>
+      <div class="rung pass"><span class="verdict">PASS</span><span class="d">Nothing failed and the thesis is complete. It does not say the facts are true or that the trade wins.</span></div>
       <div class="rung wait"><span class="verdict">WAIT</span><span class="d">The check could not settle a fact the verdict depends on. It does not guess. Treat it as a no.</span></div>
-      <div class="rung fail"><span class="verdict">FAIL</span><span class="d">A rule fired on what the idea says. Stop.</span></div>
+      <div class="rung fail"><span class="verdict">FAIL</span><span class="d">A rule fired on what the thesis says. Stop.</span></div>
     </div>
     <p class="coda">Abstain over guess.</p>
   </section>
