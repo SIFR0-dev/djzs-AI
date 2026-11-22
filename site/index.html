@@ -71,7 +71,7 @@
   @media (min-width:860px){.agentbar{grid-template-columns:1fr auto}.agentbar .how,.agentbar .docsline{grid-column:1/-1}}
   .agentbar p{margin:0}.agentbar .who{font-size:16px}.agentbar .who b{color:var(--pass)}.agentbar .how{font-size:13.5px;color:var(--muted)}.agentbar .how code{color:var(--text);overflow-wrap:anywhere}
   .demo p{margin:0}.demo .cmd{color:var(--muted)}.demo .cmd .p{color:var(--pass);font-weight:700}.demo .cmd q{color:var(--text);quotes:"\201C" "\201D"}
-  .demo .v{display:flex;align-items:center;gap:12px;margin:16px 0 10px;font-weight:700;font-size:17px}.demo .v .stamp{color:var(--fail);border-width:2px;font-size:19px}
+  .demo .k{color:var(--muted);font-size:12px;letter-spacing:.06em;margin:14px 0 4px}.demo .k::before{content:"// "}.demo .story{font-size:15px}.demo .v{display:flex;align-items:center;gap:12px;margin:6px 0 10px;font-weight:700;font-size:17px}.demo .v .stamp{color:var(--fail);border-width:2px;font-size:19px}
   .demo ul{list-style:none;margin:0;padding:0}.demo li{display:grid;grid-template-columns:28px 1fr;padding:5px 0;font-size:15px}.demo li .tok{color:var(--fail);font-weight:700}
   .demo .rule{margin:12px 0 0;padding:8px 12px;border-left:2px solid var(--wait);color:var(--text);font-size:13.5px}
   .demo .foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:16px 0 0}.demo .foot span{color:var(--muted);font-size:12.5px}
@@ -99,7 +99,10 @@
   .btn.ghost{color:var(--muted);border-color:var(--rule)}.btn.ghost:hover{background:transparent;color:var(--text);border-color:var(--muted)}
   .btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;background:transparent;color:var(--pass)}.btn.ghost:disabled:hover{color:var(--muted);border-color:var(--rule)}
   .kind{display:flex;flex-wrap:wrap;margin:0 0 12px}.kind .btn{flex:1 1 180px;font-size:14px;min-height:48px;padding:10px 20px;border-color:var(--rule);color:var(--muted)}.kind .btn.on{border-color:var(--pass);color:var(--canvas);background:var(--pass)}.kind .btn:not(.on):hover{color:var(--text);background:transparent;border-color:var(--muted)}
-  .hint{color:var(--muted);font-size:14px;margin:0 0 12px;max-width:74ch}
+  .hint{color:var(--text);font-size:15px;margin:0 0 12px;max-width:74ch}
+  .starts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 16px;font-size:13.5px;color:var(--muted)}.starts span{margin-right:2px}
+  .chip{font:inherit;font-size:13px;color:var(--pass);background:transparent;border:1px solid var(--pass);padding:6px 12px;min-height:36px;cursor:pointer}.chip:hover{background:var(--pass);color:var(--canvas)}
+  .need{font-size:13px;color:var(--muted)}
   .flabel{display:block;font-size:13.5px;color:var(--text);margin:0 0 6px}
   details.needs{margin:-4px 0 12px;font-size:14px}details.needs summary{cursor:pointer;color:var(--pass);font-size:13px;width:max-content;max-width:100%}details.needs summary:hover{color:var(--text)}
   details.needs ul{margin:8px 0 0;padding:0 0 0 18px;color:var(--text);max-width:74ch}details.needs li{margin:4px 0}details.needs li::marker{color:var(--pass)}
@@ -205,13 +208,15 @@
           <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
           <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
         </div>
-        <p class="hint" id="kind-hint">Name the venue and the question.</p>
+        <p class="hint" id="kind-hint">The headline is not the market's rule. Name the venue and the question.</p>
         <details class="needs" id="needs"><summary>What a complete thesis includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
+        <p class="starts" id="starts"><span>No thesis yet? Start from a narrative in the news:</span><button type="button" class="chip" data-start="dip">BTC dip</button><button type="button" class="chip" data-start="headline">Nvidia CEO</button><button type="button" class="chip" data-start="bubble">AI bubble</button></p>
         <label class="flabel" for="thesis" id="thesis-label">Your thesis</label>
-        <textarea id="thesis" rows="8" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
+        <textarea id="thesis" rows="6" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
         <div class="controls">
           <button type="button" class="btn" id="run" disabled>Check it</button>
           <button type="button" class="btn ghost" id="clear">Clear</button>
+          <span class="need" id="need" aria-live="polite"></span>
         </div>
         <p class="log" id="run-log" role="status" aria-live="polite"></p>
         <p class="quota" id="quota">Three free checks a day</p>
@@ -254,7 +259,7 @@
 
     <div class="next">
       <div class="demo" id="demo">
-        <p class="label">three narratives in the news, one thesis on each</p>
+        <p class="label">three narratives in the news, one thesis on each, checked</p>
         <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
           <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
           <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
@@ -264,7 +269,7 @@
         <p class="log" id="ex-log" role="status" aria-live="polite"></p>
       </div>
       <section class="agentbar" id="agents" aria-label="For AI agents">
-        <p class="who"><b>AI agent?</b> Run the same check before you place an order.</p>
+        <p class="who"><b>AI agent?</b> Your agent reads the same narratives. Run the same check before it places an order.</p>
         <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
         <p class="how">No MCP? One request, free, no wallet: <code>POST https://mcp.djzs.ai/try/verdict</code></p>
         <p class="docsline"><a href="/docs/agents/mcp">Connect over MCP &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="https://mcp.djzs.ai/openapi.json">OpenAPI</a><a href="/builders">For treasuries</a></p>
@@ -299,9 +304,9 @@
   "checked": "2026-11-21",
   "closes": "2026-12-19",
   "examples": [
-    {"id": "dip", "kind": "perp", "where": "Hyperliquid BTC perp", "thesis": "Hyperliquid, BTC perp. Buying the dip, long 5x with $2,000 around $60,400. It fell from $81,000 to $55,700 in a month and the Fear and Greed Index is at 12. I do not want to miss the bounce back to $70,000.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["oracle_source", "confidence"], "verdict_hash": "0xd890f5a662f8f8218f97da26abe6e2645659ee59b0efc4de69848d3220fadb24", "intent_sha256": "0x72b3bf7a4c5ed10159e47e6c8dbb943e7c60ca1949b1f3ddbe5f904b52d7e78a", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}},
-    {"id": "headline", "kind": "pm", "where": "Kalshi KXNVDACEO-29JAN-JENS", "url": "https://kalshi.com/markets/kxnvdaceo/next-nvidia-ceo/kxnvdaceo-29jan", "rule": "Kalshi's rule for this market: YES only if he is named CEO before Jan 1, 2029. Interim or acting appointments do not count.", "thesis": "Kalshi, Who will be the next CEO of NVIDIA? Buying YES on Jensen Huang at 11 cents. On Nov 20 Trump said he would love to see Jensen given a second chance. He is too important to keep out. He will be back at Nvidia in some role, adviser or chairman, within months. Easy money at 11 cents.", "body": {"kind": "pm", "verdict": "FAIL", "risk_score": 85, "flags": ["DJZS-M02", "DJZS-M01", "DJZS-M03"], "flags_detail": [{"code": "DJZS-M02", "name": "FALSIFICATION_ABSENT", "severity": "CRITICAL"}, {"code": "DJZS-M01", "name": "NARRATIVE_RESOLUTION_GAP", "severity": "CRITICAL"}, {"code": "DJZS-M03", "name": "PROBABILITY_UNSOURCED", "severity": "HIGH"}], "unknown_fields": [], "verdict_hash": "0x931bf2ef819ae44e841c8ea5ee52a02a089505b2890b49afb5afedc9f68780d6", "intent_sha256": "0xa01820afb25b7ec696724fe9c0993c5d99010394715633ec7fd80cffca38a548", "intent_hash": null, "ruleset": "DJZS-PM-v1.0"}},
-    {"id": "bubble", "kind": "perp", "where": "QQQ, the fund that tracks the Nasdaq 100", "thesis": "Short QQQ near $608, 2x on margin, $5,000. The AI bubble is bursting. QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. This goes a lot lower. No stop, and nothing changes my mind on this one.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:take_profit", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["take_profit", "oracle_source", "confidence"], "verdict_hash": "0x7f2af25c50e1225b95982b912b05db22f492dd89a4585115edf8445ba94e9542", "intent_sha256": "0x1562e93f9b5fdc8a9a8a2cc92b82cc89601f88e0469151f933f109ca5908f540", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}}
+    {"id": "dip", "kind": "perp", "where": "Hyperliquid BTC perp", "story": "Bitcoin fell from $81,000 to $55,700 in a month. The Fear and Greed Index is at 12. The story: buy the dip before the bounce.", "thesis": "Hyperliquid, BTC perp. Buying the dip, long 5x with $2,000 around $60,400. It fell from $81,000 to $55,700 in a month and the Fear and Greed Index is at 12. I do not want to miss the bounce back to $70,000.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["oracle_source", "confidence"], "verdict_hash": "0xd890f5a662f8f8218f97da26abe6e2645659ee59b0efc4de69848d3220fadb24", "intent_sha256": "0x72b3bf7a4c5ed10159e47e6c8dbb943e7c60ca1949b1f3ddbe5f904b52d7e78a", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}},
+    {"id": "headline", "kind": "pm", "where": "Kalshi KXNVDACEO-29JAN-JENS", "story": "On Nov 20 Trump said he would love to see Jensen Huang given a second chance. The story: he is coming back to Nvidia.", "url": "https://kalshi.com/markets/kxnvdaceo/next-nvidia-ceo/kxnvdaceo-29jan", "rule": "Kalshi's rule for this market: YES only if he is named CEO before Jan 1, 2029. Interim or acting appointments do not count.", "thesis": "Kalshi, Who will be the next CEO of NVIDIA? Buying YES on Jensen Huang at 11 cents. On Nov 20 Trump said he would love to see Jensen given a second chance. He is too important to keep out. He will be back at Nvidia in some role, adviser or chairman, within months. Easy money at 11 cents.", "body": {"kind": "pm", "verdict": "FAIL", "risk_score": 85, "flags": ["DJZS-M02", "DJZS-M01", "DJZS-M03"], "flags_detail": [{"code": "DJZS-M02", "name": "FALSIFICATION_ABSENT", "severity": "CRITICAL"}, {"code": "DJZS-M01", "name": "NARRATIVE_RESOLUTION_GAP", "severity": "CRITICAL"}, {"code": "DJZS-M03", "name": "PROBABILITY_UNSOURCED", "severity": "HIGH"}], "unknown_fields": [], "verdict_hash": "0x931bf2ef819ae44e841c8ea5ee52a02a089505b2890b49afb5afedc9f68780d6", "intent_sha256": "0xa01820afb25b7ec696724fe9c0993c5d99010394715633ec7fd80cffca38a548", "intent_hash": null, "ruleset": "DJZS-PM-v1.0"}},
+    {"id": "bubble", "kind": "perp", "where": "QQQ, the fund that tracks the Nasdaq 100", "story": "QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. The story: the AI bubble is bursting.", "thesis": "Short QQQ near $608, 2x on margin, $5,000. The AI bubble is bursting. QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. This goes a lot lower. No stop, and nothing changes my mind on this one.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:take_profit", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["take_profit", "oracle_source", "confidence"], "verdict_hash": "0x7f2af25c50e1225b95982b912b05db22f492dd89a4585115edf8445ba94e9542", "intent_sha256": "0x1562e93f9b5fdc8a9a8a2cc92b82cc89601f88e0469151f933f109ca5908f540", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}}
   ]
 }
 </script>
@@ -382,9 +387,11 @@ const RESET_LOCAL = (() => { try { const d = new Date(); d.setUTCHours(24, 0, 0,
 const RESETS = `resets 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}`;
 function refresh(){
   const run = $("run");
-  if (state.out) { run.disabled = true; run.textContent = "No free checks left today"; return; }
+  if (state.out) { run.disabled = true; run.textContent = "No free checks left today"; $("need").textContent = ""; return; }
   run.textContent = !state.last ? "Check it" : (state.last.example && $("thesis").value.trim() === state.last.example.thesis) ? "Check it live" : "Check again";
-  run.disabled = !intentValid(currentIntent());
+  const n = currentIntent().thesis.length;
+  run.disabled = n < 40;
+  $("need").textContent = n === 0 ? "" : n < 40 ? `${40 - n} more characters and it can be checked` : "";
 }
 $("thesis").addEventListener("input", refresh);
 $("thesis").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("run").disabled) { e.preventDefault(); $("run").click(); } });
@@ -392,9 +399,9 @@ $("clear").addEventListener("click", () => { $("thesis").value = ""; dropExample
 $("edit-link").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 const KIND = {
   pm: { needs: ["The market's own terms: the question, the date it settles, and the source that settles it.", "Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.", "What would prove you wrong: the specific event, before the market settles.", "Why the market is wrong. \u201CEveryone agrees\u201D is not a reason. This one is advice; it never changes the verdict."],
-        hint: "Name the venue and the question.", label: "Your thesis", ph: "Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
+        hint: "The headline is not the market's rule. Name the venue and the question.", label: "Your thesis", ph: "Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles." },
   perp: { needs: ["The instrument, long or short, and your entry.", "Your stop, or the event that would prove you wrong.", "Your size and leverage.", "Why the price should move, in one sentence, with the data behind it and the date you read it. What other people are doing is not a reason."],
-        hint: "Name the instrument and say long or short.", label: "Your thesis", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
+        hint: "A narrative gets you in. Say when you are out. Name the instrument, long or short.", label: "Your thesis", ph: "[Venue], [instrument], [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event]." },
 };
 function setKind(k){
   state.kind = k;
@@ -425,6 +432,8 @@ function initExamples(){
     shown++; b.addEventListener("click", () => showDemo(ex));
   }
   $("demo").hidden = shown === 0;
+  $("starts").hidden = shown === 0;
+  for (const c of document.querySelectorAll("#starts [data-start]")) { const ex = exampleList.find((e) => e.id === c.dataset.start); c.hidden = !ex; if (ex) c.addEventListener("click", () => { showDemo(ex); loadExample(ex); }); }
   if (shown) showDemo(exampleList.find((e) => e.id === "headline") ?? exampleList[0]);
 }
 // The hero prints the chosen sample as a terminal would: its recorded answer, nothing added. Switching calls nothing.
@@ -434,13 +443,13 @@ function showDemo(ex){
   const flags = b.flags_detail.map((f) => `<li><span class="tok">${f.severity === "CRITICAL" || f.severity === "HIGH" ? "!!" : "!"}</span><span>${esc((FLAG[f.name] && FLAG[f.name].name) || plain(f.code, f.name))}</span></li>`).join("");
   const open = flags ? "" : b.unknown_fields.map((u) => `<li><span class="tok">?</span><span>${esc((UNSETTLED[u] && UNSETTLED[u].name) || u.replace(/_/g, " "))}</span></li>`).join("");
   $("demo").dataset.state = st;
-  $("demo-body").innerHTML = `<p class="cmd"><span class="p">$</span> check <q>${esc(ex.thesis)}</q></p><p class="v"><span class="stamp">${esc(b.verdict)}</span><span>${title}</span></p><ul>${flags || open}</ul>${ex.rule ? `<p class="rule">${esc(ex.rule)}</p>` : ""}<p class="foot"><button type="button" class="btn" id="demo-open">Edit this and check it yourself</button><span>A sample on a real market, checked ${esc(EX.checked)}.</span></p>`;
+  $("demo-body").innerHTML = `${ex.story ? `<p class="k">the narrative</p><p class="story">${esc(ex.story)}</p>` : ""}<p class="k">a thesis on it, ${ex.kind === "pm" ? "prediction market" : "perp trade"}</p><p class="cmd"><q>${esc(ex.thesis)}</q></p><p class="k">the check</p><p class="v"><span class="stamp">${esc(b.verdict)}</span><span>${title}</span></p><ul>${flags || open}</ul>${ex.rule ? `<p class="rule">${esc(ex.rule)}</p>` : ""}<p class="foot"><button type="button" class="btn" id="demo-open">Edit this and check it yourself</button><span>A sample on a real market, checked ${esc(EX.checked)}.</span></p>`;
   markExample(ex.id);
   $("demo-open").addEventListener("click", () => loadExample(ex));
 }
 function loadExample(ex){
   const cur = $("thesis").value.trim();
-  if (cur && !isExampleText(cur)) { log("ex-log", "Your own text is in the box. Press Clear first, then load an example."); return; }
+  if (cur && !isExampleText(cur)) { const m = "Your own text is in the box. Press Clear first, then load an example."; log("ex-log", m); log("run-log", m); return; }
   log("ex-log", ""); log("run-log", "");
   setKind(ex.kind);
   $("thesis").value = ex.thesis;
