@@ -19,7 +19,10 @@
 //         env DJZS_AGENT_ADDRESS  (the trading wallet whose trust record accrues)
 //         env DJZS_ENDPOINT       (optional; defaults to the production Worker)
 //         --intent <path>         (YAML-frontmatter intent file)
+//         env LCR_API_KEY         (optional; GATE 0.5 fetches `basis_url` through LCR when the
+//                                  intent names one. Operator shell only, never a Worker secret.)
 // Writes: ./refusal-log.json      (append-only decision log)
+//         ./receipts/<id>.json    (GATE 0.5 basis receipts, content-addressed; see basis-gate.mjs)
 //
 // COST: a `--mode paid` run SPENDS 2.00 USDC on Base mainnet (x402). `--mode dry`
 // spends nothing and touches no network except the log. An out-of-scope intent is
@@ -34,6 +37,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { withX402Client } from "agents/x402";
 import { privateKeyToAccount } from "viem/accounts";
+import { basisGate } from "./basis-gate.mjs";
 
 // ── constants (ported verbatim) ────────────────────────────────────────────
 const ENDPOINT = process.env.DJZS_ENDPOINT ?? "https://mcp.djzs.ai/mcp";
@@ -97,15 +101,17 @@ const usd = (atomic) => (Number(atomic) / 1e6).toFixed(2);
 
 // ── CLI ────────────────────────────────────────────────────────────────────
 const USAGE =
-  "Usage: node agent/refusal-agent.mjs --intent <path> --mode dry|paid [--expect-sha <64-hex>]\n" +
-  "  --expect-sha is REQUIRED in paid mode: the run refuses unless the wire sha matches.";
+  "Usage: node agent/refusal-agent.mjs --intent <path> --mode dry|paid [--expect-sha <64-hex>] [--skip-basis]\n" +
+  "  --expect-sha is REQUIRED in paid mode: the run refuses unless the wire sha matches.\n" +
+  "  --skip-basis lets a dry run proceed when basis_url is unreachable through LCR (logged as skipped_by_operator).";
 
 function parseArgs(argv) {
-  const out = { intent: null, mode: null, expectSha: null };
+  const out = { intent: null, mode: null, expectSha: null, skipBasis: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--intent") out.intent = argv[++i];
     else if (argv[i] === "--mode") out.mode = argv[++i];
     else if (argv[i] === "--expect-sha") out.expectSha = argv[++i];
+    else if (argv[i] === "--skip-basis") out.skipBasis = true;
     else if (argv[i] === "--help" || argv[i] === "-h") out.help = true;
     else fail(2, `Unknown argument: ${argv[i]}\n${USAGE}`);
   }
@@ -122,6 +128,8 @@ const normalizeSha = (s) => String(s ?? "").trim().replace(/^0x/i, "").toLowerCa
 //   falsifier: ...
 //   residual: ...
 //   probability_basis: ...
+//   basis_url: https://...        (OPTIONAL, GATE 0.5: the page the basis rests on. NOT on the wire.)
+//   basis_quote: "..."            (OPTIONAL with basis_url: the verbatim span that must be on that page)
 //   ---
 //   (free notes below the fence are IGNORED and never reach the wire)
 function parseFrontmatter(raw) {
@@ -538,6 +546,24 @@ async function main() {
   console.log(`// intent    :: ${args.intent}`);
   console.log(`// wire      :: ${v.wire.length} chars, sha256 ${intentSha}`);
 
+  // ── GATE 0.5: the basis receipt (basis-gate.mjs). Dry mode FETCHES through LCR and
+  // writes the receipt; paid mode only looks the fresh receipt up. Never on the wire.
+  const basis = basisGate(v.fields, { mode: args.mode, skip: args.skipBasis });
+  console.log(`// basis     :: ${basis.summary.status}${basis.summary.receipt_sha256 ? ` receipt ${shortHash(basis.summary.receipt_sha256)} captured ${basis.summary.captured_at}` : ""}${basis.note ? ` (${basis.note})` : ""}`);
+  if (!basis.proceed) {
+    const reason = `basis gate: ${basis.summary.status}: ${basis.reason}`;
+    console.error(`// REFUSED :: ${reason}`);
+    console.error("// Nothing spent. Fix basis_url / basis_quote (or re-run --mode dry for a fresh receipt) and retry.");
+    if (args.mode === "paid") {
+      const logB = readLog();
+      const eB = logBlocked(nextSeq(logB), await currentBlock(), intentSha, reason);
+      eB.basis_receipt = basis.summary;
+      const lB = readLog(); lB[lB.length - 1] = eB; writeFileSync(LOG_PATH, `${JSON.stringify(lB, null, 2)}\n`);
+      console.error("// logged as BLOCKED.");
+    }
+    process.exit(7);
+  }
+
   if (args.mode === "dry") {
     console.log("// FIELD GATE PASSED — all four fields present, probability_basis is sourced.");
     console.log("// dry run: nothing spent, nothing logged.");
@@ -546,6 +572,7 @@ async function main() {
     console.log("");
     console.log("// TICKET for the paid run — the file must not change after this:");
     console.log(`//   --expect-sha ${intentSha}`);
+    if (basis.summary.status === "verified") console.log(`//   (basis receipt ${basis.summary.receipt_sha256} is good for 24h; a paid run past that refuses as stale)`);
     process.exit(0);
   }
 
@@ -653,6 +680,7 @@ async function main() {
     cert_url: out.pol_certificate?.gateway_url ?? null,
     decision,
     trust_score: out.trust_score ?? null,
+    basis_receipt: basis.summary,
     post_text: null,
   };
   entry.post_text = decision === "BLOCKED"
