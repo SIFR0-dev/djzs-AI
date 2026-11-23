@@ -1,0 +1,23 @@
+{
+  "name": "djzs-pal-gate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A deterministic gate between a conversational agent and one money action. The model proposes, TypeScript decides, every decision is recorded.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --local --show-interactive-dev-session=false",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "tsx test/money.test.mjs && tsx test/ruleset-exhaustive.test.mjs && tsx test/say.test.mjs && tsx test/tavus-hmac.test.mjs && tsx test/gate-flow.test.mjs && tsx test/pal-register.test.mjs && tsx test/bundle.test.mjs",
+    "deploy": "wrangler deploy --tag \"$(git rev-parse --short=12 HEAD)\" --message \"$(git rev-parse HEAD)\""
+  },
+  "dependencies": {
+    "hono": "^4.13.16"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.4.0",
+    "wrangler": "4.107.0"
+  }
+}

@@ -1,0 +1,39 @@
+name = "djzs-pal-gate"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+# No custom domain in v0.1. The hostname this gate answers on is the operator's ruling; until one is
+# named it serves on workers.dev only.
+workers_dev = true
+
+[vars]
+# The gate ships CLOSED. While closed every request is answered WAIT and nothing is reserved,
+# approved or executed. The operator opens it by setting GATE_MODE = "open" and deploying.
+GATE_MODE = "closed"
+# The only executor that exists in v0.1 records what WOULD move and moves nothing. Any other value
+# makes every execution refuse (503 executor_unavailable): the gate never pretends to have paid.
+EXECUTOR = "dry_run"
+# Operator limits, in micro-USDC (1 USDC = 1000000). They apply only to a request that already
+# passes every record check; they never rescue one that fails.
+#   AUTO_LIMIT_MICRO    above this, a valid request is held for a person.
+#   DAILY_BUDGET_MICRO  total the gate may approve on its own per UTC day; past it, valid requests are held.
+AUTO_LIMIT_MICRO = "1000000"
+DAILY_BUDGET_MICRO = "5000000"
+
+# Deploy guard, the same one djzs-trust-mcp and site use: refuses a dirty tree, a HEAD that is not
+# origin/main, or red types. wrangler runs it from the directory wrangler was invoked in, so deploy
+# from djzs-pal-gate/. A dry run that uploads nothing sets DJZS_BUILD_ONLY=1.
+[build]
+command = "node ../djzs-trust-mcp/scripts/predeploy-guard.mjs"
+
+# D1 is the gate's only state (claims, decisions, holds). WITHOUT THIS BINDING THE GATE FAILS
+# CLOSED (503 store_unavailable): an approval that cannot be recorded is not an approval.
+# The operator creates the database and fills in its id, then applies schema/pal-gate.sql:
+#   npx wrangler d1 create djzs-pal-gate
+#   npx wrangler d1 execute djzs-pal-gate --remote --file schema/pal-gate.sql
+# (The Worker also creates the tables if absent, so the second command is optional.)
+#
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "djzs-pal-gate"
+# database_id = "<from `wrangler d1 create`>"
