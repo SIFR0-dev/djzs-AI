@@ -26,7 +26,9 @@ engine        fixed TypeScript rules: no model, no network, no randomness
 PASS / WAIT / FAIL  +  flags  +  unknown fields  +  verdict_hash
 ```
 
-Same extracted facts, same verdict, same hash, every time (`server/engine-v2/deterministic-engine.ts`).
+Same extracted facts, same verdict, same hash (`server/engine-v2/deterministic-engine.ts`). The extraction step
+reads the text three times, and when those readings disagree a fact becomes `unknown`, so the same text replayed
+gets the same verdict 95 to 100% of the time in measurement: see [What is measured](measured.md).
 How each part works: [Verdicts](concepts/verdicts.md), [Extraction](concepts/extraction.md).
 
 ## Three ways in
