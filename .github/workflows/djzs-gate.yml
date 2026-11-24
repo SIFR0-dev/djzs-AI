@@ -74,6 +74,8 @@ jobs:
         working-directory: djzs-trust-mcp
       - name: "/try/markets: open narrative markets only, no sports, no death markets, no side picked; a venue down is an empty list, not an error"
         run: npx tsx test/try-markets.test.mjs
+      - name: "/try/market: an id resolves to the venue's own title and open/closed/settled; unknown is found:false, a venue down is reached:false; no price or side"
+        run: npx tsx test/try-market-lookup.test.mjs
         working-directory: djzs-trust-mcp
       - name: "Home page examples: each recorded answer hashes to the text beside it and to its own verdict; today's ruleset"
         run: npx tsx test/site-examples.test.mjs
