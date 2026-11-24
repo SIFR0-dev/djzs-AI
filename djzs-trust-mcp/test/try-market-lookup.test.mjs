@@ -7,13 +7,15 @@
  *   - the answer carries the venue's own title and whether the market is open, closed or settled;
  *   - an id no venue knows is found:false (200), and an id with no venue shape makes no network call;
  *   - a venue that cannot be reached is reached:false, never an error, and is not kept in the cache;
- *   - no price, odds or side is in the answer.
+ *   - one open YES/NO contract also carries the venue's bid, ask, last trade and week-ago price, in cents;
+ *     an event, a shut market and a named-outcome market carry none; a week-ago read that fails is null;
+ *   - no side is picked and nothing is recommended.
  *
  * Run: npx tsx test/try-market-lookup.test.mjs
  */
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { candidates, lookupMarket, handleTryMarket, fromKalshiMarket, TRY_MARKET_TTL_SECONDS } from "../src/try-market-lookup.ts"
+import { candidates, lookupMarket, handleTryMarket, fromKalshiMarket, kalshiWeekAgo, cents, TRY_MARKET_TTL_SECONDS } from "../src/try-market-lookup.ts"
 
 let pass = 0
 const failures = []
@@ -24,11 +26,15 @@ function check(n, label, ok, detail) {
 const fx = JSON.parse(readFileSync(fileURLToPath(new URL("./fixtures-try-market-lookup.json", import.meta.url)), "utf8"))
 
 // A fake venue: answers the four captured records, 404 or [] for everything else, and counts calls.
-function venue({ down = false } = {}) {
+const NOW = new Date("2026-11-24T01:00:00Z") // week ago = 1794877200
+function venue({ down = false, candlesDown = false } = {}) {
   const calls = []
   const get = async (url) => {
     calls.push(url)
     if (down) return null
+    if (url.includes("/candlesticks")) return candlesDown ? null : { status: 200, data: fx.kalshi_candles }
+    if (url.includes("/markets?slug=will-example-happen-by-2027")) return { status: 200, data: fx.polymarket_market_open }
+    if (url.includes("/markets?slug=team-a-vs-team-b")) return { status: 200, data: fx.polymarket_market_named }
     if (url.endsWith("/markets/KXFEDDECISION-26DEC-H0")) return { status: 200, data: fx.kalshi_market_open }
     if (url.endsWith("/markets/KXNVDACEO-29JAN-JENS")) return { status: 200, data: fx.kalshi_market_settled }
     if (url.endsWith("/events/KXFEDDECISION-26DEC")) return { status: 200, data: fx.kalshi_event }
@@ -67,9 +73,22 @@ check(15, "an unknown id is reached but not found", r.reached === true && r.foun
 r = await lookupMarket("KXFEDDECISION-26DEC-H0", venue({ down: true }).get)
 check(16, "a venue that cannot be reached is reached:false, not an error", r.ok === true && r.reached === false && r.found === false)
 const all = JSON.stringify([await lookupMarket("KXFEDDECISION-26DEC-H0", venue().get), await lookupMarket("fed-decision-in-december", venue().get)])
-check(17, "no price, odds or side in the answer", !/price|odds|"side"|bid|ask|probab/i.test(all), all.slice(0, 200))
+check(17, "no side is picked and nothing is recommended", !/"side"|recommend|should|probab|odds/i.test(all), all.slice(0, 200))
 check(18, "venue text is cleaned and capped", fromKalshiMarket({ market: { ticker: "KXA-1", title: "A\u0000 title " + " x".repeat(400), status: "active" } }).title.length <= 164)
 check(19, "a record with a bad id or no title is refused", fromKalshiMarket({ market: { ticker: "bad id", title: "T" } }) === null && fromKalshiMarket({ market: { ticker: "KXA-1", title: "" } }) === null)
+
+// ── the quote ──
+r = await lookupMarket("KXFEDDECISION-26DEC-H0", venue().get, NOW)
+check(27, "an open Kalshi contract carries bid, ask and last in cents", r.market.quote && r.market.quote.yes_bid === 3 && r.market.quote.yes_ask === 4 && r.market.quote.last === 4, JSON.stringify(r.market.quote))
+check(28, "its week-ago price is the last daily close at or before seven days back", r.market.quote.week_ago === 7 && r.market.quote.read_at === NOW.toISOString(), JSON.stringify(r.market.quote))
+r = await lookupMarket("KXFEDDECISION-26DEC-H0", venue({ candlesDown: true }).get, NOW)
+check(29, "a week-ago read that fails leaves null and the rest intact", r.found && r.market.quote.week_ago === null && r.market.quote.yes_ask === 4)
+check(30, "a settled market and an event carry no quote", (await lookupMarket("KXNVDACEO-29JAN-JENS", venue().get, NOW)).market.quote === undefined && (await lookupMarket("KXFEDDECISION-26DEC", venue().get, NOW)).market.quote === undefined)
+r = await lookupMarket("will-example-happen-by-2027", venue().get, NOW)
+check(31, "an open Polymarket YES/NO market carries the quote and a week-ago price from the venue's own change figure", r.market.quote && r.market.quote.yes_bid === 44 && r.market.quote.yes_ask === 46 && r.market.quote.last === 45 && r.market.quote.week_ago === 20, JSON.stringify(r.market.quote))
+check(32, "a named-outcome market has no YES price", (await lookupMarket("team-a-vs-team-b", venue().get, NOW)).market.quote === undefined)
+check(33, "cents: dollars in, one decimal out, junk refused", cents("0.0400") === 4 && cents(0.455) === 45.5 && cents("1.0000") === 100 && cents("") === null && cents("7") === null && cents(null) === null)
+check(34, "a candle after the cut is ignored", kalshiWeekAgo(fx.kalshi_candles, 1794877200) === 7 && kalshiWeekAgo(fx.kalshi_candles, 1794700000) === null && kalshiWeekAgo({}, 1) === null)
 
 // ── the route ──
 const store = new Map()

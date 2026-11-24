@@ -12,16 +12,23 @@
  * A venue URL is accepted too; the id is taken from its path. The id's shape picks the venue to try first,
  * and the other is tried when the first has no such record.
  *
+ * THE QUOTE (2026-11-24). For one open contract the answer also carries the venue's own numbers, in cents per
+ * $1 of YES: best bid, best ask, last trade, and the price a week ago when the venue has one. The page uses them
+ * to check a price the thesis states ("buying YES at 40 cents") and to show how far the market moved. These are
+ * the venue's figures for the id the person typed, quoted with the time they were read. They are not a view.
+ *
  * WHAT IT DOES NOT DO. It does not judge whether the thesis is about this market (the page compares words and
- * shows both, the person decides), it returns no price, odds or side, and it never touches extraction, the
- * verdict, verdict_hash or the attestation. A venue that cannot be reached is `reached: false`, never an error.
+ * shows both, the person decides), it picks no side and recommends nothing, and it never touches extraction,
+ * the verdict, verdict_hash or the attestation. A venue that cannot be reached is `reached: false`, never an
+ * error; a quote or a week-ago price that cannot be read is simply absent.
  */
 import { cleanText, firstSentences } from "./try-markets"
 
 const KALSHI = "https://api.elections.kalshi.com/trade-api/v2"
 const POLYMARKET = "https://gamma-api.polymarket.com"
 const TIMEOUT_MS = 6_000
-export const TRY_MARKET_TTL_SECONDS = 300
+/** A quote goes stale fast: keep an answer one minute. */
+export const TRY_MARKET_TTL_SECONDS = 60
 const MAX_ID = 160
 
 const CORS: Record<string, string> = {
@@ -49,6 +56,17 @@ export interface MarketRecord {
   /** ISO day trading closes, when the venue gives one. */
   closes: string
   url: string
+  /** The venue's own numbers for one open contract. Absent for an event, a shut market, or a market that is not YES/NO. */
+  quote?: MarketQuote
+}
+/** Cents per $1 of YES, one decimal. null where the venue gives none. */
+export interface MarketQuote {
+  yes_bid: number | null
+  yes_ask: number | null
+  last: number | null
+  /** The YES price about seven days before read_at; null when the venue has no such point or it could not be read. */
+  week_ago: number | null
+  read_at: string
 }
 export interface MarketLookup {
   ok: true
@@ -104,6 +122,11 @@ export function candidates(raw: string): { venue: "kalshi" | "polymarket"; id: s
 }
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "")
+/** A venue price in dollars (0..1, string or number) as cents with one decimal; null when it is not a price. */
+export function cents(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? Math.round(n * 1000) / 10 : null
+}
 const day = (v: unknown): string => { const t = Date.parse(str(v)); return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : "" }
 const rec = (v: unknown): Record<string, unknown> | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
 
@@ -125,7 +148,21 @@ export function fromKalshiMarket(data: unknown): MarketRecord | null {
     state: kalshiState(str(m.status), str(m.result)),
     closes: day(m.close_time),
     url: series ? `https://kalshi.com/markets/${series}` : "https://kalshi.com",
+    ...(kalshiState(str(m.status), str(m.result)) === "open"
+      ? { quote: { yes_bid: cents(m.yes_bid_dollars), yes_ask: cents(m.yes_ask_dollars), last: cents(m.last_price_dollars), week_ago: null, read_at: "" } }
+      : {}),
   }
+}
+/** The close of the last daily candle that ended at or before `at` (unix seconds). null when there is none. */
+export function kalshiWeekAgo(data: unknown, at: number): number | null {
+  const rows = rec(data)?.candlesticks
+  if (!Array.isArray(rows)) return null
+  let best: { ts: number; c: number } | null = null
+  for (const r of rows) {
+    const o = rec(r), ts = typeof o?.end_period_ts === "number" ? o.end_period_ts : NaN, c = cents(rec(o?.price)?.close_dollars)
+    if (Number.isFinite(ts) && ts <= at && c !== null && (!best || ts > best.ts)) best = { ts, c }
+  }
+  return best ? best.c : null
 }
 export function fromKalshiEvent(data: unknown): MarketRecord | null {
   const d = rec(data), e = rec(d?.event)
@@ -151,11 +188,21 @@ export function fromPolymarket(data: unknown, level: "market" | "event"): Market
     rule: firstSentences(o.description, 240),
     state: polyState(o), closes: day(o.endDate),
     url: level === "event" ? `https://polymarket.com/event/${id}` : `https://polymarket.com/market/${id}`,
+    ...(level === "market" && polyState(o) === "open" && yesNo(o.outcomes) ? { quote: polyQuote(o) } : {}),
   }
+}
+/** Only a plain YES/NO market has "the YES price"; a named-outcome market (a match, a candidate list) does not. */
+function yesNo(v: unknown): boolean {
+  try { const a = typeof v === "string" ? JSON.parse(v) : v; return Array.isArray(a) && a.length === 2 && String(a[0]).toLowerCase() === "yes" && String(a[1]).toLowerCase() === "no" } catch { return false }
+}
+function polyQuote(o: Record<string, unknown>): MarketQuote {
+  const last = cents(o.lastTradePrice), ch = typeof o.oneWeekPriceChange === "number" && Number.isFinite(o.oneWeekPriceChange) ? o.oneWeekPriceChange : null
+  const was = last !== null && ch !== null ? Math.round((last - ch * 100) * 10) / 10 : null
+  return { yes_bid: cents(o.bestBid), yes_ask: cents(o.bestAsk), last, week_ago: was !== null && was >= 0 && was <= 100 ? was : null, read_at: "" }
 }
 
 /** Try each candidate in order. The first record wins. `reached` is true once any venue answered at all. */
-export async function lookupMarket(raw: string, get: Getter = httpGet): Promise<MarketLookup> {
+export async function lookupMarket(raw: string, get: Getter = httpGet, now: Date = new Date()): Promise<MarketLookup> {
   const query = cleanText(raw, MAX_ID)
   let reached = false
   for (const c of candidates(raw)) {
@@ -168,7 +215,17 @@ export async function lookupMarket(raw: string, get: Getter = httpGet): Promise<
       if (r.status === 200 || r.status === 404) reached = true
       if (r.status !== 200) continue
       const market = read(r.data)
-      if (market) return { ok: true, query, reached: true, found: true, market }
+      if (!market) continue
+      if (market.quote) {
+        market.quote.read_at = now.toISOString()
+        // Kalshi's week-ago price is one more read (daily candles). Fail-soft: a venue that will not answer leaves it null.
+        if (market.venue === "kalshi" && market.level === "market") {
+          const at = Math.floor(now.getTime() / 1000) - 7 * 86_400, series = market.id.split("-")[0]
+          const c = await get(`${KALSHI}/series/${encodeURIComponent(series)}/markets/${encodeURIComponent(market.id)}/candlesticks?start_ts=${at - 3 * 86_400}&end_ts=${at}&period_interval=1440`)
+          if (c && c.status === 200) market.quote.week_ago = kalshiWeekAgo(c.data, at)
+        }
+      }
+      return { ok: true, query, reached: true, found: true, market }
     }
   }
   return { ok: true, query, reached, found: false, market: null }
@@ -176,7 +233,7 @@ export async function lookupMarket(raw: string, get: Getter = httpGet): Promise<
 
 type EdgeCache = { match(req: Request): Promise<Response | undefined>; put(req: Request, res: Response): Promise<void> }
 
-export async function handleTryMarket(request: Request, deps: { get?: Getter; cache?: EdgeCache | null } = {}): Promise<Response> {
+export async function handleTryMarket(request: Request, deps: { get?: Getter; cache?: EdgeCache | null; now?: () => Date } = {}): Promise<Response> {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS })
   if (request.method !== "GET") return json({ error: "method_not_allowed", allow: "GET, OPTIONS" }, 405)
   const raw = new URL(request.url).searchParams.get("id") ?? ""
@@ -185,11 +242,11 @@ export async function handleTryMarket(request: Request, deps: { get?: Getter; ca
   // Nothing in the text has the shape of a venue id: answer without a network call.
   if (cands.length === 0) return json({ ok: true, query: cleanText(raw, MAX_ID), reached: true, found: false, market: null } satisfies MarketLookup, 200, { "cache-control": "no-store" })
   const cache = deps.cache === undefined ? ((globalThis as { caches?: { default?: EdgeCache } }).caches?.default ?? null) : deps.cache
-  const key = new Request(`https://mcp.djzs.ai/try/market?v=1&id=${encodeURIComponent(cands.map((c) => `${c.venue}:${c.id}`).sort().join(","))}`)
+  const key = new Request(`https://mcp.djzs.ai/try/market?v=2&id=${encodeURIComponent(cands.map((c) => `${c.venue}:${c.id}`).sort().join(","))}`)
   if (cache) {
     try { const hit = await cache.match(key); if (hit) return hit } catch { /* a cache that cannot be read is skipped */ }
   }
-  const body = await lookupMarket(raw, deps.get ?? httpGet)
+  const body = await lookupMarket(raw, deps.get ?? httpGet, (deps.now ?? (() => new Date()))())
   const res = json(body, 200, { "cache-control": body.reached ? `public, max-age=${TRY_MARKET_TTL_SECONDS}` : "no-store" })
   if (cache && body.reached) {
     try { await cache.put(key, res.clone()) } catch { /* not kept this time */ }

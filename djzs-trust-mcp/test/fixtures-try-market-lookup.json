@@ -10,7 +10,10 @@
    "result": "",
    "close_time": "2026-12-09T18:59:00Z",
    "event_ticker": "KXFEDDECISION-26DEC",
-   "rules_primary": "If the Federal Reserve does a Hike of 0bps on December 09, 2026, then the market resolves to Yes."
+   "rules_primary": "If the Federal Reserve does a Hike of 0bps on December 09, 2026, then the market resolves to Yes.",
+   "yes_bid_dollars": "0.0300",
+   "yes_ask_dollars": "0.0400",
+   "last_price_dollars": "0.0400"
   }
  },
  "kalshi_market_settled": {
@@ -111,6 +114,58 @@
    "endDate": "2025-12-10T00:00:00Z",
    "umaResolutionStatus": "resolved",
    "description": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's December 202"
+  }
+ ],
+ "kalshi_candles": {
+  "candlesticks": [
+   {
+    "end_period_ts": 1794718800,
+    "price": {
+     "close_dollars": "0.0400"
+    }
+   },
+   {
+    "end_period_ts": 1794805200,
+    "price": {
+     "close_dollars": "0.0700"
+    }
+   },
+   {
+    "end_period_ts": 1795500000,
+    "price": {
+     "close_dollars": "0.5000"
+    }
+   }
+  ]
+ },
+ "polymarket_market_open": [
+  {
+   "slug": "will-example-happen-by-2027",
+   "question": "Will the example happen by 2027?",
+   "closed": false,
+   "active": true,
+   "archived": false,
+   "endDate": "2027-01-01T00:00:00Z",
+   "outcomes": "[\"Yes\", \"No\"]",
+   "bestBid": "0.44",
+   "bestAsk": "0.46",
+   "lastTradePrice": 0.45,
+   "oneWeekPriceChange": 0.25,
+   "description": "Resolves Yes if the example happens."
+  }
+ ],
+ "polymarket_market_named": [
+  {
+   "slug": "team-a-vs-team-b",
+   "question": "Team A vs Team B",
+   "closed": false,
+   "active": true,
+   "endDate": "2027-01-01T00:00:00Z",
+   "outcomes": "[\"Team A\", \"Team B\"]",
+   "bestBid": "0.47",
+   "bestAsk": "0.48",
+   "lastTradePrice": 0.48,
+   "description": "A match."
   }
  ]
 }
