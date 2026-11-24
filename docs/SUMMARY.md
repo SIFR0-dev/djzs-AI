@@ -16,6 +16,7 @@
 * [Rulesets](concepts/rulesets.md)
 * [Extraction](concepts/extraction.md)
 * [Receipts and certificates](concepts/receipts.md)
+* [Worked example: a perp trade, FAIL to PASS](examples/perp-worked-example.md)
 
 ## Reference
 

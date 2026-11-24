@@ -1,0 +1,171 @@
+{
+ "captured": "2026-11-24",
+ "kalshi_market_open": {
+  "market": {
+   "ticker": "KXFEDDECISION-26DEC-H0",
+   "title": "Will the Federal Reserve Hike rates by 0bps at their December 2026 meeting?",
+   "subtitle": "Hike 0bps",
+   "yes_sub_title": "Fed maintains rate",
+   "status": "active",
+   "result": "",
+   "close_time": "2026-12-09T18:59:00Z",
+   "event_ticker": "KXFEDDECISION-26DEC",
+   "rules_primary": "If the Federal Reserve does a Hike of 0bps on December 09, 2026, then the market resolves to Yes.",
+   "yes_bid_dollars": "0.0300",
+   "yes_ask_dollars": "0.0400",
+   "last_price_dollars": "0.0400"
+  }
+ },
+ "kalshi_market_settled": {
+  "market": {
+   "ticker": "KXNVDACEO-29JAN-JENS",
+   "title": "Who will be the next CEO of NVIDIA?",
+   "subtitle": null,
+   "yes_sub_title": "Jensen Huang",
+   "status": "finalized",
+   "result": "yes",
+   "close_time": "2026-11-23T15:10:15Z",
+   "event_ticker": "KXNVDACEO-29JAN",
+   "rules_primary": "If Jensen Huang is appointed, elected, named, designated, or succeeded to the position as CEO for NVIDIA before Jan 1, 2029, then the market resolves to Yes."
+  }
+ },
+ "kalshi_event": {
+  "event": {
+   "event_ticker": "KXFEDDECISION-26DEC",
+   "title": "Fed decision in Dec 2026?",
+   "sub_title": "On Dec 9, 2026"
+  },
+  "markets": [
+   {
+    "ticker": "KXFEDDECISION-26DEC-C26",
+    "title": "Will the Federal Reserve Cut rates by >25bps at their December 2026 meeting?",
+    "subtitle": "Cut >25bps",
+    "yes_sub_title": "Cut >25bps",
+    "status": "active",
+    "result": "",
+    "close_time": "2026-12-09T18:59:00Z",
+    "event_ticker": "KXFEDDECISION-26DEC",
+    "rules_primary": "If the Federal Reserve does a Cut of   25bps on December 09, 2026, then the market resolves to Yes."
+   },
+   {
+    "ticker": "KXFEDDECISION-26DEC-C25",
+    "title": "Will the Federal Reserve Cut rates by 25bps at their December 2026 meeting?",
+    "subtitle": "Cut 25bps",
+    "yes_sub_title": "Cut 25bps",
+    "status": "active",
+    "result": "",
+    "close_time": "2026-12-09T18:59:00Z",
+    "event_ticker": "KXFEDDECISION-26DEC",
+    "rules_primary": "If the Federal Reserve does a Cut of 25bps on December 09, 2026, then the market resolves to Yes."
+   },
+   {
+    "ticker": "KXFEDDECISION-26DEC-H0",
+    "title": "Will the Federal Reserve Hike rates by 0bps at their December 2026 meeting?",
+    "subtitle": "Hike 0bps",
+    "yes_sub_title": "Fed maintains rate",
+    "status": "active",
+    "result": "",
+    "close_time": "2026-12-09T18:59:00Z",
+    "event_ticker": "KXFEDDECISION-26DEC",
+    "rules_primary": "If the Federal Reserve does a Hike of 0bps on December 09, 2026, then the market resolves to Yes."
+   },
+   {
+    "ticker": "KXFEDDECISION-26DEC-H25",
+    "title": "Will the Federal Reserve Hike rates by 25bps at their December 2026 meeting?",
+    "subtitle": "Hike 25bps",
+    "yes_sub_title": "Hike 25bps",
+    "status": "active",
+    "result": "",
+    "close_time": "2026-12-09T18:59:00Z",
+    "event_ticker": "KXFEDDECISION-26DEC",
+    "rules_primary": "If the Federal Reserve does a Hike of 25bps on December 09, 2026, then the market resolves to Yes."
+   },
+   {
+    "ticker": "KXFEDDECISION-26DEC-H26",
+    "title": "Will the Federal Reserve Hike rates by >25bps at their December 2026 meeting?",
+    "subtitle": "Hike >25bps",
+    "yes_sub_title": "Hike >25bps",
+    "status": "active",
+    "result": "",
+    "close_time": "2026-12-09T18:59:00Z",
+    "event_ticker": "KXFEDDECISION-26DEC",
+    "rules_primary": "If the Federal Reserve does a Hike of   25bps on December 09, 2026, then the market resolves to Yes."
+   }
+  ]
+ },
+ "polymarket_event": [
+  {
+   "slug": "fed-decision-in-december",
+   "title": "Fed decision in December?",
+   "closed": true,
+   "active": true,
+   "archived": false,
+   "endDate": "2025-12-10T00:00:00Z",
+   "description": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's December 202"
+  }
+ ],
+ "polymarket_market": [
+  {
+   "slug": "fed-decreases-interest-rates-by-25-bps-after-december-2025-meeting",
+   "question": "Fed decreases interest rates by 25 bps after December 2025 meeting?",
+   "closed": true,
+   "active": true,
+   "archived": false,
+   "endDate": "2025-12-10T00:00:00Z",
+   "umaResolutionStatus": "resolved",
+   "description": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's December 202"
+  }
+ ],
+ "kalshi_candles": {
+  "candlesticks": [
+   {
+    "end_period_ts": 1794718800,
+    "price": {
+     "close_dollars": "0.0400"
+    }
+   },
+   {
+    "end_period_ts": 1794805200,
+    "price": {
+     "close_dollars": "0.0700"
+    }
+   },
+   {
+    "end_period_ts": 1795500000,
+    "price": {
+     "close_dollars": "0.5000"
+    }
+   }
+  ]
+ },
+ "polymarket_market_open": [
+  {
+   "slug": "will-example-happen-by-2027",
+   "question": "Will the example happen by 2027?",
+   "closed": false,
+   "active": true,
+   "archived": false,
+   "endDate": "2027-01-01T00:00:00Z",
+   "outcomes": "[\"Yes\", \"No\"]",
+   "bestBid": "0.44",
+   "bestAsk": "0.46",
+   "lastTradePrice": 0.45,
+   "oneWeekPriceChange": 0.25,
+   "description": "Resolves Yes if the example happens."
+  }
+ ],
+ "polymarket_market_named": [
+  {
+   "slug": "team-a-vs-team-b",
+   "question": "Team A vs Team B",
+   "closed": false,
+   "active": true,
+   "endDate": "2027-01-01T00:00:00Z",
+   "outcomes": "[\"Team A\", \"Team B\"]",
+   "bestBid": "0.47",
+   "bestAsk": "0.48",
+   "lastTradePrice": 0.48,
+   "description": "A match."
+  }
+ ]
+}

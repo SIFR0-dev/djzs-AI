@@ -45,6 +45,8 @@ import { createEngineAdapter } from "./engine-adapter"
 import { startSourceCheck, type SourcesBlock } from "./source-check"
 import { handleTryExample, handleTryQuota, handleTryVerdict } from "./try-route"
 import { handleTryMarkets } from "./try-markets"
+import { handleTryMarket } from "./try-market-lookup"
+import { runCheckThesis, CHECK_THESIS_DESCRIPTION, CHECK_THESIS_KINDS, CHECK_THESIS_MIN, CHECK_THESIS_MAX } from "./free-check-tool"
 import { handleDiscoverySurfaces } from "./discovery-surfaces"
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server"
 import { attesterBalance } from "./attest-worker"
@@ -157,6 +159,8 @@ interface Env {
    * (plain var; default 200 in try-route.ts). The per-wallet cap is fixed at 5 there.
    */
   TRY_GLOBAL_DAILY_LIMIT?: string
+  /** Plain var. Free checks per UTC day through the MCP check_thesis tool, all callers together. Default 60. */
+  TRY_MCP_DAILY_LIMIT?: string
   /**
    * D1 telemetry database (wrangler binding TELEMETRY, db djzs-gate-telemetry).
    * OPTIONAL by design: absent binding => recording silently no-ops and every
@@ -285,6 +289,16 @@ const POL_CERTIFICATES_OUTPUT = z.looseObject({
   })),
 })
 
+const CHECK_THESIS_OUTPUT = z.looseObject({
+  status: z.string().describe("OK (a verdict follows), LIMIT_REACHED (free checks used up for today) or UNAVAILABLE"),
+  free: z.boolean().describe("Always true: this tool never charges"),
+  attested: z.boolean().optional().describe("Always false: no receipt is written"),
+  verdict: z.string().optional().describe("PASS, WAIT, FAIL, or REFUSED_SCOPE when the thesis was sent as the wrong kind"),
+  risk_score: z.number().optional(),
+  flags: z.array(z.string()).optional(),
+  unknown_fields: z.array(z.string()).optional(),
+  verdict_hash: z.string().nullable().optional(),
+})
 const AGENT_TRUST_OUTPUT = z.looseObject({
   agent: z.string().describe("The queried address, lowercased"),
   status: z.string().describe("no_history, INSUFFICIENT_HISTORY (under 10 scored audits, no rate returned) or OK"),
@@ -352,6 +366,7 @@ const SERVER_INSTRUCTIONS = [
   "DJZS audits the reasoning behind a trade before it executes. It does not predict prices or place orders.",
   "1. Checking a counterparty agent (free, read-only): call query_agent_trust with its wallet address for its pass/fail record, and query_pol_certificates to read its individual audit certificates.",
   `2. Before opening, sizing or increasing a position: send the thesis in the user's own words. Prediction-market bets go to verify_pm_trade; perpetual and spot trades go to verify_perp_trade. Each audit costs ${VERIFY_PM_TRADE_PRICE_USD.toFixed(2)} USDC via x402 on Base and anchors a permanent certificate, so confirm with the user before calling. A thesis sent to the wrong tool is refused without charge.`,
+  "2a. No wallet, or not ready to pay: call check_thesis. It is free, returns the same PASS, WAIT or FAIL with the reasons, and writes no receipt. It has a shared daily limit.",
   "3. Act on the verdict: PASS (action PROCEED) means the thesis is complete and bounded; WAIT (action HALT) means fields named in halt_reason could not be resolved, so clarify and re-audit; FAIL means do not execute as stated until the flagged defects are fixed.",
   "A verdict grades whether the reasoning is stated, falsifiable and bounded, not whether the trade will win.",
 ].join("\n")
@@ -581,6 +596,19 @@ function buildServer(env: Env): McpServer {
         "No threshold is applied here and no action is returned. As a starting point a lower bound above 0.3, or DJZS-S01/DJZS-X01 firing more than once, is worth refusing on - but that is a recommendation for the caller to weigh against their own exposure, not a rule this tool enforces.",
     })
   }))
+
+  // The free check for a client with no wallet (2026-11-24): the same pipeline as POST /try/verdict, in-process,
+  // on a shared daily row. Not attested, not anchored, not charged. free-check-tool.ts says why and how.
+  server.registerTool("check_thesis", {
+    title: "Check a Trade Thesis for Free",
+    description: CHECK_THESIS_DESCRIPTION,
+    inputSchema: {
+      kind: z.enum(CHECK_THESIS_KINDS).describe("prediction_market for a bet on a Kalshi or Polymarket style market; perp_or_spot for a perpetual or spot trade."),
+      thesis: z.string().min(CHECK_THESIS_MIN).max(CHECK_THESIS_MAX).describe("The thesis in the user's own words: the venue and market or instrument, the side, the size or price, the reason, the source of any odds or data, and what would prove it wrong. Do not rewrite or improve it; the check reads what the user actually wrote."),
+    },
+    outputSchema: CHECK_THESIS_OUTPUT,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  }, guardTool("check_thesis", async ({ kind, thesis }) => runCheckThesis({ kind, thesis }, env)))
 
   // Step 2 (Path B ruling 2026-07-12): the ONLY paid tool. The handler body is
   // the Step 1 handler byte-identical; withX402 owns the 402/verify/settle
@@ -1767,6 +1795,8 @@ app.all("/try/quota", (c) => handleTryQuota(c.req.raw, c.env))
 app.all("/try/example", (c) => handleTryExample(c.req.raw))
 // Markets trading today, for the home page's starter buttons. Public venue reads only: no model, no key, no D1.
 app.all("/try/markets", (c) => handleTryMarkets(c.req.raw))
+// Which market is this id? Venue title and open/closed/settled, for the receipt's market id box. No model, no price.
+app.all("/try/market", (c) => handleTryMarket(c.req.raw))
 app.all("/try/verdict", async (c) => {
   try {
     return await handleTryVerdict(c.req.raw, c.env)

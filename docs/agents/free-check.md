@@ -120,6 +120,24 @@ The sentences are located, never written: one appears only when a reading's quot
 or, for a paraphrase, by most of its words. The field comes from the readings the check already ran. It is not
 part of the verdict or `verdict_hash`, and the paid routes do not return it.
 
+## From an MCP client
+
+The MCP server has the same check as a tool, `check_thesis`, for clients that cannot sign a payment (a chat app,
+or a hosted agent runtime). Source: `djzs-trust-mcp/src/free-check-tool.ts`.
+
+| Argument | |
+| --- | --- |
+| `kind` | `prediction_market` or `perp_or_spot` |
+| `thesis` | The thesis in the user's own words, 20 to 3500 characters |
+
+It runs this route in-process, so the verdict, score and `verdict_hash` are what `POST /try/verdict` returns for
+the same text. The result adds `status` (`OK`, `LIMIT_REACHED` or `UNAVAILABLE`), `free: true` and
+`attested: false`. Nothing is written on-chain and no payment is asked for.
+
+All MCP callers share one daily allowance (60 checks per UTC day by default, the Worker var
+`TRY_MCP_DAILY_LIMIT`), inside the global daily cap. When either is used up the tool returns `LIMIT_REACHED`
+with `resets_at`, and the paid tools still work.
+
 ## Errors
 
 | Status | `error` | When |

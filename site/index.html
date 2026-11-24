@@ -145,7 +145,11 @@
   .keys{padding:4px 20px 14px;font-size:12px;color:var(--muted);display:grid;grid-template-columns:120px 1fr;gap:4px 12px}.keys b{color:var(--text);font-weight:400;overflow-wrap:anywhere}
   .offer{margin:0;padding:16px 20px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}.offer .why{color:var(--muted);font-size:14px;max-width:60ch;margin:0}.offer .why b{color:var(--text)}
   .offer select{font-family:var(--mono);background:var(--well);color:var(--text);border:1px solid var(--rule);padding:8px}
-  .receipt{margin:16px 0 0;border:1px solid var(--pass);background:var(--panel)}.receipt .keys{padding-top:14px}
+  .receipt{margin:16px 0 0;border:1px solid var(--pass);background:var(--panel)}
+  .facts{padding:14px 20px 6px}.facts h3{margin:0 0 4px;font-size:15px;font-weight:800}.facts .fnote{margin:0 0 10px;font-size:13px;color:var(--muted);max-width:68ch}
+  .facts .frow{display:grid;grid-template-columns:104px 1fr;gap:4px 14px;padding:10px 0;border-top:1px solid var(--rule);font-size:13.5px}.facts .ftag{font-weight:800;letter-spacing:.06em;font-size:11.5px;padding-top:2px}.facts .frow p{margin:0;color:var(--text)}.facts .frow .fsub{color:var(--muted);font-size:12.5px;margin-top:3px;overflow-wrap:anywhere}
+  .rtech{border-top:1px solid var(--rule)}.rtech summary{cursor:pointer;padding:12px 20px;font-size:13px;color:var(--muted)}
+  @media (max-width:560px){.facts .frow{grid-template-columns:1fr}}.receipt .keys{padding-top:14px}
 
   /* why trust the answer: the only technical copy on the page */
   .why{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
@@ -157,6 +161,7 @@
   /* for agents */
   .agents{margin:26px 0 0;border-top:1px solid var(--rule);padding-top:20px}
   .docsline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:0;font-size:13.5px;color:var(--muted)}
+  .mkt{margin:8px 0 0;font-size:13px;color:var(--muted);max-width:68ch;width:100%}.mkt b{color:var(--text);font-weight:700}.mkt .mline{display:block;margin:0 0 6px}.mkt .t{font-weight:800;color:var(--text);letter-spacing:.04em;font-size:11.5px}.mkt [data-r="fail"] .t{color:var(--fail)}.mkt [data-r="pass"] .t{color:var(--pass)}.mkt [data-r="wait"] .t{color:var(--wait)}
   .rfields{display:flex;flex-wrap:wrap;gap:10px 14px;width:100%}.rfields label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
   .rfields input,.rfields select{font-family:var(--mono);font-size:16px;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:42px}.rfields input{width:min(320px,80vw)}.rfields input:focus,.rfields select:focus{outline:none;border-color:var(--pass)}
 
@@ -243,6 +248,7 @@
             <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="paste it from the venue"></label>
             <label><span>Your side</span><select id="r-side"><option value="YES">YES</option><option value="NO">NO</option></select></label>
           </div>
+          <p class="mkt" id="r-market-say" hidden></p>
           <button type="button" class="btn" id="pay">Get the receipt &middot; 2.00 USDC</button>
           <select id="provider-pick" hidden aria-label="Wallet"></select>
           <span class="log" id="pay-log"></span>
@@ -250,7 +256,8 @@
       </div>
       <div class="receipt" id="receipt" hidden>
         <div class="verdict-head"><span class="stamp" id="rstamp">&middot;</span><span class="verdict-title">Receipt</span><span class="verdict-meta" id="rmeta"></span></div>
-        <div class="keys" id="rkeys"></div>
+        <div class="facts" id="rfacts"></div>
+        <details class="rtech"><summary>Technical details (hashes, codes)</summary><div class="keys" id="rkeys"></div></details>
         <div class="offer">
           <a class="btn" id="verify-link" href="/verify" target="_blank" rel="noopener">Check it at /verify</a>
           <button type="button" class="btn ghost" id="copy-receipt">Copy receipt JSON</button>
@@ -283,8 +290,8 @@
       <p class="label" id="why-h">why trust the answer</p>
       <ol class="proof">
         <li><span class="n" aria-hidden="true">01</span><span>Three separate readings of your text must agree.</span></li>
-        <li><span class="n" aria-hidden="true">02</span><span>Then fixed rules decide. The same reading always gets the same answer.</span></li>
-        <li><span class="n" aria-hidden="true">03</span><span>It does not pick a side, check facts or predict prices.</span></li>
+        <li><span class="n" aria-hidden="true">02</span><span>Then fixed rules decide: same reading, same answer. A part the readings split on is left unsettled and not scored, so one text can score differently on another run.</span></li>
+        <li><span class="n" aria-hidden="true">03</span><span>It does not pick a side or predict prices. What can be checked against the venue is shown beside the verdict, never inside it.</span></li>
       </ol>
       <p class="rline">Want proof you checked first? A public receipt is 2.00 USDC. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
     </section>
@@ -628,6 +635,12 @@ function renderChange(prev, b){
   $("change-from").textContent = `${pv} ${prev.body.risk_score}`;
   $("change-to").textContent = `${v} ${b.risk_score}`;
   $("change-say").textContent = [head, counts ? counts + "." : "", tail].filter(Boolean).join(" ");
+  // The same words can be read differently on another run. Say so, and name the parts, instead of implying the person changed something.
+  const sameText = prev.intent && state.last && state.last.intent && String(prev.intent.thesis ?? "").trim() === String(state.last.intent.thesis ?? "").trim();
+  if (sameText && (cleared.length || added.length || prev.body.risk_score !== b.risk_score)) {
+    const moved = [...new Set([...cleared, ...added].map(reasonName))];
+    $("change-say").textContent = `Same text, read differently this time. The score counts a part only when all three readings agree on it${moved.length ? "; this run they settled differently on: " + moved.join(", ") : ""}. Word ${moved.length === 1 ? "that part" : "those parts"} so ${moved.length === 1 ? "it" : "they"} can be read only one way.`;
+  }
   $("change").hidden = false;
   if (cleared.length) {
     $("cleared-list").innerHTML = cleared.map((k) => `<p class="okrow"><span class="ok">OK</span>${esc(reasonName(k))}</p>`).join("");
@@ -678,6 +691,7 @@ function renderVerdict(b, prev, ex){
   // A sample thesis is not something to buy a receipt for. The offer comes back with the person's own check.
   $("offer").hidden = st === "refused" || !!ex;
   setReceiptFields(kind);
+  { const said = sideInThesis(kind, state.last && state.last.intent && state.last.intent.thesis); if (said) $("r-side").value = said; state.sideOk = null; state.marketOk = null; lookupMarketId(); }
   $("pay").disabled = false; log("pay-log", "");
   const ls = $("last-status");
   ls.innerHTML = ex ? `<span class="ok">EX</span><span class="v">Example loaded, with the answer the check gave it. Edit it and check it yourself, or press <b>Clear</b> and paste your own.</span>` : st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the thesis, then check again.</span>`;
@@ -687,6 +701,120 @@ function renderVerdict(b, prev, ex){
 }
 
 // ── the receipt's two named fields follow the kind of the last check: a market id and YES/NO, or an instrument and LONG/SHORT.
+// ── which market is this id? The worker reads the venue's own record (no model, no price). The page shows the venue's
+// title beside the box and compares its words with the thesis, so a wrong, misspelled or settled market is seen before paying.
+const STOP = new Set("will the and for with what when who which that this from have has been before after than then into over under about their there they them its his her your you are was were not yes no market markets event price next new meeting january february march april may june july august september october november december jan feb mar apr jun jul aug sep sept oct nov dec".split(" "));
+const keywords = (t) => new Set((String(t || "").toLowerCase().match(/[a-z0-9]{3,}/g) ?? []).filter((w) => !STOP.has(w) && !/^(19|20)\d\d$/.test(w)));
+function marketVsThesis(m, thesis){
+  const T = keywords(thesis), M = [...keywords(`${m.title} ${m.outcome || ""}`)];
+  return M.length === 0 ? null : M.some((w) => T.has(w) || [...T].some((t) => t.length > 4 && (t.startsWith(w) || w.startsWith(t))));
+}
+// → { r: "pass"|"wait"|"fail", tag, text, block } or null when there is nothing to say (perp, empty box, lookup unavailable).
+function marketFinding(look, thesis){
+  if (!look || look.reached === false) return null;
+  if (!look.found) return { r: "fail", tag: "NOT FOUND", text: "No market with this id on Kalshi or Polymarket. Copy the id from the venue's page.", block: true };
+  const m = look.market, venue = m.venue === "kalshi" ? "Kalshi" : "Polymarket";
+  const name = `${venue}: "${m.title}"${m.outcome ? ", pays on " + m.outcome : ""}`;
+  if (m.state !== "open") return { r: "fail", tag: m.state === "settled" ? "SETTLED" : "CLOSED", text: `${name}. This market is ${m.state === "settled" ? "already settled" : "closed to trading"}${m.closes ? " (" + m.closes + ")" : ""}.`, block: true };
+  const about = marketVsThesis(m, thesis);
+  if (about === false) return { r: "fail", tag: "DIFFERENT", text: `${name}. Your thesis does not mention it. Is this the right market?`, block: true };
+  return { r: "pass", tag: "MATCH", text: `${name}. Open${m.closes ? ", closes " + m.closes : ""}.${m.level === "event" ? " This id names the whole question, not one outcome." : ""}`, block: false };
+}
+// The first price the thesis states for a contract, in cents: "40 cents", "40c", "$0.40". A percent is not read as a price:
+// "FedWatch puts it at 95%" is a claim about odds, not what the person paid. null when it states none.
+function statedPrice(thesis){
+  const t = String(thesis || "");
+  const m = /(\d{1,2}(?:\.\d)?)\s?(?:cents?\b|¢|c\b)/i.exec(t) || /\$0?\.(\d{2})\b/.exec(t);
+  if (!m) return null;
+  const n = Number(m[1]); return Number.isFinite(n) && n > 0 && n < 100 ? n : null;
+}
+const c1 = (n) => String(Math.round(n * 10) / 10);
+// More rows for an open market: the venue's rule, the price the thesis states against the venue's quote, and the week's move.
+// Every figure is the venue's; the comparison is arithmetic. None of it blocks a payment or touches the verdict.
+function marketRows(look, thesis, side){
+  const rows = [], m = look && look.found ? look.market : null;
+  if (!m) return rows;
+  if (m.rule) rows.push({ r: "idle", tag: "RULE", text: `The venue pays on this, not on the headline: ${m.rule}` });
+  const q = m.quote;
+  if (!q) return rows;
+  const no = side === "NO", flip = (v) => (v === null || v === undefined ? null : Math.round((100 - v) * 10) / 10);
+  let lo = no ? flip(q.yes_ask) : q.yes_bid, hi = no ? flip(q.yes_bid) : q.yes_ask;
+  const last = no ? flip(q.last) : q.last;
+  if (lo === null) lo = hi !== null ? hi : last; if (hi === null) hi = lo;
+  const label = no ? "NO" : "YES", stated = statedPrice(thesis);
+  if (lo !== null && hi !== null) {
+    const range = lo === hi ? `${c1(lo)} cents` : `${c1(lo)} to ${c1(hi)} cents`;
+    if (stated === null) rows.push({ r: "idle", tag: "PRICE", text: `${label} trades at ${range} now. Your thesis states no price to compare.` });
+    else if (stated >= lo - 2 && stated <= hi + 2) rows.push({ r: "pass", tag: "PRICE MATCH", text: `Your price (${c1(stated)} cents) is where ${label} trades now (${range}).` });
+    else rows.push({ r: "fail", tag: "PRICE DIFFERENT", text: `Your thesis says ${c1(stated)} cents. ${label} trades at ${range} now. The market moved, or the number is wrong.` });
+  }
+  const was = no ? flip(q.week_ago) : q.week_ago;
+  if (was !== null && was !== undefined && last !== null) rows.push({ r: "idle", tag: "WEEK", text: `${label} was ${c1(was)} cents a week ago and last traded at ${c1(last)}.` });
+  return rows;
+}
+// One read per id, shared by every caller, so a click that lands while a read is in flight waits for the same answer.
+const marketReads = new Map();
+function readMarket(id){
+  if (!marketReads.has(id)) marketReads.set(id, fetch(`${WORKER}/try/market?id=${encodeURIComponent(id)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((look) => { if (!look || look.reached === false) marketReads.delete(id); return look; }));
+  return marketReads.get(id);
+}
+async function lookupMarketId(){
+  const el = $("r-market-say"), id = $("r-market").value.trim();
+  const kind = state.last ? state.last.kind : state.kind;
+  if (kind !== "pm" || id.length < 2) { state.market = null; el.hidden = true; return null; }
+  const look = await readMarket(id);                       // null: an older worker has no such route, or it could not be reached
+  if ($("r-market").value.trim() !== id) return null;      // the box changed while this was in flight
+  const thesis = state.last && state.last.intent.thesis;
+  const f = look ? marketFinding(look, thesis) : null;
+  const rows = f && !f.block ? marketRows(look, thesis, $("r-side").value) : [];
+  state.market = { id, look, finding: f, rows };
+  if (f) { el.innerHTML = [f, ...rows].map((x) => `<span class="mline" data-r="${x.r}"><span class="t">${esc(x.tag)}</span> ${esc(x.text)}</span>`).join(""); el.hidden = false; } else el.hidden = true;
+  return state.market;
+}
+// What side the thesis itself states, when it states exactly one. Plain word match, no model. null = unclear, so no opinion.
+function sideInThesis(kind, text){
+  const t = String(text || "").toLowerCase();
+  const has = (re) => re.test(t);
+  if (kind === "perp") {
+    const s = has(/\b(short|shorting|shorted|sell|selling)\b/), l = has(/\b(long|longing|buy|buying)\b/);
+    return s && !l ? "SHORT" : l && !s ? "LONG" : null;
+  }
+  const y = has(/\b(buy|buying|bought|long)\s+(the\s+)?yes\b/), n = has(/\b(buy|buying|bought|long)\s+(the\s+)?no\b/);
+  return y && !n ? "YES" : n && !y ? "NO" : null;
+}
+// The fact check on a receipt, in plain words. It reads the paid response's `sources` block (links the thesis cites)
+// and compares the receipt's own fields with the thesis text. Nothing here changes the verdict.
+const FACT = {
+  supported:            ["MATCH", "pass", "The source says this. Every number in your claim is in the passage it was read from."],
+  figure_not_in_source: ["NOT FOUND", "fail", "The page was read and a number in your claim is not on it."],
+  span_figure_mismatch: ["DIFFERENT", "fail", "The source has a passage on this, but your number is not in it."],
+  no_supporting_span:   ["UNCLEAR", "wait", "The page was read, but no passage could be confirmed for this claim."],
+  unreachable:          ["NOT READ", "wait", "The page could not be read, so this claim was not checked."],
+  not_checked:          ["NOT CHECKED", "wait", "This link was not checked."],
+};
+function factRows(r){
+  const rows = [], row = (tag, tone, text, sub) => rows.push(`<div class="frow"><span class="ftag" style="color:var(--${tone})">${esc(tag)}</span><div><p>${esc(text)}</p>${sub ? `<p class="fsub">${sub}</p>` : ""}</div></div>`);
+  const kind = r.intent && r.intent.instrument !== undefined ? "perp" : "pm";
+  const said = sideInThesis(kind, r.intent && r.intent.thesis), side = r.intent && r.intent.side;
+  if (said && side && said !== side) row("DIFFERENT", "fail", `This receipt is for ${side}, but the thesis reads as ${said}.`, "The receipt records the side from the box, not from your text. It cannot be changed; a correct one needs a new receipt.");
+  else if (said && side) row("MATCH", "pass", `The receipt's side (${side}) matches what your thesis says.`);
+  if (kind === "pm" && state.market && r.intent && state.market.id === r.intent.market && state.market.finding) {
+    const f = state.market.finding; row(f.tag, f.r, f.text, "Read from the venue when you paid. The receipt records the id you typed, not this title.");
+    for (const x of state.market.rows || []) row(x.tag, x.r === "idle" ? "muted" : x.r, x.text);
+  }
+  const src = r.sources;
+  if (!src) row("NOT RUN", "wait", "The source check did not run on this receipt.");
+  else if (src.status === "no_citations") row("NO LINK", "wait", "Your thesis names its data but links nothing, so there was no page to read.", "Paste the link to the page your numbers come from and the check reads it.");
+  else if (src.status === "not_configured" || src.status === "error") row("NOT RUN", "wait", "The source check could not run on this receipt.");
+  else for (const c of src.checks || []) {
+    const [tag, tone, text] = FACT[c.status] || FACT.not_checked;
+    const bits = [esc(c.url)];
+    if ((c.figures_missing || []).length) bits.push("missing: " + esc(c.figures_missing.join(", ")));
+    if (c.span) bits.push("&ldquo;" + esc(c.span) + "&rdquo;");
+    row(tag, tone, text, bits.join(" &middot; "));
+  }
+  return rows.join("");
+}
 function setReceiptFields(kind){
   const perp = kind === "perp";
   $("r-market-label").textContent = perp ? "Instrument" : "Market id on the venue";
@@ -715,6 +843,8 @@ async function ensureBase(){
     } else throw e;
   }
 }
+{ let t = 0; const again = () => { state.marketOk = null; $("r-market-say").hidden = true; clearTimeout(t); t = setTimeout(lookupMarketId, 500); };
+  $("r-market").addEventListener("input", again); $("r-market").addEventListener("change", () => { clearTimeout(t); lookupMarketId(); }); $("r-side").addEventListener("change", lookupMarketId); }
 $("pay").addEventListener("click", async () => {
   if (!state.last) return;
   const { kind } = state.last;
@@ -723,6 +853,22 @@ $("pay").addEventListener("click", async () => {
   const market = $("r-market").value.trim();
   if (market.length < 2) { log("pay-log", kind === "perp" ? "The instrument box above is empty. Type it, for example BTC-PERP." : "The market id box above is empty. Paste the id from the venue, for example KXFEDDECISION-26DEC-H0.", "xx"); $("r-market").focus(); return; }
   const side = $("r-side").value, thesis = state.last.intent.thesis;
+  // The id is bound into the receipt too. Read the venue's record for it and stop once if it is unknown, shut, or about something else.
+  if (kind === "pm") {
+    const mk = await lookupMarketId();
+    if (mk && mk.finding && mk.finding.block && state.marketOk !== market) {
+      state.marketOk = market;
+      log("pay-log", `${mk.finding.text} A receipt cannot be changed after it is paid. Fix the id, or click again to pay with this one.`, "xx");
+      $("r-market").focus(); return;
+    }
+  }
+  // The receipt is permanent and carries this side. If the thesis plainly says the other one, stop once before any money moves.
+  const said = sideInThesis(kind, thesis);
+  if (said && said !== side && state.sideOk !== side) {
+    state.sideOk = side;
+    log("pay-log", `Your thesis reads as ${said}, but the side box says ${side}. A receipt cannot be changed after it is paid. Fix the box, or click again to pay for a ${side} receipt.`, "xx");
+    $("r-side").focus(); return;
+  }
   const intent = kind === "perp" ? { instrument: market, side, thesis } : { market, side, thesis };
   const url = ROUTE[kind];
   const body = JSON.stringify({ intent });
@@ -788,6 +934,7 @@ function renderReceipt(r){
   $("rmeta").textContent = `score ${r.risk_score} · charged ${r.charged ? "2.00 USDC" : "no"}`;
   const easLink = r.eas_uid ? `<a href="${EAS_VIEW}${esc(r.eas_uid)}" target="_blank" rel="noopener">${esc(short(r.eas_uid))}</a>` : `<span>${esc(r.eas_error ? "not attested: " + r.eas_error : "pending")}</span>`;
   const tx = r.payment_response?.transaction;
+  $("rfacts").innerHTML = `<h3>Fact check</h3><p class="fnote">What could be checked against the outside world. It does not change the verdict, and a match does not mean the trade wins.</p>${factRows(r)}`;
   $("rkeys").innerHTML = `<span>attestation</span><b>${easLink}</b><span>payment</span><b>${tx ? `<a href="${TX_VIEW}${esc(tx)}" target="_blank" rel="noopener">${esc(short(tx))}</a>` : "no PAYMENT-RESPONSE"}</b><span>intent_hash</span><b>${esc(r.intent_hash ?? "")}</b><span>verdict_hash</span><b>${esc(r.verdict_hash ?? "")}</b><span>codes</span><b>${esc((r.flags ?? []).join(", ") || "none")}</b><span>free vs paid</span><b>${state.last && state.last.body.verdict_hash === r.verdict_hash ? "same verdict_hash: the paid run reproduced the free verdict byte for byte" : "verdict_hash differs from the free run: extraction is measured at 95 to 100 percent stable, and the receipt is the run that was attested"}</b>`;
   const json = JSON.stringify(r, null, 2);
   $("verify-link").href = "/verify#r=" + b64encodeUtf8(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

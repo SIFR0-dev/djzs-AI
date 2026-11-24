@@ -36,6 +36,7 @@ npx -y @sifr0-dev/djzs-ai
 | --- | --- | --- |
 | `verify_pm_trade` | 2.00 USDC | Check a prediction-market bet before placing it. [Reference](../reference/verify-pm-trade.md) |
 | `verify_perp_trade` | 2.00 USDC | Check a perp or spot trade before placing it. [Reference](../reference/verify-perp-trade.md) |
+| `check_thesis` | Free | Check a thesis with no wallet: the same PASS, WAIT or FAIL and reasons, no receipt. [How it works](free-check.md#from-an-mcp-client) |
 | `query_agent_trust` | Free | Read an agent's on-chain audit record before you delegate to it or pay it. [Reference](../reference/registry-tools.md) |
 | `query_pol_certificates` | Free | Read individual audit certificates on Irys. [Reference](../reference/registry-tools.md) |
 
