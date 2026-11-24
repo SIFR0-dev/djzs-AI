@@ -161,7 +161,7 @@
   /* for agents */
   .agents{margin:26px 0 0;border-top:1px solid var(--rule);padding-top:20px}
   .docsline{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:0;font-size:13.5px;color:var(--muted)}
-  .mkt{margin:8px 0 0;font-size:13px;color:var(--muted);max-width:68ch;width:100%}.mkt b{color:var(--text);font-weight:700}.mkt[data-r="fail"] .t{color:var(--fail);font-weight:800}.mkt[data-r="pass"] .t{color:var(--pass);font-weight:800}.mkt[data-r="wait"] .t{color:var(--wait);font-weight:800}
+  .mkt{margin:8px 0 0;font-size:13px;color:var(--muted);max-width:68ch;width:100%}.mkt b{color:var(--text);font-weight:700}.mkt .mline{display:block;margin:0 0 6px}.mkt .t{font-weight:800;color:var(--text);letter-spacing:.04em;font-size:11.5px}.mkt [data-r="fail"] .t{color:var(--fail)}.mkt [data-r="pass"] .t{color:var(--pass)}.mkt [data-r="wait"] .t{color:var(--wait)}
   .rfields{display:flex;flex-wrap:wrap;gap:10px 14px;width:100%}.rfields label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
   .rfields input,.rfields select{font-family:var(--mono);font-size:16px;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:42px}.rfields input{width:min(320px,80vw)}.rfields input:focus,.rfields select:focus{outline:none;border-color:var(--pass)}
 
@@ -291,7 +291,7 @@
       <ol class="proof">
         <li><span class="n" aria-hidden="true">01</span><span>Three separate readings of your text must agree.</span></li>
         <li><span class="n" aria-hidden="true">02</span><span>Then fixed rules decide: same reading, same answer. A part the readings split on is left unsettled and not scored, so one text can score differently on another run.</span></li>
-        <li><span class="n" aria-hidden="true">03</span><span>It does not pick a side, check facts or predict prices.</span></li>
+        <li><span class="n" aria-hidden="true">03</span><span>It does not pick a side or predict prices. What can be checked against the venue is shown beside the verdict, never inside it.</span></li>
       </ol>
       <p class="rline">Want proof you checked first? A public receipt is 2.00 USDC. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
     </section>
@@ -720,6 +720,38 @@ function marketFinding(look, thesis){
   if (about === false) return { r: "fail", tag: "DIFFERENT", text: `${name}. Your thesis does not mention it. Is this the right market?`, block: true };
   return { r: "pass", tag: "MATCH", text: `${name}. Open${m.closes ? ", closes " + m.closes : ""}.${m.level === "event" ? " This id names the whole question, not one outcome." : ""}`, block: false };
 }
+// The first price the thesis states for a contract, in cents: "40 cents", "40c", "$0.40". A percent is not read as a price:
+// "FedWatch puts it at 95%" is a claim about odds, not what the person paid. null when it states none.
+function statedPrice(thesis){
+  const t = String(thesis || "");
+  const m = /(\d{1,2}(?:\.\d)?)\s?(?:cents?\b|¢|c\b)/i.exec(t) || /\$0?\.(\d{2})\b/.exec(t);
+  if (!m) return null;
+  const n = Number(m[1]); return Number.isFinite(n) && n > 0 && n < 100 ? n : null;
+}
+const c1 = (n) => String(Math.round(n * 10) / 10);
+// More rows for an open market: the venue's rule, the price the thesis states against the venue's quote, and the week's move.
+// Every figure is the venue's; the comparison is arithmetic. None of it blocks a payment or touches the verdict.
+function marketRows(look, thesis, side){
+  const rows = [], m = look && look.found ? look.market : null;
+  if (!m) return rows;
+  if (m.rule) rows.push({ r: "idle", tag: "RULE", text: `The venue pays on this, not on the headline: ${m.rule}` });
+  const q = m.quote;
+  if (!q) return rows;
+  const no = side === "NO", flip = (v) => (v === null || v === undefined ? null : Math.round((100 - v) * 10) / 10);
+  let lo = no ? flip(q.yes_ask) : q.yes_bid, hi = no ? flip(q.yes_bid) : q.yes_ask;
+  const last = no ? flip(q.last) : q.last;
+  if (lo === null) lo = hi !== null ? hi : last; if (hi === null) hi = lo;
+  const label = no ? "NO" : "YES", stated = statedPrice(thesis);
+  if (lo !== null && hi !== null) {
+    const range = lo === hi ? `${c1(lo)} cents` : `${c1(lo)} to ${c1(hi)} cents`;
+    if (stated === null) rows.push({ r: "idle", tag: "PRICE", text: `${label} trades at ${range} now. Your thesis states no price to compare.` });
+    else if (stated >= lo - 2 && stated <= hi + 2) rows.push({ r: "pass", tag: "PRICE MATCH", text: `Your price (${c1(stated)} cents) is where ${label} trades now (${range}).` });
+    else rows.push({ r: "fail", tag: "PRICE DIFFERENT", text: `Your thesis says ${c1(stated)} cents. ${label} trades at ${range} now. The market moved, or the number is wrong.` });
+  }
+  const was = no ? flip(q.week_ago) : q.week_ago;
+  if (was !== null && was !== undefined && last !== null) rows.push({ r: "idle", tag: "WEEK", text: `${label} was ${c1(was)} cents a week ago and last traded at ${c1(last)}.` });
+  return rows;
+}
 // One read per id, shared by every caller, so a click that lands while a read is in flight waits for the same answer.
 const marketReads = new Map();
 function readMarket(id){
@@ -732,9 +764,11 @@ async function lookupMarketId(){
   if (kind !== "pm" || id.length < 2) { state.market = null; el.hidden = true; return null; }
   const look = await readMarket(id);                       // null: an older worker has no such route, or it could not be reached
   if ($("r-market").value.trim() !== id) return null;      // the box changed while this was in flight
-  const f = look ? marketFinding(look, state.last && state.last.intent.thesis) : null;
-  state.market = { id, look, finding: f };
-  if (f) { el.dataset.r = f.r; el.innerHTML = `<span class="t">${esc(f.tag)}</span> ${esc(f.text)}`; el.hidden = false; } else el.hidden = true;
+  const thesis = state.last && state.last.intent.thesis;
+  const f = look ? marketFinding(look, thesis) : null;
+  const rows = f && !f.block ? marketRows(look, thesis, $("r-side").value) : [];
+  state.market = { id, look, finding: f, rows };
+  if (f) { el.innerHTML = [f, ...rows].map((x) => `<span class="mline" data-r="${x.r}"><span class="t">${esc(x.tag)}</span> ${esc(x.text)}</span>`).join(""); el.hidden = false; } else el.hidden = true;
   return state.market;
 }
 // What side the thesis itself states, when it states exactly one. Plain word match, no model. null = unclear, so no opinion.
@@ -766,6 +800,7 @@ function factRows(r){
   else if (said && side) row("MATCH", "pass", `The receipt's side (${side}) matches what your thesis says.`);
   if (kind === "pm" && state.market && r.intent && state.market.id === r.intent.market && state.market.finding) {
     const f = state.market.finding; row(f.tag, f.r, f.text, "Read from the venue when you paid. The receipt records the id you typed, not this title.");
+    for (const x of state.market.rows || []) row(x.tag, x.r === "idle" ? "muted" : x.r, x.text);
   }
   const src = r.sources;
   if (!src) row("NOT RUN", "wait", "The source check did not run on this receipt.");
@@ -809,7 +844,7 @@ async function ensureBase(){
   }
 }
 { let t = 0; const again = () => { state.marketOk = null; $("r-market-say").hidden = true; clearTimeout(t); t = setTimeout(lookupMarketId, 500); };
-  $("r-market").addEventListener("input", again); $("r-market").addEventListener("change", () => { clearTimeout(t); lookupMarketId(); }); }
+  $("r-market").addEventListener("input", again); $("r-market").addEventListener("change", () => { clearTimeout(t); lookupMarketId(); }); $("r-side").addEventListener("change", lookupMarketId); }
 $("pay").addEventListener("click", async () => {
   if (!state.last) return;
   const { kind } = state.last;
