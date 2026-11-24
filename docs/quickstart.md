@@ -6,9 +6,14 @@ Go to [djzs.ai](https://djzs.ai/), pick **Prediction market** or **Perp or spot 
 **Check it**. Three free checks a day per browser, no wallet. Edit the idea and press **Check again**: the page
 shows what changed since the last check and which reasons cleared.
 
+For a perp trade, the same FAIL-to-PASS walkthrough is in
+[Worked example: a perp trade](examples/perp-worked-example.md).
+
 ## One POST, free, no wallet
 
-Make one id and keep it: it is your daily quota key (3 checks per id per UTC day).
+Make one id and keep it: it is your daily quota key (3 checks per id per UTC day). A wallet signature gets 5
+checks per wallet per UTC day (see [Free check](agents/free-check.md)), and there is a global cap of 200 free
+checks a day across all callers.
 
 ```bash
 ID=$(openssl rand -hex 16)

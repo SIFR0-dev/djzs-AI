@@ -26,6 +26,10 @@ The tool returns evidence, not a decision: it applies no threshold and emits no 
 suggests, as a starting point only, that a lower bound above 0.3, or S01 or X01 firing more than once, is worth
 refusing on. Weigh that against your own exposure.
 
+> **Warning.** The DJZS subgraph's indexed counters count WAIT verdicts as FAIL (see
+> [Disclosures](../disclosures.md#wait-is-counted-wrongly-by-the-subgraph)). The tool recomputes from per-audit
+> verdicts and is correct, but anyone reading the subgraph directly gets an inflated fail rate.
+
 ## query\_pol\_certificates
 
 Reads Proof-of-Logic certificates from Irys mainnet: the permanent record every in-scope paid MCP check anchors.
