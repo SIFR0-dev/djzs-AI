@@ -19,6 +19,9 @@
   stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01); an unresolvable stop or
   thesis WAITs. Prediction-market bets are refused here (in_scope:false, not charged); use verify_pm_trade.
   The two tools run separate extraction contracts (X-v1.1 for PM, X-LF-v1.2 for trades); see /ruleset.
+- Free check over MCP: `check_thesis` (kind: prediction_market or perp_or_spot; thesis: the user's own words). Same
+  engine and rulesets as the paid audits, same PASS / WAIT / FAIL and reasons. No wallet, no payment, no receipt:
+  nothing is attested or anchored. One shared daily allowance for all MCP callers; LIMIT_REACHED when used up.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
   `query_agent_trust` (LIVE: on-chain trust score read from the DJZS subgraph: totalAudits,
