@@ -57,6 +57,18 @@ export const TRY_DAILY_LIMIT = 5
 export const TRY_ANON_DAILY_LIMIT = 3
 export const TRY_ANON_ID_RE = /^[0-9a-f]{32}$/
 export const TRY_GLOBAL_DAILY_LIMIT_DEFAULT = 200
+/**
+ * The MCP door (2026-11-24). The free `check_thesis` tool runs this same route from inside the Worker. An MCP
+ * caller has no wallet and no browser id, so every MCP free check draws on ONE shared row, `mcp:free`, capped
+ * here, and on the global cap like every other free verdict. The shared cap keeps the MCP door from spending
+ * the whole day's free budget: the page's visitors keep the rest.
+ */
+export const TRY_MCP_QUOTA_KEY = "mcp:free"
+export const TRY_MCP_DAILY_LIMIT_DEFAULT = 60
+export function mcpDailyLimit(env: { TRY_MCP_DAILY_LIMIT?: string }): number {
+  const n = Number(env.TRY_MCP_DAILY_LIMIT)
+  return env.TRY_MCP_DAILY_LIMIT !== undefined && Number.isInteger(n) && n >= 0 ? n : TRY_MCP_DAILY_LIMIT_DEFAULT
+}
 /** Upper bound on the intent's JSON, so a free call cannot buy an arbitrarily long extraction. */
 export const TRY_MAX_INTENT_BYTES = 4096
 export const TRY_KINDS = ["pm", "perp"] as const
@@ -96,6 +108,8 @@ export interface TryEnv {
   TELEMETRY?: QuotaDB
   /** Plain var. Total free verdicts per UTC day across all wallets. Default TRY_GLOBAL_DAILY_LIMIT_DEFAULT. */
   TRY_GLOBAL_DAILY_LIMIT?: string
+  /** Plain var. Free verdicts per UTC day through the MCP check_thesis tool, all callers together. Default TRY_MCP_DAILY_LIMIT_DEFAULT. */
+  TRY_MCP_DAILY_LIMIT?: string
 }
 
 const CORS: Record<string, string> = {
@@ -255,7 +269,12 @@ export async function handleTryQuota(request: Request, env: TryEnv): Promise<Res
 
 type Runner = (text: string, model: ModelFn) => Promise<{ result: VerifyPmTradeResult; raw: string }>
 
-export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: ModelFn): Promise<Response> {
+/**
+ * `internal.quotaKey` names the quota row and its cap directly, with no signature and no anon id. It exists for
+ * callers INSIDE the Worker (the MCP check_thesis tool). The HTTP route never passes it, so nothing a client
+ * sends can select it.
+ */
+export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: ModelFn, internal: { quotaKey?: { id: string; limit: number } } = {}): Promise<Response> {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS })
   if (request.method !== "POST") return json({ error: "method_not_allowed", allow: "POST, OPTIONS" }, 405)
 
@@ -278,7 +297,11 @@ export async function handleTryVerdict(request: Request, env: TryEnv, modelFn?: 
   // Two quota keys. A wallet signs (binding address, day, intent); a browser without one sends `anon`.
   let address: string
   let keyLimit: number
-  if (typeof body.anon === "string" && body.address === undefined) {
+  if (internal.quotaKey) {
+    address = internal.quotaKey.id
+    keyLimit = internal.quotaKey.limit
+    if (keyLimit <= 0) return json({ ok: false, error: "wallet_quota_exhausted", day, limit: 0, used: 0, remaining: 0, resets_at: nextUtcMidnight(), receipt: receiptOffer(kind), terms: TERMS_URL }, 429)
+  } else if (typeof body.anon === "string" && body.address === undefined) {
     if (!TRY_ANON_ID_RE.test(body.anon)) return json({ ok: false, error: "bad_anon_id", detail: "anon must be 32 lowercase hex characters" }, 400)
     address = `anon:${body.anon}`
     keyLimit = TRY_ANON_DAILY_LIMIT

@@ -140,7 +140,7 @@ try {
   console.log("2. tools/list: annotations, titles, output schemas")
   const list = await rpc(h, "tools/list", {})
   const tools = list.body.result?.tools ?? []
-  check("four tools", tools.length === 4, tools.map((t) => t.name).join(","))
+  check("five tools", tools.length === 5, tools.map((t) => t.name).join(","))
   for (const t of tools) {
     const a = t.annotations ?? {}
     check(`${t.name}: four boolean hints`, ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"].every((k) => typeof a[k] === "boolean"), JSON.stringify(a))
@@ -154,6 +154,7 @@ try {
   }
   const by = Object.fromEntries(tools.map((t) => [t.name, t.annotations ?? {}]))
   check("query tools are read-only", by.query_pol_certificates?.readOnlyHint === true && by.query_agent_trust?.readOnlyHint === true)
+  check("the free check is read-only, not idempotent, and its description is ASCII", by.check_thesis?.readOnlyHint === true && by.check_thesis?.idempotentHint === false && /^[\x20-\x7e]+$/.test(tools.find((t) => t.name === "check_thesis")?.description ?? "\u00e9"))
   check("paid tools are not read-only and not idempotent", by.verify_pm_trade?.readOnlyHint === false && by.verify_perp_trade?.idempotentHint === false)
 
   console.log("3. successful calls carry structuredContent the SDK accepts")
@@ -165,6 +166,8 @@ try {
   const none = await rpc(h, "tools/call", { name: "query_agent_trust", arguments: { agentAddress: AGENT } })
   check("query_agent_trust (no_history)", ok(none) && none.body.result.structuredContent.status === "no_history", none.text.slice(0, 300))
   mode.subgraph = "ok"
+  const free = await rpc(h, "tools/call", { name: "check_thesis", arguments: { kind: "prediction_market", thesis: "Kalshi, BTC closes above 70000 by Aug 29. Buying YES with 250 dollars because ETF inflows keep compounding. Gut feel, roughly a 60 percent chance. I am out on a daily close below 66000." } })
+  check("check_thesis: an unpaid call returns a verdict as structuredContent, free and not attested", ok(free) && free.body.result.structuredContent.status === "OK" && typeof free.body.result.structuredContent.verdict === "string" && free.body.result.structuredContent.free === true && free.body.result.structuredContent.attested === false, free.text.slice(0, 400))
   const pm = await paidCall(h, "verify_pm_trade", { intent: PM_INTENT })
   check("verify_pm_trade: unpaid call is a payment-required error", pm.first.body.result?.isError === true, pm.first.text.slice(0, 200))
   check("verify_pm_trade: paid call returns a verdict as structuredContent", ok(pm.paid) && typeof pm.paid.body.result.structuredContent.verdict === "string", pm.paid?.text.slice(0, 400))

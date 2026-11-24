@@ -39,6 +39,9 @@
   The two tools run separate extraction contracts (X-v1.1 for PM, X-LF-v1.2 for trades); see https://djzs.ai/docs/concepts/extraction.
   Hyperliquid perps: name the venue in the intent. The audit covers the stated reasoning (thesis, stop,
   leverage, data sources); it does not read the venue's live price, funding or liquidation data.
+- Free check over MCP: `check_thesis` (kind: prediction_market or perp_or_spot; thesis: the user's own words). Same
+  engine and rulesets as the paid audits, same PASS / WAIT / FAIL and reasons. No wallet, no payment, no receipt:
+  nothing is attested or anchored. One shared daily allowance for all MCP callers; LIMIT_REACHED when used up.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
   `query_agent_trust` (on-chain audit record read from the DJZS subgraph: total_audits, scored_audits
