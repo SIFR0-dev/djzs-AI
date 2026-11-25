@@ -1,4 +1,6 @@
 import { McpServer, type RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 import { StreamableHTTPTransport } from "@hono/mcp"
 import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
@@ -10,6 +12,11 @@ import { anchorPolCertificate, buildIrysUploadFn } from "./pol-certificate"
 import { renderTargetSystem, verifyTargetSystemClaim, canonicalTargetSystemMessage, TARGET_SYSTEM_CLAIM_VERSION, UNVERIFIED_PREFIX } from "./target-system"
 import { correctionsFor } from "./corrections"
 import { makeCorrectionAnchorHandler, CORRECTION_ANCHOR_PATH } from "./correction-route"
+import { registerSkills, SKILLS_EXTENSION_ID, SKILLS_EXTENSION_SETTINGS } from "./skills-over-mcp"
+import {
+  PAY_META_KEY, PAY_SESSION_RE, mintPayLink, payLinkText, payLinkDailyLimit, readPaidAudit, handlePayPage, handlePayPost,
+  prunePaySessions, type PaidToolName, type PayPreflight, type ToolResultLike,
+} from "./pay-link"
 
 /**
  * Minimum scored audits before query_agent_trust reports a rate at all.
@@ -161,6 +168,8 @@ interface Env {
   TRY_GLOBAL_DAILY_LIMIT?: string
   /** Plain var. Free checks per UTC day through the MCP check_thesis tool, all callers together. Default 60. */
   TRY_MCP_DAILY_LIMIT?: string
+  /** Plain var. Browser pay links minted per UTC day, all callers together (pay-link.ts). Default 300. */
+  PAY_LINK_DAILY_LIMIT?: string
   /**
    * D1 telemetry database (wrangler binding TELEMETRY, db djzs-gate-telemetry).
    * OPTIONAL by design: absent binding => recording silently no-ops and every
@@ -246,6 +255,94 @@ function hardenPaidTool(tool: RegisteredTool): void {
   tool.update({ callback: (async (...a: unknown[]) => cleanPaymentResult(await inner(...a))) as never })
 }
 
+/** True when the call carries any payment attempt, in _meta (the MCP x402 convention) or as a header. */
+function hasPaymentAttempt(extra: unknown): boolean {
+  const x = extra as { _meta?: Record<string, unknown>; requestInfo?: { headers?: Record<string, unknown> } } | undefined
+  if (x?._meta?.["x402/payment"] !== undefined) return true
+  const h = x?.requestInfo?.headers ?? {}
+  return ["PAYMENT-SIGNATURE", "payment-signature", "X-PAYMENT", "x-payment"].some((k) => h[k] !== undefined)
+}
+
+/**
+ * The browser pay link (pay-link.ts), wrapped OUTSIDE hardenPaidTool. When a call carries no payment at all and
+ * the answer is the x402 PAYMENT_REQUIRED result, the answer gains a pay link: _meta["ai.djzs/pay"] plus one more
+ * text item. _meta["x402/error"] and content[0] are untouched, so an x402 client pays exactly as before; the link
+ * only adds a way in for a client with no wallet. Any failure here returns the original answer unchanged.
+ */
+function offerPayLink(tool: RegisteredTool, name: PaidToolName, env: Env): void {
+  const inner = tool.handler as unknown as (args: Record<string, unknown>, extra: unknown) => Promise<unknown>
+  tool.update({
+    callback: (async (args: Record<string, unknown>, extra: unknown) => {
+      const r = (await inner(args, extra)) as ToolResultLike
+      try {
+        if (hasPaymentAttempt(extra)) return r
+        const ch = r?._meta?.["x402/error"] as { error?: unknown; accepts?: unknown; resource?: unknown } | undefined
+        if (r?.isError !== true || !ch || ch.error !== "PAYMENT_REQUIRED") return r
+        const link = await mintPayLink(env.TELEMETRY, {
+          tool: name, args, accepts: ch.accepts, resource: ch.resource, now: new Date(), dailyLimit: payLinkDailyLimit(env.PAY_LINK_DAILY_LIMIT),
+        })
+        if (!link) return r
+        r._meta = { ...r._meta, [PAY_META_KEY]: link }
+        r.content = [...(r.content ?? []), { type: "text", text: payLinkText(link) }]
+        return r
+      } catch (e) {
+        logFault("mcp.pay_link", e)
+        return r
+      }
+    }) as never,
+  })
+}
+
+/**
+ * The quote agents/x402 builds for a paid MCP tool (agents 0.17.3 dist/mcp/x402.js): exact scheme, the recipient
+ * constant, the tool's price, maxTimeoutSeconds 300, no extra. A pay-page payment must match it or withX402
+ * refuses it, so the preflight rebuilds it the same way and checks before a session is claimed.
+ */
+const X402_MCP_MAX_TIMEOUT_SECONDS = 300
+
+/** Pay link step 1: the facilitator's verify on a freshly built quote. Moves no money. */
+async function preflightPayLink(env: Env, tool: PaidToolName, payment: string): Promise<PayPreflight> {
+  let payload: unknown
+  try { payload = JSON.parse(atob(payment)) } catch { return { ok: false, code: "malformed_payment" } }
+  const rs = new x402ResourceServer(new HTTPFacilitatorClient(createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)))
+  registerExactEvmScheme(rs)
+  await rs.initialize()
+  const reqs = await rs.buildPaymentRequirements({
+    scheme: "exact",
+    payTo: X402_RECIPIENT,
+    price: tool === "verify_perp_trade" ? VERIFY_PERP_TRADE_PRICE_USD : VERIFY_PM_TRADE_PRICE_USD,
+    network: normalizeNetwork(X402_NETWORK) as `${string}:${string}`,
+    maxTimeoutSeconds: X402_MCP_MAX_TIMEOUT_SECONDS,
+  })
+  const match = rs.findMatchingRequirements(reqs, payload as never)
+  if (!match) return { ok: false, code: "quote_changed" }
+  try {
+    const vr = await rs.verifyPayment(payload as never, match)
+    return vr.isValid ? { ok: true } : { ok: false, code: reasonCode(vr.invalidReason, "payment_invalid") }
+  } catch (e) {
+    if ((e as { name?: unknown })?.name === "VerifyError") return { ok: false, code: reasonCode((e as { invalidReason?: unknown }).invalidReason, "payment_invalid") }
+    throw e
+  }
+}
+
+/**
+ * Pay link step 2: the paid tool itself, called in-process through a real MCP client and the real server, with
+ * the browser's payment in _meta["x402/payment"]. Nothing is re-implemented: withX402 verifies, the handler audits
+ * and anchors, and withX402 settles only a non-error result, exactly as for an agent paying over /mcp.
+ */
+async function callPaidToolInProcess(env: Env, tool: PaidToolName, args: Record<string, unknown>, payment: string): Promise<ToolResultLike> {
+  const server = buildServer(env)
+  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair()
+  await server.connect(serverSide)
+  const client = new Client({ name: "djzs-pay-link", version: "1.0.0" })
+  await client.connect(clientSide)
+  try {
+    return (await client.callTool({ name: tool, arguments: args, _meta: { "x402/payment": payment } }, undefined, { timeout: 240_000 })) as ToolResultLike
+  } finally {
+    await client.close().catch(() => {})
+  }
+}
+
 /**
  * Behavior hints, set from what the handlers do (2026-11-20):
  * - the two query tools only read the public Irys index / DJZS subgraph: read-only, repeatable,
@@ -299,6 +396,27 @@ const CHECK_THESIS_OUTPUT = z.looseObject({
   unknown_fields: z.array(z.string()).optional(),
   verdict_hash: z.string().nullable().optional(),
 })
+const PAID_AUDIT_OUTPUT = z.looseObject({
+  status: z.string().describe("PAID, PENDING, PROCESSING, REFUSED_SCOPE, UNCERTAIN, EXPIRED, NOT_FOUND or UNAVAILABLE"),
+  pay_session: z.string(),
+  tool: z.string().optional().describe("The paid tool that minted the link"),
+  charged: z.boolean().nullable().optional().describe("true when paid, false when nothing was charged, null when it cannot be confirmed"),
+  audit: z.looseObject({}).optional().describe("PAID: the paid tool's full result (verdict, flags, verdict_hash, certificate)"),
+  payment: z.looseObject({}).optional().describe("PAID: the x402 settlement (transaction, network, payer)"),
+  pay_url: z.string().optional().describe("PENDING: the link to give the user again"),
+  expires_at: z.string().optional(),
+  last_attempt: z.string().optional().describe("PENDING: the fixed code of the last refused payment attempt"),
+  detail: z.string().optional(),
+  remediation: z.string().optional(),
+})
+
+const GET_PAID_AUDIT_DESCRIPTION =
+  "Collect the result of an audit the user paid for in a browser. When verify_pm_trade or verify_perp_trade is called without " +
+  "an x402 payment, its answer carries a pay link and a pay_session, and the user pays 2.00 USDC on that page from their own " +
+  "wallet. After the user says they paid, call this with the pay_session. Free and read-only. Returns status PAID with the " +
+  "verdict and the receipt, PENDING (not paid yet), PROCESSING, REFUSED_SCOPE (not charged), UNCERTAIN or EXPIRED. " +
+  "DO NOT use it to start an audit."
+
 const AGENT_TRUST_OUTPUT = z.looseObject({
   agent: z.string().describe("The queried address, lowercased"),
   status: z.string().describe("no_history, INSUFFICIENT_HISTORY (under 10 scored audits, no rate returned) or OK"),
@@ -367,6 +485,7 @@ const SERVER_INSTRUCTIONS = [
   "1. Checking a counterparty agent (free, read-only): call query_agent_trust with its wallet address for its pass/fail record, and query_pol_certificates to read its individual audit certificates.",
   `2. Before opening, sizing or increasing a position: send the thesis in the user's own words. Prediction-market bets go to verify_pm_trade; perpetual and spot trades go to verify_perp_trade. Each audit costs ${VERIFY_PM_TRADE_PRICE_USD.toFixed(2)} USDC via x402 on Base and anchors a permanent certificate, so confirm with the user before calling. A thesis sent to the wrong tool is refused without charge.`,
   "2a. No wallet, or not ready to pay: call check_thesis. It is free, returns the same PASS, WAIT or FAIL with the reasons, and writes no receipt. It has a shared daily limit.",
+  `2b. The user wants the paid receipt but this client cannot pay x402: the paid tool's payment-required answer also carries a pay link (_meta["${PAY_META_KEY}"] and the text). Give the user the link and the price, wait until they say they paid, then call get_paid_audit with the pay_session. Do not call the paid tool again to pay.`,
   "3. Act on the verdict: PASS (action PROCEED) means the thesis is complete and bounded; WAIT (action HALT) means fields named in halt_reason could not be resolved, so clarify and re-audit; FAIL means do not execute as stated until the flagged defects are fixed.",
   "A verdict grades whether the reasoning is stated, falsifiable and bounded, not whether the trade will win.",
 ].join("\n")
@@ -378,11 +497,18 @@ function buildServer(env: Env): McpServer {
   // config whose auth cannot sign -> the facilitator refuses -> the paid tool
   // errors BEFORE the handler runs (fail-closed: no free audit is ever served);
   // free tools are unaffected because withX402 gates only the paid tool.
-  const server = withX402(new McpServer(SERVER_INFO, { instructions: SERVER_INSTRUCTIONS }), {
+  // capabilities.extensions: Skills over MCP (skills-over-mcp.ts), declared in the initialize result.
+  const server = withX402(new McpServer(SERVER_INFO, {
+    instructions: SERVER_INSTRUCTIONS,
+    capabilities: { extensions: { [SKILLS_EXTENSION_ID]: SKILLS_EXTENSION_SETTINGS } },
+  }), {
     network: X402_NETWORK,
     recipient: X402_RECIPIENT,
     facilitator: createFacilitatorConfig(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET)
   })
+
+  // Skills over MCP: skills/list, skills/get, and every skill file as a skill:// resource. Compiled-in text only.
+  registerSkills(server)
 
   server.registerTool("query_pol_certificates", {
     title: "Query DJZS ProofOfLogic Certificates",
@@ -610,6 +736,23 @@ function buildServer(env: Env): McpServer {
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   }, guardTool("check_thesis", async ({ kind, thesis }) => runCheckThesis({ kind, thesis }, env)))
 
+  // The other half of the pay link (2026-11-24, pay-link.ts): read the outcome of an audit paid in the browser.
+  // Free and read-only; it never runs an audit or moves money.
+  server.registerTool("get_paid_audit", {
+    title: "Collect a Paid Audit",
+    description: GET_PAID_AUDIT_DESCRIPTION,
+    inputSchema: {
+      pay_session: z.string().regex(PAY_SESSION_RE, "a pay_session is ps_ followed by 22 characters")
+        .describe("The pay_session from the pay link that verify_pm_trade or verify_perp_trade returned (ps_ followed by 22 characters)"),
+    },
+    outputSchema: PAID_AUDIT_OUTPUT,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, guardTool("get_paid_audit", async ({ pay_session }) => {
+    const o = await readPaidAudit(env.TELEMETRY, pay_session, new Date())
+    const isError = o.status === "NOT_FOUND" || o.status === "UNAVAILABLE"
+    return { content: [{ type: "text" as const, text: JSON.stringify(o, null, 2) }], structuredContent: o, ...(isError ? { isError: true as const } : {}) }
+  }))
+
   // Step 2 (Path B ruling 2026-07-12): the ONLY paid tool. The handler body is
   // the Step 1 handler byte-identical; withX402 owns the 402/verify/settle
   // cycle in-band, and the free registry tools above are untouched.
@@ -750,6 +893,7 @@ function buildServer(env: Env): McpServer {
 
   // S6a — top-level title, alongside the annotations.title kept above.
   hardenPaidTool(verifyPmTradeTool)
+  offerPayLink(verifyPmTradeTool, "verify_pm_trade", env)
   verifyPmTradeTool.update({
     title: "Verify Prediction-Market Trade",
   })
@@ -889,6 +1033,7 @@ function buildServer(env: Env): McpServer {
 
   // S6a — top-level title, alongside the annotations.title kept above.
   hardenPaidTool(verifyPerpTradeTool)
+  offerPayLink(verifyPerpTradeTool, "verify_perp_trade", env)
   verifyPerpTradeTool.update({
     title: "Verify Perpetual or Spot Trade",
   })
@@ -1038,6 +1183,29 @@ app.all("/mcp", async (c) => {
   return (await transport.handleRequest(c)) ?? c.text("Bad Request", 400)
 })
 app.get("/", (c) => c.json({ name: "djzs-trust-mcp", version: "1.0.0", status: "operational" }))
+
+/**
+ * The pay page (pay-link.ts). GET shows the exact thesis and price from the stored session; POST takes the
+ * browser's signed x402 payment and makes the paid MCP call in-process. Same-origin page, so no CORS. The work is
+ * also handed to waitUntil so a closed tab does not cut a payment off between the audit and the settlement.
+ */
+const PAY_EXPECT = {
+  network: normalizeNetwork(X402_NETWORK),
+  chainId: 8453,
+  amount: EXPECTED_ATOMIC_AMOUNT,
+  asset: USDC_BASE,
+  payTo: X402_RECIPIENT,
+}
+app.get("/pay/:id", (c) => handlePayPage(c.env.TELEMETRY, c.req.param("id"), new Date(), PAY_EXPECT))
+app.post("/pay/:id", async (c) => {
+  const env = c.env
+  const work = handlePayPost(c.req.raw, env.TELEMETRY, c.req.param("id"), {
+    preflight: (tool, payment) => preflightPayLink(env, tool, payment),
+    callPaidTool: (tool, args, payment) => callPaidToolInProcess(env, tool, args, payment),
+  }, () => new Date())
+  try { c.executionCtx.waitUntil(work.then(() => {}, () => {})) } catch { /* no execution context outside a Worker */ }
+  return work
+})
 
 /**
  * Deploy-gate boot assertion (A10 / spec A9 deploy doctrine). The outage of
@@ -1930,6 +2098,12 @@ export default {
       ctx.waitUntil(runBazaarScan(env))
     } catch {
       // never propagate out of a scheduled handler
+    }
+    try {
+      // Pay-link housekeeping: drop sessions a week after their link expired. Never throws.
+      ctx.waitUntil(prunePaySessions(env?.TELEMETRY, new Date()))
+    } catch {
+      // same rule
     }
   },
 }

@@ -140,7 +140,7 @@ try {
   console.log("2. tools/list: annotations, titles, output schemas")
   const list = await rpc(h, "tools/list", {})
   const tools = list.body.result?.tools ?? []
-  check("five tools", tools.length === 5, tools.map((t) => t.name).join(","))
+  check("six tools", tools.length === 6, tools.map((t) => t.name).join(","))
   for (const t of tools) {
     const a = t.annotations ?? {}
     check(`${t.name}: four boolean hints`, ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"].every((k) => typeof a[k] === "boolean"), JSON.stringify(a))
@@ -156,6 +156,7 @@ try {
   check("query tools are read-only", by.query_pol_certificates?.readOnlyHint === true && by.query_agent_trust?.readOnlyHint === true)
   check("the free check is read-only, not idempotent, and its description is ASCII", by.check_thesis?.readOnlyHint === true && by.check_thesis?.idempotentHint === false && /^[\x20-\x7e]+$/.test(tools.find((t) => t.name === "check_thesis")?.description ?? "\u00e9"))
   check("paid tools are not read-only and not idempotent", by.verify_pm_trade?.readOnlyHint === false && by.verify_perp_trade?.idempotentHint === false)
+  check("get_paid_audit is read-only, idempotent, closed-world, and its description is ASCII", by.get_paid_audit?.readOnlyHint === true && by.get_paid_audit?.idempotentHint === true && by.get_paid_audit?.openWorldHint === false && /^[\x20-\x7e]+$/.test(tools.find((t) => t.name === "get_paid_audit")?.description ?? "é"))
 
   console.log("3. successful calls carry structuredContent the SDK accepts")
   const pol = await rpc(h, "tools/call", { name: "query_pol_certificates", arguments: {} })

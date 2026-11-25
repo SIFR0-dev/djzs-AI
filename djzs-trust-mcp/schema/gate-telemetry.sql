@@ -80,3 +80,29 @@ CREATE TABLE IF NOT EXISTS try_day (
   day TEXT PRIMARY KEY,                  -- UTC calendar day
   n   INTEGER NOT NULL DEFAULT 0         -- free verdicts served today, all wallets; capped by TRY_GLOBAL_DAILY_LIMIT
 );
+
+-- ── pay_session (pay link, 2026-11-24) ────────────────────────────────────
+-- One row per browser pay link (src/pay-link.ts). Minted when a paid MCP tool is called with no
+-- payment; the page at https://mcp.djzs.ai/pay/<id> pays it; get_paid_audit reads it.
+--
+-- PRIVACY. No IP address, no user agent, no user identity. `args` holds the tool arguments the
+-- caller sent (the thesis text and, if they passed one, the agent wallet), because the paid call is
+-- replayed from them; `result` holds the paid tool's answer, which is anchored publicly anyway.
+-- Rows are deleted by the daily cron a week after the link expires.
+--
+-- The Worker creates this itself on first use; this copy is the operator's reference.
+CREATE TABLE IF NOT EXISTS pay_session (
+  id          TEXT PRIMARY KEY,          -- ps_ + 22 base64url characters (128 random bits)
+  tool        TEXT NOT NULL,             -- verify_pm_trade | verify_perp_trade
+  args        TEXT NOT NULL,             -- JSON: the validated tool arguments, replayed on payment
+  accepts     TEXT NOT NULL,             -- JSON: the x402 requirements quoted on the unpaid call
+  resource    TEXT NOT NULL,             -- JSON: the x402 resource info from the same answer
+  status      TEXT NOT NULL,             -- pending | paying | paid | refused | uncertain
+  created_at  TEXT NOT NULL,             -- ISO8601 UTC
+  expires_at  TEXT NOT NULL,             -- created_at + 30 minutes
+  updated_at  TEXT NOT NULL,
+  result      TEXT,                      -- JSON: the paid tool's structuredContent (paid) or refusal (refused)
+  payment     TEXT,                      -- JSON: x402/payment-response (transaction, network, payer)
+  detail      TEXT                       -- fixed code of the last failure, never raw error text
+);
+CREATE INDEX IF NOT EXISTS idx_pay_session_created ON pay_session (created_at);
