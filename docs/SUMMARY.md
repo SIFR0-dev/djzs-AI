@@ -24,6 +24,20 @@
 * [verify\_perp\_trade](reference/verify-perp-trade.md)
 * [query\_agent\_trust and query\_pol\_certificates](reference/registry-tools.md)
 
+## HTTP API
+
+* ```yaml
+  type: builtin:openapi
+  props:
+    models: false
+    downloadLink: true
+  dependencies:
+    spec:
+      ref:
+        kind: openapi
+        spec: djzs
+  ```
+
 ## Evidence
 
 * [What is measured](measured.md)
