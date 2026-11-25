@@ -4,8 +4,15 @@
  * What it serves: up to six open events from Kalshi and Polymarket. In each of a few categories the venue is
  * asked for its largest open events, and the one traded most in the last day is taken. "Busy today", not a
  * claim to be the single busiest market on the venue. For each: the venue, the event's own title, the day it closes, a link, and (Polymarket) the
- * opening of the venue's own description. Nothing else. No price, no outcome and no side is chosen here:
- * the page names the market and the person writes the thesis. DJZS does not pick a side.
+ * opening of the venue's own description. No side is chosen here: the page names the market and the person
+ * writes the thesis. DJZS does not pick a side.
+ *
+ * Outcomes (2026-11-25). Each event also carries its open outcomes (`outcomes`): the venue's own contract id, the
+ * venue's label and question for it, and the venue's YES numbers in cents (best bid, best ask, last trade), read
+ * in the same request the event list already makes. They let the page fill in what the market itself can answer
+ * (which contract, what it costs) once the PERSON has picked an outcome and a side. Every outcome is listed, none
+ * is marked, and the order is the venue's own (Kalshi) or busiest in the last day first (Polymarket, whose list
+ * order is not meaningful). These are the venue's figures, as /try/market serves them for one id. They are not a view.
  *
  * What it is not: a paid route, a verdict, or a record. It reads public venue APIs, calls no model, touches
  * no key, no D1 and no chain. If a venue cannot be read it is left out; if neither can, the list is empty and
@@ -16,7 +23,7 @@
  *
  * It also serves up to three perps trading today on Hyperliquid (`perps`): the one with the most volume in
  * the last day, and the biggest riser and faller among the twelve most traded. A perp is named with its move
- * over the last day, which is a fact about the market. No direction is suggested.
+ * over the last day and its mark price, which are facts about the market. No direction is suggested.
  *
  * Sources (read 2026-11-22):
  *   Polymarket  gamma-api.polymarket.com/events?closed=false&active=true&order=volume24hr&tag_slug=<tag>
@@ -37,7 +44,10 @@ function json(obj: unknown, status: number, extra: Record<string, string> = {}):
   return new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", "cache-control": "no-store", ...CORS, ...extra } })
 }
 
-export type TryMarket = { venue: "kalshi" | "polymarket"; id: string; title: string; category: string; closes: string; url: string; volume_24h: number; rule?: string }
+/** One open outcome of an event. `id` is the venue's id for that one contract (Kalshi market ticker, Polymarket
+ *  market slug), the id a receipt binds to. Prices are the venue's, in cents per $1 of YES; null where it gives none. */
+export type TryOutcome = { id: string; label: string; question: string; yes_bid: number | null; yes_ask: number | null; last: number | null }
+export type TryMarket = { venue: "kalshi" | "polymarket"; id: string; title: string; category: string; closes: string; url: string; volume_24h: number; rule?: string; outcomes?: TryOutcome[] }
 
 export const KALSHI_CATEGORIES = ["Economics", "Financials", "Crypto", "Politics"] as const
 export const POLYMARKET_TAGS = [
@@ -45,9 +55,11 @@ export const POLYMARKET_TAGS = [
   { slug: "crypto", limit: 2 },
   { slug: "politics", limit: 1 },
 ] as const
-export type TryPerp = { venue: "hyperliquid"; id: string; title: string; change_24h: number; volume_24h: number; url: string }
+export type TryPerp = { venue: "hyperliquid"; id: string; title: string; change_24h: number; mark: number; volume_24h: number; url: string }
 export const TRY_MARKETS_MAX = 6
 export const TRY_PERPS_MAX = 3
+/** Outcomes served per event. An event with more (a candidate list) is cut after this many. */
+export const TRY_OUTCOMES_MAX = 8
 /** How long one read of the venues is reused. The venues are read at most this often, whatever the traffic. */
 export const TRY_MARKETS_TTL_SECONDS = 1800
 
@@ -79,6 +91,52 @@ export function firstSentences(v: unknown, max: number): string {
 
 const day = (t: number) => new Date(t).toISOString().slice(0, 10)
 
+/** Pure. A venue price in dollars (0..1, string or number) as cents with one decimal; null when it is not a price. */
+export function centsOf(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? Math.round(n * 1000) / 10 : null
+}
+
+/** Pure. A Kalshi event's nested markets -> its open outcomes, in the venue's own order. */
+export function kalshiOutcomes(markets: unknown, now: Date, max = TRY_OUTCOMES_MAX): TryOutcome[] {
+  if (!Array.isArray(markets)) return []
+  const out: TryOutcome[] = []
+  for (const m of markets as Record<string, unknown>[]) {
+    if (out.length >= max) break
+    if (!m || typeof m !== "object" || m.result) continue
+    const close = typeof m.close_ts === "string" ? Date.parse(m.close_ts) : NaN
+    if (!Number.isFinite(close) || close <= now.getTime()) continue
+    const id = cleanText(m.ticker, 80)
+    const question = cleanText(m.title, 160)
+    const label = cleanText(m.yes_subtitle, 60) || question
+    if (!/^[A-Z0-9][A-Z0-9._-]*$/i.test(id) || !label || !question || blockedTitle(label) || blockedTitle(question)) continue
+    out.push({ id, label, question, yes_bid: centsOf(m.yes_bid_dollars), yes_ask: centsOf(m.yes_ask_dollars), last: centsOf(m.last_price_dollars) })
+  }
+  return out
+}
+
+/** Only a plain YES/NO market has "the YES price". The venue sends `outcomes` as a JSON string. */
+function yesNoMarket(v: unknown): boolean {
+  try { const a = typeof v === "string" ? JSON.parse(v) : v; return Array.isArray(a) && a.length === 2 && String(a[0]).toLowerCase() === "yes" && String(a[1]).toLowerCase() === "no" } catch { return false }
+}
+
+/** Pure. A Polymarket event's markets -> its open YES/NO outcomes, busiest in the last day first. */
+export function polymarketOutcomes(markets: unknown, max = TRY_OUTCOMES_MAX): TryOutcome[] {
+  if (!Array.isArray(markets)) return []
+  const open = (markets as Record<string, unknown>[]).filter((m) => m && typeof m === "object" && m.closed !== true && m.active !== false && yesNoMarket(m.outcomes))
+  const vol = (m: Record<string, unknown>) => { const n = Number(m.volume24hr); return Number.isFinite(n) ? n : 0 }
+  const out: TryOutcome[] = []
+  for (const m of [...open].sort((a, b) => vol(b) - vol(a))) {
+    if (out.length >= max) break
+    const id = cleanText(m.slug, 160)
+    const question = cleanText(m.question, 160)
+    const label = cleanText(m.groupItemTitle, 60) || question
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id) || !label || !question || blockedTitle(label) || blockedTitle(question)) continue
+    out.push({ id, label, question, yes_bid: centsOf(m.bestBid), yes_ask: centsOf(m.bestAsk), last: centsOf(m.lastTradePrice) })
+  }
+  return out
+}
+
 /** Pure. Kalshi search rows -> markets. Open events only: at least one nested market still closes after `now`. */
 export function pickKalshi(rows: unknown, now: Date): TryMarket[] {
   if (!Array.isArray(rows)) return []
@@ -96,7 +154,8 @@ export function pickKalshi(rows: unknown, now: Date): TryMarket[] {
       .filter((t) => Number.isFinite(t) && t > now.getTime())
     if (closeTimes.length === 0) continue
     const vol = Number(r.recent_volume)
-    out.push({ venue: "kalshi", id: ticker, title, category, closes: day(Math.max(...closeTimes)), url: `https://kalshi.com/markets/${series.toLowerCase()}`, volume_24h: Number.isFinite(vol) && vol > 0 ? Math.round(vol) : 0 })
+    const outcomes = kalshiOutcomes(r.markets, now)
+    out.push({ venue: "kalshi", id: ticker, title, category, closes: day(Math.max(...closeTimes)), url: `https://kalshi.com/markets/${series.toLowerCase()}`, volume_24h: Number.isFinite(vol) && vol > 0 ? Math.round(vol) : 0, ...(outcomes.length ? { outcomes } : {}) })
   }
   return out
 }
@@ -117,7 +176,8 @@ export function pickPolymarket(events: unknown, tag: string, now: Date): TryMark
     if (!Number.isFinite(end) || end <= now.getTime()) continue
     const vol = Number(e.volume24hr)
     const rule = firstSentences(e.description, 280)
-    out.push({ venue: "polymarket", id, title, category: tag, closes: day(end), url: `https://polymarket.com/event/${slug}`, volume_24h: Number.isFinite(vol) && vol > 0 ? Math.round(vol) : 0, ...(rule ? { rule } : {}) })
+    const outcomes = polymarketOutcomes(e.markets)
+    out.push({ venue: "polymarket", id, title, category: tag, closes: day(end), url: `https://polymarket.com/event/${slug}`, volume_24h: Number.isFinite(vol) && vol > 0 ? Math.round(vol) : 0, ...(rule ? { rule } : {}), ...(outcomes.length ? { outcomes } : {}) })
   }
   return out
 }
@@ -154,7 +214,7 @@ export function pickHyperliquid(data: unknown, max = TRY_PERPS_MAX): TryPerp[] {
     if (!/^[A-Za-z0-9]{1,12}$/.test(name)) continue
     const vol = Number(c.dayNtlVlm), mark = Number(c.markPx), prev = Number(c.prevDayPx)
     if (!(vol > 0) || !(mark > 0) || !(prev > 0)) continue
-    rows.push({ venue: "hyperliquid", id: name, title: `${name} perp`, change_24h: Math.round((mark / prev - 1) * 1000) / 10, volume_24h: Math.round(vol), url: `https://app.hyperliquid.xyz/trade/${name}` })
+    rows.push({ venue: "hyperliquid", id: name, title: `${name} perp`, change_24h: Math.round((mark / prev - 1) * 1000) / 10, mark: Number(mark.toPrecision(6)), volume_24h: Math.round(vol), url: `https://app.hyperliquid.xyz/trade/${name}` })
   }
   rows.sort((a, b) => b.volume_24h - a.volume_24h)
   const top = rows.slice(0, 12)
@@ -199,7 +259,8 @@ export async function handleTryMarkets(request: Request, deps: { read?: typeof r
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS })
   if (request.method !== "GET") return json({ error: "method_not_allowed", allow: "GET, OPTIONS" }, 405)
   const cache = deps.cache === undefined ? ((globalThis as { caches?: { default?: EdgeCache } }).caches?.default ?? null) : deps.cache
-  const key = new Request("https://mcp.djzs.ai/try/markets?v=2")
+  // v=3 (2026-11-25): answers gained `outcomes` and `mark`. A new key, so no cached v=2 answer outlives the deploy.
+  const key = new Request("https://mcp.djzs.ai/try/markets?v=3")
   if (cache) {
     try { const hit = await cache.match(key); if (hit) return hit } catch { /* a cache that cannot be read is skipped */ }
   }

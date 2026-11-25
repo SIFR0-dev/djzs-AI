@@ -1270,5 +1270,155 @@
     "prevDayPx": "4.6987"
    }
   ]
+ ],
+ "outcomes_captured": "2026-11-25",
+ "kalshi_outcomes_sample": [
+  {
+   "event_title": "Fed decision in December?",
+   "event_ticker": "KXFEDDECISION-26DEC",
+   "series_ticker": "KXFEDDECISION",
+   "category": "Economics",
+   "recent_volume": 834726,
+   "markets": [
+    {
+     "ticker": "KXFEDDECISION-26DEC-H25",
+     "yes_subtitle": "Hike 25bps",
+     "title": "Will the Federal Reserve Hike rates by 25bps at their December 2026 meeting?",
+     "yes_bid_dollars": "0.9200",
+     "yes_ask_dollars": "0.9300",
+     "last_price_dollars": "0.9300",
+     "close_ts": "2026-12-09T18:59:00Z",
+     "result": ""
+    },
+    {
+     "ticker": "KXFEDDECISION-26DEC-H0",
+     "yes_subtitle": "Fed maintains rate",
+     "title": "Will the Federal Reserve Hike rates by 0bps at their December 2026 meeting?",
+     "yes_bid_dollars": "0.0500",
+     "yes_ask_dollars": "0.0600",
+     "last_price_dollars": "0.0600",
+     "close_ts": "2026-12-09T18:59:00Z",
+     "result": ""
+    },
+    {
+     "ticker": "KXFEDDECISION-26DEC-H26",
+     "yes_subtitle": "Hike >25bps",
+     "title": "Will the Federal Reserve Hike rates by >25bps at their December 2026 meeting?",
+     "yes_bid_dollars": "0.0300",
+     "yes_ask_dollars": "0.0400",
+     "last_price_dollars": "0.0300",
+     "close_ts": "2026-12-09T18:59:00Z",
+     "result": ""
+    },
+    {
+     "ticker": "KXFEDDECISION-26DEC-C25",
+     "yes_subtitle": "Cut 25bps",
+     "title": "Will the Federal Reserve Cut rates by 25bps at their December 2026 meeting?",
+     "yes_bid_dollars": "0.0000",
+     "yes_ask_dollars": "0.0100",
+     "last_price_dollars": "0.0100",
+     "close_ts": "2026-12-09T18:59:00Z",
+     "result": ""
+    },
+    {
+     "ticker": "KXFEDDECISION-26DEC-C26",
+     "yes_subtitle": "Cut >25bps",
+     "title": "Will the Federal Reserve Cut rates by >25bps at their December 2026 meeting?",
+     "yes_bid_dollars": "0.0000",
+     "yes_ask_dollars": "0.0100",
+     "last_price_dollars": "0.0100",
+     "close_ts": "2026-12-09T18:59:00Z",
+     "result": ""
+    }
+   ]
+  }
+ ],
+ "polymarket_outcomes_sample": [
+  {
+   "id": "770450",
+   "title": "Fed Decision in December?",
+   "slug": "fed-decision-in-december-20260729232808632",
+   "endDate": "2026-12-10T04:59:00Z",
+   "volume24hr": 1935120.287699,
+   "closed": false,
+   "active": true,
+   "description": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal funds range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's December 20",
+   "tags": [
+    {
+     "label": "Fed"
+    },
+    {
+     "label": "fomc"
+    },
+    {
+     "label": "Trump"
+    },
+    {
+     "label": "Economy"
+    }
+   ],
+   "markets": [
+    {
+     "slug": "will-the-fed-decrease-interest-rates-by-50-bps-after-the-december-2026-meeting-20260729232808633",
+     "question": "Will the Fed decrease interest rates by 50+ bps after the December 2026 meeting?",
+     "groupItemTitle": "50+ bps decrease",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "bestBid": 0.001,
+     "bestAsk": 0.002,
+     "lastTradePrice": 0.001,
+     "volume24hr": 315637.59699999995,
+     "active": true,
+     "closed": false
+    },
+    {
+     "slug": "will-the-fed-decrease-interest-rates-by-25-bps-after-the-december-2026-meeting-20260729232808634",
+     "question": "Will the Fed decrease interest rates by 25 bps after the December 2026 meeting?",
+     "groupItemTitle": "25 bps decrease",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "bestBid": 0.002,
+     "bestAsk": 0.003,
+     "lastTradePrice": 0.002,
+     "volume24hr": 246025.666509,
+     "active": true,
+     "closed": false
+    },
+    {
+     "slug": "will-there-be-no-change-in-fed-interest-rates-after-the-december-2026-meeting-20260729232808635",
+     "question": "Will there be no change in Fed interest rates after the December 2026 meeting?",
+     "groupItemTitle": "No change",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "bestBid": 0.041,
+     "bestAsk": 0.045,
+     "lastTradePrice": 0.045,
+     "volume24hr": 483470.883541,
+     "active": true,
+     "closed": false
+    },
+    {
+     "slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-december-2026-meeting-20260729232808636",
+     "question": "Will the Fed increase interest rates by 25 bps after the December 2026 meeting?",
+     "groupItemTitle": "25 bps increase",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "bestBid": 0.93,
+     "bestAsk": 0.94,
+     "lastTradePrice": 0.93,
+     "volume24hr": 439463.76343399996,
+     "active": true,
+     "closed": false
+    },
+    {
+     "slug": "will-the-fed-increase-interest-rates-by-50-bps-after-the-december-2026-meeting-20260729232808637",
+     "question": "Will the Fed increase interest rates by 50+ bps after the December 2026 meeting?",
+     "groupItemTitle": "50+ bps increase",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "bestBid": 0.024,
+     "bestAsk": 0.025,
+     "lastTradePrice": 0.024,
+     "volume24hr": 450522.377215,
+     "active": true,
+     "closed": false
+    }
+   ]
+  }
  ]
 }
