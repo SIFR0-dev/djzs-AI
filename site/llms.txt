@@ -120,7 +120,7 @@
 - AI Catalog, with the MCP server card inline: https://djzs.ai/.well-known/ai-catalog.json
 - MCP Registry: ai.djzs/trust-mcp (remote, streamable HTTP, https://mcp.djzs.ai/mcp)
 - A2A agent card: https://mcp.djzs.ai/.well-known/agent.json
-- OpenAPI for the paid HTTP routes: https://mcp.djzs.ai/openapi.json
+- OpenAPI for every HTTP route, paid and free: https://mcp.djzs.ai/openapi.json
 - x402 resources: https://djzs.ai/.well-known/x402.json
 
 ## Source of truth
