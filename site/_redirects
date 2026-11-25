@@ -17,9 +17,9 @@
 # SUMMARY.md group, not under its repo path: docs/agents/x.md is served at /for-agents/x, docs/concepts/x.md at
 # /how-a-verdict-is-made/x, and docs/measured.md at /evidence/measured. So every page is mapped one to one; a bare
 # :splat sent /docs/measured to a GitBook 404 (checked live 2026-11-20).
-# The host is the GitBook address, not docs.djzs.ai: the custom domain runs on a GitBook trial (7 days from
-# 2026-11-20). While the domain is active, GitBook forwards this address to docs.djzs.ai with the path kept; if
-# the trial lapses, this address keeps serving. If the paid plan is kept, swap the host for https://docs.djzs.ai.
+# The host is the GitBook address, not docs.djzs.ai. The custom domain was removed from GitBook on 2026-11-24,
+# ahead of the trial's end; docs.djzs.ai is now a Cloudflare Redirect Rule, 308 to this address with the path and
+# query kept. Point here directly: one hop, and no dependency on that rule.
 # Static rules first, the one dynamic fallback last (Cloudflare: static redirects before dynamic ones).
 /docs https://djzsx.gitbook.io/djzs.ai/ 302
 /docs/ https://djzsx.gitbook.io/djzs.ai/ 302
