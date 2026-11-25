@@ -174,12 +174,22 @@
   .rtech{border-top:1px solid var(--rule)}.rtech summary{cursor:pointer;padding:12px 20px;font-size:13px;color:var(--muted)}
   @media (max-width:560px){.facts .frow{grid-template-columns:1fr}}.receipt .keys{padding-top:14px}
 
-  /* how it decides: the only technical copy on the page */
-  .why{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
-  .proof{list-style:none;margin:0;padding:0;max-width:76ch}
-  .proof li{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:baseline;padding:13px 0;border-top:1px solid var(--rule);font-size:15.5px}.proof li:first-child{border-top:0;padding-top:4px}
-  .proof .n{color:var(--muted);font-weight:700;font-size:13px;letter-spacing:.06em}
+  /* the presenter: replaced "why trust the answer" 2026-11-24 (that copy lives in the docs). She is the featured
+     partner on the live shows and presentations; here she explains the engine on demand and links to the live call. */
+  .why{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px} /* kept: p.why inside .offer still cascades from it */
+  .meet{margin:44px 0 0;border-top:1px solid var(--rule);padding-top:26px}
+  .meetgrid{border:1px solid var(--rule);background:var(--panel)}
+  .meet video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#000;border-bottom:1px solid var(--rule)}
+  .meetcopy{padding:20px 22px 20px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px 32px;align-items:start}
+  .meetcopy h2{margin:0;font-size:24px;font-weight:800;line-height:1.22;letter-spacing:-.01em}
+  .meetcopy .lead{margin:10px 0 0;font-size:15px;color:var(--text);max-width:52ch}
+  .meetrows{margin:0;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
+  .meetrows li{display:grid;grid-template-columns:84px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--rule)}.meetrows li:first-child{border-top:0;padding-top:0}
+  .meetrows b{color:var(--text);font-weight:700;font-size:11.5px;letter-spacing:.1em;padding-top:2px}
+  .meetcta{grid-column:1 / -1;margin:0;padding-top:4px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+  .meetcta .note{font-size:12.5px;color:var(--muted);margin:0}
   .rline{margin:16px 0 0;font-size:14.5px}.rline a{white-space:nowrap}
+  @media (max-width:760px){.meetcopy{grid-template-columns:1fr;gap:14px}.meetcopy h2{font-size:20px}}
 
   /* for agents */
   .agents{margin:26px 0 0;border-top:1px solid var(--rule);padding-top:20px}
@@ -324,14 +334,30 @@
       </section>
     </div>
 
-    <section class="why" id="why" aria-labelledby="why-h">
-      <h2 class="label" id="why-h">how it decides</h2>
-      <ol class="proof">
-        <li><span class="n" aria-hidden="true">01</span><span>Three separate readings of your text must agree.</span></li>
-        <li><span class="n" aria-hidden="true">02</span><span>Then fixed rules decide: same reading, same answer. A part the readings split on is left unsettled and not scored, so one text can score differently on another run.</span></li>
-        <li><span class="n" aria-hidden="true">03</span><span>It does not pick a side or predict prices. What can be checked against the venue is shown beside the verdict, never inside it.</span></li>
-      </ol>
-      <p class="rline">On record: a receipt writes the check to Base with its date, for 2.00 USDC, so anyone can see it came before the outcome. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
+    <section class="meet" id="presenter" aria-labelledby="meet-h">
+      <p class="label" id="meet-h">the presenter</p>
+      <div class="meetgrid">
+        <video id="presenter-video" controls preload="none" playsinline poster="/assets/presenter-start-poster.jpg" width="1280" height="720" aria-label="The presenter explains how djzs.ai works">
+          <source src="/assets/presenter-start.mp4" type="video/mp4">
+          Your browser cannot play this video. <a href="/present">Ask the presenter live instead.</a>
+        </video>
+        <div class="meetcopy">
+          <div>
+            <h2>She explains the narrative trading engine. Then she takes your questions.</h2>
+            <p class="lead">The same presenter co-hosts the live shows and presentations. Press play for the walkthrough, or talk to her now.</p>
+          </div>
+          <ul class="meetrows">
+            <li><b>WHO</b><span>an AI presenter. She reads the site and the ledger.</span></li>
+            <li><b>VERDICTS</b><span>none of her own. Every verdict is the gate's, and she never judges your thesis.</span></li>
+            <li><b>LIVE</b><span>five minutes a call, one call a day per browser, free.</span></li>
+          </ul>
+          <div class="meetcta">
+            <a class="btn" href="/present">Ask her live &rarr;</a>
+            <p class="note">Camera stays off. Microphone or typing.</p>
+          </div>
+        </div>
+      </div>
+      <p class="rline">On record: a receipt writes the check to Base with its date, for 2.00 USDC, so anyone can see it came before the outcome. <a href="/docs/concepts/receipts">How it works &rarr;</a> &middot; Why the answer can be trusted: <a href="/docs/measured">what has and has not been measured</a>.</p>
     </section>
 
   </main>
