@@ -42,6 +42,12 @@
 - Free check over MCP: `check_thesis` (kind: prediction_market or perp_or_spot; thesis: the user's own words). Same
   engine and rulesets as the paid audits, same PASS / WAIT / FAIL and reasons. No wallet, no payment, no receipt:
   nothing is attested or anchored. One shared daily allowance for all MCP callers; LIMIT_REACHED when used up.
+- Paying from a chat with no wallet: an unpaid call to a paid tool returns the x402 requirement unchanged plus a
+  pay link (_meta["ai.djzs/pay"]: url https://mcp.djzs.ai/pay/<pay_session>, expires in 30 minutes). The user pays
+  2.00 USDC on that page from their own browser wallet; then call `get_paid_audit` (free) with the pay_session for
+  PAID (verdict and receipt), PENDING, PROCESSING, REFUSED_SCOPE (not charged), UNCERTAIN or EXPIRED.
+- Skill over MCP: `djzs-trade-audit` (skills/list, skills/get, skill://djzs-trade-audit/SKILL.md), the workflow
+  for these tools. Declared in capabilities.extensions as io.modelcontextprotocol/skills.
 - Other tools (free): `query_pol_certificates` (reads ProofOfLogic certificates from Irys mainnet,
   including every certificate verify_pm_trade anchors);
   `query_agent_trust` (on-chain audit record read from the DJZS subgraph: total_audits, scored_audits

@@ -108,6 +108,14 @@ jobs:
         working-directory: djzs-trust-mcp
         timeout-minutes: 5
         env: { DJZS_BUNDLE: /tmp/dry/index.js }
+      - name: "Skills over MCP: the compiled-in skill bundle matches skills/ on disk; frontmatter reads the same as YAML"
+        run: npx tsx test/skills-over-mcp.test.mjs
+        working-directory: djzs-trust-mcp
+      - name: "Pay link + skills (built bundle in workerd): x402 answer unchanged plus a link; a bad payment settles nothing; a good one settles once; out of scope, expired, in progress and the daily cap answered as such; skill bytes match their digests"
+        run: npx tsx test/pay-link.bundle.test.mjs
+        working-directory: djzs-trust-mcp
+        timeout-minutes: 6
+        env: { DJZS_BUNDLE: /tmp/dry/index.js }
       - name: Predeploy guard — refuses a dirty tree or a HEAD that is not origin/main; wired as wrangler's own [build] step
         run: npx tsx test/predeploy-guard.test.mjs
         working-directory: djzs-trust-mcp
