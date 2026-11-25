@@ -9,7 +9,8 @@ Where an agent, a crawler or a registry finds DJZS without being told.
 | AI Catalog | `https://djzs.ai/.well-known/ai-catalog.json` | AI Catalog (`specVersion` `"0.9"`) with the MCP server card inline. Served as `application/ai-catalog+json`, CORS open. |
 | MCP Registry | `ai.djzs/trust-mcp` | The official MCP Registry entry: remote, streamable HTTP, `https://mcp.djzs.ai/mcp` (`djzs-trust-mcp/server.json`). |
 | A2A agent card | `https://mcp.djzs.ai/.well-known/agent.json` | Agent card for agent-to-agent clients. |
-| OpenAPI | `https://mcp.djzs.ai/openapi.json` | The paid HTTP routes and their payment offers. See the known mismatch on [Paid check over HTTP](paid-http.md#contract-file). |
+| OpenAPI | `https://mcp.djzs.ai/openapi.json` | OpenAPI 3.1 for the free check (`POST /try/verdict`, `GET /try/quota`, `GET /try/example`) and the paid routes with their payment offers. CORS open. |
+| Docs MCP | `https://docs.djzs.ai/~gitbook/mcp` | GitBook's MCP server for these docs: search them and read a page from an MCP client. Streamable HTTP, no key. It reads the docs only; the checks run on `https://mcp.djzs.ai/mcp`. |
 | x402 resources | `https://djzs.ai/.well-known/x402.json` | The two paid resources with their x402 terms. |
 
 The djzs.ai home page points to the catalog twice: `<link rel="ai-catalog">` in the page head and a
