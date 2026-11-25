@@ -6,8 +6,9 @@
    Flat: sharp corners (0–2px), 1px rules,
    no shadows, no gradients, no glass. */
 :root {
-  /* brand tokens (patch 2026-07-17): phosphor trio, links = phosphor green (AAA ~13:1),
-     Base blue demoted to logomark-only. Supersedes the C3 "blue for links" rule. */
+  /* brand tokens (patch 2026-07-17): phosphor trio, Base blue logomark-only.
+     Color rule (2026-11-24, supersedes "links = phosphor green"): saturated color marks a verdict, or the one
+     thing to press on a screen. Links are off-white and underlined (--link = --text). */
   --canvas: #0A0A0A;
   --panel:  #0D0D0D;
   --rule:   #1C1C1C;
@@ -17,7 +18,7 @@
   --wait:   #FFB000;
   --fail:   #FF4D4D;
   --base:   #0052FF;
-  --link:   #3DFF88;
+  --link:   #E6E6E6;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --body: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
@@ -39,8 +40,8 @@ body {
 /* whole page is monospace (JetBrains Mono) to match the DST reference surface */
 p, li { font-family: var(--body); }
 .muted { color: var(--muted); }
-a { color: var(--link); text-decoration: none; }
-a:hover { background: var(--pass); color: var(--canvas); text-decoration: none; }
+a { color: var(--link); text-decoration: underline; text-decoration-color: #4a4a4a; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--text); }
 
 /* phosphor terminal: selection + scrollbars */
 ::selection { background: var(--pass); color: var(--canvas); }
@@ -51,7 +52,7 @@ a:hover { background: var(--pass); color: var(--canvas); text-decoration: none; 
 ::-webkit-scrollbar-thumb:hover { background: var(--pass); }
 
 /* a11y: visible keyboard focus everywhere; skip link for keyboard/screen-reader users */
-:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--pass); outline-offset: 3px; }
 .skip-link { position: absolute; left: -9999px; top: 0; z-index: 20; background: var(--panel);
   color: var(--text); border: 1px solid var(--rule); padding: 0.5rem 1rem; font-family: var(--mono); }
 .skip-link:focus { left: 0.5rem; top: 0.5rem; }
@@ -63,14 +64,14 @@ header.site { border-bottom: 1px solid var(--rule); padding: 0.9rem 0; position:
 header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .brand { font-family: var(--mono); font-weight: 800; letter-spacing: 0.04em; color: var(--text); display: inline-flex; align-items: center; gap: 0.5rem; }
 .brandmark { width: 1.55em; height: 1.55em; display: block; border-radius: 50%; }   /* phosphor >_ logo; carries the prompt the CSS ::before used to draw */
-a.brand { color: var(--text); }                            /* brand mark is a home link */
+a.brand { color: var(--text); text-decoration: none; }                            /* brand mark is a home link */
 a.brand:hover { text-decoration: none; color: var(--text); background: transparent; }
 
 /* prompt-path row — wayfinding as a shell prompt, one per page */
 .path { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); margin: 1rem 0 0; }
 .path .p { color: var(--pass); font-weight: 700; }
 .brand .dot { color: var(--text); }
-nav a { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--muted); margin-left: 1.1rem; }
+nav a { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: var(--muted); margin-left: 1.1rem; text-decoration: none; }
 nav a:hover { color: var(--text); text-decoration: none; }
 
 /* headings */
@@ -130,7 +131,7 @@ code { font-family: var(--mono); font-size: 0.88em; color: var(--text); }
 /* primary CTA — terminal button; pass-green = "go", semantically coherent with the trio rule */
 .btn { display: inline-block; font-family: var(--mono); font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.1em; font-size: 0.8rem; color: var(--pass); border: 1px solid var(--pass);
-  border-radius: 0; padding: 0.5rem 0.95rem; }
+  border-radius: 0; padding: 0.5rem 0.95rem; text-decoration: none; }
 .btn:hover { background: var(--pass); color: var(--canvas); text-decoration: none; }
 p.cta { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
@@ -172,7 +173,7 @@ ul.tight li { margin: 0.35rem 0; }
 /* footer */
 footer.site { border-top: 1px solid var(--rule); padding: 1.6rem 0; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.78rem; }
 footer.site .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; align-items: baseline; }
-footer.site a { color: var(--muted); margin-left: 1rem; }
+footer.site a { color: var(--muted); margin-left: 1rem; text-decoration: none; }
 footer.site a:first-child { margin-left: 0; }
 footer.site a:hover { color: var(--text); }
 footer.site .ok { color: var(--pass); font-weight: 700; }
