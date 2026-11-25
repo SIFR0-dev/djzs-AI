@@ -11,7 +11,9 @@
  *     and the verdict is what the engine's rule gives for them;
  *   - the ruleset is the one the routes serve today. A ruleset change fails here on purpose: the answers
  *     were given under the old one and have to be recorded again;
- *   - every button has an example and every example a button.
+ *   - every button has an example and every example a button;
+ *   - an example's `after` (the same sample rewritten to fix what was flagged) is held to all of the above, with its
+ *     own checked day, and is for the same kind of trade.
  *
  * To record one: POST { kind, anon, intent: { thesis } } to https://mcp.djzs.ai/try/verdict twice, keep it
  * only if both answers carry the same verdict_hash, paste the answer unchanged, and move `closes`.
@@ -46,13 +48,13 @@ try { data = JSON.parse(block[1]) } catch { /* reported by check 2 */ }
 check(2, "the block parses, with a checked day, a closes day and a list", data !== null && DAY.test(data.checked) && DAY.test(data.closes) && Array.isArray(data.examples) && data.examples.length > 0)
 
 const examples = data?.examples ?? []
-const buttons = [...html.matchAll(/<button type="button" class="btn" data-ex="([a-z0-9-]+)"/g)].map((m) => m[1])
+const buttons = [...html.matchAll(/<button type="button" class="tab" data-ex="([a-z0-9-]+)"/g)].map((m) => m[1])
 check(3, "every button has an example and every example a button, in the same order", buttons.length > 0 && buttons.join() === examples.map((e) => e.id).join(), `buttons ${buttons.join()} vs examples ${examples.map((e) => e.id).join()}`)
 check(4, "ids are unique", new Set(examples.map((e) => e.id)).size === examples.length)
 
-for (const ex of examples) {
+// One recorded answer beside the text it was given for. Run for each example, and for its `after` when it has one.
+function checkAnswer(ex, tag) {
   const b = ex.body ?? {}
-  const tag = `[${ex.id}]`
   const bytes = new TextEncoder().encode(ex.thesis ?? "").length
   check(10, `${tag} kind is pm or perp and the answer is for that kind`, (ex.kind === "pm" || ex.kind === "perp") && b.kind === ex.kind)
   check(11, `${tag} the text is one the box would send: 40 characters or more, within 4096 bytes, no [brackets]`, typeof ex.thesis === "string" && ex.thesis.trim() === ex.thesis && ex.thesis.length >= 40 && bytes <= 4096 && !/\[[^\]\n]{1,80}\]/.test(ex.thesis))
@@ -83,6 +85,15 @@ for (const ex of examples) {
   // Recorded under the ruleset the routes serve now.
   const ruleset = ex.kind === "pm" ? PM_RESOURCE.rulesetVersion : PERP_RESOURCE.rulesetVersion
   check(20, `${tag} recorded under today's ruleset (${ruleset})`, b.ruleset === ruleset, `recorded ${b.ruleset}: record the example again`)
+}
+
+for (const ex of examples) {
+  checkAnswer(ex, `[${ex.id}]`)
+  if (ex.after !== undefined) {
+    const a = ex.after ?? {}
+    check(21, `[${ex.id}.after] has a checked day, a text that differs from the original, and nothing else`, DAY.test(a.checked) && typeof a.thesis === "string" && a.thesis !== ex.thesis && Object.keys(a).sort().join() === "body,checked,thesis")
+    checkAnswer({ ...ex, thesis: a.thesis, body: a.body }, `[${ex.id}.after]`)
+  }
 }
 
 // Site copy rule (2026-09-15): no em dash anywhere on the page, the sample text included.

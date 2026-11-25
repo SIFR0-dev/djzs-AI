@@ -35,22 +35,23 @@
   body{background:var(--canvas);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;letter-spacing:.01em}
   .wrap{max-width:1120px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left))}
   @media (min-width:700px){.wrap{padding:0 40px}}
-  a{color:var(--pass);text-decoration:none}a:hover{background:var(--pass);color:var(--canvas)}::selection{background:var(--pass);color:var(--canvas)}
+  /* color rule (2026-11-24): saturated color marks a verdict, or the one thing to press. Links are off-white, underlined. */
+  a{color:var(--text);text-decoration:underline;text-decoration-color:#4a4a4a;text-decoration-thickness:1px;text-underline-offset:3px}a:hover{text-decoration-color:var(--text)}::selection{background:var(--pass);color:var(--canvas)}
   :focus-visible{outline:2px solid var(--pass);outline-offset:3px}
   .skip{position:absolute;left:-9999px;top:0;z-index:20;background:var(--panel);color:var(--text);border:1px solid var(--rule);padding:8px 14px}.skip:focus{left:8px;top:8px}
   [hidden]{display:none !important}
 
   /* header: brand left, three doors right */
   header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;padding:16px 0;border-bottom:1px solid var(--rule)}
-  .brand{display:inline-flex;align-items:center;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px}.brand img{display:block;width:24px;height:24px;border-radius:50%}.brand:hover{background:transparent;color:var(--text)}.brand .dot{color:var(--pass)}
-  nav.site{display:flex;flex-wrap:wrap;gap:6px 26px;font-size:12.5px;text-transform:uppercase;letter-spacing:.12em}nav.site a{color:var(--muted);border-bottom:1px solid transparent;padding:6px 0}nav.site a:hover{color:var(--text);background:transparent;border-bottom-color:var(--pass)}
+  .brand{display:inline-flex;align-items:center;gap:9px;color:var(--text);font-weight:800;letter-spacing:.04em;font-size:16px;text-decoration:none}.brand img{display:block;width:24px;height:24px;border-radius:50%}.brand:hover{background:transparent;color:var(--text)}.brand .dot{color:var(--pass)}
+  nav.site{display:flex;flex-wrap:wrap;gap:6px 26px;font-size:12.5px;text-transform:uppercase;letter-spacing:.12em}nav.site a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent;padding:6px 0}nav.site a:hover{color:var(--text);background:transparent;border-bottom-color:var(--pass)}
 
   /* hero */
   .hero{padding:26px 0 0}
   @media (min-width:980px){.hero{padding-top:38px}}
   .hero h1 .l2{display:block}.hero h1 .cursor{width:.42em;height:.92em;margin-left:.28em;vertical-align:-.08em}
   .hero .lede{max-width:none;margin-top:22px}
-  .trio{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 0}.trio .stamp{font-size:clamp(22px,4.4vw,34px);border-width:2px;padding:.12em .62em;letter-spacing:.06em;min-width:4.4em;text-align:center}.trio i{font-style:normal;color:var(--muted);font-size:26px}
+  .trio{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 0}.trio .stamp{font-size:clamp(22px,4.4vw,34px);border-width:2px;padding:.12em .62em;letter-spacing:.06em;min-width:4.4em;text-align:center}.trio i{font-style:normal;color:var(--muted);font-size:26px}.trio a.stamp{text-decoration:none}
   .free{margin:22px 0 0;font-size:clamp(15.5px,2vw,20px)}.free i{font-style:normal;color:var(--muted)}
   .tx{margin:30px 0 0;border:0;border-top:1px solid var(--rule)}
   .sys{margin:0;font-size:13.5px;color:var(--muted);letter-spacing:.04em}.sys b[data-s="ok"]{color:var(--pass)}.sys b[data-s="down"]{color:var(--fail)}
@@ -61,19 +62,23 @@
   /* the hero shows one real check as the terminal would print it */
   .demo{border:1px solid var(--fail);background:var(--well);padding:18px 20px 16px;font-size:14px}
   .demo > .label{margin:0 0 10px}
-  .demo .exrow{margin:0 0 16px;gap:0}
-  .demo .exrow .btn{flex:1 1 0;min-width:0;min-height:46px;padding:8px 10px;font-size:11.5px;letter-spacing:.04em;background:transparent;border-color:var(--rule);color:var(--muted);margin-left:-1px}.demo .exrow .btn:first-child{margin-left:0}
-  .demo .exrow .btn.on{color:var(--canvas);background:var(--text);border-color:var(--text)}
+  .demo .tabs{margin:0 0 16px}
   .demo[data-state="wait"]{border-color:var(--wait)}.demo[data-state="pass"]{border-color:var(--pass)}
-  .demo[data-state="wait"] .stamp,.demo[data-state="wait"] li .tok{color:var(--wait)}.demo[data-state="pass"] .stamp{color:var(--pass)}
+  .demo[data-state="wait"] .v .stamp,.demo[data-state="wait"] li .tok{color:var(--wait)}.demo[data-state="pass"] .v .stamp{color:var(--pass)}
   .demo .log{margin:10px 0 0;min-height:0;font-size:13px;color:var(--text)}.demo .log:empty{display:none}
-  .agentbar{margin:34px 0 0;border:1px solid var(--pass);background:var(--panel);padding:16px 18px;display:grid;gap:10px 24px;align-items:center}
-  @media (min-width:860px){.agentbar{grid-template-columns:1fr auto}.agentbar .how,.agentbar .docsline{grid-column:1/-1}}
-  .agentbar p{margin:0}.agentbar .who{font-size:16px}.agentbar .who b{color:var(--pass)}.agentbar .how{font-size:13.5px;color:var(--muted)}.agentbar .how code{color:var(--text);overflow-wrap:anywhere}
-  .demo p{margin:0}.demo .cmd{color:var(--muted)}.demo .cmd .p{color:var(--pass);font-weight:700}.demo .cmd q{color:var(--text);quotes:"\201C" "\201D"}
-  .demo .k{color:var(--muted);font-size:12px;letter-spacing:.06em;margin:14px 0 4px}.demo .k::before{content:"// "}.demo .story{font-size:15px}.demo .v{display:flex;align-items:center;gap:12px;margin:6px 0 10px;font-weight:700;font-size:17px}.demo .v .stamp{color:var(--fail);border-width:2px;font-size:19px}
-  .demo ul{list-style:none;margin:0;padding:0}.demo li{display:grid;grid-template-columns:28px 1fr;padding:5px 0;font-size:15px}.demo li .tok{color:var(--fail);font-weight:700}
-  .demo .rule{margin:12px 0 0;padding:8px 12px;border-left:2px solid var(--wait);color:var(--text);font-size:13.5px}
+  /* the agent door: a section, separated by one line, not a second green box */
+  .agentbar{margin:34px 0 0;border-top:1px solid var(--rule);padding:20px 0 0;display:grid;gap:10px 24px;align-items:center}
+  .agentbar > .label{margin:0}
+  @media (min-width:860px){.agentbar{grid-template-columns:1fr auto}.agentbar > .label,.agentbar .how,.agentbar .docsline{grid-column:1/-1}}
+  .agentbar p{margin:0}.agentbar .who{font-size:16px;max-width:68ch}.agentbar .who b{color:var(--text)}.agentbar .how{font-size:13.5px;color:var(--muted);max-width:76ch}.agentbar .how code{color:var(--text);overflow-wrap:anywhere}
+  .demo p{margin:0}.demo .cmd{color:var(--muted);max-width:68ch}.demo .cmd .p{color:var(--pass);font-weight:700}.demo .cmd q{color:var(--text);quotes:"\201C" "\201D"}
+  .demo .k{color:var(--muted);font-size:12px;letter-spacing:.06em;margin:14px 0 4px}.demo .k::before{content:"// "}.demo .story{font-size:15px;max-width:68ch}.demo .v{display:flex;align-items:center;gap:12px;margin:6px 0 10px;font-weight:700;font-size:17px}.demo .v .stamp{color:var(--fail);border-width:2px;font-size:19px}
+  .demo ul{list-style:none;margin:0;padding:0;max-width:68ch}.demo li{display:grid;grid-template-columns:28px 1fr;padding:5px 0;font-size:15px}.demo li .tok{color:var(--fail);font-weight:700}.demo li .tok.ok{color:var(--pass)}
+  .demo .rule{margin:12px 0 0;padding:8px 12px;border-left:2px solid var(--wait);color:var(--text);font-size:13.5px;max-width:68ch}
+  /* before and after: the same sample as written, then rewritten with each flag fixed, both answers recorded from the live check */
+  .demo .tabs.ba{margin:14px 0 2px}.demo .tabs.ba .tab{flex:0 1 auto;min-height:40px;font-size:12px;padding:8px 14px}
+  .demo .tabs.ba .tab b{font-weight:800;margin-left:6px}.demo .tabs.ba .tab[data-v="PASS"] b{color:var(--pass)}.demo .tabs.ba .tab[data-v="WAIT"] b{color:var(--wait)}.demo .tabs.ba .tab[data-v="FAIL"] b{color:var(--fail)}
+  .demo .moved{margin:2px 0 10px;font-size:13.5px;color:var(--muted);max-width:68ch}.demo .moved b{color:var(--text)}
   .demo .foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:16px 0 0}.demo .foot span{color:var(--muted);font-size:12.5px}
   .demo .btn{padding:8px 14px;min-height:40px;font-size:12px}
   .path{color:var(--muted);font-size:clamp(13px,1.8vw,17px);letter-spacing:.04em;margin:0 0 16px}.path::before{content:"// "}.path .p{color:var(--pass);font-weight:700}
@@ -87,30 +92,45 @@
   .agentline .tag{color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-size:12px}
   .mcp{display:inline-flex;align-items:stretch;border:1px solid var(--rule);background:var(--well);max-width:100%}
   .mcp code{padding:6px 10px;color:var(--text);font-size:13.5px;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
-  .copy{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;background:transparent;color:var(--pass);border:0;border-left:1px solid var(--rule);border-radius:0;padding:0 12px;min-height:36px}.copy:hover{background:var(--pass);color:var(--canvas)}.copy.done{color:var(--canvas);background:var(--pass)}
+  .copy{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;background:transparent;color:var(--text);border:0;border-left:1px solid var(--rule);border-radius:0;padding:0 12px;min-height:36px}.copy:hover{background:var(--text);color:var(--canvas)}.copy.done{color:var(--canvas);background:var(--pass)}
   .mcp.big code{font-size:clamp(14px,2.4vw,18px);padding:10px 14px;font-weight:700}.mcp.big .copy{min-height:46px;padding:0 16px}
 
   /* the check */
-  .label{color:var(--muted);font-size:12px;margin:0 0 8px;letter-spacing:.04em}.label::before{content:"// ";color:#3a3a3a}
+  .label{color:var(--muted);font-size:12px;margin:0 0 8px;letter-spacing:.04em}.label::before{content:"// ";color:#3a3a3a}h2.label{font-weight:400;line-height:1.6}
   section.step{margin:28px 0 0}
   .panel{border:1px solid var(--rule);background:var(--panel);padding:16px 18px}
   .status{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:baseline;font-size:13.5px;margin:0 0 14px}.status .ok{color:var(--pass);font-weight:700}.status .xx{color:var(--fail);font-weight:700}.status .dd{color:var(--muted);font-weight:700}.status .v{color:var(--text);overflow-wrap:anywhere}.status b{font-weight:700}
-  .btn{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;background:transparent;color:var(--pass);border:1px solid var(--pass);border-radius:0;padding:10px 18px;min-height:44px}.btn:hover{background:var(--pass);color:var(--canvas)}
+  .btn{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;text-decoration:none;background:transparent;color:var(--text);border:1px solid #5e5e5e;border-radius:0;padding:10px 18px;min-height:44px}.btn:hover{background:var(--text);color:var(--canvas);border-color:var(--text)}
   .btn.ghost{color:var(--muted);border-color:var(--rule)}.btn.ghost:hover{background:transparent;color:var(--text);border-color:var(--muted)}
-  .btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;background:transparent;color:var(--pass)}.btn.ghost:disabled:hover{color:var(--muted);border-color:var(--rule)}
-  .kind{display:flex;flex-wrap:wrap;margin:0 0 12px}.kind .btn{flex:1 1 180px;font-size:14px;min-height:48px;padding:10px 20px;border-color:var(--rule);color:var(--muted)}.kind .btn.on{border-color:var(--pass);color:var(--canvas);background:var(--pass)}.kind .btn:not(.on):hover{color:var(--text);background:transparent;border-color:var(--muted)}
-  .hint{color:var(--text);font-size:15px;margin:0 0 12px;max-width:74ch}
-  .starts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 16px;font-size:13.5px;color:var(--muted)}.starts span{margin-right:2px}
-  .chip{font:inherit;font-size:13px;color:var(--pass);background:transparent;border:1px solid var(--pass);padding:6px 12px;min-height:36px;cursor:pointer}.chip:hover{background:var(--pass);color:var(--canvas)}
+  .btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;background:transparent;color:var(--text)}.btn.ghost:disabled:hover{color:var(--muted);border-color:var(--rule)}
+  /* one tab style for every switch on the page: underline marks the open tab; no box, no fill */
+  .tabs{display:flex;border-bottom:1px solid var(--rule)}
+  .tabs .tab{flex:1 1 0;min-width:0;min-height:46px;padding:10px 12px;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;background:transparent;color:var(--muted);border:0;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:0;text-align:center}
+  .tabs .tab:hover{color:var(--text)}.tabs .tab.on{color:var(--text);border-bottom-color:var(--text)}
+  .kind{margin:0 0 14px}.kind .tab{font-size:14px;min-height:48px}
+  .hint{color:var(--text);font-size:15px;margin:0 0 12px;max-width:68ch}
+  .starts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 16px;font-size:13.5px;color:var(--muted)}.starts #starts-say{margin-right:2px}.chips{display:contents}
+  .chip{font:inherit;font-size:13px;color:var(--text);background:transparent;border:1px solid #5e5e5e;border-radius:0;padding:6px 12px;min-height:36px;cursor:pointer}.chip:hover{border-color:var(--text)}
   .need{font-size:13px;color:var(--muted)}
-  .starts[data-pending]{visibility:hidden}.chip .vn{color:var(--muted);font-size:11.5px;margin-left:8px}.chip:hover .vn,.chip:hover .c-pass,.chip:hover .c-fail{color:var(--canvas)}
-  .demo .more{color:var(--pass);font-size:13px}
+  .starts[data-pending]{visibility:hidden}.chip .vn{color:var(--muted);font-size:11.5px;margin-left:8px}.chip .mv{color:var(--muted);margin-left:6px}
+  @keyframes nudge{50%{border-color:var(--text)}}.starts.nudge .chip{animation:nudge .5s steps(1) 3}
+  /* after a market starter: the person picks the outcome and the side; the page fills in what the market answers */
+  .pick{margin:-6px 0 16px;padding:12px 0 0;border-top:1px solid var(--rule)}
+  .pick p{margin:0}.pick-q{font-size:13.5px;color:var(--muted);margin:0 0 10px;max-width:68ch}.pick-q b{color:var(--text);font-weight:700}
+  .pick-k{font-size:12px;color:var(--muted);letter-spacing:.04em;margin:0 0 6px !important}.pick-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+  .opt{font:inherit;font-size:13px;color:var(--text);background:transparent;border:1px solid #5e5e5e;border-radius:0;padding:6px 12px;min-height:38px;cursor:pointer}.opt:hover{border-color:var(--text)}
+  .opt[aria-pressed="true"]{background:var(--text);color:var(--canvas);border-color:var(--text)}.opt .px{color:var(--muted);font-size:12px;margin-left:8px}.opt[aria-pressed="true"] .px{color:var(--canvas)}
+  .pick-note{font-size:12.5px;color:var(--muted);max-width:68ch}
+  .demo .more{font-size:13px}
   .flabel{display:block;font-size:13.5px;color:var(--text);margin:0 0 6px}
-  details.needs{margin:-4px 0 12px;font-size:14px}details.needs summary{cursor:pointer;color:var(--pass);font-size:13px;width:max-content;max-width:100%}details.needs summary:hover{color:var(--text)}
-  details.needs ul{margin:8px 0 0;padding:0 0 0 18px;color:var(--text);max-width:74ch}details.needs li{margin:4px 0}details.needs li::marker{color:var(--pass)}
-  textarea{display:block;width:100%;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:12px 14px;font-family:var(--mono);font-size:16px;line-height:1.5;min-height:180px;resize:vertical}@media (max-width:560px){textarea{min-height:250px}}textarea:focus{outline:none;border-color:var(--pass)}textarea::placeholder{color:#6b6b6b}
+  details.needs{margin:-4px 0 12px;font-size:14px}details.needs summary{cursor:pointer;color:var(--text);font-size:13px;width:max-content;max-width:100%}details.needs summary::marker{color:var(--muted)}details.needs summary:hover{text-decoration:underline;text-underline-offset:3px}
+  details.needs ul{margin:8px 0 0;padding:0 0 0 18px;color:var(--text);max-width:68ch}details.needs li{margin:4px 0}details.needs li::marker{color:var(--muted)}
+  textarea{display:block;width:100%;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:12px 14px;font-family:var(--mono);font-size:16px;line-height:1.5;min-height:180px;resize:vertical}@media (max-width:560px){textarea{min-height:250px}}textarea:focus{outline:none;border-color:var(--pass)}textarea::placeholder{color:var(--muted)}
   .controls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
-  #run{font-size:15px;min-height:52px;padding:12px 30px;background:var(--pass);color:var(--canvas)}#run:hover{background:#7dffb0;border-color:#7dffb0}#run:disabled,#run:disabled:hover{background:transparent;color:var(--pass);border-color:var(--pass)}
+  /* the one thing to press: always solid. Empty or short, it points at what is missing instead of greying out. */
+  #run{font-size:15px;min-height:52px;padding:12px 30px;background:var(--pass);color:var(--canvas);border-color:var(--pass)}#run:hover{background:#7dffb0;border-color:#7dffb0;color:var(--canvas)}
+  #run:disabled,#run:disabled:hover{opacity:1;cursor:progress;background:var(--pass);color:var(--canvas);border-color:var(--pass)}
+  #run.out,#run.out:hover{cursor:not-allowed;background:transparent;color:var(--muted);border-color:var(--rule)}
   .log{margin:12px 0 0;font-size:14px;color:var(--muted);min-height:1.6em}.log .xx{color:var(--fail)}.log .ok{color:var(--pass)}
   .quota{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
 
@@ -122,30 +142,33 @@
   .exrow .btn.on{color:var(--pass);border-color:var(--pass)}
   .examples .log{margin:8px 0 0;min-height:0;font-size:13.5px;color:var(--text)}.examples .log:empty{display:none}
   .exidea{padding:16px 20px;border-bottom:1px solid var(--rule)}.exidea .label{margin-bottom:6px}
-  .exidea q{display:block;font-size:15px;max-width:76ch;quotes:"\201C" "\201D"}
-  .exidea .src{display:block;margin-top:8px;font-size:12.5px;color:var(--muted);max-width:76ch}.exidea .src.rule{color:var(--text);font-size:13.5px}
+  .exidea q{display:block;font-size:15px;max-width:68ch;quotes:"\201C" "\201D"}
+  .exidea .src{display:block;margin-top:8px;font-size:12.5px;color:var(--muted);max-width:68ch}.exidea .src.rule{color:var(--text);font-size:13.5px}
 
   /* the verdict */
   .verdict{border:1px solid var(--rule);background:var(--panel)}.verdict:focus{outline:none}.verdict[data-state="pass"]{border-color:var(--pass)}.verdict[data-state="wait"]{border-color:var(--wait)}.verdict[data-state="fail"]{border-color:var(--fail);border-width:2px}.verdict[data-state="refused"]{border-color:var(--muted)}
   .verdict-head{padding:20px 20px 4px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .stamp{display:inline-block;font-weight:800;letter-spacing:.14em;border:1px solid currentColor;padding:.25rem .8rem;font-size:22px}[data-state="pass"] .stamp{color:var(--pass)}[data-state="wait"] .stamp{color:var(--wait)}[data-state="fail"] .stamp{color:var(--fail);border-width:2px}[data-state="refused"] .stamp{color:var(--muted)}
   .verdict-title{font-weight:700;font-size:clamp(18px,3vw,22px)}.verdict-meta{color:var(--muted);font-size:13px;margin-left:auto}
-  .verdict-note{font-size:15.5px;margin:0;padding:10px 20px 18px;max-width:76ch}.verdict-note b{font-weight:700}
-  .change{margin:0 20px 18px;border-left:2px solid var(--pass);padding:2px 0 2px 14px}.change p{margin:0}.change .line{font-size:13px;color:var(--muted);letter-spacing:.04em}.change .line b{color:var(--text)}.change .say{font-size:15px;margin-top:4px}
+  .verdict-note{font-size:15.5px;margin:0;padding:10px 20px 18px;max-width:68ch;box-sizing:content-box}.verdict-note b{font-weight:700}
+  .change{margin:0 20px 18px;border-left:2px solid #3a3a3a;padding:2px 0 2px 14px}.change p{margin:0}.change .line{font-size:13px;color:var(--muted);letter-spacing:.04em}.change .line b{color:var(--text)}.change .say{font-size:15px;margin-top:4px}
   .ledger{border-top:1px solid var(--rule)}
   .claim{border-top:1px solid var(--rule);padding:14px 20px;display:grid;grid-template-columns:40px 1fr;gap:0 14px}.claim:first-child{border-top:0}
   .claim .tok{font-weight:700;font-size:15px;letter-spacing:.06em;grid-row:1/3;padding-top:1px}.claim[data-r="fail"] .tok{color:var(--fail)}.claim[data-r="wait"] .tok{color:var(--wait)}.claim[data-r="idle"] .tok{color:var(--muted)}.claim[data-r="pass"] .tok{color:var(--pass)}
   .claim-name{font-weight:700;font-size:16.5px;margin:0}.claim-name .chip{font-weight:800;font-size:11px;letter-spacing:.06em;border:1px solid currentColor;padding:1px 6px;margin-left:10px;vertical-align:2px;text-transform:uppercase}[data-r="fail"] .chip{color:var(--fail)}[data-r="wait"] .chip{color:var(--wait)}[data-r="idle"] .chip{color:var(--muted)}[data-r="pass"] .chip{color:var(--pass)}
-  .claim-body{margin:6px 0 0;color:var(--muted);font-size:14.5px;max-width:76ch}
-  .fix{display:block;color:var(--text);font-size:15.5px;margin-top:10px;max-width:70ch}.fix b{color:var(--pass);font-size:12px;letter-spacing:.12em;margin-right:6px}
-  .said{display:block;margin:10px 0 0;padding:8px 12px;border-left:2px solid var(--wait);background:var(--well);max-width:70ch}.said q{display:block;color:var(--text);font-size:15px;quotes:"\201C" "\201D"}.said .who{display:block;font-size:12.5px;color:var(--muted);margin-top:4px}
+  .claim-body{margin:6px 0 0;color:var(--muted);font-size:14.5px;max-width:68ch}
+  .fix{display:block;color:var(--text);font-size:15.5px;margin-top:10px;max-width:68ch}.fix b{color:var(--text);font-size:12px;letter-spacing:.12em;margin-right:6px}
+  .said{display:block;margin:10px 0 0;padding:8px 12px;border-left:2px solid var(--wait);background:var(--well);max-width:68ch}.said q{display:block;color:var(--text);font-size:15px;quotes:"\201C" "\201D"}.said .who{display:block;font-size:12.5px;color:var(--muted);margin-top:4px}
   .cleared{border-top:1px solid var(--rule);padding:14px 20px}.cleared .label{margin-bottom:6px}.okrow{margin:4px 0 0;font-size:14.5px}.okrow .ok{color:var(--pass);font-weight:700;display:inline-block;width:40px}
   .again{margin:0;padding:14px 20px;border-top:1px solid var(--rule);font-size:14px;color:var(--muted)}.again b{color:var(--text)}
   details.tech{border-top:1px solid var(--rule)}details.tech summary{cursor:pointer;padding:12px 20px;color:var(--muted);font-size:12.5px}details.tech summary:hover{color:var(--text)}
   .keys{padding:4px 20px 14px;font-size:12px;color:var(--muted);display:grid;grid-template-columns:120px 1fr;gap:4px 12px}.keys b{color:var(--text);font-weight:400;overflow-wrap:anywhere}
-  .offer{margin:0;padding:16px 20px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}.offer .why{color:var(--muted);font-size:14px;max-width:60ch;margin:0}.offer .why b{color:var(--text)}
+  .offer{margin:0;padding:16px 20px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}.offer .why{color:var(--muted);font-size:14px;max-width:68ch;margin:0;border:0;padding:0}.offer .why b{color:var(--text)}.payrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;width:100%}
   .offer select{font-family:var(--mono);background:var(--well);color:var(--text);border:1px solid var(--rule);padding:8px}
-  .receipt{margin:16px 0 0;border:1px solid var(--pass);background:var(--panel)}
+  .rpick{margin:0;width:100%;font-size:13.5px;color:var(--text);max-width:76ch}.rpick .t{font-weight:800;letter-spacing:.04em;font-size:11.5px;color:var(--muted);margin-right:6px}.rpick a{margin-left:8px;font-size:12.5px}
+  /* share: a verdict leaves the page only when the person posts it */
+  .share{margin:0;padding:14px 20px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}.share .btn{display:inline-flex;align-items:center}.share span{color:var(--muted);font-size:12.5px}
+  .receipt{margin:16px 0 0;border:1px solid var(--rule);background:var(--panel)}.receipt[data-state="pass"]{border-color:var(--pass)}.receipt[data-state="wait"]{border-color:var(--wait)}.receipt[data-state="fail"]{border-color:var(--fail)}
   .facts{padding:14px 20px 6px}.facts h3{margin:0 0 4px;font-size:15px;font-weight:800}.facts .fnote{margin:0 0 10px;font-size:13px;color:var(--muted);max-width:68ch}
   .facts .frow{display:grid;grid-template-columns:104px 1fr;gap:4px 14px;padding:10px 0;border-top:1px solid var(--rule);font-size:13.5px}.facts .ftag{font-weight:800;letter-spacing:.06em;font-size:11.5px;padding-top:2px}.facts .frow p{margin:0;color:var(--text)}.facts .frow .fsub{color:var(--muted);font-size:12.5px;margin-top:3px;overflow-wrap:anywhere}
   .rtech{border-top:1px solid var(--rule)}.rtech summary{cursor:pointer;padding:12px 20px;font-size:13px;color:var(--muted)}
@@ -162,7 +185,7 @@
   .meetcopy .lead{margin:10px 0 0;font-size:15px;color:var(--text);max-width:52ch}
   .meetrows{margin:0;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
   .meetrows li{display:grid;grid-template-columns:84px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--rule)}.meetrows li:first-child{border-top:0;padding-top:0}
-  .meetrows b{color:var(--pass);font-weight:700;font-size:11.5px;letter-spacing:.1em;padding-top:2px}
+  .meetrows b{color:var(--text);font-weight:700;font-size:11.5px;letter-spacing:.1em;padding-top:2px}
   .meetcta{grid-column:1 / -1;margin:0;padding-top:4px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
   .meetcta .note{font-size:12.5px;color:var(--muted);margin:0}
   .rline{margin:16px 0 0;font-size:14.5px}.rline a{white-space:nowrap}
@@ -176,11 +199,11 @@
   .rfields input,.rfields select{font-family:var(--mono);font-size:16px;background:var(--well);color:var(--text);border:1px solid var(--rule);border-radius:0;padding:8px 10px;min-height:42px}.rfields input{width:min(320px,80vw)}.rfields input:focus,.rfields select:focus{outline:none;border-color:var(--pass)}
 
   footer{margin:44px 0 0;padding:18px 0 28px;border-top:1px solid var(--rule);color:var(--muted);font-size:12.5px;line-height:1.9}
-  footer nav{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 0 12px}
+  footer nav{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 0 12px}footer nav a{color:var(--muted);text-decoration:none}footer nav a:hover{color:var(--text);text-decoration:underline}
   footer .k::before{content:"// ";color:#3a3a3a}footer .k b{color:var(--text);font-weight:700}
   footer .sig{margin:14px 0 0}footer .sig .p{color:var(--pass);font-weight:700}
 
-  @media (prefers-reduced-motion:reduce){.cursor{animation:none}}
+  @media (prefers-reduced-motion:reduce){.cursor{animation:none}.starts.nudge .chip{animation:none}}
   .only-narrow{display:none !important}
   @media (max-width:560px){
     .only-wide{display:none !important}.only-narrow{display:flex !important}
@@ -188,7 +211,12 @@
     .hero{padding-top:18px}.hero .path{margin-bottom:8px}.hero .lede{margin-top:14px}.trio,.free{margin-top:16px}.trio{flex-wrap:nowrap;gap:8px}.trio .stamp{font-size:20px;min-width:0;padding:.14em .5em}.trio i{font-size:18px}.tx{margin-top:20px}.sys{display:none}
     section.step{margin-top:20px}
     .panel{padding:14px}
-    .kind .btn{flex:1 1 0;min-width:0;font-size:12px;letter-spacing:.04em;padding:8px 6px}
+    .tabs .tab{font-size:11.5px;letter-spacing:.04em;padding:8px 6px}.kind .tab{font-size:12px}
+    /* the box comes up a screen sooner: the instruction line is in the placeholder, the starters scroll sideways in one row */
+    .hint{display:none}
+    .starts{display:block;margin-bottom:14px}.starts #starts-say{display:block;margin:0 0 8px}
+    .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -14px 0 0;padding:0 14px 2px 0}.chips::-webkit-scrollbar{display:none}.chips .chip{flex:0 0 auto;white-space:nowrap}
+    #pick-outcomes{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:-14px;padding-right:14px}#pick-outcomes::-webkit-scrollbar{display:none}#pick-outcomes .opt{flex:0 0 auto;white-space:nowrap}
     .agentline.only-narrow{margin:16px 0 0}
     .verdict-meta{margin-left:0;flex-basis:100%}
     #run{width:100%}.controls .btn.ghost{flex:1 1 0}
@@ -212,27 +240,35 @@
       <p class="path">AUDIT BEFORE ACT</p>
       <h1 id="h1">Trading the narrative?<span class="cursor" aria-hidden="true"></span> <span class="l2">Check your thesis before you trade it.</span></h1>
       <p class="lede">Narratives move markets. Stand on more than the story.</p>
-      <p class="trio" aria-label="The answer is PASS, WAIT or FAIL"><span class="stamp c-pass">PASS</span><i aria-hidden="true">-</i><span class="stamp c-wait">WAIT</span><i aria-hidden="true">-</i><span class="stamp c-fail">FAIL</span></p>
+      <p class="trio" aria-label="The answer is PASS, WAIT or FAIL"><a class="stamp c-pass" href="#demo" data-show="PASS" aria-label="PASS: see a sample thesis that passed">PASS</a><i aria-hidden="true">-</i><a class="stamp c-wait" href="#demo" data-show="WAIT" aria-label="WAIT: what it means">WAIT</a><i aria-hidden="true">-</i><a class="stamp c-fail" href="#demo" data-show="FAIL" aria-label="FAIL: see a sample thesis that failed">FAIL</a></p>
       <p class="free"><b>Free</b> <i>- three checks a day -</i> no wallet</p>
       <hr class="tx" aria-hidden="true">
     </section>
 
     <section class="step" id="idea" aria-labelledby="s1">
-      <p class="label" id="s1">your trade thesis</p>
+      <h2 class="label" id="s1">your trade thesis</h2>
       <div class="panel">
         <p class="status" id="last-status" hidden></p>
-        <div class="kind" role="group" aria-label="What are you checking?">
-          <button type="button" class="btn on" id="kind-pm" aria-pressed="true">Prediction market</button>
-          <button type="button" class="btn" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
+        <div class="kind tabs" role="group" aria-label="What are you checking?">
+          <button type="button" class="tab on" id="kind-pm" aria-pressed="true">Prediction market</button>
+          <button type="button" class="tab" id="kind-perp" aria-pressed="false">Perp or spot trade</button>
         </div>
         <p class="hint" id="kind-hint">The headline is not the market's rule. Name the venue and the question.</p>
         <details class="needs" id="needs"><summary>What a complete thesis includes</summary><ul id="needs-list"><li>The market's own terms: the question, the date it settles, and the source that settles it.</li><li>Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.</li><li>What would prove you wrong: the specific event, before the market settles.</li><li>Why the market is wrong. &ldquo;Everyone agrees&rdquo; is not a reason. This one is advice; it never changes the verdict.</li></ul></details>
-        <p class="starts" id="starts" data-pending><span id="starts-say">No thesis yet? Start from a narrative in the news:</span><button type="button" class="chip" data-start="dip">BTC dip</button><button type="button" class="chip" data-start="headline">Nvidia CEO</button><button type="button" class="chip" data-start="bubble">AI bubble</button></p>
+        <div class="starts" id="starts" data-pending><span id="starts-say">No thesis yet? Start from a narrative in the news:</span><span class="chips" id="chips"><button type="button" class="chip" data-start="dip">BTC dip</button><button type="button" class="chip" data-start="headline">Nvidia CEO</button><button type="button" class="chip" data-start="bubble">AI bubble</button></span></div>
+        <div class="pick" id="pick" hidden>
+          <p class="pick-q" id="pick-q"></p>
+          <p class="pick-k" id="pick-out-k">Which outcome are you trading?</p>
+          <div class="pick-row" id="pick-outcomes" role="group" aria-labelledby="pick-out-k"></div>
+          <p class="pick-k" id="pick-side-k">Your side</p>
+          <div class="pick-row" id="pick-sides" role="group" aria-labelledby="pick-side-k"></div>
+          <p class="pick-note" id="pick-note"></p>
+        </div>
         <label class="flabel" for="thesis" id="thesis-label">Your thesis</label>
         <textarea id="thesis" rows="6" spellcheck="true" placeholder="Kalshi, [the market question]. It settles on [date] by [source]. I am buying [YES or NO] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles."></textarea>
         <div class="controls">
-          <button type="button" class="btn" id="run" disabled>Check it</button>
-          <button type="button" class="btn ghost" id="clear">Clear</button>
+          <button type="button" class="btn" id="run">Check it</button>
+          <button type="button" class="btn ghost" id="clear" hidden>Clear</button>
           <span class="need" id="need" aria-live="polite"></span>
         </div>
         <p class="log" id="run-log" role="status" aria-live="polite"></p>
@@ -241,7 +277,7 @@
     </section>
 
     <section class="step" id="out" hidden aria-labelledby="s3">
-      <p class="label" id="s3">verdict</p>
+      <h2 class="label" id="s3">verdict</h2>
       <div class="verdict" id="verdict" data-state="idle" tabindex="-1">
         <div class="exidea" id="ex-idea" hidden></div>
         <div class="verdict-head"><span class="stamp" id="vstamp">&middot;</span><span class="verdict-title" id="vtitle"></span><span class="verdict-meta" id="vmeta"></span></div>
@@ -251,17 +287,17 @@
         <div class="cleared" id="cleared" hidden><p class="label">cleared since the last check</p><div id="cleared-list"></div></div>
         <p class="again" id="again" hidden><a href="#thesis" id="edit-link">Edit the thesis</a>, then press <b>Check again</b>. Fixing a reason clears its flag. It does not make the trade good.</p>
         <p class="again" id="recorded" hidden></p>
+        <p class="share" id="share" hidden><a class="btn" id="share-x" href="https://x.com/intent/tweet" target="_blank" rel="noopener">Post this verdict on X</a><span>Opens X with the verdict filled in. Nothing is posted until you post it.</span></p>
         <details class="tech"><summary>Technical details (hashes, codes, ruleset)</summary><div class="keys" id="keys"></div></details>
         <div class="offer" id="offer">
-          <p class="why"><b>Want proof you checked first?</b> A receipt runs the check again and writes the result to Base, where anyone can check it. 2.00 USDC, whatever the verdict. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
-          <div class="rfields">
-            <label><span id="r-market-label">Market id on the venue</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="120" placeholder="paste it from the venue"></label>
+          <p class="why"><b id="offer-lead">Lock this call on Base before it settles.</b> A receipt checks the thesis again and writes the result to Base, so anyone can see what you called and when. <b>It is a new run, so it can differ from the check above.</b> 2.00 USDC either way. <a href="/docs/concepts/receipts">How it works &rarr;</a></p>
+          <p class="rpick" id="r-pick" hidden><span class="t">RECORDS</span><span id="r-pick-say"></span><a href="#offer" id="r-pick-change">change</a></p>
+          <div class="rfields" id="rfields">
+            <label><span id="r-market-label">Market link or id</span><input id="r-market" type="text" autocomplete="off" spellcheck="false" maxlength="300" placeholder="paste the market's link from the venue"></label>
             <label><span>Your side</span><select id="r-side"><option value="YES">YES</option><option value="NO">NO</option></select></label>
           </div>
           <p class="mkt" id="r-market-say" hidden></p>
-          <button type="button" class="btn" id="pay">Get the receipt &middot; 2.00 USDC</button>
-          <select id="provider-pick" hidden aria-label="Wallet"></select>
-          <span class="log" id="pay-log"></span>
+          <div class="payrow"><button type="button" class="btn" id="pay">Get the receipt &middot; 2.00 USDC</button><select id="provider-pick" hidden aria-label="Wallet"></select><span class="log" id="pay-log"></span></div>
         </div>
       </div>
       <div class="receipt" id="receipt" hidden>
@@ -278,20 +314,22 @@
 
     <div class="next">
       <div class="demo" id="demo">
-        <p class="label" id="demo-label">three narratives in the news, one thesis on each, checked</p>
-        <div class="exrow" id="scan-row" role="group" aria-label="Narratives from the Daily Narrative Scan" hidden></div>
-        <div class="exrow" id="ex-row" role="group" aria-label="Sample theses from the news">
-          <button type="button" class="btn" data-ex="dip" aria-pressed="false">Chasing the dip</button>
-          <button type="button" class="btn" data-ex="headline" aria-pressed="false">Betting the headline</button>
-          <button type="button" class="btn" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
+        <h2 class="label" id="demo-label">three narratives in the news, one thesis on each, checked</h2>
+        <div class="tabs" id="scan-row" role="group" aria-label="Narratives from the Daily Narrative Scan" hidden></div>
+        <div class="tabs" id="ex-row" role="group" aria-label="Sample theses from the news">
+          <button type="button" class="tab" data-ex="dip" aria-pressed="false">Chasing the dip</button>
+          <button type="button" class="tab" data-ex="headline" aria-pressed="false">Betting the headline</button>
+          <button type="button" class="tab" data-ex="bubble" aria-pressed="false">Shorting the bubble</button>
         </div>
         <div id="demo-body"></div>
         <p class="log" id="ex-log" role="status" aria-live="polite"></p>
       </div>
-      <section class="agentbar" id="agents" aria-label="For AI agents">
+      <section class="agentbar" id="agents" aria-labelledby="agents-h">
+        <h2 class="label" id="agents-h">for AI agents</h2>
         <p class="who"><b>AI agent?</b> Your agent reads the same narratives. Run the same check before it places an order.</p>
         <span class="mcp big"><code>https://mcp.djzs.ai/mcp</code><button type="button" class="copy" data-copy="https://mcp.djzs.ai/mcp" aria-label="Copy the MCP server address">Copy</button></span>
         <p class="how">No MCP? One request, free, no wallet: <code>POST https://mcp.djzs.ai/try/verdict</code></p>
+        <p class="how">Need proof the agent checked before it traded? The paid check writes a receipt on Base that names the paying wallet. 2.00 USDC over x402.</p>
         <p class="docsline"><a href="/docs/agents/mcp">Connect over MCP &rarr;</a><a href="/docs/agents/free-check">Free check by POST &rarr;</a><a href="/llms.txt">llms.txt</a><a href="https://mcp.djzs.ai/openapi.json">OpenAPI</a><a href="/builders">For treasuries</a></p>
       </section>
     </div>
@@ -319,7 +357,7 @@
           </div>
         </div>
       </div>
-      <p class="rline">Want proof you checked first? A public receipt is 2.00 USDC. <a href="/docs/concepts/receipts">How it works &rarr;</a> &middot; Why the answer can be trusted: <a href="/docs/measured">what has and has not been measured</a>.</p>
+      <p class="rline">On record: a receipt writes the check to Base with its date, for 2.00 USDC, so anyone can see it came before the outcome. <a href="/docs/concepts/receipts">How it works &rarr;</a> &middot; Why the answer can be trusted: <a href="/docs/measured">what has and has not been measured</a>.</p>
     </section>
 
   </main>
@@ -332,17 +370,19 @@
 </div>
 
 <!-- Three sample theses on real markets. Each `body` is the answer the live free check gave for that exact `thesis` on the
-     `checked` day, recorded unchanged after two runs agreed. djzs-trust-mcp/test/site-examples.test.mjs recomputes both
-     hashes from the text. To swap one: write the text, POST it to /try/verdict twice, paste the answer, move `closes`.
-     After `closes` (a UTC day) the page stops offering them. -->
+     `checked` day, recorded unchanged after two runs agreed. Each `after` is the same sample rewritten to fix what the
+     check flagged, recorded the same way on its own `checked` day: whatever the check answered, PASS or not.
+     djzs-trust-mcp/test/site-examples.test.mjs recomputes both hashes from the text, for `after` too. To swap one: write
+     the text, POST it to /try/verdict twice, paste the answer, move `closes`. After `closes` (a UTC day) the page stops
+     offering them. -->
 <script type="application/json" id="examples-data">
 {
   "checked": "2026-11-21",
   "closes": "2026-12-19",
   "examples": [
-    {"id": "dip", "kind": "perp", "where": "Hyperliquid BTC perp", "story": "Bitcoin fell from $81,000 to $55,700 in a month. The Fear and Greed Index is at 12. The story: buy the dip before the bounce.", "thesis": "Hyperliquid, BTC perp. Buying the dip, long 5x with $2,000 around $60,400. It fell from $81,000 to $55,700 in a month and the Fear and Greed Index is at 12. I do not want to miss the bounce back to $70,000.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["oracle_source", "confidence"], "verdict_hash": "0xd890f5a662f8f8218f97da26abe6e2645659ee59b0efc4de69848d3220fadb24", "intent_sha256": "0x72b3bf7a4c5ed10159e47e6c8dbb943e7c60ca1949b1f3ddbe5f904b52d7e78a", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}},
-    {"id": "headline", "kind": "pm", "where": "Kalshi KXNVDACEO-29JAN-JENS", "story": "On Nov 20 Trump said he would love to see Jensen Huang given a second chance. The story: he is coming back to Nvidia.", "url": "https://kalshi.com/markets/kxnvdaceo/next-nvidia-ceo/kxnvdaceo-29jan", "rule": "Kalshi's rule for this market: YES only if he is named CEO before Jan 1, 2029. Interim or acting appointments do not count.", "thesis": "Kalshi, Who will be the next CEO of NVIDIA? Buying YES on Jensen Huang at 11 cents. On Nov 20 Trump said he would love to see Jensen given a second chance. He is too important to keep out. He will be back at Nvidia in some role, adviser or chairman, within months. Easy money at 11 cents.", "body": {"kind": "pm", "verdict": "FAIL", "risk_score": 85, "flags": ["DJZS-M02", "DJZS-M01", "DJZS-M03"], "flags_detail": [{"code": "DJZS-M02", "name": "FALSIFICATION_ABSENT", "severity": "CRITICAL"}, {"code": "DJZS-M01", "name": "NARRATIVE_RESOLUTION_GAP", "severity": "CRITICAL"}, {"code": "DJZS-M03", "name": "PROBABILITY_UNSOURCED", "severity": "HIGH"}], "unknown_fields": [], "verdict_hash": "0x931bf2ef819ae44e841c8ea5ee52a02a089505b2890b49afb5afedc9f68780d6", "intent_sha256": "0xa01820afb25b7ec696724fe9c0993c5d99010394715633ec7fd80cffca38a548", "intent_hash": null, "ruleset": "DJZS-PM-v1.0"}},
-    {"id": "bubble", "kind": "perp", "where": "QQQ, the fund that tracks the Nasdaq 100", "story": "QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. The story: the AI bubble is bursting.", "thesis": "Short QQQ near $608, 2x on margin, $5,000. The AI bubble is bursting. QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. This goes a lot lower. No stop, and nothing changes my mind on this one.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:take_profit", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["take_profit", "oracle_source", "confidence"], "verdict_hash": "0x7f2af25c50e1225b95982b912b05db22f492dd89a4585115edf8445ba94e9542", "intent_sha256": "0x1562e93f9b5fdc8a9a8a2cc92b82cc89601f88e0469151f933f109ca5908f540", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}}
+    {"id": "dip", "kind": "perp", "where": "Hyperliquid BTC perp", "story": "Bitcoin fell from $81,000 to $55,700 in a month. The Fear and Greed Index is at 12. The story: buy the dip before the bounce.", "thesis": "Hyperliquid, BTC perp. Buying the dip, long 5x with $2,000 around $60,400. It fell from $81,000 to $55,700 in a month and the Fear and Greed Index is at 12. I do not want to miss the bounce back to $70,000.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["oracle_source", "confidence"], "verdict_hash": "0xd890f5a662f8f8218f97da26abe6e2645659ee59b0efc4de69848d3220fadb24", "intent_sha256": "0x72b3bf7a4c5ed10159e47e6c8dbb943e7c60ca1949b1f3ddbe5f904b52d7e78a", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}, "after": {"checked": "2026-11-25", "thesis": "Hyperliquid, BTC perp. Buying the dip, long 5x with $2,000 around $60,400. It fell from $81,000 to $55,700 in a month and the Fear and Greed Index is at 12. I do not want to miss the bounce back to $70,000. Stop at $57,400, and $2,000 is the most I put in. Priced on Hyperliquid's mark price. Confidence: low, it is a bounce trade.", "body": {"kind": "perp", "verdict": "PASS", "risk_score": 0, "flags": [], "flags_detail": [], "unknown_fields": [], "verdict_hash": "0xbf34cdf397e99774df8219ce0f7ce021f4519c044dbe79765012160afa1f0246", "intent_sha256": "0xdf259606092f2a84b81a0c9c0f7c23c9f06e8c2dd638230b5987241d650d81c2", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}}},
+    {"id": "headline", "kind": "pm", "where": "Kalshi KXNVDACEO-29JAN-JENS", "story": "On Nov 20 Trump said he would love to see Jensen Huang given a second chance. The story: he is coming back to Nvidia.", "url": "https://kalshi.com/markets/kxnvdaceo/next-nvidia-ceo/kxnvdaceo-29jan", "rule": "Kalshi's rule for this market: YES only if he is named CEO before Jan 1, 2029. Interim or acting appointments do not count.", "thesis": "Kalshi, Who will be the next CEO of NVIDIA? Buying YES on Jensen Huang at 11 cents. On Nov 20 Trump said he would love to see Jensen given a second chance. He is too important to keep out. He will be back at Nvidia in some role, adviser or chairman, within months. Easy money at 11 cents.", "body": {"kind": "pm", "verdict": "FAIL", "risk_score": 85, "flags": ["DJZS-M02", "DJZS-M01", "DJZS-M03"], "flags_detail": [{"code": "DJZS-M02", "name": "FALSIFICATION_ABSENT", "severity": "CRITICAL"}, {"code": "DJZS-M01", "name": "NARRATIVE_RESOLUTION_GAP", "severity": "CRITICAL"}, {"code": "DJZS-M03", "name": "PROBABILITY_UNSOURCED", "severity": "HIGH"}], "unknown_fields": [], "verdict_hash": "0x931bf2ef819ae44e841c8ea5ee52a02a089505b2890b49afb5afedc9f68780d6", "intent_sha256": "0xa01820afb25b7ec696724fe9c0993c5d99010394715633ec7fd80cffca38a548", "intent_hash": null, "ruleset": "DJZS-PM-v1.0"}, "after": {"checked": "2026-11-25", "thesis": "Kalshi, Who will be the next CEO of NVIDIA? Buying YES on Jensen Huang at 11 cents. The market pays only if he is named CEO before Jan 1, 2029; interim or acting appointments do not count, so a return as adviser or chairman pays nothing. On Nov 20 Trump said he would love to see Jensen given a second chance. I put the chance at 11%, which is Kalshi's own price on Nov 21. I am wrong if Nvidia names anyone else permanent CEO before Jan 1, 2029.", "body": {"kind": "pm", "verdict": "FAIL", "risk_score": 25, "flags": ["DJZS-M03"], "flags_detail": [{"code": "DJZS-M03", "name": "PROBABILITY_UNSOURCED", "severity": "HIGH"}], "unknown_fields": [], "verdict_hash": "0x5dae0398bb43a972f3d29c03ed8848b09db63871e99b45d6dfcd5095813b1c93", "intent_sha256": "0x7ea905750792759ab50f6ffb4b636966ef1746b484a44d9faa1f188cbf31fcac", "intent_hash": null, "ruleset": "DJZS-PM-v1.0"}}},
+    {"id": "bubble", "kind": "perp", "where": "QQQ, the fund that tracks the Nasdaq 100", "story": "QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. The story: the AI bubble is bursting.", "thesis": "Short QQQ near $608, 2x on margin, $5,000. The AI bubble is bursting. QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. This goes a lot lower. No stop, and nothing changes my mind on this one.", "body": {"kind": "perp", "verdict": "FAIL", "risk_score": 15, "flags": ["DJZS-X01", "unknown:take_profit", "unknown:oracle_source", "unknown:confidence"], "flags_detail": [{"code": "DJZS-X01", "name": "EXECUTION_UNBOUND", "severity": "CRITICAL"}], "unknown_fields": ["take_profit", "oracle_source", "confidence"], "verdict_hash": "0x7f2af25c50e1225b95982b912b05db22f492dd89a4585115edf8445ba94e9542", "intent_sha256": "0x1562e93f9b5fdc8a9a8a2cc92b82cc89601f88e0469151f933f109ca5908f540", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}, "after": {"checked": "2026-11-25", "thesis": "Short QQQ near $608, 2x on margin, $5,000. The AI bubble is bursting. QQQ closed at $608.45 on Nov 20, down 10.5% on the week, its worst week since March 2020. This goes a lot lower. Stop at $640: I am out if QQQ closes above it. Target $560. Priced on QQQ's Nasdaq quote. Confidence: moderate.", "body": {"kind": "perp", "verdict": "PASS", "risk_score": 0, "flags": [], "flags_detail": [], "unknown_fields": [], "verdict_hash": "0xbf34cdf397e99774df8219ce0f7ce021f4519c044dbe79765012160afa1f0246", "intent_sha256": "0x04df527723c18eb94fb5f552156b3bb5d6c39538030d0d12ed30d0c0b769b769", "intent_hash": null, "ruleset": "DJZS-LF-v1.2"}}}
   ]
 }
 </script>
@@ -362,9 +402,9 @@ let viemMod = null;
 async function viem(){ if (!viemMod) viemMod = await import(VIEM); return viemMod; }
 
 const $ = (id) => document.getElementById(id);
-const state = { provider: null, address: null, kind: "pm", last: null, out: false, bracketsFor: null, starter: null };
+const state = { provider: null, address: null, kind: "pm", last: null, out: false, bracketsFor: null, starter: null, pick: null };
 // Starters read from the worker: prediction markets and perps trading today. Empty until loadMarkets() answers.
-const live = { pm: [], perp: [], ready: false };
+const live = { pm: [], perp: [], ready: false, asOf: null };
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ── the browser's free-verdict id. Random, local, never tied to a wallet. Created on the first check, not on page load.
@@ -425,18 +465,44 @@ const RESET_LOCAL = (() => { try { const d = new Date(); d.setUTCHours(24, 0, 0,
 const RESETS = `resets 00:00 UTC${RESET_LOCAL ? ` (${RESET_LOCAL} your time)` : ""}`;
 // The box grows with the text, up to most of the screen, then scrolls. Empty, it returns to its starting size.
 function fitBox(){ const t = $("thesis"); t.style.height = "auto"; if (t.value) t.style.height = Math.min(Math.round(innerHeight * 0.7), t.scrollHeight + 2) + "px"; }
+// A [blank] is a bracketed hole a template left for the person. Same pattern the check has always refused to send unread.
+const BLANK = /\[[^\]\n]{1,80}\]/g;
+const blanks = (t) => [...String(t).matchAll(BLANK)].map((m) => ({ at: m.index, end: m.index + m[0].length, text: m[0] }));
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const FINE = !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches);
+// Select the next blank after `from` (or the previous one before it), wrapping. false when the text has none.
+function selectBlank(from, back){
+  const t = $("thesis"), list = blanks(t.value);
+  if (!list.length) return false;
+  const b = back ? ([...list].reverse().find((x) => x.end < from) ?? list[list.length - 1]) : (list.find((x) => x.at >= from) ?? list[0]);
+  t.focus({ preventScroll: true }); t.setSelectionRange(b.at, b.end);
+  return true;
+}
 function refresh(){
   fitBox();
-  const run = $("run");
+  const run = $("run"), text = $("thesis").value;
+  $("clear").hidden = text.length === 0;
+  run.classList.toggle("out", !!state.out);
   if (state.out) { run.disabled = true; run.textContent = "No free checks left today"; $("need").textContent = ""; return; }
-  run.textContent = !state.last ? "Check it" : (state.last.example && $("thesis").value.trim() === state.last.example.thesis) ? "Check it live" : "Check again";
+  if (state.busy) { run.disabled = true; run.textContent = "Checking…"; return; }
+  run.disabled = false;
+  const label = !state.last ? "Check it" : (state.last.example && text.trim() === state.last.example.thesis) ? "Check it live" : "Check again";
+  const left = blanks(text).length;
+  // The button stays live and counts down: pressed early, it shows what is missing instead of refusing.
+  run.textContent = left ? `${label} · ${plural(left, "blank", "blanks")} left` : label;
   const n = currentIntent().thesis.length;
-  run.disabled = n < 40;
-  $("need").textContent = n === 0 ? "" : n < 40 ? `${40 - n} more characters and it can be checked` : "";
+  $("need").textContent = n === 0 ? "" : left ? (FINE ? "Tab jumps to the next blank." : "") : n < 40 ? `${40 - n} more characters and it can be checked` : "";
 }
 $("thesis").addEventListener("input", refresh);
-$("thesis").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("run").disabled) { e.preventDefault(); $("run").click(); } });
-$("clear").addEventListener("click", () => { $("thesis").value = ""; state.starter = null; dropExample(); log("ex-log", ""); log("run-log", ""); refresh(); $("thesis").focus(); });
+$("thesis").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("run").disabled) { e.preventDefault(); $("run").click(); return; }
+  // Tab walks the blanks while there are any; with none left it moves focus on as usual.
+  if (e.key === "Tab" && !e.altKey && !e.ctrlKey && !e.metaKey && blanks($("thesis").value).length) {
+    const t = $("thesis");
+    if (selectBlank(e.shiftKey ? t.selectionStart : t.selectionEnd, e.shiftKey)) e.preventDefault();
+  }
+});
+$("clear").addEventListener("click", () => { $("thesis").value = ""; state.starter = null; hidePick(); dropExample(); log("ex-log", ""); log("run-log", ""); refresh(); $("thesis").focus(); });
 $("edit-link").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 const KIND = {
   pm: { needs: ["The market's own terms: the question, the date it settles, and the source that settles it.", "Your odds and where they come from: the number, a source someone else can check (a dataset, an official source or your own math), and the date you read it.", "What would prove you wrong: the specific event, before the market settles.", "Why the market is wrong. \u201CEveryone agrees\u201D is not a reason. This one is advice; it never changes the verdict."],
@@ -447,6 +513,7 @@ const KIND = {
 function setKind(k){
   // A starter the page put in the box belongs to the tab it was picked on. Changing tab removes it; typed text stays.
   if (state.kind !== k && state.starter && $("thesis").value.trim() === state.starter) { $("thesis").value = ""; state.starter = null; }
+  if (state.pick && state.pick.kind !== k) hidePick();
   state.kind = k;
   for (const id of ["pm", "perp"]) { const on = id === k; $("kind-" + id).classList.toggle("on", on); $("kind-" + id).setAttribute("aria-pressed", String(on)); }
   $("kind-hint").textContent = KIND[k].hint; $("thesis-label").textContent = KIND[k].label; $("thesis").placeholder = KIND[k].ph;
@@ -465,8 +532,13 @@ if (new URLSearchParams(location.search).get("kind") === "perp") setKind("perp")
 // text, recorded unchanged. Loading one calls nothing and uses no free check. Past `closes` none is offered.
 const EX = (() => { try { return JSON.parse($("examples-data").textContent); } catch { return null; } })();
 const exampleList = EX && Array.isArray(EX.examples) && new Date().toISOString().slice(0, 10) <= EX.closes ? EX.examples : [];
-const isExampleText = (t) => exampleList.some((e) => e.thesis === t);
+const isExampleText = (t) => exampleList.some((e) => e.thesis === t || (e.after && e.after.thesis === t));
 const exButtons = () => document.querySelectorAll("#ex-row button[data-ex]");
+// One sample as written ("before") or rewritten with the flags fixed ("after"): its own text, recorded answer and day.
+function variant(ex, side){
+  const after = side === "after" && ex.after ? ex.after : null;
+  return { ...ex, side: after ? "after" : "before", thesis: after ? after.thesis : ex.thesis, body: after ? after.body : ex.body, checked: after ? after.checked : EX.checked };
+}
 // Text the page itself put in the box (a sample, or a market starter left unedited) may be replaced. A person's own text never is.
 const replaceable = (t) => !t || isExampleText(t) || t === state.starter;
 function markExample(id){ if (!id) return; for (const b of exButtons()) { const on = b.dataset.ex === id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); } }
@@ -479,33 +551,53 @@ function initExamples(){
   }
   $("demo").hidden = shown === 0;
   $("starts").hidden = shown === 0;
-  for (const c of document.querySelectorAll("#starts [data-start]")) { const ex = exampleList.find((e) => e.id === c.dataset.start); c.hidden = !ex; if (ex) c.addEventListener("click", () => { showDemo(ex); loadExample(ex); }); }
+  for (const c of document.querySelectorAll("#starts [data-start]")) { const ex = exampleList.find((e) => e.id === c.dataset.start); c.hidden = !ex; if (ex) c.addEventListener("click", () => { showDemo(ex); loadExample(variant(ex, "before")); }); }
   if (shown) showDemo(exampleList.find((e) => e.id === "headline") ?? exampleList[0]);
 }
+// What the rewrite cleared and what it left, computed from the two recorded answers. Nothing here is written by a model.
+function movedLine(a, b){
+  const A = reasonKeys(a), B = reasonKeys(b);
+  const cleared = A.filter((k) => !B.includes(k)).map(reasonName), open = B.map(reasonName);
+  return `<p class="moved">Score <b>${esc(String(a.risk_score))} &rarr; ${esc(String(b.risk_score))}</b>.${cleared.length ? ` Cleared: ${esc(cleared.join(", "))}.` : ""}${open.length ? ` Still open: <b>${esc(open.join(", "))}</b>.` : ""}</p>`;
+}
 // The hero prints the chosen sample as a terminal would: its recorded answer, nothing added. Switching calls nothing.
-function showDemo(ex){
+function showDemo(ex, side){
   demoMode("samples");
-  const b = ex.body, st = b.verdict === "PASS" ? "pass" : b.verdict === "WAIT" ? "wait" : "fail";
+  const v = variant(ex, side), b = v.body, st = b.verdict === "PASS" ? "pass" : b.verdict === "WAIT" ? "wait" : "fail";
   const title = { pass: "Nothing failed", wait: "Not enough to judge", fail: "Do not place this" }[st];
   const flags = b.flags_detail.map((f) => `<li><span class="tok">${f.severity === "CRITICAL" || f.severity === "HIGH" ? "!!" : "!"}</span><span>${esc((FLAG[f.name] && FLAG[f.name].name) || plain(f.code, f.name))}</span></li>`).join("");
   const open = flags ? "" : b.unknown_fields.map((u) => `<li><span class="tok">?</span><span>${esc((UNSETTLED[u] && UNSETTLED[u].name) || u.replace(/_/g, " "))}</span></li>`).join("");
+  const clean = !flags && !open && st === "pass" ? `<li><span class="tok ok">OK</span><span>Every scored part is there</span></li>` : "";
+  const ba = ex.after ? `<div class="tabs ba" role="group" aria-label="The sample as written, then rewritten">${["before", "after"].map((k) => { const bb = k === "after" ? ex.after.body : ex.body; return `<button type="button" class="tab${v.side === k ? " on" : ""}" data-ba="${k}" data-v="${esc(bb.verdict)}" aria-pressed="${v.side === k}">${k === "after" ? "Rewritten" : "As written"}<b>${esc(bb.verdict)} ${esc(String(bb.risk_score))}</b></button>`; }).join("")}</div>` : "";
   $("demo").dataset.state = st;
-  $("demo-body").innerHTML = `${ex.story ? `<p class="k">the narrative</p><p class="story">${esc(ex.story)}</p>` : ""}<p class="k">a thesis on it, ${ex.kind === "pm" ? "prediction market" : "perp trade"}</p><p class="cmd"><q>${esc(ex.thesis)}</q></p><p class="k">the check</p><p class="v"><span class="stamp">${esc(b.verdict)}</span><span>${title}</span></p><ul>${flags || open}</ul>${ex.rule ? `<p class="rule">${esc(ex.rule)}</p>` : ""}<p class="foot"><button type="button" class="btn" id="demo-open">Edit this and check it yourself</button><span>A sample on a real market, checked ${esc(EX.checked)}.</span></p>`;
+  $("demo-body").innerHTML = `${ex.story ? `<p class="k">the narrative</p><p class="story">${esc(ex.story)}</p>` : ""}${ba}<p class="k">${v.side === "after" ? "the same thesis, rewritten to fix what was flagged" : `a thesis on it, ${ex.kind === "pm" ? "prediction market" : "perp trade"}`}</p><p class="cmd"><q>${esc(v.thesis)}</q></p><p class="k">the check</p><p class="v"><span class="stamp">${esc(b.verdict)}</span><span>${title}</span></p>${v.side === "after" ? movedLine(ex.body, ex.after.body) : ""}<ul>${flags || open || clean}</ul>${ex.rule ? `<p class="rule">${esc(ex.rule)}</p>` : ""}<p class="foot"><button type="button" class="btn" id="demo-open">Edit this and check it yourself</button><span>A sample on a real market, ${v.side === "after" ? "rewritten and checked" : "checked"} ${esc(v.checked)}.</span></p>`;
   markExample(ex.id);
-  $("demo-open").addEventListener("click", () => loadExample(ex));
+  $("demo-open").addEventListener("click", () => loadExample(v));
+  for (const t of $("demo-body").querySelectorAll("[data-ba]")) t.addEventListener("click", () => showDemo(ex, t.dataset.ba));
 }
-function loadExample(ex){
+function loadExample(v){
   const cur = $("thesis").value.trim();
   if (!replaceable(cur)) { const m = "Your own text is in the box. Press Clear first, then load an example."; log("ex-log", m); log("run-log", m); return; }
   log("ex-log", ""); log("run-log", "");
-  setKind(ex.kind);
-  $("thesis").value = ex.thesis;
+  setKind(v.kind); hidePick();
+  $("thesis").value = v.thesis;
   state.bracketsFor = null;
-  state.last = { kind: ex.kind, intent: { thesis: ex.thesis }, body: ex.body, example: ex };
-  markExample(ex.id);
-  renderVerdict(ex.body, null, ex);
+  state.last = { kind: v.kind, intent: { thesis: v.thesis }, body: v.body, example: v };
+  markExample(v.id);
+  renderVerdict(v.body, null, v);
   refresh();
 }
+// The three stamps in the hero open a sample that got that answer. Without a script they are plain links to the samples.
+for (const a of document.querySelectorAll(".trio a[data-show]")) a.addEventListener("click", (e) => {
+  if (!exampleList.length) return;
+  e.preventDefault();
+  const want = a.dataset.show;
+  const after = exampleList.find((x) => x.after && x.after.body.verdict === want);
+  const before = exampleList.find((x) => x.body.verdict === want);
+  if (after) showDemo(after, "after"); else if (before) showDemo(before, "before");
+  log("ex-log", after || before ? "" : want === "WAIT" ? "No sample reads WAIT today. WAIT means the check could not settle part of the thesis from the text, so it does not guess: treat it as a no, fix that part, and check again." : "");
+  scrollToEl($("demo"));
+});
 // The box no longer holds a loaded example: its recorded answer leaves the page with it.
 function dropExample(){
   if (!state.last || !state.last.example) return;
@@ -536,14 +628,23 @@ async function loadQuota(){
 // ── the verdict. No wallet, no signature: the browser id is the quota key.
 $("run").addEventListener("click", async () => {
   const intent = currentIntent();
-  if (!intentValid(intent)) return;
-  if (/\[[^\]\n]{1,80}\]/.test(intent.thesis) && state.bracketsFor !== intent.thesis) {
+  // Pressed early, the button shows what is missing. Nothing is sent and no free check is used.
+  if (!intent.thesis.length) {
+    const s = $("starts"); s.classList.remove("nudge"); void s.offsetWidth; if (!s.hidden) s.classList.add("nudge");
+    log("run-log", s.hidden ? "Write your thesis in the box, then check it." : "Write your thesis in the box, or start from a market above.");
+    $("thesis").focus(); return;
+  }
+  if (!intentValid(intent)) { log("run-log", `${plural(40 - intent.thesis.length, "more character", "more characters")} and it can be checked. Nothing was used.`); $("thesis").focus(); return; }
+  const left = blanks(intent.thesis).length;
+  if (left && state.bracketsFor !== intent.thesis) {
     state.bracketsFor = intent.thesis;
-    log("run-log", "Your text still has [brackets] in it. Replace each one with your real value, then check. Nothing was used. Press again to check it as it is.", "xx");
+    const t = $("thesis");
+    selectBlank(t === document.activeElement ? t.selectionEnd : 0, false);
+    log("run-log", `${plural(left, "blank", "blanks")} left. Type over the highlighted one${FINE ? "; Tab jumps to the next" : ""}. Nothing was used. Press again to check it as it is.`, "xx");
     return;
   }
   const kind = state.kind;
-  const btn = $("run"); btn.disabled = true;
+  state.busy = true; refresh();
   try {
     log("run-log", "Reading the thesis, then scoring it…");
     const r = await fetch(`${WORKER}/try/verdict`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, intent, anon: anonId() }) });
@@ -562,7 +663,7 @@ $("run").addEventListener("click", async () => {
   } catch (e) {
     log("run-log", e instanceof TypeError ? "Could not reach the check. Try again in a moment." : walletErr(e), "xx");
   } finally {
-    refresh();
+    state.busy = false; refresh();
   }
 });
 
@@ -680,8 +781,9 @@ function renderExampleHead(ex){
   head.hidden = !ex; rec.hidden = !ex;
   if (!ex) { head.innerHTML = ""; rec.innerHTML = ""; return; }
   const where = ex.url ? `<a href="${esc(ex.url)}" target="_blank" rel="noopener">${esc(ex.where)}</a>` : esc(ex.where);
-  head.innerHTML = `<p class="label">sample thesis</p><q>${esc(ex.thesis)}</q>${ex.rule ? `<span class="src rule">${esc(ex.rule)}</span>` : ""}<span class="src">Real market: ${where}. Written ${esc(EX.checked)}. A sample, not a recommendation.</span>`;
-  rec.innerHTML = `Recorded ${esc(EX.checked)}: the answer the live check gave for this exact text. <a href="#thesis" id="ex-edit">Edit the thesis</a>, then check it yourself. That uses one free check.`;
+  const day = ex.checked ?? EX.checked, after = ex.side === "after";
+  head.innerHTML = `<p class="label">${after ? "sample thesis, rewritten to fix what was flagged" : "sample thesis"}</p><q>${esc(ex.thesis)}</q>${ex.rule ? `<span class="src rule">${esc(ex.rule)}</span>` : ""}<span class="src">Real market: ${where}. ${after ? "Rewritten" : "Written"} ${esc(day)}. A sample, not a recommendation.</span>`;
+  rec.innerHTML = `Recorded ${esc(day)}: the answer the live check gave for this exact text. <a href="#thesis" id="ex-edit">Edit the thesis</a>, then check it yourself. That uses one free check.`;
   $("ex-edit").addEventListener("click", (e) => { e.preventDefault(); scrollToEl($("idea")); $("thesis").focus({ preventScroll: true }); });
 }
 
@@ -713,11 +815,14 @@ function renderVerdict(b, prev, ex){
   $("ledger").innerHTML = rows || (st === "pass" ? `<div class="claim" data-r="pass"><span class="tok">OK</span><p class="claim-name">No defects<span class="chip">0 flags</span></p><p class="claim-body">Every scored part of the thesis was there and no failure pattern matched.</p></div>` : "");
   $("ledger").hidden = !rows && st !== "pass";
   $("again").hidden = !!ex || st === "pass" || st === "refused";
+  $("share").hidden = st === "refused";
+  if (st !== "refused") $("share-x").href = "https://x.com/intent/tweet?text=" + encodeURIComponent(shareText(b, ex ? ex.thesis : state.last && state.last.intent && state.last.intent.thesis, !!ex));
   $("keys").innerHTML = st === "refused" ? "" : `<span>codes</span><b>${esc((b.flags ?? []).join(", ") || "none")}</b><span>ruleset</span><b>${esc(b.ruleset ?? "")}</b><span>intent_sha256</span><b>${esc(b.intent_sha256 ?? "")}</b><span>intent_hash</span><b>${esc(b.intent_hash ?? "n/a (free-text intent)")}</b><span>verdict_hash</span><b>${esc(b.verdict_hash ?? "")}</b><span>attested</span><b>no. Free verdicts are not written anywhere.</b>`;
   // A sample thesis is not something to buy a receipt for. The offer comes back with the person's own check.
   $("offer").hidden = st === "refused" || !!ex;
   setReceiptFields(kind);
-  { const said = sideInThesis(kind, state.last && state.last.intent && state.last.intent.thesis); if (said) $("r-side").value = said; state.sideOk = null; state.marketOk = null; lookupMarketId(); }
+  { const thesis = state.last && state.last.intent && state.last.intent.thesis, said = sideInThesis(kind, thesis), pre = ex ? null : pickForReceipt(kind, thesis);
+    showPicked(pre); if (said) $("r-side").value = said; state.sideOk = null; state.marketOk = null; lookupMarketId(); }
   $("pay").disabled = false; log("pay-log", "");
   const ls = $("last-status");
   ls.innerHTML = ex ? `<span class="ok">EX</span><span class="v">Example loaded, with the answer the check gave it. Edit it and check it yourself, or press <b>Clear</b> and paste your own.</span>` : st === "refused" ? `<span class="dd">--</span><span class="v">Last check was skipped. Pick the right kind, or name the venue, then check again.</span>` : `<span class="dd">--</span><span class="v">Last check: <b>${esc(b.verdict)}</b>, score ${esc(String(b.risk_score))}. Edit the thesis, then check again.</span>`;
@@ -793,7 +898,10 @@ async function lookupMarketId(){
   const thesis = state.last && state.last.intent.thesis;
   const f = look ? marketFinding(look, thesis) : null;
   const rows = f && !f.block ? marketRows(look, thesis, $("r-side").value) : [];
-  state.market = { id, look, finding: f, rows };
+  // A pasted venue link becomes the venue's own id: a receipt records an id, never a URL.
+  let rid = id;
+  if (/^https?:\/\//i.test(id) && look && look.found && look.market && look.market.id) { rid = look.market.id; $("r-market").value = rid; }
+  state.market = { id: rid, look, finding: f, rows };
   if (f) { el.innerHTML = [f, ...rows].map((x) => `<span class="mline" data-r="${x.r}"><span class="t">${esc(x.tag)}</span> ${esc(x.text)}</span>`).join(""); el.hidden = false; } else el.hidden = true;
   return state.market;
 }
@@ -841,10 +949,40 @@ function factRows(r){
   }
   return rows.join("");
 }
+// ── share: the verdict as a post the person can edit before it goes anywhere. Plain names, no codes; the thesis quoted, clipped.
+function shareText(b, thesis, sample){
+  const flags = (Array.isArray(b.flags_detail) ? b.flags_detail : []).filter((f) => !(FLAG[f.name] && FLAG[f.name].advice)).map((f) => (FLAG[f.name] && FLAG[f.name].name) || plain(f.code, f.name));
+  const open = (Array.isArray(b.unknown_fields) ? b.unknown_fields : []).map((u) => (UNSETTLED[u] && UNSETTLED[u].name) || u.replace(/_/g, " "));
+  const said = b.verdict === "PASS" ? "PASS. Nothing failed." : b.verdict === "WAIT" ? `WAIT. Not settled: ${open.slice(0, 3).join(", ") || "part of it"}.` : `FAIL. ${flags.slice(0, 3).join(". ") || "It reached the failing line"}.`;
+  const tail = `DJZS check: ${said}`, end = "Check yours before you trade: https://djzs.ai";
+  const lead = sample ? "Sample thesis: \"" : "My thesis: \"";
+  // X counts a link as 23 characters and an ellipsis as 2. The whole post stays inside 280.
+  const room = 280 - lead.length - 3 - tail.length - 2 - (end.length - "https://djzs.ai".length + 23) - 2;
+  const t = String(thesis || "").replace(/\s+/g, " ").trim();
+  const q = room >= 40 && t ? clip(t, room) : "";
+  return `${q ? `${lead}${q}"\n\n` : ""}${tail}\n\n${end}`;
+}
+// ── a receipt for a thesis started from a market: the contract and side the person picked, shown as set, with a way to change them.
+function pickForReceipt(kind, thesis){
+  const p = state.pick, t = String(thesis || "");
+  if (!p || p.kind !== kind) return null;
+  const side = sideInThesis(kind, t) || p.side;
+  if (!side) return null;
+  if (kind === "pm") return p.outcome && t.includes(p.outcome.question) ? { market: p.outcome.id, side, say: `${VENUE[p.m.venue]} ${p.outcome.id} (${p.outcome.label}), ${side}` } : null;
+  return t.includes(`${p.x.id} perp`) ? { market: `${p.x.id}-PERP`, side, say: `${p.x.id}-PERP on Hyperliquid, ${side}` } : null;
+}
+function showPicked(pre){
+  $("r-pick").hidden = !pre; $("rfields").hidden = !!pre;
+  if (!pre) return;
+  $("r-market").value = pre.market; $("r-side").value = pre.side;
+  $("r-pick-say").textContent = pre.say;
+}
+$("r-pick-change").addEventListener("click", (e) => { e.preventDefault(); $("r-pick").hidden = true; $("rfields").hidden = false; $("r-market").focus(); });
 function setReceiptFields(kind){
   const perp = kind === "perp";
-  $("r-market-label").textContent = perp ? "Instrument" : "Market id on the venue";
-  $("r-market").placeholder = perp ? "type it, for example BTC-PERP" : "paste it from the venue";
+  $("r-market-label").textContent = perp ? "Instrument" : "Market link or id";
+  $("r-market").placeholder = perp ? "type it, for example BTC-PERP" : "paste the market's link from the venue";
+  $("offer-lead").textContent = perp ? "Put this trade on record before you place it." : "Lock this call on Base before it settles.";
   const want = perp ? ["LONG", "SHORT"] : ["YES", "NO"], sel = $("r-side");
   if ([...sel.options].map((o) => o.value).join() !== want.join()) { sel.innerHTML = want.map((v) => `<option value="${v}">${v}</option>`).join(""); $("r-market").value = ""; }
 }
@@ -876,18 +1014,21 @@ $("pay").addEventListener("click", async () => {
   const { kind } = state.last;
   // The paid route binds its record (intent_hash) to a market and a side, so a bare thesis cannot be attested:
   // it is refused before any money moves. The receipt therefore carries the market and side the person names here.
-  const market = $("r-market").value.trim();
-  if (market.length < 2) { log("pay-log", kind === "perp" ? "The instrument box above is empty. Type it, for example BTC-PERP." : "The market id box above is empty. Paste the id from the venue, for example KXFEDDECISION-26DEC-H0.", "xx"); $("r-market").focus(); return; }
+  let market = $("r-market").value.trim();
+  if (market.length < 2) { log("pay-log", kind === "perp" ? "The instrument box above is empty. Type it, for example BTC-PERP." : "The market box above is empty. Paste the market's link or id from the venue, for example KXFEDDECISION-26DEC-H0.", "xx"); $("rfields").hidden = false; $("r-pick").hidden = true; $("r-market").focus(); return; }
   const side = $("r-side").value, thesis = state.last.intent.thesis;
   // The id is bound into the receipt too. Read the venue's record for it and stop once if it is unknown, shut, or about something else.
   if (kind === "pm") {
     const mk = await lookupMarketId();
+    market = $("r-market").value.trim();                  // a pasted link has become the venue's id
     if (mk && mk.finding && mk.finding.block && state.marketOk !== market) {
       state.marketOk = market;
       log("pay-log", `${mk.finding.text} A receipt cannot be changed after it is paid. Fix the id, or click again to pay with this one.`, "xx");
-      $("r-market").focus(); return;
+      $("rfields").hidden = false; $("r-pick").hidden = true; $("r-market").focus(); return;
     }
   }
+  // A link the venue did not answer for stays a link. A receipt never records one.
+  if (/^https?:\/\//i.test(market)) { log("pay-log", kind === "perp" ? "Type the instrument, not a link. For example BTC-PERP." : "Could not read a market id from that link. Paste the id from the venue's page, for example KXFEDDECISION-26DEC-H0.", "xx"); $("rfields").hidden = false; $("r-pick").hidden = true; $("r-market").focus(); return; }
   // The receipt is permanent and carries this side. If the thesis plainly says the other one, stop once before any money moves.
   const said = sideInThesis(kind, thesis);
   if (said && said !== side && state.sideOk !== side) {
@@ -956,6 +1097,7 @@ $("pay").addEventListener("click", async () => {
 function renderReceipt(r){
   const el = $("receipt"); el.hidden = false;
   const st = r.verdict === "PASS" ? "pass" : r.verdict === "WAIT" ? "wait" : "fail";
+  el.dataset.state = st;
   $("rstamp").textContent = r.verdict; $("rstamp").style.color = `var(--${st})`;
   $("rmeta").textContent = `score ${r.risk_score} · charged ${r.charged ? "2.00 USDC" : "no"}`;
   const easLink = r.eas_uid ? `<a href="${EAS_VIEW}${esc(r.eas_uid)}" target="_blank" rel="noopener">${esc(short(r.eas_uid))}</a>` : `<span>${esc(r.eas_error ? "not attested: " + r.eas_error : "pending")}</span>`;
@@ -977,46 +1119,115 @@ function demoMode(mode){
 const clip = (t, n) => (t.length <= n ? t : t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…");
 const VENUE = { kalshi: "Kalshi", polymarket: "Polymarket" };
 
-// Starters: prediction markets open today (worker /try/markets). The button names the market; the person writes
-// the thesis. No outcome, side or price is filled in.
-function marketThesis(m){
-  const title = /[.?!]$/.test(m.title) ? m.title : m.title + ".";
+// Starters: prediction markets open today (worker /try/markets). The button names the market. The person picks the
+// outcome and the side; the page then fills in what the market itself answers: that contract's own question and what
+// it costs now. The odds, their source and what would prove the person wrong stay theirs to write. DJZS picks no side.
+const okCents = (v) => typeof v === "number" && v > 0 && v < 100;
+// What one side of a YES/NO contract costs now, in cents: YES at the ask, NO at 100 minus the YES bid. The last trade when
+// the book is empty on that side. null when the venue gives neither.
+function priceFor(o, side){
+  if (!o) return null;
+  if (side === "YES") return okCents(o.yes_ask) ? o.yes_ask : okCents(o.last) ? o.last : null;
+  return okCents(o.yes_bid) ? Math.round((100 - o.yes_bid) * 10) / 10 : okCents(o.last) ? Math.round((100 - o.last) * 10) / 10 : null;
+}
+function fmtUsd(n){ return !(n > 0) ? "" : n >= 1000 ? "$" + Math.round(n).toLocaleString("en-US") : n >= 1 ? "$" + n.toFixed(2) : "$" + Number(n.toPrecision(4)); }
+const readAt = (iso) => { try { return iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""; } catch { return ""; } };
+function marketThesis(m, pick){
+  const o = pick && pick.outcome, side = pick && pick.side;
+  const q = o ? o.question : m.title;
+  const title = /[.?!]$/.test(q) ? q : q + ".";
   const rule = m.rule && m.rule.replace(/[.?!]$/, "") !== m.title.replace(/[.?!]$/, "") ? " " + m.rule : "";
-  return `${VENUE[m.venue]}, ${title} It closes on ${m.closes}.${rule} I am buying [YES or NO] on [which outcome] at [price]. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles.`;
+  const px = o && side ? priceFor(o, side) : null;
+  return `${VENUE[m.venue]}, ${title} It closes on ${m.closes}.${rule} I am buying ${side || "[YES or NO]"}${o ? "" : " on [which outcome]"} at ${px !== null ? c1(px) + " cents" : "[price]"}. [Your source] puts it at [number] as of [date]. I am wrong if [specific event] happens before it settles.`;
+}
+// Perps trading today on Hyperliquid (same worker answer). The button names the perp and its move over the last day, which
+// is a fact. The entry is filled with the mark price when the list was read; long or short, stop, size and reason are the person's.
+function perpThesis(x, pick){
+  const side = pick && pick.side, entry = x.mark > 0 ? `about ${fmtUsd(x.mark)}` : "[entry]";
+  return `Hyperliquid, ${x.id} perp, ${side ? side.toLowerCase() : "[long or short]"} at ${entry}. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event].`;
+}
+// Write the pick into the box. Untouched starter text is rewritten whole; text the person has edited only has the blanks a
+// pick answers filled, where they are still blank.
+function writeStarter(){
+  const p = state.pick; if (!p) return;
+  const text = p.kind === "pm" ? marketThesis(p.m, p) : perpThesis(p.x, p);
+  const cur = $("thesis").value.trim();
+  if (!cur || cur === state.starter) { $("thesis").value = text; state.starter = text; }
+  else {
+    let t = $("thesis").value;
+    if (p.side) t = t.replace("[YES or NO]", p.side).replace("[long or short]", p.side.toLowerCase());
+    if (p.kind === "pm" && p.outcome) { t = t.replace("[which outcome]", p.outcome.label); const px = p.side ? priceFor(p.outcome, p.side) : null; if (px !== null) t = t.replace("[price]", c1(px) + " cents"); }
+    $("thesis").value = t;
+  }
+  state.bracketsFor = null;
+  refresh();
+}
+// A fresher price for the one contract picked: the worker's /try/market quote (kept one minute), not the list's.
+async function freshen(o){
+  const look = await readMarket(o.id);
+  const q = look && look.found && look.market && look.market.quote;
+  if (!q || look.market.state !== "open") return false;
+  o.yes_bid = q.yes_bid; o.yes_ask = q.yes_ask; o.last = q.last; o.read_at = q.read_at || new Date().toISOString();
+  return true;
+}
+function hidePick(){ state.pick = null; $("pick").hidden = true; }
+function renderPick(){
+  const p = state.pick, box = $("pick");
+  if (!p) { box.hidden = true; return; }
+  box.hidden = false;
+  const outs = p.kind === "pm" && Array.isArray(p.m.outcomes) ? p.m.outcomes : [];
+  const many = outs.length > 1;
+  $("pick-q").innerHTML = p.kind === "pm"
+    ? `<b>${esc(p.m.title)}</b> &middot; ${esc(VENUE[p.m.venue])} &middot; closes ${esc(p.m.closes)}`
+    : `<b>${esc(p.x.id)} perp</b> &middot; Hyperliquid${p.x.mark > 0 ? ` &middot; mark ${esc(fmtUsd(p.x.mark))}` : ""}`;
+  $("pick-out-k").hidden = !many; $("pick-outcomes").hidden = !many;
+  $("pick-outcomes").innerHTML = many ? outs.map((o, i) => { const px = priceFor(o, "YES"); return `<button type="button" class="opt" data-i="${i}" aria-pressed="${p.outcome === o}" title="${esc(o.question)}">${esc(clip(o.label, 34))}${px !== null ? `<span class="px">YES ${esc(c1(px))}&cent;</span>` : ""}</button>`; }).join("") : "";
+  const sides = p.kind === "pm" ? ["YES", "NO"] : ["LONG", "SHORT"];
+  $("pick-sides").innerHTML = sides.map((sd) => { const px = p.kind === "pm" && p.outcome ? priceFor(p.outcome, sd) : null; return `<button type="button" class="opt" data-side="${sd}" aria-pressed="${p.side === sd}">${sd}${px !== null ? `<span class="px">${esc(c1(px))}&cent;</span>` : ""}</button>`; }).join("");
+  const at = readAt((p.outcome && p.outcome.read_at) || live.asOf);
+  $("pick-note").textContent = p.kind === "pm"
+    ? `${outs.length ? `Prices are ${VENUE[p.m.venue]}'s, in cents${at ? `, read ${at}` : ""}. ` : ""}Picking fills in the contract and what it costs. The side is yours, and so are your odds and what would prove you wrong.`
+    : `${p.x.mark > 0 ? `The entry is Hyperliquid's mark price${at ? ` at ${at}` : ""}; change it if you will enter elsewhere. ` : ""}The side is yours, and so are the stop, the size and the reason.`;
+  for (const b of $("pick-outcomes").querySelectorAll("[data-i]")) b.addEventListener("click", () => {
+    p.outcome = outs[Number(b.dataset.i)]; writeStarter(); renderPick();
+    freshen(p.outcome).then((ok) => { if (ok && state.pick === p) { writeStarter(); renderPick(); } });
+  });
+  for (const b of $("pick-sides").querySelectorAll("[data-side]")) b.addEventListener("click", () => {
+    p.side = b.dataset.side; writeStarter(); renderPick();
+    // Both picked: the next thing to write is the person's own, so the box takes the first blank.
+    if (p.kind === "perp" || p.outcome) selectBlank(0, false);
+  });
 }
 function startFromMarket(m){
   const cur = $("thesis").value.trim();
   if (!replaceable(cur)) { log("run-log", "Your own text is in the box. Press Clear first, then pick a market."); return; }
   log("run-log", ""); dropExample(); setKind("pm");
-  const text = marketThesis(m);
-  $("thesis").value = text; state.starter = text; state.bracketsFor = null;
-  refresh();
-  const i = text.indexOf("["); $("thesis").focus(); if (i >= 0) $("thesis").setSelectionRange(i, text.indexOf("]", i) + 1);
+  const outs = Array.isArray(m.outcomes) ? m.outcomes : [];
+  state.pick = { kind: "pm", m, outcome: outs.length === 1 ? outs[0] : null, side: null };
+  $("thesis").value = ""; state.starter = null;
+  writeStarter(); renderPick();
 }
-// Perps trading today on Hyperliquid (same worker answer). The button names the perp and its move over the last day,
-// which is a fact. Long or short, entry, stop and exit are left for the person.
-function perpThesis(x){ return `Hyperliquid, ${x.id} perp, [long or short] at [entry]. Stop at [price], target [price], size [amount], [n]x. The price should move because [reason], per [source] as of [date]. I am out if [event].`; }
 function startFromPerp(x){
   const cur = $("thesis").value.trim();
   if (!replaceable(cur)) { log("run-log", "Your own text is in the box. Press Clear first, then pick a perp."); return; }
   log("run-log", ""); dropExample(); setKind("perp");
-  const text = perpThesis(x);
-  $("thesis").value = text; state.starter = text; state.bracketsFor = null;
-  refresh();
-  const i = text.indexOf("["); $("thesis").focus(); if (i >= 0) $("thesis").setSelectionRange(i, text.indexOf("]", i) + 1);
+  state.pick = { kind: "perp", x, side: null };
+  $("thesis").value = ""; state.starter = null;
+  writeStarter(); renderPick();
 }
 // The starters follow the tab: prediction markets on one, perps on the other. With no live list for a tab, the
 // recorded samples of that kind are offered instead.
 function renderStarts(){
-  const box = $("starts"); if (!live.ready) return;
+  const box = $("starts"), row = $("chips"); if (!live.ready) return;
   for (const c of box.querySelectorAll(".chip.live")) c.remove();
   const list = live[state.kind]; let shown = 0;
   for (const c of box.querySelectorAll("[data-start]")) { const ex = exampleList.find((e) => e.id === c.dataset.start); c.hidden = list.length > 0 || !ex || ex.kind !== state.kind; if (!c.hidden) shown++; }
   for (const m of list) {
     const b = document.createElement("button"); b.type = "button"; b.className = "chip live";
     if (state.kind === "pm") { b.innerHTML = `${esc(clip(m.title, 34))}<span class="vn">${esc(VENUE[m.venue])}</span>`; b.title = m.title; b.addEventListener("click", () => startFromMarket(m)); }
-    else { const up = m.change_24h >= 0; b.innerHTML = `${esc(m.id)} <span class="${up ? "c-pass" : "c-fail"}">${up ? "+" : ""}${esc(m.change_24h.toFixed(1))}%</span><span class="vn">Hyperliquid</span>`; b.title = `${m.id} perp, ${up ? "up" : "down"} ${Math.abs(m.change_24h).toFixed(1)}% in the last day`; b.addEventListener("click", () => startFromPerp(m)); }
-    box.appendChild(b); shown++;
+    // The day's move is a fact about the market, shown without the verdict colors: green and red here would read as a call.
+    else { const up = m.change_24h >= 0; b.innerHTML = `${esc(m.id)}<span class="mv">${up ? "&#9650;" : "&#9660;"} ${esc(Math.abs(m.change_24h).toFixed(1))}%</span><span class="vn">Hyperliquid</span>`; b.title = `${m.id} perp, ${up ? "up" : "down"} ${Math.abs(m.change_24h).toFixed(1)}% in the last day`; b.addEventListener("click", () => startFromPerp(m)); }
+    row.appendChild(b); shown++;
   }
   $("starts-say").textContent = list.length ? (state.kind === "pm" ? "No thesis yet? Start from a market trading today:" : "No thesis yet? Start from a perp trading today:") : "No thesis yet? Start from a narrative in the news:";
   box.hidden = shown === 0;
@@ -1026,8 +1237,17 @@ async function loadMarkets(){
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
     const r = await fetch(`${WORKER}/try/markets`, { signal: ctl.signal }); clearTimeout(t);
     const j = await r.json();
-    if (r.ok && j.ok && Array.isArray(j.markets)) live.pm = j.markets.filter((m) => m && VENUE[m.venue] && typeof m.title === "string" && /^\d{4}-\d{2}-\d{2}$/.test(m.closes)).slice(0, 3);
-    if (r.ok && j.ok && Array.isArray(j.perps)) live.perp = j.perps.filter((x) => x && x.venue === "hyperliquid" && /^[A-Za-z0-9]{1,12}$/.test(x.id) && Number.isFinite(x.change_24h)).slice(0, 3);
+    if (r.ok && j.ok && typeof j.as_of === "string") live.asOf = j.as_of;
+    if (r.ok && j.ok && Array.isArray(j.markets)) {
+      // One button per event: the same question listed on both venues is offered once, the busier listing first.
+      const seen = new Set(), key = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const okOutcome = (o) => o && typeof o.id === "string" && /^[A-Za-z0-9._-]{2,160}$/.test(o.id) && typeof o.label === "string" && o.label && typeof o.question === "string" && o.question;
+      live.pm = j.markets.filter((m) => m && VENUE[m.venue] && typeof m.title === "string" && /^\d{4}-\d{2}-\d{2}$/.test(m.closes))
+        .filter((m) => { const k = key(m.title); if (seen.has(k)) return false; seen.add(k); return true; })
+        .slice(0, 3)
+        .map((m) => ({ ...m, outcomes: Array.isArray(m.outcomes) ? m.outcomes.filter(okOutcome).slice(0, 8).map((o) => ({ ...o })) : [] }));
+    }
+    if (r.ok && j.ok && Array.isArray(j.perps)) live.perp = j.perps.filter((x) => x && x.venue === "hyperliquid" && /^[A-Za-z0-9]{1,12}$/.test(x.id) && Number.isFinite(x.change_24h)).slice(0, 3).map((x) => ({ ...x, mark: Number.isFinite(x.mark) && x.mark > 0 ? x.mark : 0 }));
   } catch { /* the recorded starters stay */ }
   live.ready = true; renderStarts();
   $("starts").removeAttribute("data-pending");
@@ -1056,7 +1276,7 @@ async function loadScan(){
     // A sample the person already opened is not pulled out from under them.
     if (state.last && state.last.example) return;
     const row = $("scan-row"); row.innerHTML = "";
-    for (const n of list) { const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.dataset.n = n.id; b.textContent = clip(n.title, 44); b.title = n.title; b.setAttribute("aria-pressed", "false"); b.addEventListener("click", () => showScan(n, list)); row.appendChild(b); }
+    for (const n of list) { const b = document.createElement("button"); b.type = "button"; b.className = "tab"; b.dataset.n = n.id; b.textContent = clip(n.title, 44); b.title = n.title; b.setAttribute("aria-pressed", "false"); b.addEventListener("click", () => showScan(n, list)); row.appendChild(b); }
     $("demo").hidden = false;
     showScan(list[0], list);
   } catch { /* the recorded samples stay */ }

@@ -12,7 +12,15 @@ COLOR — semantic only; nothing decorative gets color
 - PASS green #3DFF88 · WAIT amber #FFB000 · FAIL red #FF4D4D — verdict states (phosphor trio, brand patch 2026-07-17)
   are the ONLY saturated colors in any composition.
 - Chain accent: Base blue #0052FF, LOGOMARK-ONLY (brand patch 2026-07-17; supersedes the
-  earlier links ruling). Links are phosphor green (--link #3DFF88, ~13:1 AAA on canvas).
+  earlier links ruling).
+- Color rule (2026-11-24; supersedes "links are phosphor green"): saturated color marks a verdict
+  (PASS/WAIT/FAIL, an OK/XX status row) or the ONE thing to press on a screen (solid PASS-green
+  button). Everything else is neutral: links off-white #E6E6E6 underlined in #4a4a4a; chips and
+  pickers neutral until selected (selected = inverse, off-white fill); tabs underline the open
+  one, no fill; prices, bullets, card headings and section numbers in text or muted. When
+  everything is green, PASS stops meaning anything.
+- Borders mean something: inputs, buttons and verdict frames carry them. Other groups are
+  separated by space and one thin rule, not nested boxes.
 - Brand layer: static scanline overlay, canonical 3.5% green at 4px pitch, non-interactive;
   footer transmission row ("END_TRANSMISSION. // djzs.ai" — product surfaces carry djzs.ai,
   not ENS, per the opsec convention).
@@ -26,7 +34,7 @@ COLOR — semantic only; nothing decorative gets color
   ?v= on the icon <link> tags (404, guide, index, legal): browsers hold icons for days.
 - Brutalism layer (2026-07-17): prompt-path row on every page (~/djzs/<page> $ + cursor);
   per-page boot-status boards (guide MODE/PRICE, legal DISCLOSURE/SCOPE, 404 red ERR row);
-  phosphor ::selection and scrollbars; link hover flips green-on-black (no underlines);
+  phosphor ::selection and scrollbars; links underlined, hover brightens the underline (2026-11-24);
   guide steps numbered (// step 01..03), legal sections numbered (// 01..06); em-scaled
   blinking cursor honoring prefers-reduced-motion; thead blocks on panel.
 TYPE
