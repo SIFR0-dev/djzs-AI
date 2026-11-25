@@ -6,7 +6,8 @@
  *   - only open events in the listed categories are served; sports, settled and past-close events are not;
  *   - a title that turns on a death or on violence is never served;
  *   - venue text is capped and stripped of control characters, and ids and slugs that are not plain are refused;
- *   - no price, outcome or side is in the answer: the route names markets, it does not pick one;
+ *   - no side is in the answer: the route names markets and lists every open outcome with the venue's own
+ *     figures, in the venue's order (busiest first on Polymarket), none marked; it does not pick one;
  *   - a venue that cannot be read is left out, both unreadable is an empty list (200), never an error;
  *   - an answer that reached a venue is kept for TRY_MARKETS_TTL_SECONDS; one that reached none is not kept.
  *
@@ -14,7 +15,7 @@
  */
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
-import { pickHyperliquid, TRY_PERPS_MAX, pickKalshi, pickPolymarket, arrange, cleanText, firstSentences, blockedTitle, handleTryMarkets, KALSHI_CATEGORIES, TRY_MARKETS_MAX, TRY_MARKETS_TTL_SECONDS } from "../src/try-markets.ts"
+import { pickHyperliquid, TRY_PERPS_MAX, pickKalshi, pickPolymarket, arrange, cleanText, firstSentences, blockedTitle, handleTryMarkets, KALSHI_CATEGORIES, TRY_MARKETS_MAX, TRY_MARKETS_TTL_SECONDS, kalshiOutcomes, polymarketOutcomes, centsOf, TRY_OUTCOMES_MAX } from "../src/try-markets.ts"
 
 let pass = 0
 const failures = []
@@ -63,8 +64,36 @@ check(31, `never more than ${TRY_MARKETS_MAX}`, arrange(Array.from({ length: 9 }
 const hl = pickHyperliquid(fx.hyperliquid)
 check(32, `Hyperliquid: ${TRY_PERPS_MAX} perps, the most traded first, each with a plain name, its move over the day and a link`, hl.length === TRY_PERPS_MAX && hl[0].id === "BTC" && new Set(hl.map((p) => p.id)).size === hl.length && hl.every((p) => p.venue === "hyperliquid" && /^[A-Za-z0-9]{1,12}$/.test(p.id) && p.title === `${p.id} perp` && Number.isFinite(p.change_24h) && p.volume_24h > 0 && p.url === `https://app.hyperliquid.xyz/trade/${p.id}`))
 check(33, "Hyperliquid: the second is the day's biggest riser and the third its biggest faller among the twelve most traded", hl[1].change_24h >= hl[0].change_24h && hl[2].change_24h <= hl[0].change_24h && hl[1].change_24h > hl[2].change_24h)
-check(34, "Hyperliquid: a perp is named with a fact, never a direction", hl.every((p) => Object.keys(p).sort().join() === "change_24h,id,title,url,venue,volume_24h"))
+check(34, "Hyperliquid: a perp is named with facts (its move and its mark price), never a direction", hl.every((p) => Object.keys(p).sort().join() === "change_24h,id,mark,title,url,venue,volume_24h" && p.mark > 0))
 check(35, "Hyperliquid: delisted, zero-volume and oddly named assets are refused, and junk is an empty list", pickHyperliquid([{ universe: [{ name: "OLD", isDelisted: true }, { name: "ZERO" }, { name: "bad/../x" }, { name: "OK" }] }, [{ dayNtlVlm: "9", markPx: "1", prevDayPx: "1" }, { dayNtlVlm: "0", markPx: "1", prevDayPx: "1" }, { dayNtlVlm: "9", markPx: "1", prevDayPx: "1" }, { dayNtlVlm: "5", markPx: "11", prevDayPx: "10" }]]).map((p) => p.id + p.change_24h).join() === "OK10" && pickHyperliquid(null).length === 0 && pickHyperliquid([{}, 3]).length === 0)
+
+// ── outcomes (venue rows captured 2026-11-25: Kalshi's December Fed event, Polymarket's) ──
+const NOW_O = new Date("2026-11-25T03:00:00Z")
+const kFed = pickKalshi(fx.kalshi_outcomes_sample, NOW_O)
+const kOut = kFed[0]?.outcomes ?? []
+check(50, "Kalshi: an event carries its open outcomes in the venue's own order, each with its market ticker, label and question", kFed.length === 1 && kOut.length === fx.kalshi_outcomes_sample[0].markets.length && kOut.map((o) => o.id).join() === fx.kalshi_outcomes_sample[0].markets.map((m) => m.ticker).join() && kOut.every((o) => o.id.startsWith(kFed[0].id + "-") && o.label && o.question))
+check(51, "Kalshi: prices are the venue's dollars as cents, one decimal", kOut[0].yes_bid === 92 && kOut[0].yes_ask === 93 && kOut[0].last === 93 && kOut.every((o) => [o.yes_bid, o.yes_ask, o.last].every((c) => c === null || (c >= 0 && c <= 100))))
+check(52, "Kalshi: a settled outcome, a past close, an odd ticker and a blocked label are left out", kalshiOutcomes([
+  { ticker: "KX-A", yes_subtitle: "A", title: "Will A?", close_ts: "2027-01-01T00:00:00Z", result: "yes" },
+  { ticker: "KX-B", yes_subtitle: "B", title: "Will B?", close_ts: "2026-11-01T00:00:00Z", result: "" },
+  { ticker: "KX/../C", yes_subtitle: "C", title: "Will C?", close_ts: "2027-01-01T00:00:00Z", result: "" },
+  { ticker: "KX-D", yes_subtitle: "Killed in office", title: "Will D?", close_ts: "2027-01-01T00:00:00Z", result: "" },
+  { ticker: "KX-E", yes_subtitle: "E", title: "Will E?", close_ts: "2027-01-01T00:00:00Z", result: "", yes_bid_dollars: "x", yes_ask_dollars: "1.5" },
+], NOW_O).map((o) => `${o.id}:${o.yes_bid}:${o.yes_ask}`).join() === "KX-E:null:null")
+const pFed = pickPolymarket(fx.polymarket_outcomes_sample, "economy", NOW_O)
+const pOut = pFed[0]?.outcomes ?? []
+const pVol = [...fx.polymarket_outcomes_sample[0].markets].sort((a, b) => b.volume24hr - a.volume24hr).map((m) => m.slug)
+check(53, "Polymarket: an event carries its open YES/NO outcomes, busiest in the last day first, each with its market slug", pFed.length === 1 && pOut.length === pVol.length && pOut.map((o) => o.id).join() === pVol.join() && pOut.every((o) => o.label && o.question))
+check(54, "Polymarket: bid, ask and last are the venue's, as cents", pOut.every((o) => { const m = fx.polymarket_outcomes_sample[0].markets.find((x) => x.slug === o.id); return o.yes_bid === centsOf(m.bestBid) && o.yes_ask === centsOf(m.bestAsk) && o.last === centsOf(m.lastTradePrice) }))
+check(55, "Polymarket: closed, inactive and named-outcome (not YES/NO) markets are left out", polymarketOutcomes([
+  { slug: "a", question: "Will A?", groupItemTitle: "A", outcomes: "[\"Yes\", \"No\"]", closed: true },
+  { slug: "b", question: "Will B?", groupItemTitle: "B", outcomes: "[\"Yes\", \"No\"]", active: false },
+  { slug: "c", question: "Who wins C?", groupItemTitle: "C", outcomes: "[\"Team 1\", \"Team 2\"]" },
+  { slug: "d", question: "Will D?", groupItemTitle: "", outcomes: "[\"Yes\", \"No\"]", bestBid: 0.4, bestAsk: 0.41, lastTradePrice: 0.405 },
+]).map((o) => `${o.id}:${o.label}:${o.yes_bid}:${o.yes_ask}:${o.last}`).join() === "d:Will D?:40:41:40.5")
+check(56, `never more than ${TRY_OUTCOMES_MAX} outcomes, and an event with none carries no outcomes key`, kalshiOutcomes(Array.from({ length: 20 }, (_, i) => ({ ticker: `KX-${i}`, yes_subtitle: `O${i}`, title: `Will ${i}?`, close_ts: "2027-01-01T00:00:00Z", result: "" })), NOW_O).length === TRY_OUTCOMES_MAX && kAll.every((m) => m.outcomes === undefined) && polymarketOutcomes(null).length === 0 && kalshiOutcomes("x", NOW_O).length === 0)
+check(57, "an outcome names a contract and the venue's figures, never a side or a pick", [...kOut, ...pOut].every((o) => !("side" in o) && !("pick" in o) && !("recommended" in o)))
+check(58, "centsOf reads dollars as cents and refuses anything that is not a price", centsOf("0.9300") === 93 && centsOf(0.045) === 4.5 && centsOf(1) === 100 && centsOf("1.01") === null && centsOf(-0.1) === null && centsOf("") === null && centsOf(null) === null)
 
 // ── the route ──
 const j = async (r) => ({ status: r.status, headers: r.headers, body: await r.json() })
@@ -75,7 +104,7 @@ const fakeCache = () => { const m = new Map(); return { m, async match(req) { co
   const read = async () => { reads++; return { markets: real, perps: hl, venues: { kalshi: true, polymarket: true, hyperliquid: true } } }
   const a = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read, cache, now: () => NOW }))
   check(40, "GET answers 200 with the markets and the time they were read", a.status === 200 && a.body.ok === true && a.body.as_of === NOW.toISOString() && a.body.markets.length === real.length && a.body.markets.length > 0 && a.body.perps.length === hl.length)
-  check(41, "the answer names markets and nothing else: no price, outcome or side", a.body.markets.every((m) => Object.keys(m).every((k) => ["venue", "id", "title", "category", "closes", "url", "volume_24h", "rule"].includes(k))))
+  check(41, "the answer names markets and their outcomes and nothing else: no side, no pick", a.body.markets.every((m) => Object.keys(m).every((k) => ["venue", "id", "title", "category", "closes", "url", "volume_24h", "rule", "outcomes"].includes(k)) && (m.outcomes ?? []).every((o) => Object.keys(o).sort().join() === "id,label,last,question,yes_ask,yes_bid")))
   check(42, "CORS is open and the answer may be kept for the TTL", a.headers.get("access-control-allow-origin") === "*" && a.headers.get("cache-control") === `public, max-age=${TRY_MARKETS_TTL_SECONDS}`)
   const b = await j(await handleTryMarkets(new Request("https://mcp.djzs.ai/try/markets"), { read, cache, now: () => new Date(NOW.getTime() + 60_000) }))
   check(43, "a second request is served from the cache: the venues are not read again", reads === 1 && b.body.as_of === NOW.toISOString())
