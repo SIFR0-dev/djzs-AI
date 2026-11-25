@@ -47,10 +47,13 @@ import { buildTrustWriter, describeWriterKey, checkWriterAuthorization, DJZS_TRU
 import { logFault, reasonCode, addressOnly, hash32Only, type Fault } from "./safe-error"
 import { withX402, normalizeNetwork } from "agents/x402"
 import { createFacilitatorConfig, createCdpAuthHeaders } from "@coinbase/x402"
-import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PERP_RESOURCE, USDC_BASE, EXPECTED_ATOMIC_AMOUNT, type X402Env } from "./http-x402-bazaar.v2"
+import { handleX402VerifyPmTrade, settlementUncertain, PAY_TO, PM_RESOURCE, PERP_RESOURCE, USDC_BASE, EXPECTED_ATOMIC_AMOUNT, type X402Env } from "./http-x402-bazaar.v2"
 import { createEngineAdapter } from "./engine-adapter"
 import { startSourceCheck, type SourcesBlock } from "./source-check"
-import { handleTryExample, handleTryQuota, handleTryVerdict } from "./try-route"
+import {
+  handleTryExample, handleTryQuota, handleTryVerdict,
+  TRY_ANON_DAILY_LIMIT, TRY_ANON_ID_RE, TRY_DAILY_LIMIT, TRY_GLOBAL_DAILY_LIMIT_DEFAULT, TRY_MAX_INTENT_BYTES, TRY_KINDS,
+} from "./try-route"
 import { handleTryMarkets } from "./try-markets"
 import { handleTryMarket } from "./try-market-lookup"
 import { runCheckThesis, CHECK_THESIS_DESCRIPTION, CHECK_THESIS_KINDS, CHECK_THESIS_MIN, CHECK_THESIS_MAX } from "./free-check-tool"
@@ -1490,17 +1493,17 @@ async function anchorAndScore(
 const OPENAPI_DOC = {
   "openapi": "3.1.0",
   "info": {
-    "title": "DJZS Protocol — verify_pm_trade · verify_perp_trade",
+    "title": "DJZS Protocol: verify_pm_trade · verify_perp_trade",
     "version": "1.0.0",
     "summary": "Deterministic pre-execution audit of a prediction-market or perpetual/spot trade thesis.",
-    "description": "DJZS audits the thesis, not the transaction. Wallet-layer tooling checks whether a transfer is safe; nothing checks whether the reasoning behind it holds. verify_pm_trade extracts the claims from a free-text trade thesis and scores them against a frozen taxonomy (narrative/resolution gap, falsification absent, probability unsourced, consensus-as-edge), returning a verdict, the codes that fired, a risk score, and a hash anyone can recompute from the submitted text. Out-of-scope requests are refused free: no payment settles.",
+    "description": "DJZS audits the thesis, not the transaction. Wallet-layer tooling checks whether a transfer is safe; nothing checks whether the reasoning behind it holds. verify_pm_trade and verify_perp_trade read the thesis behind a trade and score its claims against a frozen taxonomy (narrative/resolution gap, falsification absent, probability unsourced, consensus-as-edge), returning a verdict, the codes that fired, a risk score, and a hash anyone can recompute from the submitted text. Out-of-scope requests are refused free: no payment settles.",
     "contact": {
       "name": "DJZS AI, LLC",
       "email": "username@djzs.ai",
       "url": "https://djzs.ai"
     },
     "license": { "name": "MIT" },
-    "x-guidance": "Submit the reasoning behind a prospective prediction-market position as free text in the `intent` field. A well-formed thesis states the claim and its outcome, a SOURCED probability with a citation, the falsification condition, and the edge versus the market price. A consensus-only thesis with no source returns FAIL (DJZS-M03 PROBABILITY_UNSOURCED) and no order should be placed. Abstention is a first-class outcome. The audit reads reasoning only: it does not read markets, verify quoted prices, or check whether an instrument has already settled. Informational only, not financial advice — see https://djzs.ai/legal."
+    "x-guidance": "Submit the reasoning behind a prospective prediction-market position as free text in the `intent` field. A well-formed thesis states the claim and its outcome, a SOURCED probability with a citation, the falsification condition, and the edge versus the market price. A consensus-only thesis with no source returns FAIL (DJZS-M03 PROBABILITY_UNSOURCED) and no order should be placed. Abstention is a first-class outcome. The audit reads reasoning only: it does not read markets, verify quoted prices, or check whether an instrument has already settled. Informational only, not financial advice: see https://djzs.ai/legal."
   },
   "servers": [
     { "url": "https://mcp.djzs.ai", "description": "Production (Base mainnet)" }
@@ -1513,8 +1516,8 @@ const OPENAPI_DOC = {
         "description": "Returns PASS, WAIT, or FAIL with the DJZS-LF codes that fired and a reproducible verdict_hash. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused without charge. Paid: 2.00 USDC on Base over x402; refusals free.",
         "tags": ["audit"],
         "x-payment-info": { "price": { "mode": "fixed", "currency": "USD", "amount": "2.00" }, "protocols": [{ "x402": {} }] },
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["intent"], "properties": { "intent": { "type": "object", "required": ["instrument", "side", "thesis"], "properties": { "instrument": { "type": "string" }, "side": { "type": "string", "enum": ["LONG", "SHORT"] }, "thesis": { "type": "string" }, "leverage": { "type": "number" }, "entry": { "type": "number" }, "stop_loss": { "type": "number" }, "take_profit": { "type": "number" }, "invalidation": { "type": "string" }, "size_usd": { "type": "number" }, "venue": { "type": "string" } } } } } } } },
-        "responses": { "200": { "description": "Audit result: verdict, action, risk_score, flags, unknown_fields, verdict_hash, receipt" }, "402": { "description": "x402 payment challenge" } }
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["intent"], "properties": { "intent": { "type": "object", "required": ["instrument", "side", "thesis"], "properties": { "instrument": { "type": "string" }, "side": { "type": "string", "enum": ["LONG", "SHORT"] }, "thesis": { "type": "string" }, "leverage": { "type": "number" }, "entry": { "type": "number" }, "stop_loss": { "type": "number" }, "take_profit": { "type": "number" }, "invalidation": { "type": "string" }, "size_usd": { "type": "number" }, "venue": { "type": "string" }, "data_sources": { "type": "string", "description": "Where the inputs came from. Bound into intent_hash. Social or sentiment-only sourcing is flagged (DJZS-I01), not blocked." } } } } } } } },
+        "responses": { "402": { "description": "x402 payment challenge" } }
       }
     },
     "/x402/verify": {
@@ -1604,7 +1607,7 @@ const OPENAPI_DOC = {
                     "extraction_failsafe": { "type": "boolean" },
                     "halt_reason": { "type": "string", "description": "Optional. Emitted only when action is HALT: which fields were unresolvable from the intent, and what to clarify before re-auditing." },
                     "pol_certificate": {
-                      "description": "ProofOfLogic anchoring outcome. Fails open by design — an anchoring failure annotates the response and never blocks or mutates the verdict, so handle all three variants.",
+                      "description": "ProofOfLogic anchoring outcome. Fails open by design: an anchoring failure annotates the response and never blocks or mutates the verdict, so handle all three variants.",
                       "oneOf": [
                         {
                           "type": "object",
@@ -1635,7 +1638,7 @@ const OPENAPI_DOC = {
                       ]
                     },
                     "trust_score": {
-                      "description": "On-chain trust-record write outcome. Present only when agent_address was supplied. Fails open like pol_certificate — skipped is the common case, so handle all three variants.",
+                      "description": "On-chain trust-record write outcome. Present only when agent_address was supplied. Fails open like pol_certificate; skipped is the common case, so handle all three variants.",
                       "oneOf": [
                         {
                           "type": "object",
@@ -1702,17 +1705,159 @@ const OPENAPI_DOC = {
 
 // 2026-09-15: /x402/verify_pm_trade is the canonical PM path named by x402.json, llms.txt, and the agent card;
 // /x402/verify is the legacy alias. Document both so no discovery surface names a door the others do not.
+//
+// 2026-11-23: the canonical path no longer inherits the alias's BODY or RESPONSES. The two doors take different
+// requests: /x402/verify reads `intent` as free text (app.post("/x402/verify") above, string >= 10 chars), while
+// /x402/verify_pm_trade reads `intent` as an OBJECT and refuses a string with 400 missing_intent, and an object
+// without market/side/thesis with 400 intent_unbindable (handleX402VerifyPmTrade, steps 2a and 3a). Spreading the
+// legacy operation copied the string schema onto the canonical door, so every client that built its request from
+// this document built one the route refuses. Only description, tags and x-payment-info are still shared.
+//
+// The object schema below mirrors PmIntentLike (djzs-intent.ts) and the route's own 402 discovery schema
+// (http-x402-bazaar.v2.ts, discoveryExtensions); test/openapi.bundle.test.mjs fails if the required sets diverge.
+// The example IS the one the 402 challenge publishes (extensions.bazaar.info.input.body), so the two cannot drift.
+//
+// Both paid doors run the same handler (handleX402VerifyPmTrade; the perp route passes PERP_RESOURCE and the perp
+// adapter), so they answer with the same bodies: PAID_ROUTE_RESPONSES documents both. The perp door's 200 used to say
+// "verdict, action, risk_score, flags, unknown_fields, verdict_hash, receipt", which is not what it returns.
+const PM_INTENT_OBJECT_SCHEMA = {
+  type: "object",
+  description:
+    "A prediction-market trade intent. Every key is read: the object is rendered as one `key: value` line per key, keys sorted, and that text is what is checked. market, side and thesis bind the receipt (intent_hash); without them the route answers 400 intent_unbindable and nothing is charged. Other keys are allowed and are read too.",
+  required: ["market", "side", "thesis"],
+  properties: {
+    market: { type: "string", description: "Venue market id: a Kalshi ticker or a Polymarket market id." },
+    side: { type: "string", description: "The side taken, e.g. YES or NO." },
+    thesis: {
+      type: "string",
+      description:
+        "Why the position is right, in plain words: the claim, the event that would prove it wrong, and where your odds come from.",
+    },
+    venue: { type: "string", description: "Venue name, e.g. Kalshi or Polymarket. Bound into intent_hash; empty when absent." },
+    probability_basis: {
+      type: "string",
+      description: "Where your probability comes from: a checkable source and the time you read it.",
+    },
+    size_usd: { type: "number", minimum: 0, description: "Intended size in USD. A negative size cannot be bound (400, uncharged)." },
+    bounds: {
+      type: "object",
+      description: "The loss you accept and the condition that ends the position.",
+      properties: {
+        max_loss_usd: { type: "number", minimum: 0 },
+        exit_condition: { type: "string" },
+      },
+    },
+  },
+} as const
+
+const PAID_ROUTE_RESPONSES = {
+  "200": {
+    description:
+      "Either the verdict (payment settled, charged: true, receipt attested on Base) or a scope refusal (verdict REFUSED_SCOPE, nothing settled). The settlement is also in the PAYMENT-RESPONSE header (base64 JSON); an MPP payment adds Payment-Receipt.",
+    content: {
+      "application/json": {
+        schema: {
+          oneOf: [
+            {
+              type: "object",
+              title: "Verdict",
+              required: ["verdict", "risk_score", "flags", "verdict_hash", "intent_sha256", "intent_hash", "eas_uid", "eas_tx", "eas_schema", "charged", "settlement_tx", "terms"],
+              properties: {
+                verdict: { type: "string", enum: ["PASS", "WAIT", "FAIL"] },
+                risk_score: { type: "number", description: "Sum of the weights of the codes that fired." },
+                flags: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Codes that fired (e.g. DJZS-M03), then unknown:<field> for each field the check could not settle.",
+                },
+                verdict_hash: { type: "string", description: "Recomputable fingerprint of the verdict." },
+                intent_sha256: { type: "string", description: "sha256 of the rendered text that was checked." },
+                intent_hash: { type: "string", description: "EIP-712 binding key written into the attestation." },
+                tally: {
+                  type: "object",
+                  description: "The inputs to the verdict rule (DJZS-VR-v1.0).",
+                  properties: {
+                    ruleset: { type: "string" },
+                    codes: { type: "array", items: { type: "string" } },
+                    unknown_count: { type: "integer" },
+                    bounded: { type: "boolean" },
+                    thesis_present: { type: "boolean" },
+                  },
+                },
+                sources: { type: "object", description: "Source check (DJZS-SRC). Non-scoring: never part of the verdict, its hash or the attestation." },
+                eas_uid: { type: ["string", "null"], description: "EAS attestation on Base, payer as recipient. null when eas_error is set." },
+                eas_tx: { type: ["string", "null"] },
+                eas_schema: { type: "string" },
+                eas_error: {
+                  type: "string",
+                  enum: ["attester_not_configured", "attestation_failed"],
+                  description: "Present only when the attestation write failed. The verdict still stands and the payment is still recorded.",
+                },
+                charged: { type: "boolean", const: true },
+                settlement_tx: { type: ["string", "null"], description: "The USDC transfer on Base." },
+                terms: { type: "string" },
+              },
+            },
+            {
+              type: "object",
+              title: "Scope refusal",
+              required: ["verdict", "reason", "charged", "settled"],
+              properties: {
+                verdict: { type: "string", const: "REFUSED_SCOPE" },
+                reason: { type: "string" },
+                charged: { type: "boolean", const: false },
+                settled: { type: "boolean", const: false },
+                note: { type: "string" },
+                terms: { type: "string" },
+              },
+            },
+          ],
+        },
+      },
+    },
+  },
+  "400": {
+    description: "Refused before any money moved: invalid_json, missing_intent (intent is not an object), intent_unbindable (a required field is missing, or a value cannot be bound: market, side and thesis on verify_pm_trade; instrument, side and thesis on verify_perp_trade), malformed_payment_header.",
+  },
+  "402": { description: "Payment Required" },
+  "405": { description: "method_not_allowed. GET and HEAD return the 402 challenge; OPTIONS is the CORS preflight." },
+  "500": { description: "verdict AUDIT_ERROR: the payment settled but the check failed after it. charged: true; the body carries settlement_tx. Contact the operator with it and intent_sha256." },
+  "502": { description: "SETTLEMENT_UNCERTAIN: the facilitator did not confirm and the transfer may have gone out (charged: null). Do not sign a second payment until you have looked up settlement_tx or your wallet." },
+  "503": { description: "AUDIT_UNAVAILABLE or FACILITATOR_UNAVAILABLE. Nothing charged." },
+} as const
+
 {
   const paths = OPENAPI_DOC.paths as Record<string, Record<string, unknown>>;
   const legacy = paths["/x402/verify"];
+  const challengeExample = (PM_RESOURCE.extensions as unknown as { bazaar?: { info?: { input?: { body?: unknown } } } })
+    .bazaar?.info?.input?.body;
   paths["/x402/verify_pm_trade"] = {
-    ...legacy,
     post: {
       ...(legacy.post as Record<string, unknown>),
       operationId: "verifyPmTradeCanonical",
       summary: "Audit a prediction-market trade thesis (canonical path; /x402/verify is the legacy alias)",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: { type: "object", required: ["intent"], properties: { intent: PM_INTENT_OBJECT_SCHEMA } },
+            ...(challengeExample ? { example: challengeExample } : {}),
+          },
+        },
+      },
+      responses: PAID_ROUTE_RESPONSES,
     },
   };
+  // The perp door: same bodies, and the example its own 402 challenge publishes.
+  const perpPost = paths["/x402/verify_perp_trade"].post as Record<string, unknown>;
+  const perpExample = (PERP_RESOURCE.extensions as unknown as { bazaar?: { info?: { input?: { body?: unknown } } } })
+    .bazaar?.info?.input?.body;
+  const perpMedia = ((perpPost["requestBody"] as { content: Record<string, Record<string, unknown>> }).content)["application/json"];
+  if (perpExample) perpMedia["example"] = perpExample;
+  perpPost["responses"] = { ...PAID_ROUTE_RESPONSES, "402": { description: "Payment Required" } };
+  // The legacy alias keeps its free-text contract, and now says which door takes which shape.
+  const legacyPost = legacy.post as Record<string, unknown>;
+  legacyPost["summary"] = "Audit a prediction-market trade thesis, free text (legacy alias; prefer /x402/verify_pm_trade)";
 }
 // 2026-11-02: MPP (Machine Payments Protocol) is accepted on the two verdict routes beside x402.
 // mpp.dev discovery convention: x-payment-info.offers[] per paid operation and x-service-info.docs.llms at the
@@ -1721,7 +1866,7 @@ const OPENAPI_DOC = {
   const doc = OPENAPI_DOC as unknown as Record<string, unknown>
   doc["x-service-info"] = {
     categories: ["trading", "audit", "ai"],
-    docs: { homepage: "https://djzs.ai", apiReference: "https://mcp.djzs.ai/openapi.json", llms: "/llms.txt" },
+    docs: { homepage: "https://djzs.ai", apiReference: "https://docs.djzs.ai", llms: "/llms.txt" },
   }
   const paths = OPENAPI_DOC.paths as unknown as Record<string, { post: Record<string, unknown> }>
   const mppOffer = {
@@ -1741,7 +1886,261 @@ const OPENAPI_DOC = {
     }
   }
 }
-app.get("/openapi.json", (c) => c.json(OPENAPI_DOC))
+// 2026-11-23: the FREE check is in the contract. POST /try/verdict runs the same pipeline as the paid routes and
+// attests nothing; its CORS is open, so an in-page API runner (the docs' "Test it") can call it directly. The
+// two reads beside it are GET /try/quota and GET /try/example. Limits come from try-route.ts, never retyped here.
+// /try/markets and /try/market serve the djzs.ai home page and stay undocumented here on purpose.
+// x-guidance named only the free-text door; it now names all three, since the canonical paid door takes an object.
+{
+  const doc = OPENAPI_DOC as unknown as Record<string, unknown>
+  const info = doc["info"] as Record<string, unknown>
+  info["x-guidance"] =
+    "Three doors, one engine. Free: POST /try/verdict with { kind, intent: { thesis } } and a 32-hex `anon` id you keep, " +
+    `${TRY_ANON_DAILY_LIMIT} checks per id per UTC day; nothing is attested. Paid: POST /x402/verify_pm_trade with an OBJECT intent ` +
+    "{ market, side, thesis, ... } or /x402/verify_perp_trade with { instrument, side, thesis, ... }, 2.00 USDC on Base, " +
+    "and the verdict is attested on EAS. Legacy: POST /x402/verify takes the prediction-market thesis as free text. " +
+    "A well-formed prediction-market thesis states the claim, a SOURCED probability with a citation, the event that would prove it wrong, " +
+    "and the edge versus the market price. A consensus-only thesis with no source returns FAIL (DJZS-M03 PROBABILITY_UNSOURCED) and no order should be placed. " +
+    "Abstention is a first-class outcome. The audit reads reasoning only: it does not read markets, verify quoted prices, or check whether an instrument has already settled. " +
+    "Informational only, not financial advice: see https://djzs.ai/legal."
+
+  const tags = doc["tags"] as Array<Record<string, string>>
+  doc["tags"] = [
+    ...tags,
+    { name: "free", description: "Free checks: same engine and rulesets as the paid routes, capped per caller and per day, nothing attested. CORS open." },
+  ]
+
+  const err = (codes: readonly string[], extra: Record<string, unknown> = {}) => ({
+    type: "object",
+    required: ["ok", "error"],
+    properties: { ok: { type: "boolean", const: false }, error: { type: "string", enum: codes }, ...extra },
+  })
+  const jsonBody = (schema: unknown) => ({ content: { "application/json": { schema } } })
+  const quota = {
+    type: "object",
+    properties: {
+      day: { type: "string", format: "date" },
+      limit: { type: "integer" },
+      used: { type: "integer" },
+      remaining: { type: "integer" },
+      resets_at: { type: "string", format: "date-time" },
+    },
+  }
+  const receiptOffer = {
+    type: "object",
+    description: "How to buy the attested version of this check on the paid route.",
+    properties: {
+      price: { type: "string" }, network: { type: "string" }, url: { type: "string" },
+      ruleset: { type: "string" }, what: { type: "string" }, how: { type: "string" },
+    },
+  }
+
+  const TRY_ANON_PLACEHOLDER = "REPLACE-with-your-own-id-from-openssl-rand-hex-16"
+  const paths = OPENAPI_DOC.paths as unknown as Record<string, Record<string, unknown>>
+  paths["/try/verdict"] = {
+    post: {
+      operationId: "tryVerdict",
+      summary: "Free check of a trade thesis (PASS, WAIT or FAIL; nothing attested)",
+      description:
+        "The same engine and rulesets as the paid routes, with nothing written anywhere. Identify the caller one of two ways. " +
+        `(1) anon: a 32-character lowercase hex id you generate once and keep (openssl rand -hex 16), ${TRY_ANON_DAILY_LIMIT} checks per id per UTC day. ` +
+        `(2) A wallet: address, day and an EIP-191 signature over the text GET /try/quota returns as message_format, ${TRY_DAILY_LIMIT} checks per wallet per UTC day. ` +
+        `Fresh ids do not get past the global cap (default ${TRY_GLOBAL_DAILY_LIMIT_DEFAULT} free checks per UTC day across all callers). ` +
+        "The anon in the example is a placeholder, not an id: replace it with your own. Sent as is it returns 400 bad_anon_id and uses nothing. " +
+        "A scope refusal (a perp trade sent as kind pm, or the reverse) still uses one of the day's checks.",
+      tags: ["free"],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["kind", "intent"],
+              properties: {
+                kind: { type: "string", enum: TRY_KINDS, description: "pm for a prediction-market bet, perp for a perp or spot trade." },
+                intent: {
+                  type: "object",
+                  description: `The thesis to check, at most ${TRY_MAX_INTENT_BYTES} bytes serialized. { "thesis": "..." } is enough; other keys are allowed and are read too.`,
+                  properties: { thesis: { type: "string" } },
+                },
+                anon: { type: "string", pattern: TRY_ANON_ID_RE.source, description: "Your id for the wallet-free path: 32 lowercase hex characters you generate once and keep (openssl rand -hex 16). Send it without address." },
+                address: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$", description: "Wallet path: the signing address." },
+                day: { type: "string", format: "date", description: "Wallet path: the server's UTC day, from GET /try/quota." },
+                signature: { type: "string", pattern: "^0x[0-9a-fA-F]+$", description: "Wallet path: EIP-191 personal_sign over message_format filled with address, day and intent_sha256." },
+              },
+            },
+            // The anon is a PLACEHOLDER on purpose, never a valid id. A valid id here would be one quota bucket
+            // shared by every reader who presses "Test it", and it would run dry within the first few presses of the
+            // day. A placeholder fails the pattern, so the route answers 400 bad_anon_id ("anon must be 32 lowercase
+            // hex characters") before any slot is taken. test/openapi.bundle.test.mjs holds both halves of that.
+            example: {
+              kind: "pm",
+              anon: TRY_ANON_PLACEHOLDER,
+              intent: {
+                // Deliberately a narrative with no source and no exit: the kind of thesis the check exists to stop.
+                // Real markets with live prices come from GET /try/example.
+                thesis:
+                  "Buying YES on Bitcoin closing the year above 100k. Everyone on my feed says the breakout is coming and the ETF flows look strong.",
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "ok: true. A verdict, or verdict REFUSED_SCOPE (with a reason) when the thesis does not read as the kind named.",
+          ...jsonBody({
+            type: "object",
+            required: ["ok", "kind", "verdict", "intent_sha256", "quota", "attested"],
+            properties: {
+              ok: { type: "boolean", const: true },
+              kind: { type: "string", enum: TRY_KINDS },
+              verdict: { type: "string", enum: ["PASS", "WAIT", "FAIL", "REFUSED_SCOPE"] },
+              reason: { type: "string", description: "REFUSED_SCOPE only." },
+              risk_score: { type: "number" },
+              flags: { type: "array", items: { type: "string" }, description: "Codes that fired, then unknown:<field> for each unsettled field." },
+              flags_detail: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    code: { type: "string" }, name: { type: "string" }, description: { type: "string" },
+                    severity: { type: "string" }, weight: { type: "number" }, evidence: { type: "string" },
+                  },
+                },
+              },
+              unknown_fields: { type: "array", items: { type: "string" } },
+              unsettled: {
+                type: "array",
+                description: "WAIT only: per unknown field, what the three readings did and which of your sentences they pointed at.",
+                items: { type: "object" },
+              },
+              verdict_hash: { type: ["string", "null"] },
+              intent_sha256: { type: "string" },
+              intent_hash: { type: ["string", "null"], description: "The binding key the paid route would attest, or null when the intent lacks the fields it needs." },
+              tally: { type: "object" },
+              taxonomy: { type: "object" },
+              ruleset: { type: "string" },
+              quota,
+              attested: { type: "boolean", const: false },
+              receipt: receiptOffer,
+              note: { type: "string" },
+              terms: { type: "string" },
+            },
+          }),
+        },
+        "400": {
+          description: "Malformed request. day_mismatch returns the server's day.",
+          ...jsonBody(err(["invalid_json", "bad_kind", "missing_intent", "bad_anon_id", "bad_address", "bad_signature_format", "day_mismatch"], { detail: { type: "string" } })),
+        },
+        "401": {
+          description: "The signature does not recover to address. The body includes signed_text_expected.",
+          ...jsonBody(err(["bad_signature"], { signed_text_expected: { type: "string" } })),
+        },
+        "405": { description: "method_not_allowed. POST and OPTIONS only." },
+        "413": { description: `intent_too_large: the intent is over ${TRY_MAX_INTENT_BYTES} bytes serialized.`, ...jsonBody(err(["intent_too_large"])) },
+        "429": {
+          description: "This id or wallet used today's checks, or the global daily cap is reached. Carries resets_at and the paid receipt offer; the paid routes still work.",
+          ...jsonBody(err(["wallet_quota_exhausted", "free_tier_exhausted_today"], { resets_at: { type: "string", format: "date-time" }, receipt: receiptOffer })),
+        },
+        "500": { description: "engine_contract_violation." },
+        "503": {
+          description: "The check could not run. A failed run gives the slot back (slot_released: true).",
+          ...jsonBody(err(["audit_unavailable", "quota_store_unavailable", "try_unavailable"], { slot_released: { type: "boolean" } })),
+        },
+      },
+    },
+  }
+  paths["/try/quota"] = {
+    get: {
+      operationId: "tryQuota",
+      summary: "Free checks left today, and the text a wallet signs",
+      description:
+        "With anon: checks left for that id today. With address: checks left for that wallet. With neither: the signing template " +
+        "(message_format), the server's current UTC day, the global allowance left, and the paid receipt offers.",
+      tags: ["free"],
+      parameters: [
+        { name: "anon", in: "query", required: false, schema: { type: "string", pattern: TRY_ANON_ID_RE.source } },
+        { name: "address", in: "query", required: false, schema: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" } },
+      ],
+      responses: {
+        "200": {
+          description: "ok: true.",
+          ...jsonBody({
+            type: "object",
+            required: ["ok", "day", "resets_at", "limit", "message_format", "kinds", "receipt"],
+            properties: {
+              ok: { type: "boolean", const: true },
+              day: { type: "string", format: "date" },
+              resets_at: { type: "string", format: "date-time" },
+              limit: { type: "integer", description: `Per caller per UTC day: ${TRY_ANON_DAILY_LIMIT} for an anon id, ${TRY_DAILY_LIMIT} for a wallet.` },
+              limit_wallet: { type: "integer", description: "anon queries only: the wallet path's limit." },
+              anon: { type: "string" },
+              address: { type: "string" },
+              used: { type: "integer" },
+              remaining: { type: "integer" },
+              global_remaining: { type: "integer" },
+              message_format: { type: "string", description: "The EIP-191 text a wallet signs; fill {address}, {day}, {intent_sha256}." },
+              kinds: { type: "array", items: { type: "string", enum: TRY_KINDS } },
+              receipt: { type: "object", properties: { pm: receiptOffer, perp: receiptOffer } },
+              terms: { type: "string" },
+            },
+          }),
+        },
+        "400": { description: "bad_anon_id or bad_address.", ...jsonBody(err(["bad_anon_id", "bad_address"])) },
+        "405": { description: "method_not_allowed. GET and OPTIONS only." },
+        "503": { description: "quota_store_unavailable.", ...jsonBody(err(["quota_store_unavailable"])) },
+      },
+    },
+  }
+  paths["/try/example"] = {
+    get: {
+      operationId: "tryExample",
+      summary: "Curated real markets with live prices, each with a ready thesis",
+      description:
+        "Only markets that are still open are served, so the list can be empty: that is a true answer, not an error. " +
+        "Each example's thesis can be sent as the intent of POST /try/verdict (kind pm). Cached for 60 seconds.",
+      tags: ["free"],
+      parameters: [{ name: "id", in: "query", required: false, description: "One example by id. Omit for all open examples.", schema: { type: "string" } }],
+      responses: {
+        "200": {
+          description: "ok: true.",
+          ...jsonBody({
+            type: "object",
+            required: ["ok", "examples"],
+            properties: {
+              ok: { type: "boolean", const: true },
+              examples: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" }, venue: { type: "string" }, market_id: { type: "string" }, url: { type: "string" },
+                    title: { type: "string" }, side: { type: "string" }, closes: { type: "string" },
+                    price: {
+                      type: "object",
+                      properties: {
+                        yes_bid: { type: "number" }, yes_ask: { type: "number" },
+                        live: { type: "boolean", description: "false when the venue could not be reached and a snapshot was used." },
+                        as_of: { type: "string" },
+                      },
+                    },
+                    thesis: { type: "string" },
+                  },
+                },
+              },
+            },
+          }),
+        },
+        "404": { description: "unknown_example. The body lists the valid ids.", ...jsonBody(err(["unknown_example"], { ids: { type: "array", items: { type: "string" } } })) },
+        "405": { description: "method_not_allowed. GET and OPTIONS only." },
+      },
+    },
+  }
+}
+// CORS open: the document is public and carries no credentials. A docs site that loads it by URL (GitBook's
+// OpenAPI block, Scalar) fetches it from the reader's browser, which refuses a cross-origin response without this.
+app.get("/openapi.json", (c) => c.json(OPENAPI_DOC, 200, { "Access-Control-Allow-Origin": "*" }))
 
 app.post("/x402/verify", async (c) => {
   const env = c.env

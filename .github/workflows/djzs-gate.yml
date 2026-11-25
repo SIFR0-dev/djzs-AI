@@ -103,6 +103,11 @@ jobs:
         working-directory: djzs-trust-mcp
         timeout-minutes: 5
         env: { DJZS_BUNDLE: /tmp/dry/index.js }
+      - name: OpenAPI contract — the PM door takes an object intent matching its 402 schema; the free routes are documented and their example works (built bundle in workerd)
+        run: npx tsx test/openapi.bundle.test.mjs
+        working-directory: djzs-trust-mcp
+        timeout-minutes: 5
+        env: { DJZS_BUNDLE: /tmp/dry/index.js }
       - name: "Skills over MCP: the compiled-in skill bundle matches skills/ on disk; frontmatter reads the same as YAML"
         run: npx tsx test/skills-over-mcp.test.mjs
         working-directory: djzs-trust-mcp
