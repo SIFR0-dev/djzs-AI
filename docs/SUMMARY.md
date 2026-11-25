@@ -1,6 +1,6 @@
 # Summary
 
-* [DJZS](README.md)
+* [Deterministic Journaling Zone System](README.md)
 * [Quickstart](quickstart.md)
 
 ## For agents
