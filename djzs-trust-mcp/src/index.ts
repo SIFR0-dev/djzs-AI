@@ -1052,6 +1052,9 @@ app.get("/", (c) => c.json({ name: "djzs-trust-mcp", version: "1.0.0", status: "
  * Reads nothing but env; moves no money. Probe it immediately after every deploy.
  */
 app.get("/health/x402", async (c) => {
+  // CORS open: /openapi.json lists this route, so the docs' Test it calls it from the reader's browser, which
+  // drops a cross-origin answer without this header. Public status only; nothing here is a credential.
+  c.header("Access-Control-Allow-Origin", "*")
   const env = c.env
   const caip2 = normalizeNetwork(X402_NETWORK)
   if (!env.CDP_API_KEY_ID || !env.CDP_API_KEY_SECRET) {
@@ -1969,6 +1972,32 @@ const PAID_ROUTE_RESPONSES = {
       },
     },
   }
+}
+// 2026-11-25: docs order. GitBook builds the API reference from this document: one page per tag, in `tags` order,
+// titled by x-page-title, each listing its operations in `paths` order. The free check leads (the entry point for
+// anyone without a wallet), then the two paid doors, then the legacy alias, then health. The alias stays served and
+// documented, marked deprecated, with its Test it panel hidden: it serves no CORS preflight, so the panel could only
+// fail. Every operation left runnable answers cross-origin (pinned in test/openapi.bundle.test.mjs).
+{
+  const doc = OPENAPI_DOC as unknown as Record<string, unknown>
+  const TAG_ORDER = [
+    { name: "free", title: "Free check" },
+    { name: "audit", title: "Paid check" },
+    { name: "health", title: "Health" },
+  ]
+  const tags = doc["tags"] as Array<Record<string, string>>
+  doc["tags"] = [
+    ...TAG_ORDER.flatMap(({ name, title }) => tags.filter((t) => t.name === name).map((t) => ({ ...t, "x-page-title": title }))),
+    ...tags.filter((t) => !TAG_ORDER.some((o) => o.name === t.name)),
+  ]
+  const PATH_ORDER = ["/try/verdict", "/try/quota", "/try/example", "/x402/verify_pm_trade", "/x402/verify_perp_trade", "/x402/verify", "/health/x402"]
+  const paths = doc["paths"] as Record<string, Record<string, Record<string, unknown>>>
+  doc["paths"] = Object.fromEntries(
+    [...PATH_ORDER.filter((p) => p in paths), ...Object.keys(paths).filter((p) => !PATH_ORDER.includes(p))].map((p) => [p, paths[p]]),
+  )
+  const legacy = paths["/x402/verify"].post
+  legacy["deprecated"] = true
+  legacy["x-hideTryItPanel"] = true
 }
 // CORS open: the document is public and carries no credentials. A docs site that loads it by URL (GitBook's
 // OpenAPI block, Scalar) fetches it from the reader's browser, which refuses a cross-origin response without this.

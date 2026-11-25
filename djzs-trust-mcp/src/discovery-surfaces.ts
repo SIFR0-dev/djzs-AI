@@ -34,6 +34,8 @@ import {
   TERMS_URL,
   DESCRIPTION,
 } from "./http-x402-bazaar.v2";
+// The free route's limits come from the route itself, for the same reason.
+import { TRY_ANON_DAILY_LIMIT, TRY_DAILY_LIMIT } from "./try-route";
 
 // ------------------------------------------------------------------
 // Config
@@ -104,12 +106,14 @@ The gate audits the internal logic of what you submitted. It does not predict wh
 
 ## Free endpoint
 
-- [POST /try/verdict](${HOST}/try/verdict): The same audit, unpaid and unattested, 5 per wallet per UTC day. Body: {"kind":"pm"|"perp","intent":{...},"address":"0x...","day":"YYYY-MM-DD","signature":"0x..."}. The signature is EIP-191 over the exact text served by [GET /try/quota](${HOST}/try/quota?address=0x...) (address, UTC day, sha256 of the rendered intent); no funds move. The response carries the paid route's offer. Browser flow: https://djzs.ai/try
+- [POST /try/verdict](${HOST}/try/verdict): The same audit, unpaid and unattested. Identify the caller one of two ways. An anon id: 32 lowercase hex characters you generate once and keep (openssl rand -hex 16), ${TRY_ANON_DAILY_LIMIT} checks per id per UTC day. Body: {"kind":"pm"|"perp","anon":"<32 hex>","intent":{...}}. Or a wallet, ${TRY_DAILY_LIMIT} checks per wallet per UTC day. Body: {"kind":"pm"|"perp","intent":{...},"address":"0x...","day":"YYYY-MM-DD","signature":"0x..."}. The signature is EIP-191 over the exact text served by [GET /try/quota](${HOST}/try/quota?address=0x...) (address, UTC day, sha256 of the rendered intent); no funds move. A global daily cap across all callers also applies. The response carries the paid route's offer. Browser flow: ${APEX}
 
 ## Discovery
 
 - [x402 manifest](${HOST}/.well-known/x402.json): Machine-readable resource, price, and schema declaration.
 - [Agent card](${HOST}/.well-known/agent-card.json): A2A-style capability descriptor.
+- [OpenAPI 3.1](${HOST}/openapi.json): Every HTTP route above, paid and free, with request and response schemas.
+- [Docs](${APEX}/docs): Every technical detail, with sources in the code.
 - [Terms of service](${TERMS_URL}): Binding on human and autonomous callers alike.
 
 ## How the money behaves

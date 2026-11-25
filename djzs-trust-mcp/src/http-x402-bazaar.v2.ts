@@ -174,7 +174,7 @@ const discoveryExtensions = withDiscoveryFixups(declareDiscoveryExtension({
           probability_basis: {
             type: "string",
             description:
-              "Where the probability came from: named venue, instrument, and timestamp. Unknown basis is a flagged defect (M02 family).",
+              "Where the probability came from: named venue, instrument, and timestamp. A probability with no source FAILS (DJZS-M03 PROBABILITY_UNSOURCED); a basis the check cannot settle keeps the verdict from PASS.",
           },
           size_usd: { type: "number", description: "Intended position size in USD." },
           bounds: {
@@ -307,8 +307,13 @@ function withDiscoveryFixups<T>(ext: T): T {
  * A 402 whose challenge is unreadable is indistinguishable from a hard refusal.
  * These ride the 402 and the 200 as well as the preflight — a preflight-only
  * policy leaves the actual responses unreadable.
+ *
+ * 2026-11-25: the MPP door on the same two routes needs the same treatment. Its challenge is
+ * WWW-Authenticate, its credential is Authorization: Payment, its receipt is Payment-Receipt.
+ * None is CORS-safelisted, so until all three were listed a browser MPP client on another
+ * origin could neither read the challenge nor send the credential.
  */
-const CORS_EXPOSE = "payment-required, PAYMENT-RESPONSE, X-PAYMENT-RESPONSE";
+const CORS_EXPOSE = "payment-required, PAYMENT-RESPONSE, X-PAYMENT-RESPONSE, WWW-Authenticate, Payment-Receipt";
 const CORS_BASE: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Expose-Headers": CORS_EXPOSE,
@@ -316,7 +321,7 @@ const CORS_BASE: Record<string, string> = {
 const CORS_PREFLIGHT: Record<string, string> = {
   ...CORS_BASE,
   "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Accept, X-PAYMENT, PAYMENT-SIGNATURE",
+  "Access-Control-Allow-Headers": "Content-Type, Accept, X-PAYMENT, PAYMENT-SIGNATURE, Authorization",
   "Access-Control-Max-Age": "86400",
 };
 

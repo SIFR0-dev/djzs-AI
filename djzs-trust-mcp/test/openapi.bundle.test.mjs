@@ -13,6 +13,12 @@
  *     200. A valid id in the example would be one quota bucket shared by every reader of the docs.
  *   - the document is served with an open CORS header, so a docs site can load it by URL; it carries no em dash
  *     (rendered on docs.djzs.ai) and x-service-info.docs.apiReference points at docs.djzs.ai.
+ *   - the docs order of 2026-11-25. GitBook builds one reference page per tag, in `tags` order, titled by
+ *     x-page-title. Tags lead free, audit, health; the free check is the first operation; the legacy alias comes
+ *     after both paid doors, deprecated, with its Test it panel hidden. Every operation the docs leave runnable
+ *     answers a cross-origin browser: a POST through its preflight, a GET directly.
+ *   - the MPP door on the paid preflight: a browser on another origin may send Authorization and read
+ *     WWW-Authenticate and Payment-Receipt. The 402 schema names DJZS-M03 for an unsourced probability_basis.
  *
  * ZERO keys, ZERO egress: the extraction call is stubbed, every other outbound host is refused.
  * Run from djzs-trust-mcp/:   npx tsx test/openapi.bundle.test.mjs
@@ -197,6 +203,44 @@ try {
   const ubody = await unknown.json()
   const u404 = validate(te.responses["404"].content["application/json"].schema, ubody)
   check("an unknown example id is the documented 404", unknown.status === 404 && u404 === null, `${unknown.status} ${u404}`)
+
+  // ── the docs build from this document: order, titles, and a Test it that offers only what answers ────────
+  const tagOrder = (doc.tags ?? []).map((t) => t.name)
+  check("tags lead free, audit, health", isDeepStrictEqual(tagOrder, ["free", "audit", "health"]), tagOrder.join(","))
+  check("every tag carries an x-page-title", (doc.tags ?? []).every((t) => typeof t["x-page-title"] === "string" && t["x-page-title"].length > 0))
+  const pathOrder = Object.keys(doc.paths)
+  check("the free check is the first operation", pathOrder[0] === "/try/verdict", pathOrder.join(","))
+  check(
+    "the legacy alias comes after both paid doors",
+    pathOrder.indexOf("/x402/verify") > pathOrder.indexOf("/x402/verify_pm_trade") && pathOrder.indexOf("/x402/verify") > pathOrder.indexOf("/x402/verify_perp_trade"),
+    pathOrder.join(","),
+  )
+  const legacyOp = doc.paths["/x402/verify"]?.post
+  check("the legacy alias is deprecated in the docs", legacyOp?.deprecated === true)
+  check("the legacy alias hides its Test it panel (it serves no preflight)", legacyOp?.["x-hideTryItPanel"] === true)
+  const DOCS_ORIGIN = "https://docs.djzs.ai"
+  for (const [p, item] of Object.entries(doc.paths)) {
+    for (const [method, op] of Object.entries(item)) {
+      if (op?.["x-hideTryItPanel"] === true) continue
+      const r = method === "post"
+        ? await mf.dispatchFetch(`https://mcp.djzs.ai${p}`, { method: "OPTIONS", headers: { origin: DOCS_ORIGIN, "access-control-request-method": "POST", "access-control-request-headers": "content-type" } })
+        : await mf.dispatchFetch(`https://mcp.djzs.ai${p}`, { headers: { origin: DOCS_ORIGIN } })
+      await r.arrayBuffer()
+      const acao = r.headers.get("access-control-allow-origin")
+      const acam = r.headers.get("access-control-allow-methods") ?? ""
+      const acah = r.headers.get("access-control-allow-headers") ?? ""
+      const ok = method === "post" ? r.status < 300 && acao === "*" && /POST/.test(acam) && /content-type/i.test(acah) : acao === "*"
+      check(`Test it reaches ${method.toUpperCase()} ${p} from another origin`, ok, `${r.status} acao=${acao} methods=${acam} headers=${acah}`)
+    }
+  }
+  const pre = await mf.dispatchFetch("https://mcp.djzs.ai/x402/verify_pm_trade", { method: "OPTIONS" })
+  await pre.arrayBuffer()
+  const preAllow = pre.headers.get("access-control-allow-headers") ?? ""
+  const preExpose = pre.headers.get("access-control-expose-headers") ?? ""
+  check("paid preflight lets a browser send the MPP credential (Authorization)", /(^|,)\s*Authorization\s*(,|$)/i.test(preAllow), preAllow)
+  check("paid answers expose the MPP challenge and receipt", /WWW-Authenticate/i.test(preExpose) && /Payment-Receipt/i.test(preExpose), preExpose)
+  const basisDesc = discovery.properties?.probability_basis?.description ?? ""
+  check("the 402 schema names DJZS-M03 for an unsourced probability_basis", /DJZS-M03/.test(basisDesc) && !/M02/.test(basisDesc), basisDesc)
 } finally {
   await mf.dispose()
 }
