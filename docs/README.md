@@ -1,4 +1,4 @@
-# DJZS
+# Deterministic Journaling Zone System
 
 **DJZS checks the reasoning behind a trade before the order goes out.**
 
