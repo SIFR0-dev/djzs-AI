@@ -116,7 +116,7 @@
 ## Discovery
 
 - Docs (every technical detail, with sources in the code): https://djzs.ai/docs
-- The same docs as an MCP server, to search and read from an agent: https://docs.djzs.ai/~gitbook/mcp
+- The same docs as an MCP server, to search and read from an agent: https://djzsx.gitbook.io/djzs.ai/~gitbook/mcp
 - AI Catalog, with the MCP server card inline: https://djzs.ai/.well-known/ai-catalog.json
 - MCP Registry: ai.djzs/trust-mcp (remote, streamable HTTP, https://mcp.djzs.ai/mcp)
 - A2A agent card: https://mcp.djzs.ai/.well-known/agent.json
