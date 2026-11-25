@@ -97,8 +97,9 @@ Every `error` value is a fixed code, never raw error text (`djzs-trust-mcp/src/s
 
 ## Contract file
 
-`https://mcp.djzs.ai/openapi.json` lists both routes and the payment offers (`x-payment-info`). One known
-mismatch, as of 2026-11-20: it types the prediction-market `intent` as a string, but the route requires an
-object. Send the object shown above.
+`https://mcp.djzs.ai/openapi.json` lists both routes and the payment offers (`x-payment-info`). Each route's
+`intent` is the object shown above, with the same required fields and the same example as that route's 402
+challenge. The prediction-market `intent` was typed as a string until 2026-11-24; a client built from the older
+file sent a string and got `400 missing_intent`, uncharged.
 
 `POST /x402/verify` is an older x402-only alias for the prediction-market check.
