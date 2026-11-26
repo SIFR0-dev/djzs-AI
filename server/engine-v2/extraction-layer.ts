@@ -43,9 +43,18 @@ export type ModelFn = (prompt: string) => Promise<string>;
  *   evidence requirement. Also: probability_basis absent quote must be ONE contiguous span.
  *   Evidence: tests/out/q2-live-2026-09-02-*.json (before) and the v1.1 re-run (after).
  * v1.0 — contract as shipped through Worker 821da611.
+ *
+ * LF v1.3 (2026-11-26, perp/spot prompt only; the PM prompt is untouched) — a restatement of the
+ *   trade is not a reason. Under X-LF-v1.2, "PRESENT = any reason is stated (a view, ...)" let the
+ *   trade's own direction count as its thesis, so S01 could not see a position offered as its own
+ *   premise. Live, 2026-11-26, free check: a bounded BTC long with no reason returned FAIL 30 (S01);
+ *   the same text plus "BTC is going up." returned PASS 0. thesis_statement now names what a reason
+ *   is (something outside the trade) and marks a restated direction, target or feeling absent, with
+ *   the restatement as its ONE contiguous quote. Corpus rows PD1-PD3 and PF4 pin it in
+ *   tests/q2-perp-extraction-reliability.ts.
  */
 export const EXTRACTION_CONTRACT_VERSION = "DJZS-X-v1.1" as const; // PM contract — unchanged; measured 100% (09-01) / 97.5% (09-08)
-export const EXTRACTION_CONTRACT_VERSION_LF = "DJZS-X-LF-v1.2" as const; // perp/spot contract — adds thesis_statement (quote-gated absent)
+export const EXTRACTION_CONTRACT_VERSION_LF = "DJZS-X-LF-v1.3" as const; // perp/spot contract — thesis_statement (quote-gated absent); v1.3: a restatement of the trade is not a reason
 
 export interface ExtractionResult {
   input: AuditInput;
@@ -188,7 +197,7 @@ Optional key — audit_context:
   perpetual/spot trade). Be conservative: if you are unsure, OMIT it. This is a plain string, NOT a
   tri-state object.`;
 
-/** Perp/spot TRADE prompt (DJZS-X-LF-v1.2): the PM prompt above plus the thesis_statement block. Selected by the caller's declared context — never by the model. */
+/** Perp/spot TRADE prompt (DJZS-X-LF-v1.3): the PM prompt above plus the thesis_statement block. Selected by the caller's declared context — never by the model. */
 export const STRICT_EXTRACTION_PROMPT_PERP = `You are a fact extractor for a deterministic audit engine. You do NOT judge,
 score, or advise. You ONLY report observable facts from the agent's stated intent.
 
@@ -308,10 +317,13 @@ Rules you must obey:
     BE the argued case for the bet.
     UNKNOWN: when unclear; be conservative.
 
-- thesis_statement — trades only. The stated REASON the price should move the chosen way (a view, a
-  flow, a catalyst, a setup with a reason). PRESENT = any reason is stated (value: short quote).
-  ABSENT = the intent gives no reason at all — emit {"state":"absent","quote":"<verbatim excerpt of the
-  intent>"}. UNKNOWN = unclear.
+- thesis_statement — trades only. The stated REASON the price should move the chosen way: something
+  OUTSIDE the trade itself (a catalyst, data, a flow, a level and why it matters). PRESENT = such a
+  reason is stated (value: short quote). Restating the trade is NOT a reason: its direction ("BTC is
+  going up", "ETH dumps from here"), its target ("going to $70k") or a feeling ("feels right") adds
+  nothing outside the trade. ABSENT = no reason outside the trade is given, including when the only
+  "reason" is such a restatement — emit {"state":"absent","quote":"<verbatim excerpt of the intent>"};
+  when there is a restatement, the quote is that restatement, ONE contiguous span. UNKNOWN = unclear.
 
 Keys:
   agent_type (string), intended_action (string), market_type (string),
