@@ -67,10 +67,10 @@ describe("DJZSVerdictResolver", function () {
     const shaved = encode({ verdict: "FAIL", riskScore: 39, flags, rulesetVersion: "DJZS-PM-v1.0" });
     expect(await eas.callAttest.staticCall(await resolver.getAddress(), attestation(shaved))).to.equal(false);
     // A WAIT claimed with nothing unknown and nothing fired is a PASS by the rule: refused.
-    const waited = encode({ verdict: "WAIT", riskScore: 0, flags: [], rulesetVersion: "DJZS-LF-v1.2", unknownCount: 0, bounded: false });
+    const waited = encode({ verdict: "WAIT", riskScore: 0, flags: [], rulesetVersion: "DJZS-LF-v1.3", unknownCount: 0, bounded: false });
     expect(await eas.callAttest.staticCall(await resolver.getAddress(), attestation(waited))).to.equal(false);
     // The same claim with one unknown field is honest.
-    const honest = encode({ verdict: "WAIT", riskScore: 0, flags: [], rulesetVersion: "DJZS-LF-v1.2", unknownCount: 1, bounded: false });
+    const honest = encode({ verdict: "WAIT", riskScore: 0, flags: [], rulesetVersion: "DJZS-LF-v1.3", unknownCount: 1, bounded: false });
     expect(await eas.callAttest.staticCall(await resolver.getAddress(), attestation(honest))).to.equal(true);
   });
 

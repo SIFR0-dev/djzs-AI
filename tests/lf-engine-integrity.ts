@@ -1,6 +1,6 @@
 /**
- * LF engine (perp path) — exhaustive verdict-space test, LF-v1.2. Mirrors tests/pm-engine-integrity.ts.
- * Enumerates every tri-state assignment over AUDIT_FIELDS (3^9 = 19,683) × 3 value variants (clean / social / unverified oracle)
+ * LF engine (perp path) — exhaustive verdict-space test, LF-v1.3. Mirrors tests/pm-engine-integrity.ts.
+ * Enumerates every tri-state assignment over AUDIT_FIELDS (3^9 = 19,683) × 4 value variants (clean / social / social alias / unverified oracle)
  * and asserts the invariants the taxonomy promises. Exit 1 on any violation. No network, no model.
  */
 import { runDeterministicAudit } from "../server/engine-v2/deterministic-engine";
@@ -10,6 +10,7 @@ const VALUES: Record<string, unknown> = { leverage: 10, position_size: 3000, sto
 const VARIANTS: { name: string; over: Record<string, unknown> }[] = [
   { name: "clean", over: {} },
   { name: "social", over: { data_sources: ["twitter"] } },
+  { name: "social-alias", over: { data_sources: ["CT", "Reddit threads"] } }, // LF-v1.3: whole-word social signals, not only the exact seven
   { name: "unverified-oracle", over: { oracle_source: "the team's dashboard" } },
 ];
 const STATES: S[] = ["present", "absent", "unknown"]; const n = AUDIT_FIELDS.length; let total = 0, fails: string[] = []; const verdictCounts: Record<string, number> = {};
@@ -31,17 +32,25 @@ for (const v of VARIANTS) for (let k = 0; k < 3 ** n; k++) {
   // I3 — X01 iff position ∧ stop absent ∧ invalidation absent
   const x01 = hasPos && st.stop_loss === "absent" && st.invalidation_condition === "absent";
   if (x01 !== codes.has("DJZS-X01")) bad("X01 firing does not match its rule");
-  // I4 — a PASS on a POSITION requires a present thesis and a bound (the LF-v1.2 fix: a stop alone cannot buy a PASS). Sub-threshold non-critical flags may ride on a PASS — they are advisory by frozen weight.
+  // I4 — a PASS on a POSITION requires a present thesis and a bound (the LF-v1.2 fix: a stop alone cannot buy a PASS). Sub-threshold non-critical flags ride on a PASS — they are advisory by frozen weight (LF-v1.3: also when other fields are unknown).
   if (r1.verdict === "PASS" && hasPos) { if (st.thesis_statement !== "present") bad("PASS on a position without a present thesis"); if (!(st.stop_loss === "present" || st.invalidation_condition === "present")) bad("PASS on a position while unbounded"); }
   if (r1.verdict === "PASS" && r1.flags.some((f: any) => f.severity === "CRITICAL")) bad("PASS with a CRITICAL flag");
   // I5 — a position with an unknown thesis never PASSes (it WAITs or FAILs)
   if (hasPos && st.thesis_statement === "unknown" && r1.verdict === "PASS") bad("position with unknown thesis passed");
   // I6 — any CRITICAL ⇒ FAIL; risk ≥ 50 ⇒ FAIL
   if ((r1.flags.some((f: any) => f.severity === "CRITICAL") || r1.risk_score >= 50) && r1.verdict !== "FAIL") bad("critical/threshold without FAIL");
-  // I7 — social data source ⇒ I01
-  if (v.name === "social" && st.data_sources === "present" && !codes.has("DJZS-I01")) bad("social source without I01");
+  // I7 — social data source ⇒ I01 (exact token or, LF-v1.3, a whole-word alias such as "CT")
+  if ((v.name === "social" || v.name === "social-alias") && st.data_sources === "present" && !codes.has("DJZS-I01")) bad("social source without I01");
   if (v.name === "clean" && codes.has("DJZS-I01")) bad("I01 on clean sources");
+  // I8 — more facts never cost a PASS (LF-v1.3): resolving any ONE unknown field of a PASS, present or absent, still PASSes, so by
+  // induction no partial or full completion of its unknowns can lose it. Through LF-v1.2 this failed: a bounded trade with a thesis
+  // PASSed while data_sources was unknown, and WAITed once a social source was named while confidence stayed unknown.
+  if (r1.verdict === "PASS") for (const f of AUDIT_FIELDS) if (st[f] === "unknown") for (const s of ["present", "absent"] as const) {
+    const c: any = { ...input, [f]: s === "present" ? { state: "present", value: (v.over as any)[f] ?? VALUES[f] } : { state: "absent" } };
+    const rc = runDeterministicAudit(c);
+    if (rc.verdict !== "PASS") bad(`setting ${f} ${s} turned the PASS into ${rc.verdict} ${rc.flags.map((x: any) => x.code).join(",")}`);
+  }
 }
 console.log(`LF engine integrity · ${total.toLocaleString()} inputs (${3 ** n} states × ${VARIANTS.length} variants) · verdicts: ${JSON.stringify(verdictCounts)}`);
 if (fails.length) { console.error(`FAIL — ${fails.length}${fails.length >= 25 ? "+" : ""} invariant violations:\n  ` + fails.join("\n  ")); process.exit(1); }
-console.log("PASS — every invariant holds across the full perp verdict space (LF-v1.2)");
+console.log("PASS — every invariant holds across the full perp verdict space (LF-v1.3)");

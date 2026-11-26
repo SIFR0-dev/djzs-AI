@@ -2,22 +2,22 @@
 pragma solidity ^0.8.28;
 
 /// @title DJZSVerdictRule
-/// @notice The DJZS verdict rule (DJZS-VR-v1.0) on Base: the last step of the deterministic engine,
+/// @notice The DJZS verdict rule (DJZS-VR-v1.1) on Base: the last step of the deterministic engine,
 /// as bytecode. Given what the engine counted (a Tally), it derives the risk score and the verdict.
 /// @dev Byte for byte the rule in server/engine-v2/verdict-rule.ts and the inline rungs of
 /// server/engine-v2/deterministic-engine.ts. tests/fixtures/verdict-rule.json holds every distinct
 /// tally the engine produces over its full input space, and test/DJZSVerdictRule.test.cjs replays
 /// it against this contract, so the three copies of the rule cannot drift apart.
 ///
-/// The weights and severities are the frozen taxonomies DJZS-PM-v1.0 (sum 100) and DJZS-LF-v1.2
-/// (sum 200). They are constants here, and the constructor refuses to deploy if they do not sum to
-/// the governed totals. A new taxonomy version is a new contract at a new address, never an edit.
+/// The weights and severities are the frozen taxonomies DJZS-PM-v1.0 (sum 100) and DJZS-LF-v1.3
+/// (sum 200, weights as in v1.2). They are constants here, and the constructor refuses to deploy if
+/// they do not sum to the governed totals. A new taxonomy version is a new contract at a new address, never an edit.
 ///
 /// Verdict codes: PASS 1, WAIT 2, FAIL 3. Doctrine: LLM detects, TypeScript decides, the chain checks.
 contract DJZSVerdictRule {
-    string public constant VERSION = "DJZS-VR-v1.0";
+    string public constant VERSION = "DJZS-VR-v1.1";
     string public constant PM_RULESET = "DJZS-PM-v1.0";
-    string public constant LF_RULESET = "DJZS-LF-v1.2";
+    string public constant LF_RULESET = "DJZS-LF-v1.3";
 
     uint8 public constant PASS = 1;
     uint8 public constant WAIT = 2;
@@ -31,7 +31,7 @@ contract DJZSVerdictRule {
     uint16 public constant LF_WEIGHT_SUM = 200;
 
     bytes32 internal constant PM_ID = keccak256("DJZS-PM-v1.0");
-    bytes32 internal constant LF_ID = keccak256("DJZS-LF-v1.2");
+    bytes32 internal constant LF_ID = keccak256("DJZS-LF-v1.3");
 
     /// @notice What the engine counted. `codes` are the fired taxonomy codes, unique.
     /// `bounded`: PM, invalidation_condition, resolution_engagement and probability_basis all present;
@@ -102,8 +102,9 @@ contract DJZSVerdictRule {
     }
 
     /// @notice The rule. FAIL when any fired code is CRITICAL or the weights reach the ruleset's
-    /// threshold; otherwise PASS when nothing fired and the intent is bounded (LF: and a thesis is
-    /// present); otherwise WAIT when any scored field is unknown; otherwise PASS.
+    /// threshold; otherwise PASS when the intent is clean (PM: nothing fired and bounded; LF: bounded
+    /// with a thesis present, advisory codes riding along); otherwise WAIT when any scored field is
+    /// unknown; otherwise PASS.
     /// @dev Reverts on an unknown ruleset, an unknown code, or a duplicate code: a tally the rule
     /// cannot read is refused, never scored as zero.
     function score(Tally calldata t) public pure returns (uint16 riskScore, uint8 verdictCode) {
@@ -125,9 +126,11 @@ contract DJZSVerdictRule {
             critical = critical || c;
         }
 
-        bool thesisOk = rulesetId == PM_ID ? true : t.thesisPresent;
+        // DJZS-LF-v1.3: a bounded tally with a present thesis that did not FAIL above carries only
+        // advisory codes, so they ride the PASS. PM keeps v1.0's rung.
+        bool clean = rulesetId == PM_ID ? t.codes.length == 0 && t.bounded : t.bounded && t.thesisPresent;
         if (critical || riskScore >= threshold) verdictCode = FAIL;
-        else if (t.codes.length == 0 && t.bounded && thesisOk) verdictCode = PASS;
+        else if (clean) verdictCode = PASS;
         else if (t.unknownCount > 0) verdictCode = WAIT;
         else verdictCode = PASS;
     }

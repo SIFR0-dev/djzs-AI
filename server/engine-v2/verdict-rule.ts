@@ -1,5 +1,5 @@
 /**
- * DJZS verdict rule over a tally (DJZS-VR-v1.0).
+ * DJZS verdict rule over a tally (DJZS-VR-v1.1).
  * ─────────────────────────────────────────────
  * The last step of the deterministic engine, isolated: given WHAT the engine counted (the fired
  * codes, how many scored fields were unknown, whether the position or bet was bounded, whether a
@@ -13,13 +13,18 @@
  * the engine on every input, and writes the distinct tallies with their outcomes to
  * tests/fixtures/verdict-rule-*.json, which the Hardhat test replays against the contract.
  *
- * Weights and severities are read from the frozen taxonomies (DJZS-PM-v1.0, DJZS-LF-v1.2), never
+ * Weights and severities are read from the frozen taxonomies (DJZS-PM-v1.0, DJZS-LF-v1.3), never
  * restated here. The thresholds are the engine's: PM condemns at 25, LF at 50.
+ *
+ * v1.1 (2026-11-26, with DJZS-LF-v1.3): the LF clean-PASS rung no longer requires zero fired codes.
+ * A bounded LF tally with a present thesis that has not failed (no CRITICAL code, under 50) PASSes,
+ * its codes riding as advisories. PM keeps v1.0's rung (for PM a bound already means nothing is unknown).
+ * v1.0 knew DJZS-PM-v1.0 and DJZS-LF-v1.2.
  */
 import { LOGIC_FAILURE_TAXONOMY, SCHEMA_VERSION, type LFCode } from "@shared/audit-schema";
 import { PM_FAIL_THRESHOLD, PM_SCHEMA_VERSION, PM_TAXONOMY, type PMCode } from "@shared/pm-taxonomy";
 
-export const VERDICT_RULE_VERSION = "DJZS-VR-v1.0" as const;
+export const VERDICT_RULE_VERSION = "DJZS-VR-v1.1" as const;
 
 /** The rulesets the rule knows. Any other string is refused, never scored as zero. */
 export const RULESETS = [PM_SCHEMA_VERSION, SCHEMA_VERSION] as const;
@@ -64,8 +69,9 @@ function weightAndCritical(ruleset: Ruleset, code: string): { weight: number; cr
 
 /**
  * Pure. FAIL when any fired code is CRITICAL or the weights reach the ruleset's threshold.
- * Otherwise PASS when nothing fired and the intent is bounded (and, for LF, states a thesis).
- * Otherwise WAIT when any scored field is unknown. Otherwise PASS.
+ * Otherwise PASS when the intent is clean: PM, nothing fired and bounded; LF, bounded with a
+ * thesis present (advisory codes ride along). Otherwise WAIT when any scored field is unknown.
+ * Otherwise PASS.
  */
 export function verdictFromTally(t: VerdictTally): RuleOutcome {
   if (!RULESETS.includes(t.ruleset)) throw new UnknownRulesetError(`unknown ruleset ${String(t.ruleset)}`);
@@ -80,10 +86,10 @@ export function verdictFromTally(t: VerdictTally): RuleOutcome {
     critical = critical || w.critical;
   }
   const threshold = t.ruleset === PM_SCHEMA_VERSION ? PM_FAIL_THRESHOLD : LF_FAIL_THRESHOLD;
-  const thesisOk = t.ruleset === PM_SCHEMA_VERSION ? true : t.thesis_present;
+  const clean = t.ruleset === PM_SCHEMA_VERSION ? t.codes.length === 0 && t.bounded : t.bounded && t.thesis_present;
   let verdict: Verdict;
   if (critical || risk_score >= threshold) verdict = "FAIL";
-  else if (t.codes.length === 0 && t.bounded && thesisOk) verdict = "PASS";
+  else if (clean) verdict = "PASS";
   else if (t.unknown_count > 0) verdict = "WAIT";
   else verdict = "PASS";
   return { risk_score, verdict };

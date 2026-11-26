@@ -203,7 +203,7 @@ const discoveryExtensions = withDiscoveryFixups(declareDiscoveryExtension({
   },
 }));
 
-// Discovery declaration for the PERP/spot trade surface (X-LF-v1.2 · DJZS-LF-v1.2). Same rail, same price.
+// Discovery declaration for the PERP/spot trade surface (X-LF-v1.2 · DJZS-LF-v1.3). Same rail, same price.
 const discoveryExtensionsPerp = withDiscoveryFixups(declareDiscoveryExtension({
   bodyType: "json",
   input: {
@@ -468,7 +468,7 @@ export const PERP_DESCRIPTION =
 export const PERP_RESOURCE: ResourceSpec = {
   url: PERP_RESOURCE_URL,
   description: PERP_DESCRIPTION,
-  rulesetVersion: "DJZS-LF-v1.2",
+  rulesetVersion: "DJZS-LF-v1.3",
   route: "perp",
   tags: ["audit", "perpetuals", "trading", "verification"],
   extensions: discoveryExtensionsPerp,

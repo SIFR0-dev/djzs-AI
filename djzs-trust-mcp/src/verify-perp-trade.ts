@@ -4,7 +4,7 @@
  * so this pipeline runs the perp extraction prompt (DJZS-X-LF-v1.2, carries thesis_statement) while
  * verify_pm_trade keeps the PM prompt untouched. A prediction-market bet submitted here is refused
  * (in_scope:false, not charged) — never silently audited as a trade.
- * Engine: the same deterministic engine, perp path (DJZS-LF-v1.2: X01, E01, I01, S01 live).
+ * Engine: the same deterministic engine, perp path (DJZS-LF-v1.3: X01, E01, I01, S01 live).
  */
 import {
   extractAuditInputConsensus,
