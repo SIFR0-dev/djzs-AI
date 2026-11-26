@@ -18,7 +18,7 @@ for (const [label, extraction, expect] of cases) {
   const r = await runVerifyPerpTrade(INTENT, model);
   const got = r.in_scope === false ? "OUT_OF_SCOPE" : String(r.verdict); const pass = got === expect; ok &&= pass;
   console.log(`${pass ? "ok " : "BAD"} ${label.padEnd(48)} → ${got.padEnd(12)} ${r.in_scope === false ? "(free refusal)" : `risk ${r.risk_score} codes [${(r.flags as any[]).map(f => f.code).join(",")}]`} ${r.fail_reason ? "· fail_reason set" : ""}${r.halt_reason ? "· halt_reason: " + String(r.halt_reason).slice(0, 60) : ""}`);
-  if (r.in_scope && (r as any).taxonomy?.extraction !== "DJZS-X-LF-v1.2") { console.log("BAD taxonomy.extraction =", (r as any).taxonomy?.extraction); ok = false; }
+  if (r.in_scope && (r as any).taxonomy?.extraction !== "DJZS-X-LF-v1.3") { console.log("BAD taxonomy.extraction =", (r as any).taxonomy?.extraction); ok = false; }
 }
 // ── Break-even floor (Gate 2 mechanics, non-scoring). The bracket must never touch the verdict or its hash.
 const BRACKET = { side: "long" as const, entry: 100_000, stop: 99_000, target: 102_000, taker_fee_bps: 5, hit_rate_pct: 45 };

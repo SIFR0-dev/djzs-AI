@@ -11,7 +11,7 @@
  *   failsafe rate <= 2% of consensus runs
  *   designed-class match is REPORTED, not scored — the design labels are the author's intent, not ground truth.
  *
- * Runs: K replays x 15 theses, each replay = one N=3 consensus (3 model calls). Default K=5 -> 225 calls, ~US$3 on Sonnet.
+ * Runs: K replays x every corpus thesis (18), each replay = one N=3 consensus (3 model calls). Default K=5 -> 270 calls, ~US$3.5 on Sonnet.
  * No x402. No settlement. Reads ANTHROPIC_API_KEY from djzs-trust-mcp/.dev.vars (or env).
  *   npx tsx tests/q2-extraction-reliability.ts               # real run
  *   npx tsx tests/q2-extraction-reliability.ts --stub        # plumbing self-test, deterministic stub, $0
@@ -19,7 +19,7 @@
  *   K=3 npx tsx ...                                          # cheaper run
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { extractAuditInputConsensus, type ModelFn } from "../server/engine-v2/extraction-layer";
+import { extractAuditInputConsensus, EXTRACTION_CONTRACT_VERSION_LF, type ModelFn } from "../server/engine-v2/extraction-layer";
 import { runDeterministicAudit } from "../server/engine-v2/deterministic-engine";
 
 // ── production-identical rendering (port of engine-adapter.ts renderIntentText) ─────────────────
@@ -69,7 +69,10 @@ function stubModelFn(noisy: boolean): ModelFn {
   };
 }
 
-// ── corpus: 14 PERP intents spanning the LF-v1.2 verdict space (PASS/WAIT/FAIL/OUT_OF_SCOPE). `designed` = author's intent, reported not scored. ─
+// ── corpus: 18 PERP intents spanning the LF verdict space (PASS/WAIT/FAIL/OUT_OF_SCOPE). `designed` = author's intent, reported not scored. ─
+// PD1-PD3 and PF4 added for X-LF-v1.3 (2026-11-26): a restated direction, target or feeling is not a reason (designed FAIL S01),
+// and a brief reason outside the trade still is (PF4, designed PASS: the over-correction tripwire). PD1 is the live free-check text
+// that returned PASS 0 under X-LF-v1.2; without its "BTC is going up." sentence the same text returned FAIL 30 (S01).
 type Intent = Record<string, unknown>;
 const CORPUS: { id: string; designed: "PASS" | "FAIL" | "WAIT" | "OUT_OF_SCOPE"; cls: string; intent: Intent }[] = [
   { id: "PF1", designed: "PASS", cls: "FULL_LONG", intent: { instrument: "BTC-PERP", side: "LONG", leverage: 5, entry: 78900, stop_loss: 76200, take_profit: 83000, size_usd: 3000, venue: "Binance", thesis: "Funding reset from 8% to 2% annualized after the weekend flush; 82K rejected four times but 80K held on the daily close; ETF inflows resumed (+$174M Sep 4, Farside). Invalidation: a daily close below 76,200. Oracle: Binance mark price. Confidence 65%." } },
@@ -84,6 +87,10 @@ const CORPUS: { id: string; designed: "PASS" | "FAIL" | "WAIT" | "OUT_OF_SCOPE";
   { id: "PW1", designed: "FAIL", cls: "NO_REASON_SOFT", intent: { instrument: "BTC-PERP", side: "LONG", leverage: 5, entry: 78900, stop_loss: 76200, take_profit: 83000, size_usd: 3000, venue: "Binance", thesis: "Long BTC 5x, stop 76,200, target 83,000. Feels right here." } },
   { id: "PW2", designed: "WAIT", cls: "VAGUE_STOP", intent: { instrument: "BTC-PERP", side: "LONG", leverage: 5, entry: 78900, size_usd: 3000, venue: "Binance", thesis: "Funding reset and 80K held on the daily close, so I am long 5x. I will bail if it tanks." } },
   { id: "PW3", designed: "WAIT", cls: "SILENT_STOP", intent: { instrument: "ETH-PERP", side: "SHORT", leverage: 3, entry: 2480, size_usd: 2000, venue: "Binance", thesis: "ETH/BTC breaking down with dominance rising; short ETH 3x at 2,480." } },
+  { id: "PD1", designed: "FAIL", cls: "DIRECTION_ONLY", intent: { thesis: "Long BTC-PERP, 3x leverage, $2,000 size. Entry $58,900. Stop $57,400. Take profit $63,000. BTC is going up. I am wrong if BTC closes below $57,400." } },
+  { id: "PD2", designed: "FAIL", cls: "DIRECTION_ONLY_SHORT", intent: { thesis: "Short BTC-PERP, 3x leverage, $2,000 size. Entry $58,900. Stop $60,400. Take profit $55,000. BTC is going down." } },
+  { id: "PD3", designed: "FAIL", cls: "TARGET_ONLY", intent: { instrument: "ETH-PERP", side: "LONG", leverage: 5, entry: 2480, stop_loss: 2400, take_profit: 2800, size_usd: 2000, venue: "Binance", thesis: "Long ETH 5x at 2,480, stop 2,400. ETH is going to 2,800." } },
+  { id: "PF4", designed: "PASS", cls: "BRIEF_REASON", intent: { thesis: "Long BTC-PERP, 3x leverage, $2,000 size. Entry $58,900. Stop $57,400. Take profit $63,000. Spot ETF flows turned positive this week after five days of outflows. I am wrong if BTC closes below $57,400." } },
   { id: "PM1", designed: "OUT_OF_SCOPE", cls: "PM_BET", intent: { market: "KXFEDDECISION-26SEP-H25", side: "YES", thesis: "Kalshi resolves YES if the FOMC hikes 25bps on Sep 16. Hot jobs and Waller's hedge leave the contract at 0.52; I take YES at 0.52 with a stop at 0.45.", size_usd: 250 } },
   { id: "PM2", designed: "OUT_OF_SCOPE", cls: "PM_BET", intent: { market: "polymarket:btc-above-80k-sep-30", side: "NO", thesis: "Resolves per Coinbase BTC-USD close Sep 30 vs $80,000; spot 78,900 needs +1.4%; market YES at 0.55 overprices it. Exit NO if BTC closes above 80,500 before Sep 25.", size_usd: 300 } },
 ];
@@ -107,7 +114,7 @@ async function oneRun(text: string): Promise<Run> {
 const mode = (xs: string[]) => { const c: Record<string, number> = {}; for (const x of xs) c[x] = (c[x] ?? 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1])[0]; };
 
 (async () => {
-  console.log(`Q2-PERP extraction reliability (X-LF-v1.2, perp prompt) · ${STUB ? (args.has("--stub-noisy") ? "STUB-NOISY (self-test: must read UNSTABLE)" : "STUB (self-test: must read RELIABLE)") : `LIVE · ${CLAUDE_MODEL}`} · K=${K} · ${CORPUS.length} theses · ${CORPUS.length * K * 3} model calls\n`);
+  console.log(`Q2-PERP extraction reliability (${EXTRACTION_CONTRACT_VERSION_LF}, perp prompt) · ${STUB ? (args.has("--stub-noisy") ? "STUB-NOISY (self-test: must read UNSTABLE)" : "STUB (self-test: must read RELIABLE)") : `LIVE · ${CLAUDE_MODEL}`} · K=${K} · ${CORPUS.length} theses · ${CORPUS.length * K * 3} model calls\n`);
   const results: { id: string; cls: string; designed: string; runs: Run[] }[] = [];
   const queue = [...CORPUS];
   await Promise.all(Array.from({ length: CONC }, async () => {
@@ -139,7 +146,7 @@ const mode = (xs: string[]) => { const c: Record<string, number> = {}; for (cons
   console.log(`designed-class match ${designedMatch}/${n} (reported, not scored)`);
   mkdirSync("tests/out", { recursive: true });
   const out = `tests/out/q2-${STUB ? "stub" : "live"}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
-  writeFileSync(out, JSON.stringify({ mode: STUB ? "stub" : "live", model: STUB ? null : CLAUDE_MODEL, K, thresholds: { reliable: "mean>=0.95 && full>=0.8", marginal: "mean>=0.85", failsafe_max: 0.02 }, grade, meanStab, pctFull, fsRate, fieldFlip, designedMatch, results }, null, 2));
+  writeFileSync(out, JSON.stringify({ mode: STUB ? "stub" : "live", contract: EXTRACTION_CONTRACT_VERSION_LF, model: STUB ? null : CLAUDE_MODEL, K, thresholds: { reliable: "mean>=0.95 && full>=0.8", marginal: "mean>=0.85", failsafe_max: 0.02 }, grade, meanStab, pctFull, fsRate, fieldFlip, designedMatch, results }, null, 2));
   console.log(`\nraw runs → ${out}`);
   if (STUB) { const expect = args.has("--stub-noisy") ? grade !== "RELIABLE" : grade === "RELIABLE"; console.log(expect ? "\nSELF-TEST PASS — harness measures what it claims" : "\nSELF-TEST FAIL — harness metrics wrong"); process.exit(expect ? 0 : 1); }
 })();

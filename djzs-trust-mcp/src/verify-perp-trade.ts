@@ -1,7 +1,7 @@
 /**
  * verify_perp_trade — the perpetual/spot TRADE audit pipeline. Mirrors verify-pm-trade.ts and is
  * deliberately a separate pipeline (Path B ruling): the caller's choice of tool declares the context,
- * so this pipeline runs the perp extraction prompt (DJZS-X-LF-v1.2, carries thesis_statement) while
+ * so this pipeline runs the perp extraction prompt (DJZS-X-LF-v1.3, carries thesis_statement) while
  * verify_pm_trade keeps the PM prompt untouched. A prediction-market bet submitted here is refused
  * (in_scope:false, not charged) — never silently audited as a trade.
  * Engine: the same deterministic engine, perp path (DJZS-LF-v1.2: X01, E01, I01, S01 live).
