@@ -1,4 +1,4 @@
-# The verdict rule on chain (DJZS-VR-v1.0)
+# The verdict rule on chain (DJZS-VR-v1.1)
 
 Written 2026-09-27. Status: built and tested, not deployed. Nothing in production changes until the
 deploy order below runs; until then every receipt lands under EAS schema v2 exactly as before.
@@ -17,8 +17,10 @@ by one fixture:
 | The rule on Base | `contracts/DJZSVerdictRule.sol` (`score`) | `test/DJZSVerdictRule.test.cjs`: replays `tests/fixtures/verdict-rule.json`, the 267 distinct tallies the engine produces, plus hand-pinned cases and refusals |
 
 The rule: FAIL when any fired code is CRITICAL or the weights reach the ruleset threshold
-(DJZS-PM-v1.0: 25, DJZS-LF-v1.2: 50); otherwise PASS when no code fired and the intent is bounded
-(LF: and a thesis is present); otherwise WAIT when any scored field is unknown; otherwise PASS.
+(DJZS-PM-v1.0: 25, DJZS-LF-v1.3: 50); otherwise PASS when the intent is clean (PM: no code fired and
+bounded; LF: bounded with a thesis present, advisory codes riding along); otherwise WAIT when any
+scored field is unknown; otherwise PASS. v1.1 (2026-11-26, with DJZS-LF-v1.3) changed only the LF
+clean rung, which under v1.0 also required that no code fired; v1.0 knew DJZS-LF-v1.2.
 Weights and severities are the frozen taxonomies; the contract's constructor refuses to deploy if
 they do not sum to 100 and 200. An unknown ruleset, an unknown code, or a duplicate code reverts:
 a tally the rule cannot read is refused, never scored as zero.

@@ -259,9 +259,9 @@ NFT_CONTRACT_ADDRESS=0x<mainnet address>
 
 ---
 
-## 5. DJZSVerdictRule (DJZS-VR-v1.0)
+## 5. DJZSVerdictRule (DJZS-VR-v1.1)
 
-**Purpose**: The verdict rule of the deterministic engine as bytecode. Given a tally (fired codes, unknown scored fields, bounded, thesis present), derives the risk score and the verdict for DJZS-PM-v1.0 and DJZS-LF-v1.2. Refuses unknown rulesets, unknown codes and duplicate codes. Held against the engine by `tests/fixtures/verdict-rule.json` (every distinct tally the engine produces over 59,157 inputs) in `test/DJZSVerdictRule.test.cjs`.
+**Purpose**: The verdict rule of the deterministic engine as bytecode. Given a tally (fired codes, unknown scored fields, bounded, thesis present), derives the risk score and the verdict for DJZS-PM-v1.0 and DJZS-LF-v1.3. Refuses unknown rulesets, unknown codes and duplicate codes. Held against the engine by `tests/fixtures/verdict-rule.json` (every distinct tally the engine produces over 59,157 inputs) in `test/DJZSVerdictRule.test.cjs`.
 
 **Deployed Address**: not yet deployed. `VERDICT_RULE.md` has the deploy order.
 

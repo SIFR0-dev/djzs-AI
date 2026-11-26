@@ -1,4 +1,4 @@
-// DJZS-VR-v1.0: the on-chain rule against the engine's full input space.
+// DJZS-VR-v1.1: the on-chain rule against the engine's full input space.
 // The fixture is written by `npx tsx tests/verdict-rule-fixtures.ts` from the deterministic engine;
 // every distinct tally it produces (267 rows, 59,157 inputs) must score identically here.
 const { expect } = require("chai");
@@ -8,7 +8,7 @@ const path = require("node:path");
 
 const FIXTURE = path.join(__dirname, "..", "tests", "fixtures", "verdict-rule.json");
 const PM = "DJZS-PM-v1.0";
-const LF = "DJZS-LF-v1.2";
+const LF = "DJZS-LF-v1.3";
 
 const tally = (rulesetVersion, codes, unknownCount = 0, bounded = true, thesisPresent = true) => ({
   rulesetVersion, codes, unknownCount, bounded, thesisPresent,
@@ -24,7 +24,7 @@ describe("DJZSVerdictRule", function () {
   });
 
   it("states its version, rulesets, thresholds and the governed weight sums", async function () {
-    expect(await rule.VERSION()).to.equal("DJZS-VR-v1.0");
+    expect(await rule.VERSION()).to.equal("DJZS-VR-v1.1");
     expect(await rule.PM_RULESET()).to.equal(PM);
     expect(await rule.LF_RULESET()).to.equal(LF);
     expect(await rule.PM_FAIL_THRESHOLD()).to.equal(25n);
@@ -38,7 +38,7 @@ describe("DJZSVerdictRule", function () {
 
   it("replays every distinct tally of the engine's input space from the fixture", async function () {
     const doc = JSON.parse(readFileSync(FIXTURE, "utf8"));
-    expect(doc.rule).to.equal("DJZS-VR-v1.0");
+    expect(doc.rule).to.equal("DJZS-VR-v1.1");
     expect(doc.rows.length).to.equal(doc.count);
     expect(doc.count).to.be.greaterThan(200);
     const rulesets = new Set(doc.rows.map((r) => r.ruleset));
@@ -81,6 +81,12 @@ describe("DJZSVerdictRule", function () {
     // LF: I01 alone is 16 MEDIUM, no unknowns: PASS with an advisory flag riding along.
     [risk, code] = await rule.score(tally(LF, ["DJZS-I01"], 0, true, true));
     expect([Number(risk), Number(code)]).to.deep.equal([16, 1]);
+    // LF-v1.3: the same advisory with an unknown field still PASSes when bounded with a thesis (a WAIT under v1.2).
+    [risk, code] = await rule.score(tally(LF, ["DJZS-E01", "DJZS-I01"], 2, true, true));
+    expect([Number(risk), Number(code)]).to.deep.equal([41, 1]);
+    // ...and still WAITs when unbounded.
+    [risk, code] = await rule.score(tally(LF, ["DJZS-I01"], 1, false, true));
+    expect([Number(risk), Number(code)]).to.deep.equal([16, 2]);
     // LF: E01 + I01 + I02 = 57 reaches 50: FAIL with no CRITICAL code.
     [risk, code] = await rule.score(tally(LF, ["DJZS-E01", "DJZS-I01", "DJZS-I02"]));
     expect([Number(risk), Number(code)]).to.deep.equal([57, 3]);

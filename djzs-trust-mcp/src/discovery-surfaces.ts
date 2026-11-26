@@ -99,7 +99,7 @@ The gate audits the internal logic of what you submitted. It does not predict wh
 ## Paid endpoints
 
 - [POST /x402/verify_pm_trade](${RESOURCE_URL}): Adversarial audit of one prediction-market trade intent. ${PRICE_HUMAN}, x402 exact scheme, network ${NETWORK}, asset USDC (${USDC_BASE}), paid to ${PAY_TO}. Body: {"intent":{"market","side","thesis","probability_basis","size_usd","bounds"}}. Unpaid requests receive a 402 challenge carrying the full input schema.
-- [POST /x402/verify_perp_trade](${PERP_RESOURCE_URL}): Adversarial audit of one perpetual or spot TRADE intent (direction, size, leverage, entry, stop, target, venue, and the reason). Same price and rail: 2.00 USDC, x402 exact scheme, network eip155:8453. Body: {"intent":{"instrument","side","thesis","leverage","entry","stop_loss","take_profit","invalidation","size_usd","venue","data_sources"}}; instrument, side, and thesis are required. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets sent here are refused without charge. Ruleset DJZS-LF-v1.2, four codes live (E01, I01, X01, S01).
+- [POST /x402/verify_perp_trade](${PERP_RESOURCE_URL}): Adversarial audit of one perpetual or spot TRADE intent (direction, size, leverage, entry, stop, target, venue, and the reason). Same price and rail: 2.00 USDC, x402 exact scheme, network eip155:8453. Body: {"intent":{"instrument","side","thesis","leverage","entry","stop_loss","take_profit","invalidation","size_usd","venue","data_sources"}}; instrument, side, and thesis are required. A position stated with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets sent here are refused without charge. Ruleset DJZS-LF-v1.3, four codes live (E01, I01, X01, S01).
 - Two payment protocols on the two routes above, one 402: x402 v2 (PAYMENT-REQUIRED header, PAYMENT-SIGNATURE credential) and MPP (WWW-Authenticate: Payment challenge, Authorization: Payment credential; method evm, intent charge, currency USDC ${USDC_BASE}, amount ${PRICE_ATOMIC} atomic, chain 8453). One settlement path, the CDP facilitator to ${PAY_TO}; the MPP 200 adds a Payment-Receipt header beside PAYMENT-RESPONSE. No-code client: npx mppx ${PERP_RESOURCE_URL} --protocol mpp -J '{"intent":{...}}'. Settled on Base mainnet 2026-11-02. The legacy alias /x402/verify is x402-only.
 
 ## Free endpoint
@@ -129,7 +129,7 @@ DJZS AI, LLC (California). Contact: legal@djzs.ai. Site: ${APEX}.
 }
 
 // ------------------------------------------------------------------
-// Second paid surface: verify_perp_trade (DJZS-LF-v1.2). Field list mirrors the live 402 challenge's bazaar schema.
+// Second paid surface: verify_perp_trade (DJZS-LF-v1.3). Field list mirrors the live 402 challenge's bazaar schema.
 function perpResourceEntry(): unknown {
   return {
     type: "http",
@@ -302,7 +302,7 @@ function agentCard(): unknown {
         id: "verify_perp_trade",
         name: "Verify perpetual or spot trade intent",
         description:
-          "Deterministic adversarial audit of one perpetual or spot trade intent: direction, size, leverage, entry, stop, target, venue, and the reason. Returns PASS, WAIT, or FAIL with risk score, defect flags (DJZS-LF-v1.2), and an on-chain Proof-of-Logic receipt. A position with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused without charge.",
+          "Deterministic adversarial audit of one perpetual or spot trade intent: direction, size, leverage, entry, stop, target, venue, and the reason. Returns PASS, WAIT, or FAIL with risk score, defect flags (DJZS-LF-v1.3), and an on-chain Proof-of-Logic receipt. A position with no thesis FAILS (DJZS-S01); an unbounded position FAILS (DJZS-X01). Prediction-market bets are refused without charge.",
         tags: ["audit", "perpetuals", "spot", "trading", "verification", "x402"],
         examples: [
           'POST {"intent":{"instrument":"BTC-PERP","side":"LONG","leverage":5,"entry":78900,"stop_loss":76200,"take_profit":83000,"size_usd":3000,"venue":"Binance","thesis":"Funding reset to 2% after the weekend flush; 80K held on the daily close; ETF inflows resumed. Invalidation: daily close below 76,200. Oracle: Binance mark price."}}',

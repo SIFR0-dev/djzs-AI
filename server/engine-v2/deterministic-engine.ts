@@ -9,10 +9,11 @@
  * Three-valued verdict (the Architecture C contribution):
  *   FAIL  — a rule fired on facts we KNOW (a real finding)
  *   WAIT  — we lack a fact we'd need to clear or condemn (honest abstention)
- *   PASS  — every scored fact is known, and no rule fired
+ *   PASS  — nothing that condemns fired, and no unknown fact could make it fire (perp: a bound
+ *           and a present thesis, or every scored fact known); advisory flags may ride along
  *
  * Rule codes and weights are NOT redefined here — they are imported from the
- * frozen shared taxonomy (DJZS-LF-v1.2) so engine-v2 scores against the same
+ * frozen shared taxonomy (DJZS-LF-v1.3; weights as in v1.2) so engine-v2 scores against the same
  * canonical table as everything else in the system.
  */
 import { LOGIC_FAILURE_TAXONOMY, SCHEMA_VERSION, type LFCode, type Severity } from "@shared/audit-schema";
@@ -50,8 +51,23 @@ export interface EngineResult {
 /** A finding fired by `value` is below the FAIL line until weights cross this. */
 const FAIL_THRESHOLD = 50;
 
-/** Social/sentiment signals that, when used as a data source, indicate a FOMO loop. */
-const SOCIAL_SIGNALS = ["social_sentiment", "social", "twitter", "x.com", "telegram", "discord", "sentiment"];
+/**
+ * Social/sentiment signals that, when used as a data source, indicate a FOMO loop (I01).
+ * LF-v1.3: matched as whole words inside each source, not as the whole source. Through LF-v1.2 a
+ * source had to equal one of the first seven exactly, so "Crypto Twitter", "CT" and "Reddit" never
+ * fired (live 2026-11-26: "CT is bullish" PASS 0 beside "Twitter is bullish" WAIT 16).
+ */
+const SOCIAL_SIGNALS = [
+  "social_sentiment", "social", "twitter", "x.com", "telegram", "discord", "sentiment",
+  "x", "ct", "crypto twitter", "fintwit", "reddit", "youtube", "youtuber", "tiktok",
+  "influencer", "influencers", "kol", "kols", "group chat",
+];
+
+/** True when a whole-word social signal appears in the source. Lower-cased; anything but letters, digits, "." and "_" splits words. */
+function isSocialSource(source: unknown): boolean {
+  const words = ` ${String(source).toLowerCase().replace(/[^a-z0-9._]+/g, " ").trim()} `;
+  return SOCIAL_SIGNALS.some((signal) => words.includes(` ${signal} `));
+}
 
 const is = <T>(f: Field<T>, state: Field<T>["state"]) => f.state === state;
 
@@ -114,7 +130,7 @@ function ruleOracleUnverified(input: AuditInput): EngineFlag | null {
 function ruleFomoLoop(input: AuditInput): EngineFlag | null {
   if (is(input.data_sources, "present")) {
     const sources = (input.data_sources as { state: "present"; value: string[] }).value ?? [];
-    const social = sources.find((s) => SOCIAL_SIGNALS.includes(String(s).toLowerCase()));
+    const social = sources.find((s) => isSocialSource(s));
     if (social) {
       return flag("DJZS-I01", `Decision driven by social signal "${social}" rather than verified data.`);
     }
@@ -229,10 +245,14 @@ export function runDeterministicAudit(input: AuditInput): EngineResult {
   if (hasCritical || risk_score >= FAIL_THRESHOLD) {
     // A real finding on known facts always condemns — even amid open questions.
     verdict = "FAIL";
-  } else if (flags.length === 0 && isBounded && thesisPresent) {
-    // Bounded position WITH a stated thesis and no flaw fired: remaining unknowns cannot change
-    // a no-flag verdict. LF-v1.2: a stop alone no longer buys a PASS — an unknown thesis could
-    // still resolve to S01, so it falls through to WAIT below.
+  } else if (isBounded && thesisPresent) {
+    // Bounded position WITH a stated thesis: no completion of the unknown fields can reach FAIL.
+    // X01 needs the stop and the invalidation absent, S01 needs the thesis absent, and the
+    // non-critical live codes sum to 41 (E01 25 + I01 16) against a threshold of 50. LF-v1.2: a
+    // stop alone no longer buys a PASS (an unknown thesis could still resolve to S01, so it falls
+    // through to WAIT below). LF-v1.3: an advisory flag rides the PASS. v1.2 required
+    // flags.length === 0 here, so naming a social source turned a PASS into a WAIT while saying
+    // nothing kept it; tests/lf-engine-integrity.ts I8 now holds that more facts never cost a PASS.
     verdict = "PASS";
   } else if (unknown_fields.length > 0) {
     // No finding, but an unknown could still be decision-critical: abstain rather than guess.
